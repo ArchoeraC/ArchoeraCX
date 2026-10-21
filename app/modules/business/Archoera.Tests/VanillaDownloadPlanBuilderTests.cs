@@ -40,6 +40,9 @@ public sealed class VanillaDownloadPlanBuilderTests
         Assert.Equal(MojangTestData.Sha1('1'), client.Hash.Hex);
         Assert.Equal(1_000, client.Size);
         Assert.StartsWith("https://piston-data.mojang.com/", client.Url, StringComparison.Ordinal);
+        Assert.Contains(
+            $"https://bmclapi2.bangbang93.com/version/{MojangTestData.Version().Id}/client",
+            client.Mirrors);
 
         var native = plan.Files.Single(file => file.Dest == MojangTestData.NativePath);
         Assert.Equal(MojangTestData.Sha1('6'), native.Hash.Hex);
@@ -49,6 +52,15 @@ public sealed class VanillaDownloadPlanBuilderTests
         Assert.Equal(
             $"https://resources.download.minecraft.net/aa/{MojangTestData.Sha1('a')}",
             asset.Url);
+        Assert.Contains(
+            $"https://bmclapi2.bangbang93.com/assets/aa/{MojangTestData.Sha1('a')}",
+            asset.Mirrors);
+        var common = plan.Files.Single(file => file.Dest == MojangTestData.CommonPath);
+        Assert.Contains(
+            common.Mirrors,
+            mirror => mirror.StartsWith(
+                "https://bmclapi2.bangbang93.com/libraries/",
+                StringComparison.Ordinal));
 
         var logging = plan.Files.Single(file => file.Dest == MojangTestData.LoggingPath);
         Assert.Equal(42, logging.Size);

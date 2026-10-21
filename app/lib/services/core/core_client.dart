@@ -1,14 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 
-import 'core_event.dart';
-import 'event_pump.dart';
 import '../../models/account.dart';
 import '../../models/game_instance.dart';
 import 'app_settings.dart';
+import 'core_event.dart';
+import 'event_pump.dart';
 import 'installed_mod.dart';
 import 'java_scan.dart';
 import 'launch_result.dart';
@@ -17,6 +18,8 @@ import 'loader_plan.dart';
 import 'version_models.dart';
 import 'resource_models.dart';
 import 'system_memory.dart';
+import 'task_update.dart';
+import 'vanilla_install_plan.dart';
 
 /// The error structure returned by the native core ABI.
 ///
@@ -204,6 +207,12 @@ final class CoreClient {
   }
 
   static const int expectedAbiVersion = 1;
+
+  final _taskUpdates = StreamController<TaskUpdate>.broadcast();
+
+  /// Lifecycle/progress snapshots for the task center. Synthetic start/end
+  /// updates come from [_runAsync]; module progress comes from native events.
+  Stream<TaskUpdate> get taskUpdates => _taskUpdates.stream;
 
   static const int _ok = 0;
   static const int _eBuffer = 9;
@@ -590,6 +599,62 @@ final class CoreClient {
       onProgress: onProgress,
     );
     return _decodeRawEnvelope(jsonText, fallbackMethod: methodName);
+  }
+
+  /// Build a vanilla game-file plan rooted at the instance's install root.
+  Future<VanillaInstallPlan> planVanillaInstall({
+    required String root,
+    required String versionId,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'version.plan';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'root': root,
+        'versionId': versionId,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final plan = _asMap(data['plan'], methodName);
+    final id = _asString(data['versionId']);
+    final versionJson = _asString(data['versionJson']);
+    final installRoot = _asString(data['installRoot']);
+    if (id == null || versionJson == null || installRoot == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an incomplete plan.',
+      );
+    }
+    return VanillaInstallPlan(
+      plan: plan,
+      versionId: id,
+      versionJson: versionJson,
+      installRoot: installRoot,
+    );
+  }
+
+  /// Write a downloaded vanilla version JSON into the install root.
+  Future<void> commitVanillaVersion({
+    required String root,
+    required String versionId,
+    required String versionJson,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'version.commit';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'root': root,
+        'versionId': versionId,
+        'versionJson': versionJson,
+      }),
+      onProgress: onProgress,
+    );
+    _decodeEnvelope(jsonText, fallbackMethod: methodName);
   }
 
   /// Read Mojang's version manifest through the C# module.
@@ -1241,6 +1306,13 @@ final class CoreClient {
     var taskId = 0;
     try {
       taskId = _startTask(core, methodName, paramsJson: paramsJson);
+      _emitTask(
+        TaskUpdate(
+          taskId: taskId,
+          method: methodName,
+          state: TaskUpdateState.running,
+        ),
+      );
 
       final CoreEvent terminal;
       try {
@@ -1249,10 +1321,30 @@ final class CoreClient {
           onEvent: (event) {
             if (event.type == CoreEventType.taskProgress) {
               onProgress?.call(event.done, event.total);
+              _emitTask(
+                TaskUpdate(
+                  taskId: taskId,
+                  method: methodName,
+                  state: TaskUpdateState.running,
+                  done: event.done,
+                  total: event.total,
+                  bytesPerSecond: event.bytesPerSec,
+                  message:
+                      event.payload['current']?.toString() ?? event.message,
+                ),
+              );
             }
           },
         );
       } on CoreEventPumpClosed catch (error) {
+        _emitTask(
+          TaskUpdate(
+            taskId: taskId,
+            method: methodName,
+            state: TaskUpdateState.cancelled,
+            message: error.message,
+          ),
+        );
         throw CoreException(
           status: _ok,
           code: 'E_CANCELLED',
@@ -1265,6 +1357,13 @@ final class CoreClient {
         // The card may have been disposed (and the core shut down) while this
         // future was waiting on the event pump. Never touch a freed handle.
         if (!identical(_core, core)) {
+          _emitTask(
+            TaskUpdate(
+              taskId: taskId,
+              method: methodName,
+              state: TaskUpdateState.cancelled,
+            ),
+          );
           throw CoreException(
             status: _ok,
             code: 'E_CANCELLED',
@@ -1272,9 +1371,27 @@ final class CoreClient {
             taskId: taskId,
           );
         }
-        return _readResult(core, taskId);
+        final result = _readResult(core, taskId);
+        _emitTask(
+          TaskUpdate(
+            taskId: taskId,
+            method: methodName,
+            state: TaskUpdateState.completed,
+          ),
+        );
+        return result;
       }
 
+      _emitTask(
+        TaskUpdate(
+          taskId: taskId,
+          method: methodName,
+          state: terminal.state == CoreTaskState.cancelled
+              ? TaskUpdateState.cancelled
+              : TaskUpdateState.failed,
+          message: terminal.message,
+        ),
+      );
       throw _taskException(terminal, taskId);
     } finally {
       if (taskId != 0) {
@@ -1295,6 +1412,11 @@ final class CoreClient {
   ///
   /// Cancellation itself is asynchronous: the pump observes the cancelled
   /// task-state event and completes the pending future with [CoreException].
+  void _emitTask(TaskUpdate update) {
+    if (_closed || _taskUpdates.isClosed) return;
+    _taskUpdates.add(update);
+  }
+
   void cancel(int taskId) {
     final core = _requireCore();
     final status = _cancelFn(core, taskId);
@@ -1330,6 +1452,7 @@ final class CoreClient {
       // A shutdown failure must not crash widget disposal.
     } finally {
       pump?.dispose();
+      _taskUpdates.close();
     }
   }
 

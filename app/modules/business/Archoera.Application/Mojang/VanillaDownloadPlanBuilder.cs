@@ -26,6 +26,9 @@ public static class VanillaDownloadPlanBuilder
     /// <summary>Official asset object host (path is <c>&lt;xx&gt;/&lt;sha1&gt;</c>).</summary>
     public const string ResourcesBase = "https://resources.download.minecraft.net/";
 
+    /// <summary>Community mirror used only after the official URL fails.</summary>
+    public const string BmclApiBase = "https://bmclapi2.bangbang93.com/";
+
     private const string LibrariesPrefix = "libraries/";
     private const string AssetsPrefix = "assets/";
 
@@ -123,7 +126,45 @@ public static class VanillaDownloadPlanBuilder
                     $"{what}: duplicate destination '{dest}'");
             }
 
-            builder.AddFile(url, dest, DownloadHashAlgorithm.Sha1, sha1, size.Value);
+            var mirrors = BuildMirrors(version, dest, url);
+            builder.AddFile(
+                url,
+                dest,
+                DownloadHashAlgorithm.Sha1,
+                sha1,
+                size.Value,
+                mirrors: mirrors);
+        }
+
+        static IReadOnlyList<string>? BuildMirrors(
+            MojangVersion version,
+            string dest,
+            string officialUrl)
+        {
+            if (officialUrl.StartsWith(BmclApiBase, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (string.Equals(
+                    dest,
+                    $"versions/{version.Id}/{version.Id}.jar",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return [$"{BmclApiBase}version/{Uri.EscapeDataString(version.Id)}/client"];
+            }
+
+            if (dest.StartsWith(LibrariesPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return [$"{BmclApiBase}libraries/{dest[LibrariesPrefix.Length..]}"];
+            }
+
+            if (dest.StartsWith(AssetsPrefix + "objects/", StringComparison.OrdinalIgnoreCase))
+            {
+                return [$"{BmclApiBase}assets/{dest[(AssetsPrefix + "objects/").Length..]}"];
+            }
+
+            return null;
         }
 
         // Client jar is mandatory for a client install.

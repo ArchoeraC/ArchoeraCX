@@ -67,13 +67,14 @@ int32_t ModuleRegistry::call(std::string_view module,
                              const char* method,
                              const char* params_json,
                              archoera_module_done_fn done,
+                             archoera_module_progress_fn progress,
                              void* user) noexcept {
   try {
     ModuleHost* host = find(module);
     if (host == nullptr) {
       return ARCHOERA_E_UNSUPPORTED;
     }
-    return host->call(task_id, method, params_json, done, user);
+    return host->call(task_id, method, params_json, done, progress, user);
   } catch (...) {
     return ARCHOERA_E_INTERNAL;
   }

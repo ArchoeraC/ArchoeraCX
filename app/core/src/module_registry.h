@@ -47,6 +47,7 @@ class ModuleRegistry {
                const char* method,
                const char* params_json,
                archoera_module_done_fn done,
+               archoera_module_progress_fn progress,
                void* user) noexcept;
 
   int32_t cancel(std::string_view module, uint64_t task_id) noexcept;

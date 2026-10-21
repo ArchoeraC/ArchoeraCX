@@ -541,6 +541,57 @@ archoera_status start_ping_async(archoera_core* core,
 // Module-backed tasks (java.scan / loader.* / resource.* / download.execute)
 // ---------------------------------------------------------------------------
 
+// Module progress callback. May run on any module thread; it only enqueues a
+// progress event under the core mutex and wakes the Dart listener afterwards.
+void module_progress_callback(void* user,
+                              int64_t done,
+                              int64_t total,
+                              int64_t bytes_per_sec,
+                              const char* json) noexcept {
+  try {
+    auto* ctx = static_cast<ModuleCallContext*>(user);
+    if (ctx == nullptr || ctx->core == nullptr) {
+      return;
+    }
+
+    archoera_core* core = ctx->core;
+    WakeTarget wake;
+    bool notify = false;
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      if (core->shutting_down.load(std::memory_order_acquire)) {
+        return;
+      }
+
+      auto it = core->tasks.find(ctx->task_id);
+      if (it == core->tasks.end() || is_terminal(it->second.state) ||
+          it->second.cancel_requested) {
+        return;
+      }
+
+      EventRecord event;
+      event.type = ARCHOERA_EV_TASK_PROGRESS;
+      event.state = 0;
+      event.task_id = ctx->task_id;
+      event.done = done;
+      event.total = total;
+      event.bytes_per_sec = bytes_per_sec;
+      event.json = (json != nullptr && json[0] != '\0')
+                       ? std::string(json)
+                       : std::string("{\"source\":\"module\"}");
+      enqueue_event_locked(*core, std::move(event));
+      wake = wake_target_locked(*core);
+      notify = true;
+    }
+
+    if (notify) {
+      notify_wake(wake);
+    }
+  } catch (...) {
+    // A module callback must not unwind through the ABI.
+  }
+}
+
 // The module's done callback. May run on the calling worker (synchronously
 // inside call) or on a module-owned thread. The context is removed from the
 // map while the mutex is held but a local shared_ptr keeps it alive until this
@@ -771,7 +822,7 @@ void module_call_worker(archoera_core* core, uint64_t task_id) noexcept {
 
     const int32_t status = registry->call(
         module, task_id, method.c_str(), params.c_str(), &module_done_callback,
-        ctx.get());
+        &module_progress_callback, ctx.get());
     if (status != ARCHOERA_OK) {
       // Contract: a non-OK call was not accepted, so done will never arrive.
       {

@@ -1,6 +1,11 @@
 using System.Text.Json;
+using System.Text;
+using Archoera.Application.Downloads;
 using Archoera.Application.Modules;
 using Archoera.Application.Mojang;
+using Archoera.Domain.Downloads;
+using Archoera.Domain.Mojang;
+using Archoera.Infrastructure.Launch;
 using Archoera.Infrastructure.Modules;
 
 namespace Archoera.Infrastructure.Mojang;
@@ -8,9 +13,11 @@ namespace Archoera.Infrastructure.Mojang;
 /// <summary>Registered handler for read-only Mojang version metadata.</summary>
 public sealed class VersionModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods = ["version.list"];
+    private static readonly string[] SupportedMethods =
+        ["version.list", "version.plan", "version.commit"];
 
     private readonly IMojangMetadataClient _client;
+    private readonly MojangPlanService _planService;
 
     public VersionModuleService(IMojangMetadataClient? client = null)
     {
@@ -22,15 +29,115 @@ public sealed class VersionModuleService : IModuleMethodHandler
                     "0.1.0",
                     "https://github.com/BetaStudio2/ArchoeraCX"),
             });
+        _planService = new MojangPlanService(_client);
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
+
+    private async Task<byte[]> PlanAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(paramsJson ?? "{}");
+            var root = ReadRequired(document.RootElement, "root");
+            var versionId = ReadRequired(document.RootElement, "versionId");
+            var installRoot = LaunchPaths.ResolveInstallRoot(root);
+            var plan = await _planService
+                .BuildForVersionAsync(
+                    installRoot,
+                    versionId,
+                    MojangPlatform.Current(),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var versionJson = await _client
+                .GetVersionJsonAsync(versionId, cancellationToken)
+                .ConfigureAwait(false);
+            var planJson = DownloadPlanJson.Build(plan);
+            using var planDocument = JsonDocument.Parse(planJson);
+            return ModuleJson.Envelope(writer =>
+            {
+                writer.WriteString("versionId", versionId);
+                writer.WriteString("installRoot", installRoot);
+                writer.WriteString("versionJson", Encoding.UTF8.GetString(versionJson));
+                writer.WritePropertyName("plan");
+                planDocument.RootElement.WriteTo(writer);
+            });
+        }
+        catch (Exception exception) when (
+            exception is IOException or JsonException or MojangException or
+            DownloadPlanException or HttpRequestException or ArgumentException)
+        {
+            return ModuleJson.Error("VERSION_PLAN_FAILED", exception.Message);
+        }
+    }
+
+    private static byte[] Commit(string? paramsJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(paramsJson ?? "{}");
+            var root = ReadRequired(document.RootElement, "root");
+            var versionId = ReadRequired(document.RootElement, "versionId");
+            var versionJson = ReadRequired(document.RootElement, "versionJson");
+            if (!DownloadPlanPaths.IsPlainFileName(versionId))
+            {
+                return ModuleJson.Error("E_INVALID", "versionId is not a plain file name");
+            }
+
+            var installRoot = LaunchPaths.ResolveInstallRoot(root);
+            var versionDirectory = Path.Combine(installRoot, "versions", versionId);
+            Directory.CreateDirectory(versionDirectory);
+            var path = Path.Combine(versionDirectory, $"{versionId}.json");
+            var temporary = path + ".tmp";
+            File.WriteAllText(
+                temporary,
+                versionJson,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.Move(temporary, path, overwrite: true);
+            return ModuleJson.Envelope(writer =>
+            {
+                writer.WriteString("versionId", versionId);
+                writer.WriteString("installRoot", installRoot);
+                writer.WriteString("versionPath", path);
+            });
+        }
+        catch (Exception exception) when (
+            exception is IOException or JsonException or ArgumentException or
+            UnauthorizedAccessException)
+        {
+            return ModuleJson.Error("VERSION_COMMIT_FAILED", exception.Message);
+        }
+    }
+
+    private static string ReadRequired(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var element) ||
+            element.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(element.GetString()))
+        {
+            throw new ArgumentException($"{name} is required");
+        }
+
+        return element.GetString()!.Trim();
+    }
 
     public async Task<byte[]> HandleAsync(
         string method,
         string? paramsJson,
         CancellationToken cancellationToken)
     {
+        if (string.Equals(method, "version.plan", StringComparison.Ordinal))
+        {
+            return await PlanAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.Equals(method, "version.commit", StringComparison.Ordinal))
+        {
+            return Commit(paramsJson);
+        }
+
         if (!string.Equals(method, "version.list", StringComparison.Ordinal))
         {
             return ModuleJson.Error("E_UNSUPPORTED", $"unsupported version method '{method}'");

@@ -14,11 +14,22 @@
 extern "C" {
 #endif
 
-#define ARCHOERA_MODULE_ABI_VERSION 1u
+#define ARCHOERA_MODULE_ABI_VERSION 2u
 
 typedef void (*archoera_module_done_fn)(void* user,
                                         int32_t status,
                                         const char* result_json);
+
+/*
+ * Optional progress callback. `json` is a UTF-8 object valid only during the
+ * callback; `done`/`total` are bytes when known. Hosts may pass a null
+ * progress callback.
+ */
+typedef void (*archoera_module_progress_fn)(void* user,
+                                            int64_t done,
+                                            int64_t total,
+                                            int64_t bytes_per_sec,
+                                            const char* json);
 
 typedef struct archoera_module_v1 {
   uint32_t abi_version;
@@ -39,6 +50,7 @@ typedef struct archoera_module_v1 {
                   const char* method,
                   const char* params_json,
                   archoera_module_done_fn done,
+                  archoera_module_progress_fn progress,
                   void* user);
 
   /* Idempotent cooperative cancel; unknown tasks are ignored. */

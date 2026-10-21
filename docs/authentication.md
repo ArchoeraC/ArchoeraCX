@@ -189,15 +189,23 @@ MINECRAFT_APP_NOT_APPROVED  Minecraft Services has not approved this application
 
 ```text
 accounts.json                 账户元数据
-accounts.credentials.json     refresh / Minecraft token（Unix 0600）
+archoera-vault                凭证保险库（crypto/file 免密模式）
 logs/account.log              脱敏诊断日志
 ```
 
 - device code 只在内存中。
 - access/refresh token 不写日志、不跨 ABI、不进入 UI 模型。
 - 失败登录不会写入账户文件。
-- 凭据文件是过渡方案；后续迁移 Windows DPAPI、macOS Keychain、Linux libsecret。
+- 旧 `accounts.credentials.json` 在首次使用时迁移进保险库并删除；生产构建需包含 `archoera-vault`（CI 已构建并检查）。
 - 多账户切换和 refresh 单飞尚未完整实现。
+
+### 申请前检查
+
+- [ ] 使用自己注册的 Entra 公共客户端，启用 public client flows，不创建 secret。
+- [ ] 固定同一个 Application (client) ID 用于审核、开发和 CI；构建时注入 `-p:MicrosoftClientId=<GUID>`，不要只依赖运行时覆盖。
+- [ ] 准备应用名称、使用场景、主页/隐私政策、联系地址；Minecraft Services 审核针对 client ID，不针对某个二进制。
+- [ ] 审核前 `login_with_xbox` 返回 `MINECRAFT_APP_NOT_APPROVED` 属预期；通过后无需改代码。
+- [ ] 发布前确认 `launch.start` 的在线账户启动仍未接线；不要把“登录成功”当作“可在线启动”的评审演示。
 
 ## 7. 实现位置
 

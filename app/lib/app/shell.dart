@@ -13,6 +13,7 @@ import '../stores/accounts.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
+import '../widgets/common/task_center_button.dart';
 import '../widgets/layout/app_background.dart';
 
 enum _PageTransitionMode { cover, retract, lift }
@@ -245,6 +246,7 @@ class _TopBar extends StatelessWidget {
             style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
           ),
           const Spacer(),
+          const TaskCenterButton(),
         ],
       ),
     );

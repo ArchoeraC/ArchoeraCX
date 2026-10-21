@@ -56,6 +56,7 @@ class ModuleHost {
                const char* method,
                const char* params_json,
                archoera_module_done_fn done,
+               archoera_module_progress_fn progress,
                void* user) noexcept;
 
   /* Cooperative, idempotent cancel. Safe before/after shutdown. */

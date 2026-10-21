@@ -67,7 +67,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             }
 
             var paths = LaunchPaths.Resolve(instance.RootPath);
-            var version = LoadVersion(paths);
+            var version = LoadVersion(instance, paths);
             var java = await SelectJavaAsync(settings, version, cancellationToken).ConfigureAwait(false);
             var plan = LaunchPlanBuilder.Build(instance, version, account, java, settings, paths);
             var (process, logPath) = Start(plan);
@@ -99,32 +99,120 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         }
     }
 
-    private static MojangVersion LoadVersion(LaunchPaths paths)
+    internal static MojangVersion LoadVersion(
+        GameInstanceRecord instance,
+        LaunchPaths paths)
     {
         var directoryName = Path.GetFileName(paths.InstanceRoot);
-        var candidates = new[]
+        var candidates = new List<string>
         {
             Path.Combine(paths.InstanceRoot, $"{directoryName}.json"),
             Path.Combine(paths.SharedRoot, "versions", directoryName, $"{directoryName}.json"),
+            Path.Combine(paths.InstanceRoot, $"{instance.GameVersion}.json"),
+            Path.Combine(
+                paths.SharedRoot,
+                "versions",
+                instance.GameVersion,
+                $"{instance.GameVersion}.json"),
         };
 
-        foreach (var path in candidates)
+        // Version-isolated instances created under a versions/ directory may
+        // have a custom folder name. Also accept the version id recorded by a
+        // loader install (Forge/NeoForge merged profiles).
+        foreach (var versionsRoot in new[]
+                 {
+                     Path.Combine(paths.SharedRoot, "versions"),
+                     Path.Combine(paths.InstanceRoot, "versions"),
+                 })
         {
-            if (!File.Exists(path)) continue;
-            using var document = JsonDocument.Parse(File.ReadAllText(path));
-            var version = MojangJson.ParseVersion(document.RootElement);
-            if (!string.IsNullOrWhiteSpace(version.InheritsFrom))
+            if (!Directory.Exists(versionsRoot)) continue;
+            foreach (var directory in Directory.EnumerateDirectories(versionsRoot))
             {
-                throw new LaunchException(
-                    "VERSION_NOT_MERGED",
-                    $"version '{version.Id}' still inherits from '{version.InheritsFrom}'; install/merge it first");
+                foreach (var jsonPath in Directory.EnumerateFiles(
+                             directory,
+                             "*.json",
+                             SearchOption.TopDirectoryOnly))
+                {
+                    candidates.Add(jsonPath);
+                }
             }
-            return version;
         }
 
-        throw new LaunchException(
-            "VERSION_JSON_MISSING",
-            $"no version JSON found in {paths.InstanceRoot}");
+        var matches = new List<(MojangVersion Version, int Score, DateTime Modified)>();
+        foreach (var path in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!File.Exists(path)) continue;
+            MojangVersion version;
+            try
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(path));
+                version = MojangJson.ParseVersion(document.RootElement);
+            }
+            catch (Exception exception) when (
+                exception is IOException or JsonException or ArgumentException)
+            {
+                continue;
+            }
+
+            var isLoaderInstance = !string.Equals(
+                instance.Loader,
+                "vanilla",
+                StringComparison.OrdinalIgnoreCase);
+            var score = 0;
+            if (string.Equals(version.Id, directoryName, StringComparison.OrdinalIgnoreCase) &&
+                (!isLoaderInstance ||
+                 version.Id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase)))
+            {
+                score += 100;
+            }
+
+            if (string.Equals(version.Id, instance.GameVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                score += isLoaderInstance ? 10 : 80;
+            }
+
+            if (isLoaderInstance &&
+                version.Id.Contains(instance.GameVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 20;
+                if (version.Id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase))
+                {
+                    score += 20;
+                }
+
+                if (!string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
+                    version.Id.Contains(
+                        instance.LoaderVersion,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    score += 10;
+                }
+            }
+
+            if (score == 0) continue;
+            matches.Add((version, score, File.GetLastWriteTimeUtc(path)));
+        }
+
+        if (matches.Count == 0)
+        {
+            throw new LaunchException(
+                "VERSION_JSON_MISSING",
+                $"no version JSON found for {instance.GameVersion} in {paths.SharedRoot}");
+        }
+
+        var selected = matches
+            .OrderByDescending(item => item.Score)
+            .ThenByDescending(item => item.Modified)
+            .First()
+            .Version;
+        if (!string.IsNullOrWhiteSpace(selected.InheritsFrom))
+        {
+            throw new LaunchException(
+                "VERSION_NOT_MERGED",
+                $"version '{selected.Id}' still inherits from '{selected.InheritsFrom}'; install/merge it first");
+        }
+
+        return selected;
     }
 
     private async Task<JavaRuntimeInfo> SelectJavaAsync(

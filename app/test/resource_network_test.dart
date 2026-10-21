@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:archoera_cx/services/core/core_client.dart';
+import 'package:archoera_cx/services/core/task_update.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -61,7 +62,26 @@ void main() {
       );
       expect(plan['files'], isA<List<Object?>>());
 
-      final result = await client.executeDownload(plan);
+      final updates = <TaskUpdate>[];
+      final subscription = client.taskUpdates.listen(updates.add);
+      addTearDown(subscription.cancel);
+      var progressEvents = 0;
+      final result = await client.executeDownload(
+        plan,
+        onProgress: (done, total) {
+          progressEvents++;
+        },
+      );
+      expect(progressEvents, greaterThan(0));
+      expect(
+        updates.any(
+          (update) =>
+              update.method == 'download.execute' &&
+              update.state == TaskUpdateState.running &&
+              update.total > 0,
+        ),
+        isTrue,
+      );
       expect(result.ok, isTrue, reason: result.stderr);
       expect(result.status, 'completed');
     },
@@ -101,6 +121,41 @@ void main() {
         gameVersion: '1.21.1',
       );
       expect(loaders, isEmpty);
+
+      final root = await Directory.systemTemp.createTemp(
+        'archoera-vanilla-plan-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      final vanilla = await client.planVanillaInstall(
+        root: root.path,
+        versionId: '1.21.1',
+      );
+      expect(vanilla.versionId, '1.21.1');
+      expect(vanilla.versionJson, contains('"id"'));
+      expect(vanilla.plan['files'], isA<List<Object?>>());
+
+      // A version-isolated instance lives under versions/<name>; its vanilla
+      // version files belong to the parent game root.
+      final gameRoot = await Directory.systemTemp.createTemp(
+        'archoera-game-root-',
+      );
+      addTearDown(() => gameRoot.delete(recursive: true));
+      final isolated = Directory('${gameRoot.path}/versions/island')
+        ..createSync(recursive: true);
+      final isolatedPlan = await client.planVanillaInstall(
+        root: isolated.path,
+        versionId: '1.21.1',
+      );
+      expect(isolatedPlan.installRoot, gameRoot.path);
+      await client.commitVanillaVersion(
+        root: isolated.path,
+        versionId: isolatedPlan.versionId,
+        versionJson: isolatedPlan.versionJson,
+      );
+      expect(
+        File('${gameRoot.path}/versions/1.21.1/1.21.1.json').existsSync(),
+        isTrue,
+      );
     },
     skip: enabled && core.existsSync() && module.existsSync()
         ? false

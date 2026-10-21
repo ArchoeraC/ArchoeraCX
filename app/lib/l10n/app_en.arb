@@ -836,5 +836,109 @@
   "downloadDescription": "Description",
   "@downloadDescription": {
     "description": "Project long description heading."
+  },
+  "instanceInstallGame": "Download game files",
+  "@instanceInstallGame": {
+    "description": "Instance menu action that installs vanilla game files."
+  },
+  "instanceInstallGameTitle": "Install game files",
+  "@instanceInstallGameTitle": {
+    "description": "Dialog title for vanilla installation."
+  },
+  "instanceInstallGameHint": "Downloads the vanilla client, libraries and assets, then writes the version JSON used by launch.",
+  "@instanceInstallGameHint": {
+    "description": "Explanation for vanilla installation."
+  },
+  "instanceInstallGameRunning": "Downloading game files…",
+  "@instanceInstallGameRunning": {
+    "description": "Installation progress status."
+  },
+  "instanceInstallGameDone": "Game files are ready.",
+  "@instanceInstallGameDone": {
+    "description": "Installation completed."
+  },
+  "instanceInstallGameFailed": "Game file installation failed.",
+  "@instanceInstallGameFailed": {
+    "description": "Installation failed."
+  },
+  "commonRetry": "Retry",
+  "@commonRetry": {
+    "description": "Retry a failed operation."
+  },
+  "taskCenterTitle": "Tasks",
+  "@taskCenterTitle": {
+    "description": "Task center title."
+  },
+  "taskCenterEmpty": "No active tasks.",
+  "@taskCenterEmpty": {
+    "description": "Empty task center."
+  },
+  "taskCenterActive": "{count} active",
+  "@taskCenterActive": {
+    "description": "Active task count."
+  },
+  "taskCenterCompleted": "Done",
+  "@taskCenterCompleted": {
+    "description": "Completed task label."
+  },
+  "taskCenterFailed": "Failed",
+  "@taskCenterFailed": {
+    "description": "Failed task label."
+  },
+  "taskCenterCancelled": "Cancelled",
+  "@taskCenterCancelled": {
+    "description": "Cancelled task label."
+  },
+  "taskCenterCancel": "Cancel",
+  "@taskCenterCancel": {
+    "description": "Cancel task action."
+  },
+  "taskCenterClear": "Clear completed",
+  "@taskCenterClear": {
+    "description": "Clear completed tasks."
+  },
+  "taskCenterDownload": "Download",
+  "@taskCenterDownload": {
+    "description": "Download task label."
+  },
+  "taskCenterLoader": "Loader",
+  "@taskCenterLoader": {
+    "description": "Loader task label."
+  },
+  "taskCenterGameFiles": "Game files",
+  "@taskCenterGameFiles": {
+    "description": "Vanilla install task label."
+  },
+  "taskCenterJavaScan": "Java scan",
+  "@taskCenterJavaScan": {
+    "description": "Java scan task label."
+  },
+  "taskCenterTask": "Task",
+  "@taskCenterTask": {
+    "description": "Generic task label."
+  },
+  "taskCenterSpeed": "{rate}/s",
+  "@taskCenterSpeed": {
+    "description": "Transfer rate label."
+  },
+  "taskCenterWorking": "Working",
+  "@taskCenterWorking": {
+    "description": "Task running without known total."
+  },
+  "resourceNeedsLoader": "Select a Fabric/Forge/NeoForge/Quilt instance before installing mods.",
+  "@resourceNeedsLoader": {
+    "description": "Mod install requires a mod-loader instance."
+  },
+  "instanceVersionIsolation": "Version isolation",
+  "@instanceVersionIsolation": {
+    "description": "Create instance under versions/ with shared libraries/assets."
+  },
+  "instanceVersionIsolationHint": "The game data lives in versions/<name>; libraries and assets are shared with the parent game folder.",
+  "@instanceVersionIsolationHint": {
+    "description": "Version isolation explanation."
+  },
+  "downloadModpackPending": "Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.",
+  "@downloadModpackPending": {
+    "description": "Modpack placeholder message."
   }
 }

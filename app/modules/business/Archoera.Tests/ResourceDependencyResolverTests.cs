@@ -29,7 +29,7 @@ public sealed class ResourceDependencyResolverTests
             Target(),
             versions["root"]);
 
-        Assert.Equal(["a1", "b1"], result.Required.Select(version => version.Id));
+        Assert.Equal(["a1", "b1"], result.Required.Select(resolved => resolved.Version.Id));
         Assert.Single(result.Optional);
         Assert.Empty(result.Incompatible);
         Assert.Empty(result.Warnings);
@@ -61,6 +61,35 @@ public sealed class ResourceDependencyResolverTests
         Assert.Single(result.Required);
         Assert.Single(result.Incompatible);
         Assert.Empty(result.Warnings);
+    }
+
+
+    [Fact]
+    public async Task Resource_pack_can_require_mods_and_keeps_dependency_kind()
+    {
+        var versions = new Dictionary<string, ResourceVersion>
+        {
+            ["pack"] = Version(
+                "pack",
+                "pack-project",
+                Required("emf-project", "emf")),
+            ["emf"] = Version(
+                "emf",
+                "emf-project"),
+        };
+        var provider = new FakeProvider(versions);
+
+        var result = await ResourceDependencyResolver.ResolveAsync(
+            provider,
+            ResourceKind.ResourcePack,
+            new ResourceTarget("1.21.1", "fabric"),
+            versions["pack"]);
+
+        var dependency = Assert.Single(result.Required);
+        Assert.Equal("emf-project", dependency.Version.ProjectId);
+        Assert.Equal(ResourceKind.Mod, dependency.Kind);
+        Assert.Equal("fabric", dependency.Target.NormalizedLoader);
+        Assert.Equal("1.21.1", dependency.Target.GameVersion);
     }
 
     private static ResourceVersion Version(
@@ -99,7 +128,12 @@ public sealed class ResourceDependencyResolverTests
         public Task<ResourceProject> GetProjectAsync(
             string projectIdOrSlug,
             CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
+            => Task.FromResult(new ResourceProject(
+                projectIdOrSlug,
+                projectIdOrSlug,
+                projectIdOrSlug,
+                string.Empty,
+                ResourceKind.Mod));
 
         public Task<IReadOnlyList<ResourceVersion>> GetVersionsAsync(
             string projectIdOrSlug,
