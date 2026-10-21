@@ -1188,4 +1188,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadConfigReload => 'Re-check configuration';
+
+  @override
+  String get accountMicrosoftOnly =>
+      'Only a verified Microsoft account is allowed in this region.';
+
+  @override
+  String get accountMicrosoftOnlyHint =>
+      'This region only allows Microsoft-verified accounts. Offline and third-party accounts are disabled.';
+
+  @override
+  String get accountsSubtitleMicrosoftOnly =>
+      'Microsoft-verified accounts only in this region.';
+
+  @override
+  String get accountNoAccountsMicrosoftOnly =>
+      'Add a Microsoft account to get started.';
+
+  @override
+  String get launchOnlineNotReady =>
+      'Online launch is not enabled in this build yet.';
 }

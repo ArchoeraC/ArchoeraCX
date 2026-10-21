@@ -1,0 +1,25 @@
+using Archoera.Infrastructure.Modules;
+
+namespace Archoera.Tests;
+
+public sealed class RegionPolicyTests
+{
+    [Fact]
+    public async Task China_override_disables_microsoft_only()
+    {
+        var policy = new RegionPolicy(regionOverride: "CN");
+        var state = await policy.ReadAsync();
+        Assert.Equal("CN", state.Region);
+        Assert.False(state.MicrosoftOnly);
+        Assert.Equal("override", state.Source);
+    }
+
+    [Fact]
+    public async Task Non_china_override_requires_microsoft_only()
+    {
+        var policy = new RegionPolicy(regionOverride: "GLOBAL");
+        var state = await policy.ReadAsync();
+        Assert.Equal("GLOBAL", state.Region);
+        Assert.True(state.MicrosoftOnly);
+    }
+}

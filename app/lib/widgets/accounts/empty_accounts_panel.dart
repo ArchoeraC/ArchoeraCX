@@ -14,11 +14,15 @@ class EmptyAccountsPanel extends StatelessWidget {
     required this.onMicrosoft,
     required this.onOffline,
     this.offlineHint,
+    this.showOffline = true,
+    this.emptyMessage,
   });
 
   final VoidCallback onMicrosoft;
   final VoidCallback onOffline;
   final String? offlineHint;
+  final bool showOffline;
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +43,7 @@ class EmptyAccountsPanel extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
             child: Text(
-              l10n.accountNoAccounts,
+              emptyMessage ?? l10n.accountNoAccounts,
               style: textTheme.bodyMedium?.copyWith(
                 color: tokens.textSecondary,
               ),
@@ -59,14 +63,16 @@ class EmptyAccountsPanel extends StatelessWidget {
           color: tokens.success,
           onTap: onMicrosoft,
         ),
-        Divider(height: 1, color: tokens.border),
-        AccountTypeAction(
-          icon: Icons.person_rounded,
-          title: l10n.accountAddOffline,
-          subtitle: offlineHint ?? l10n.accountOfflineDesc,
-          color: tokens.accent,
-          onTap: onOffline,
-        ),
+        if (showOffline) ...[
+          Divider(height: 1, color: tokens.border),
+          AccountTypeAction(
+            icon: Icons.person_rounded,
+            title: l10n.accountAddOffline,
+            subtitle: offlineHint ?? l10n.accountOfflineDesc,
+            color: tokens.accent,
+            onTap: onOffline,
+          ),
+        ],
       ],
     );
 

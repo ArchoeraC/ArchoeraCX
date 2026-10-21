@@ -165,8 +165,18 @@ public sealed class AccountModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         var id = RequireString(paramsJson, "id");
+        var requireMicrosoft = ReadBool(paramsJson, "requireMicrosoft");
         await EnsurePremiumAsync(ReadBool(paramsJson, "requirePremium"), cancellationToken)
             .ConfigureAwait(false);
+        var candidate = await _accounts.GetAsync(id, cancellationToken).ConfigureAwait(false)
+                        ?? throw new ArgumentException("account not found");
+        if (requireMicrosoft && candidate.Kind != AccountKind.Microsoft)
+        {
+            throw new AccountAuthException(
+                "MICROSOFT_ACCOUNT_ONLY",
+                "Only a verified Microsoft account may be selected in this region.");
+        }
+
         var account = await _accounts.SetActiveAsync(id, cancellationToken).ConfigureAwait(false)
                       ?? throw new ArgumentException("account not found");
         return ModuleJson.Envelope(writer =>
@@ -273,6 +283,12 @@ public sealed class AccountModuleService : IModuleMethodHandler
         string? paramsJson,
         CancellationToken cancellationToken)
     {
+        if (ReadBool(paramsJson, "requireMicrosoft"))
+        {
+            throw new AccountAuthException(
+                "MICROSOFT_ACCOUNT_ONLY",
+                "Offline accounts are disabled in this region.");
+        }
         await EnsurePremiumAsync(ReadBool(paramsJson, "requirePremium"), cancellationToken)
             .ConfigureAwait(false);
         var name = RequireString(paramsJson, "name").Trim();

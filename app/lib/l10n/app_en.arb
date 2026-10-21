@@ -925,5 +925,25 @@
   "downloadConfigReload": "Re-check configuration",
   "@downloadConfigReload": {
     "description": "Reload the local download gate."
+  },
+  "accountMicrosoftOnly": "Only a verified Microsoft account is allowed in this region.",
+  "@accountMicrosoftOnly": {
+    "description": "Region policy error."
+  },
+  "accountMicrosoftOnlyHint": "This region only allows Microsoft-verified accounts. Offline and third-party accounts are disabled.",
+  "@accountMicrosoftOnlyHint": {
+    "description": "Region policy hint."
+  },
+  "accountsSubtitleMicrosoftOnly": "Microsoft-verified accounts only in this region.",
+  "accountNoAccountsMicrosoftOnly": "Add a Microsoft account to get started.",
+  "@accountsSubtitleMicrosoftOnly": {
+    "description": "Accounts subtitle when only Microsoft accounts are allowed."
+  },
+  "@accountNoAccountsMicrosoftOnly": {
+    "description": "Empty account message when only Microsoft accounts are allowed."
+  },
+  "launchOnlineNotReady": "Online launch is not enabled in this build yet.",
+  "@launchOnlineNotReady": {
+    "description": "Online launch reserved message."
   }
 }

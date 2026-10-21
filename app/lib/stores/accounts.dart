@@ -38,8 +38,16 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
     state = await AsyncValue.guard(_client.listAccounts);
   }
 
-  Future<void> select(String id, {bool requirePremium = false}) async {
-    await _client.selectAccount(id, requirePremium: requirePremium);
+  Future<void> select(
+    String id, {
+    bool requirePremium = false,
+    bool requireMicrosoft = false,
+  }) async {
+    await _client.selectAccount(
+      id,
+      requirePremium: requirePremium,
+      requireMicrosoft: requireMicrosoft,
+    );
     await reload();
   }
 

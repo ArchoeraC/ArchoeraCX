@@ -11,11 +11,15 @@ class AddAccountSheet extends StatelessWidget {
     required this.onMicrosoft,
     required this.onOffline,
     this.offlineHint,
+    this.showOffline = true,
+    this.subtitle,
   });
 
   final VoidCallback onMicrosoft;
   final VoidCallback onOffline;
   final String? offlineHint;
+  final bool showOffline;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +52,7 @@ class AddAccountSheet extends StatelessWidget {
                     Text(l10n.addAccount, style: textTheme.titleMedium),
                     const SizedBox(height: 2),
                     Text(
-                      l10n.accountsSubtitle,
+                      subtitle ?? l10n.accountsSubtitle,
                       style: textTheme.bodySmall?.copyWith(
                         color: tokens.textTertiary,
                       ),
@@ -64,14 +68,16 @@ class AddAccountSheet extends StatelessWidget {
                 color: tokens.success,
                 onTap: onMicrosoft,
               ),
-              Divider(height: 1, color: tokens.border),
-              AccountTypeAction(
-                icon: Icons.person_rounded,
-                title: l10n.accountAddOffline,
-                subtitle: offlineHint ?? l10n.accountOfflineDesc,
-                color: tokens.accent,
-                onTap: onOffline,
-              ),
+              if (showOffline) ...[
+                Divider(height: 1, color: tokens.border),
+                AccountTypeAction(
+                  icon: Icons.person_rounded,
+                  title: l10n.accountAddOffline,
+                  subtitle: offlineHint ?? l10n.accountOfflineDesc,
+                  color: tokens.accent,
+                  onTap: onOffline,
+                ),
+              ],
               Divider(height: 1, color: tokens.border),
               const SizedBox(height: AppSpacing.xs),
             ],

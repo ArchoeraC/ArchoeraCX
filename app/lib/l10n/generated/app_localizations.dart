@@ -2143,6 +2143,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Re-check configuration'**
   String get downloadConfigReload;
+
+  /// Region policy error.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a verified Microsoft account is allowed in this region.'**
+  String get accountMicrosoftOnly;
+
+  /// Region policy hint.
+  ///
+  /// In en, this message translates to:
+  /// **'This region only allows Microsoft-verified accounts. Offline and third-party accounts are disabled.'**
+  String get accountMicrosoftOnlyHint;
+
+  /// Accounts subtitle when only Microsoft accounts are allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Microsoft-verified accounts only in this region.'**
+  String get accountsSubtitleMicrosoftOnly;
+
+  /// Empty account message when only Microsoft accounts are allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a Microsoft account to get started.'**
+  String get accountNoAccountsMicrosoftOnly;
+
+  /// Online launch reserved message.
+  ///
+  /// In en, this message translates to:
+  /// **'Online launch is not enabled in this build yet.'**
+  String get launchOnlineNotReady;
 }
 
 class _AppLocalizationsDelegate

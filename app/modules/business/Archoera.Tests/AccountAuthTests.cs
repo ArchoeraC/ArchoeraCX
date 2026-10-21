@@ -223,6 +223,73 @@ public sealed class AccountAuthTests
     }
 
     [Fact]
+    public async Task Microsoft_only_region_rejects_offline_login()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var store = new JsonAccountStore(directory);
+            var service = new AccountModuleService(store, store, auth: null, dataRoot: directory);
+
+            var result = await service.HandleAsync(
+                "account.login.offline",
+                """{"name":"Steve","requireMicrosoft":true}""",
+                CancellationToken.None);
+            using var document = JsonDocument.Parse(result);
+            Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+            Assert.Equal(
+                "MICROSOFT_ACCOUNT_ONLY",
+                document.RootElement.GetProperty("error").GetProperty("code").GetString());
+            Assert.Empty(await store.ListAsync());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Microsoft_only_region_does_not_switch_to_an_offline_account()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var store = new JsonAccountStore(directory);
+            var service = new AccountModuleService(store, store, auth: null, dataRoot: directory);
+            var first = await service.HandleAsync(
+                "account.login.offline",
+                """{"name":"FirstPlayer"}""",
+                CancellationToken.None);
+            var second = await service.HandleAsync(
+                "account.login.offline",
+                """{"name":"SecondPlayer"}""",
+                CancellationToken.None);
+            using var firstDocument = JsonDocument.Parse(first);
+            using var secondDocument = JsonDocument.Parse(second);
+            var firstId = firstDocument.RootElement.GetProperty("data").GetProperty("account").GetProperty("id").GetString();
+            var secondId = secondDocument.RootElement.GetProperty("data").GetProperty("account").GetProperty("id").GetString();
+            Assert.NotNull(firstId);
+            Assert.NotNull(secondId);
+            await store.SetActiveAsync(firstId!);
+
+            var result = await service.HandleAsync(
+                "account.select",
+                $$"""{"id":"{{secondId}}","requireMicrosoft":true}""",
+                CancellationToken.None);
+            using var document = JsonDocument.Parse(result);
+            Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+            Assert.Equal(
+                "MICROSOFT_ACCOUNT_ONLY",
+                document.RootElement.GetProperty("error").GetProperty("code").GetString());
+            Assert.Equal(firstId, (await store.GetActiveAsync())!.Id);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Removing_the_active_account_selects_another_account()
     {
         var directory = TempDirectory();

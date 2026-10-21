@@ -21,6 +21,7 @@ public static class BusinessModuleRegistry
     public static ModuleMethodRegistry CreateDefault(string? dataRoot = null)
     {
         var policy = new DownloadPolicy(dataRoot);
+        var region = new RegionPolicy();
         var handlers = new List<IModuleMethodHandler>
         {
             new JavaModuleService(
@@ -31,6 +32,7 @@ public static class BusinessModuleRegistry
             new LoaderModuleService(policy: policy),
             new ResourceModuleService(policy: policy),
             new DownloadPolicyModuleService(policy),
+            new RegionPolicyModuleService(region),
             new AccountModuleService(
                 accounts: new JsonAccountStore(dataRoot),
                 credentials: new VaultCredentialStore(dataRoot),

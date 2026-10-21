@@ -144,9 +144,23 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 ?? throw new LaunchException("INSTANCE_NOT_FOUND", $"instance not found: {instanceId}");
             var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
             var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false)
-                ?? throw new LaunchException("ACCOUNT_REQUIRED", "add an offline account before launching");
+                ?? throw new LaunchException("ACCOUNT_REQUIRED", "add an account before launching");
+            var requireMicrosoft = ReadBool(paramsJson, "requireMicrosoft");
+            if (requireMicrosoft && account.Kind != AccountKind.Microsoft)
+            {
+                throw new LaunchException(
+                    "MICROSOFT_ACCOUNT_ONLY",
+                    "Only a verified Microsoft account may launch in this region.");
+            }
             if (account.Kind != AccountKind.Offline)
             {
+                if (requireMicrosoft)
+                {
+                    throw new LaunchException(
+                        "ONLINE_LAUNCH_NOT_READY",
+                        "online launch is reserved but not enabled in this build");
+                }
+
                 throw new LaunchException(
                     "AUTH_REQUIRED",
                     "basic launch currently supports offline accounts only");
