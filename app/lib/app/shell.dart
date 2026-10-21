@@ -15,6 +15,8 @@ import '../stores/instances.dart';
 import '../theme/tokens.dart';
 import '../widgets/layout/app_background.dart';
 
+enum _PageTransitionMode { cover, retract, lift }
+
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -27,7 +29,7 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey _pageKey = GlobalKey();
   ui.Image? _coverImage;
-  bool _retract = false;
+  _PageTransitionMode _mode = _PageTransitionMode.cover;
 
   @override
   void dispose() {
@@ -63,9 +65,14 @@ class _AppShellState extends ConsumerState<AppShell> {
       image?.dispose();
       return;
     }
+    final mode = current == 0
+        ? _PageTransitionMode.cover
+        : index == 0
+        ? _PageTransitionMode.retract
+        : _PageTransitionMode.lift;
     setState(() {
       _coverImage = image;
-      _retract = index == 0;
+      _mode = mode;
     });
 
     navigationShell.goBranch(index);
@@ -147,7 +154,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       child: _PageTransition(
                         index: index,
                         coverImage: _coverImage,
-                        retract: _retract,
+                        mode: _mode,
                         onCoverFinished: _finishCover,
                         child: navigationShell,
                       ),
@@ -249,14 +256,14 @@ class _PageTransition extends StatefulWidget {
     required this.index,
     required this.child,
     required this.coverImage,
-    required this.retract,
+    required this.mode,
     required this.onCoverFinished,
   });
 
   final int index;
   final Widget child;
   final ui.Image? coverImage;
-  final bool retract;
+  final _PageTransitionMode mode;
   final ValueChanged<ui.Image> onCoverFinished;
 
   @override
@@ -281,9 +288,19 @@ class _PageTransitionState extends State<_PageTransition>
     end: const Offset(0, 1),
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
 
+  late final Animation<Offset> _liftOffset = Tween<Offset>(
+    begin: const Offset(0, 0.04),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+  late final Animation<double> _liftOpacity = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
   ui.Image? _previous;
   bool _finishing = false;
-  bool _retract = false;
+  _PageTransitionMode _mode = _PageTransitionMode.cover;
 
   @override
   void didUpdateWidget(covariant _PageTransition oldWidget) {
@@ -297,7 +314,7 @@ class _PageTransitionState extends State<_PageTransition>
     }
 
     _previous = widget.coverImage;
-    _retract = widget.retract;
+    _mode = widget.mode;
     _finishing = false;
     _controller.forward(from: 0);
   }
@@ -335,21 +352,28 @@ class _PageTransitionState extends State<_PageTransition>
   Widget build(BuildContext context) {
     final current = Material(color: context.tokens.bg, child: widget.child);
     final previous = _previous;
-    if (previous == null) {
-      _retract = false;
-      return current;
-    }
+    if (previous == null) return current;
 
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (_retract) ...[
+          if (_mode == _PageTransitionMode.retract) ...[
             Positioned.fill(child: current),
             Positioned.fill(
               child: SlideTransition(
                 position: _outOffset,
                 child: RawImage(image: previous, fit: BoxFit.fill),
+              ),
+            ),
+          ] else if (_mode == _PageTransitionMode.lift) ...[
+            Positioned.fill(
+              child: RawImage(image: previous, fit: BoxFit.fill),
+            ),
+            Positioned.fill(
+              child: FadeTransition(
+                opacity: _liftOpacity,
+                child: SlideTransition(position: _liftOffset, child: current),
               ),
             ),
           ] else ...[
