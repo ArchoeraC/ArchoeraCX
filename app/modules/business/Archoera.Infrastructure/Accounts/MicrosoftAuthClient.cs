@@ -212,6 +212,10 @@ public sealed class MicrosoftAuthClient
                 xsts.UserHash,
                 cancellationToken)
             .ConfigureAwait(false);
+        await VerifyEntitlementAsync(
+                minecraft.AccessToken,
+                cancellationToken)
+            .ConfigureAwait(false);
         var profile = await GetProfileAsync(
                 minecraft.AccessToken,
                 cancellationToken)
@@ -231,6 +235,64 @@ public sealed class MicrosoftAuthClient
             profile.CapeUrl,
             certificates?.Json,
             certificates?.ExpiresAt);
+    }
+
+    /// <summary>
+    /// Reads the official Minecraft: Java Edition entitlement list. This is a
+    /// read-only ownership check using the token returned by login_with_xbox;
+    /// it is not a substitute for the user's Microsoft/Minecraft login.
+    /// </summary>
+    private async Task VerifyEntitlementAsync(
+        string minecraftAccessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            _options.MinecraftEntitlementsEndpoint);
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", minecraftAccessToken);
+        request.Headers.Accept.Add(AcceptJson);
+
+        using var response = await _http
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Unauthorized)
+        {
+            throw new AccountAuthException(
+                "MINECRAFT_ENTITLEMENT_MISSING",
+                "This Microsoft account does not own Minecraft: Java Edition.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new AccountAuthException(
+                "MINECRAFT_ENTITLEMENT_FAILED",
+                "Could not verify Minecraft: Java Edition ownership.");
+        }
+
+        using var document = ParseJson(body, "Minecraft entitlement response is not JSON");
+        if (!document.RootElement.TryGetProperty("items", out var items) ||
+            items.ValueKind != JsonValueKind.Array)
+        {
+            throw new AccountAuthException(
+                "MINECRAFT_ENTITLEMENT_INVALID",
+                "Minecraft returned an incomplete entitlement response.");
+        }
+
+        foreach (var item in items.EnumerateArray())
+        {
+            var name = String(item, "name");
+            if (string.Equals(name, "product_minecraft", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(name, "game_minecraft", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        throw new AccountAuthException(
+            "MINECRAFT_ENTITLEMENT_MISSING",
+            "This Microsoft account does not own Minecraft: Java Edition.");
     }
 
     public async Task<MicrosoftProfile> GetProfileAsync(
@@ -475,7 +537,7 @@ public sealed class MicrosoftAuthClient
                 or AccountAuthException)
         {
             if (cancellationToken.IsCancellationRequested) throw;
-            // Certificates are optional for login; profile ownership is enough.
+            // Certificates are optional for login; entitlement and profile are already checked.
             return null;
         }
     }
@@ -698,6 +760,9 @@ public sealed record MicrosoftAuthOptions
 
     public Uri MinecraftLoginEndpoint { get; init; } =
         new("https://api.minecraftservices.com/authentication/login_with_xbox");
+
+    public Uri MinecraftEntitlementsEndpoint { get; init; } =
+        new("https://api.minecraftservices.com/entitlements/mcstore");
 
     public Uri MinecraftProfileEndpoint { get; init; } =
         new("https://api.minecraftservices.com/minecraft/profile");

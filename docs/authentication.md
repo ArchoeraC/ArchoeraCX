@@ -10,6 +10,7 @@ Microsoft Device Code
   → Xbox Live user.authenticate
   → XSTS authorize
   → Minecraft login_with_xbox
+  → /entitlements/mcstore
   → /minecraft/profile
   → /player/certificates
 ```
@@ -22,6 +23,8 @@ Microsoft Device Code
 ## 2. client_id 配置
 
 client_id 是应用构建配置，不由用户在设置页填写，也不硬编码在源码中。
+新 GitHub 仓库已把值保存为 Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID`；
+Actions 当前未启用。
 
 发布 / CI 构建注入：
 
@@ -144,12 +147,15 @@ Content-Type: application/json
 拿到 Minecraft access token 后：
 
 ```http
+GET https://api.minecraftservices.com/entitlements/mcstore
 GET https://api.minecraftservices.com/minecraft/profile
 GET https://api.minecraftservices.com/player/certificates
 Authorization: Bearer <Minecraft access token>
 ```
 
-profile 提供 UUID、用户名、皮肤和披风；certificates 原文只写入 C# 凭据文件，不返回 UI。
+`/entitlements/mcstore` 只读检查 `product_minecraft` / `game_minecraft` 权益；
+没有权益时登录失败，不写入账户。profile 提供 UUID、用户名、皮肤和披风；
+certificates 原文只写入 C# 凭据文件，不返回 UI。不调用 `sessionserver.mojang.com`。
 
 ## 5. Minecraft Services 应用审核（关键门槛）
 
@@ -232,6 +238,7 @@ logs/account.log              脱敏诊断日志
 - [ ] 用户完成授权后可拿到 Microsoft token
 - [ ] XBL/XSTS 成功
 - [ ] `login_with_xbox` 成功（client_id 已审核）
+- [ ] `/entitlements/mcstore` 返回 Minecraft: Java Edition 权益
 - [ ] profile 返回 UUID/用户名/皮肤
 - [ ] 重启应用后 refresh 可用
 - [ ] 日志不出现 token/device code
@@ -239,6 +246,7 @@ logs/account.log              脱敏诊断日志
 ## 9. 已知限制
 
 - 只实现 Device Code；loopback + PKCE 尚未实现。
+- 审核提交文本见 [`docs/legal/minecraft-app-review.md`](legal/minecraft-app-review.md)；不要提交与实现不一致的 authorization-code/sessionserver 描述。
 - 真实登录受 Minecraft Services 审核阻塞。
 - OS 凭据库尚未接入。
 - 启动游戏尚未消费 Minecraft token/certificates。

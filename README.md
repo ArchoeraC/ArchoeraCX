@@ -20,7 +20,7 @@
 - Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（HTTP、hash、原子落盘、取消）
 - Linux release bundle 自带 `libarchoera_core.so`、`archoera_cs.so` 和 `archoera-dl`
 
-当前基线：277 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+当前基线：278 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
 
 ## 架构
 

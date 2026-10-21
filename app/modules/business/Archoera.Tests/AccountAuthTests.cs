@@ -9,6 +9,8 @@ namespace Archoera.Tests;
 public sealed class AccountAuthTests
 {
     private const string Uuid = "11111111222233334444555555555555";
+    private const string EntitlementJson =
+        """{"items":[{"name":"product_minecraft"},{"name":"game_minecraft"}]}""";
 
     [Fact]
     public async Task Device_code_flow_runs_the_full_chain_and_never_returns_tokens()
@@ -23,6 +25,7 @@ public sealed class AccountAuthTests
             handler.EnqueueJson(XboxJson("xbl-token"));
             handler.EnqueueJson(XboxJson("xsts-token"));
             handler.EnqueueJson("""{"access_token":"mc-access","expires_in":86400}""");
+            handler.EnqueueJson(EntitlementJson);
             handler.EnqueueJson(ProfileJson);
             handler.EnqueueJson("""{"keyPair":{"expiresAt":"2026-10-22T00:00:00Z"}}""");
 
@@ -100,6 +103,48 @@ public sealed class AccountAuthTests
             Assert.True(removedDocument.RootElement.GetProperty("data").GetProperty("deleted").GetBoolean());
             Assert.Empty(await store.ListAsync());
             Assert.Null(await store.GetCredentialAsync(item.Id));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Missing_minecraft_entitlement_does_not_create_an_account()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var handler = new FakeHttpMessageHandler();
+            handler.EnqueueJson(DeviceCodeJson);
+            handler.EnqueueJson(TokenJson);
+            handler.EnqueueJson(XboxJson("xbl-token"));
+            handler.EnqueueJson(XboxJson("xsts-token"));
+            handler.EnqueueJson("""{"access_token":"mc-access","expires_in":86400}""");
+            handler.EnqueueJson("""{"items":[]}""");
+
+            var store = new JsonAccountStore(directory);
+            var auth = new MicrosoftAuthClient(new HttpClient(handler), TestOptions());
+            var service = new AccountModuleService(store, store, auth);
+            var start = await service.HandleAsync(
+                "account.login.microsoft.start",
+                "{}",
+                CancellationToken.None);
+            using var startDocument = JsonDocument.Parse(start);
+            var flowId = startDocument.RootElement.GetProperty("data").GetProperty("flowId").GetString();
+            Assert.NotNull(flowId);
+
+            var poll = await service.HandleAsync(
+                "account.login.microsoft.poll",
+                $$"""{"flowId":"{{flowId}}"}""",
+                CancellationToken.None);
+            using var document = JsonDocument.Parse(poll);
+            Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+            Assert.Equal(
+                "MINECRAFT_ENTITLEMENT_MISSING",
+                document.RootElement.GetProperty("error").GetProperty("code").GetString());
+            Assert.Empty(await store.ListAsync());
         }
         finally
         {
@@ -387,6 +432,7 @@ public sealed class AccountAuthTests
             handler.EnqueueJson(XboxJson("xbl-token"));
             handler.EnqueueJson(XboxJson("xsts-token"));
             handler.EnqueueJson("""{"access_token":"mc-access","expires_in":86400}""");
+            handler.EnqueueJson(EntitlementJson);
             handler.EnqueueJson(ProfileJson);
             handler.EnqueueJson("""{"keyPair":{"expiresAt":"2026-10-22T00:00:00Z"}}""");
 
@@ -410,6 +456,7 @@ public sealed class AccountAuthTests
             handler.EnqueueJson(XboxJson("xbl-token-2"));
             handler.EnqueueJson(XboxJson("xsts-token-2"));
             handler.EnqueueJson("""{"access_token":"mc-access-2","expires_in":86400}""");
+            handler.EnqueueJson(EntitlementJson);
             handler.EnqueueJson(ProfileJson);
             handler.EnqueueJson("""{"keyPair":{"expiresAt":"2026-10-23T00:00:00Z"}}""");
 
