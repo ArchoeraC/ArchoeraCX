@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
 import '../../services/core/resource_models.dart';
 import '../../stores/instances.dart';
@@ -49,7 +50,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final instance = ref.watch(selectedInstanceProvider);
-    final target = _targetFor(instance);
+    final target = _targetFor(instance, l10n);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -113,26 +114,22 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     );
   }
 
-  String _targetFor(GameInstance? instance) {
+  String _targetFor(GameInstance? instance, AppLocalizations l10n) {
     final game = instance?.gameVersion ?? '1.21.1';
-    final loader = switch (instance?.loader) {
-      GameLoader.fabric => 'Fabric',
-      GameLoader.forge => 'Forge',
-      GameLoader.neoforge => 'NeoForge',
-      GameLoader.quilt => 'Quilt',
-      _ => 'Fabric',
-    };
+    final loader = (instance?.loader ?? GameLoader.fabric).labelFor(l10n);
     return switch (widget.kind) {
-      'shader' => 'Minecraft $game · Iris',
-      'resourcepack' => 'Minecraft $game',
-      _ => 'Minecraft $game · $loader',
+      'shader' => l10n.resourceTargetShader(game),
+      'resourcepack' => l10n.resourceTargetGame(game),
+      _ => l10n.resourceTargetGameLoader(game, loader),
     };
   }
 
   Future<void> _search() async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
-      setState(() => _error = 'Native core is not available.');
+      setState(
+        () => _error = AppLocalizations.of(context).commonCoreNotConnected,
+      );
       return;
     }
 
@@ -171,7 +168,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   Future<void> _openVersions(ResourceProject project) async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
-      _notify('Native core is not available.');
+      _notify(AppLocalizations.of(context).commonCoreNotConnected);
       return;
     }
 
@@ -544,7 +541,8 @@ class _VersionSheet extends StatelessWidget {
                   ),
                   title: Text(version.name),
                   subtitle: Text(
-                    '${version.versionNumber} · ${version.versionType}'
+                    '${version.versionNumber} · '
+                    '${_versionTypeLabel(l10n, version.versionType)}'
                     '${file == null ? '' : ' · ${_formatSize(file.size)}'}',
                   ),
                   trailing: const Icon(Icons.download_rounded),
@@ -595,6 +593,14 @@ String _formatCount(int value) {
   if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
   return '$value';
 }
+
+String _versionTypeLabel(AppLocalizations l10n, String type) =>
+    switch (type.toLowerCase()) {
+      'release' => l10n.resourceVersionRelease,
+      'beta' => l10n.resourceVersionBeta,
+      'alpha' => l10n.resourceVersionAlpha,
+      _ => type,
+    };
 
 String _formatSize(int bytes) {
   if (bytes >= 1024 * 1024) {

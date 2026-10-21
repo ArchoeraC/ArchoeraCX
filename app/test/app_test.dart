@@ -73,6 +73,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('switches the UI language from settings', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Language'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('简体中文'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('设置'), findsWidgets);
+    expect(find.text('外观'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('navigates between shell pages', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;

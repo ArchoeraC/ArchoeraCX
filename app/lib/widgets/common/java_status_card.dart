@@ -709,7 +709,9 @@ class _JavaRuntimeTile extends StatelessWidget {
                 const SizedBox(height: 1),
                 Text(
                   l10n.javaStatusMeta(
-                    runtime.displayVersion,
+                    runtime.version == null && runtime.major == null
+                        ? l10n.javaStatusUnknownVersion
+                        : runtime.displayVersion,
                     runtime.arch ?? '—',
                   ),
                   maxLines: 1,

@@ -412,11 +412,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loaderInstallDone =>
-      'Loader files downloaded and version JSON written.';
-
-  @override
-  String get loaderInstallRequiresJava =>
-      'Forge/NeoForge processors still need a JVM; this step never invokes Java.';
+      'Loader files downloaded, version JSON written, and processors completed.';
 
   @override
   String get loaderInstallNoInstance => 'Select an instance first.';
@@ -427,9 +423,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loaderInstallFailed => 'Loader install failed.';
-
-  @override
-  String get loaderInstallNoJavaTitle => 'No Java was invoked';
 
   @override
   String get searchDownload => 'Search resources';
@@ -661,9 +654,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLanguage => 'Language';
-
-  @override
-  String get settingsLanguageValue => 'English / 简体中文';
 
   @override
   String get settingsMotion => 'Motion';
@@ -943,4 +933,138 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceSelected => 'Selected';
+
+  @override
+  String get loaderVanilla => 'Vanilla';
+
+  @override
+  String get loaderFabric => 'Fabric';
+
+  @override
+  String get loaderQuilt => 'Quilt';
+
+  @override
+  String get loaderForge => 'Forge';
+
+  @override
+  String get loaderNeoForge => 'NeoForge';
+
+  @override
+  String loaderVersionValue(String loader, String version) {
+    return '$loader $version';
+  }
+
+  @override
+  String get accountMicrosoft => 'Microsoft';
+
+  @override
+  String get accountAuthlib => 'Authlib';
+
+  @override
+  String get settingsProxy => 'Proxy';
+
+  @override
+  String get settingsProxySystem => 'System';
+
+  @override
+  String get settingsDownloads => 'Downloads';
+
+  @override
+  String settingsDownloadsStreams(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count streams',
+      one: '1 stream',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsProvider => 'Provider';
+
+  @override
+  String get settingsDownloadLevel => 'Download level';
+
+  @override
+  String get settingsDownloadLevelValue => 'L0 · official-cn';
+
+  @override
+  String get settingsConsent => 'Consent';
+
+  @override
+  String get settingsConsentNotAccepted => 'Not accepted';
+
+  @override
+  String get settingsDiagnosticsOpen => 'Open';
+
+  @override
+  String get settingsLanguageSystem => 'Follow system';
+
+  @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageChinese => '简体中文';
+
+  @override
+  String get settingsLanguageChanged => 'Language changed.';
+
+  @override
+  String get resourceVersionRelease => 'Release';
+
+  @override
+  String get resourceVersionBeta => 'Beta';
+
+  @override
+  String get resourceVersionAlpha => 'Alpha';
+
+  @override
+  String get javaStatusUnknownVersion => 'Unknown';
+
+  @override
+  String instanceCreateSummary(String loader, String version) {
+    return '$loader · Minecraft $version';
+  }
+
+  @override
+  String resourceTargetGame(String version) {
+    return 'Minecraft $version';
+  }
+
+  @override
+  String resourceTargetGameLoader(String version, String loader) {
+    return 'Minecraft $version · $loader';
+  }
+
+  @override
+  String resourceTargetShader(String version) {
+    return 'Minecraft $version · Iris';
+  }
+
+  @override
+  String get loaderProcessorsDone =>
+      'Forge/NeoForge processors completed with the selected Java.';
+
+  @override
+  String instancesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count instances',
+      one: '1 instance',
+      zero: 'No instances',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String instancesLoadFailed(String message) {
+    return 'Could not load instances: $message';
+  }
+
+  @override
+  String accountsLoadFailed(String message) {
+    return 'Could not load accounts: $message';
+  }
 }

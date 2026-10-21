@@ -399,11 +399,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loaderInstalling => '下载并写入中…';
 
   @override
-  String get loaderInstallDone => '加载器文件已下载，版本 JSON 已写入。';
-
-  @override
-  String get loaderInstallRequiresJava =>
-      'Forge/NeoForge 的 processors 仍需要 JVM；本步骤不会调用 Java。';
+  String get loaderInstallDone => '加载器文件已下载，版本 JSON 已写入，processors 已完成。';
 
   @override
   String get loaderInstallNoInstance => '请先选择实例。';
@@ -413,9 +409,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loaderInstallFailed => '加载器安装失败。';
-
-  @override
-  String get loaderInstallNoJavaTitle => '本步骤不调用 Java';
 
   @override
   String get searchDownload => '搜索资源';
@@ -642,9 +635,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsLanguage => '语言';
-
-  @override
-  String get settingsLanguageValue => '简体中文 / English';
 
   @override
   String get settingsMotion => '动效';
@@ -914,4 +904,130 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceSelected => '当前';
+
+  @override
+  String get loaderVanilla => '原版';
+
+  @override
+  String get loaderFabric => 'Fabric';
+
+  @override
+  String get loaderQuilt => 'Quilt';
+
+  @override
+  String get loaderForge => 'Forge';
+
+  @override
+  String get loaderNeoForge => 'NeoForge';
+
+  @override
+  String loaderVersionValue(String loader, String version) {
+    return '$loader $version';
+  }
+
+  @override
+  String get accountMicrosoft => '微软';
+
+  @override
+  String get accountAuthlib => 'Authlib';
+
+  @override
+  String get settingsProxy => '代理';
+
+  @override
+  String get settingsProxySystem => '跟随系统';
+
+  @override
+  String get settingsDownloads => '下载';
+
+  @override
+  String settingsDownloadsStreams(int count) {
+    return '$count 个并发';
+  }
+
+  @override
+  String get settingsProvider => '内容源';
+
+  @override
+  String get settingsDownloadLevel => '下载级别';
+
+  @override
+  String get settingsDownloadLevelValue => 'L0 · 官方中国';
+
+  @override
+  String get settingsConsent => '用户同意';
+
+  @override
+  String get settingsConsentNotAccepted => '未接受';
+
+  @override
+  String get settingsDiagnosticsOpen => '打开';
+
+  @override
+  String get settingsLanguageSystem => '跟随系统';
+
+  @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageChinese => '简体中文';
+
+  @override
+  String get settingsLanguageChanged => '语言已切换。';
+
+  @override
+  String get resourceVersionRelease => '正式版';
+
+  @override
+  String get resourceVersionBeta => 'Beta';
+
+  @override
+  String get resourceVersionAlpha => 'Alpha';
+
+  @override
+  String get javaStatusUnknownVersion => '未知';
+
+  @override
+  String instanceCreateSummary(String loader, String version) {
+    return '$loader · Minecraft $version';
+  }
+
+  @override
+  String resourceTargetGame(String version) {
+    return 'Minecraft $version';
+  }
+
+  @override
+  String resourceTargetGameLoader(String version, String loader) {
+    return 'Minecraft $version · $loader';
+  }
+
+  @override
+  String resourceTargetShader(String version) {
+    return 'Minecraft $version · Iris';
+  }
+
+  @override
+  String get loaderProcessorsDone =>
+      '已使用选定的 Java 执行 Forge/NeoForge processors。';
+
+  @override
+  String instancesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个实例',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String instancesLoadFailed(String message) {
+    return '实例列表加载失败：$message';
+  }
+
+  @override
+  String accountsLoadFailed(String message) {
+    return '账户列表加载失败：$message';
+  }
 }

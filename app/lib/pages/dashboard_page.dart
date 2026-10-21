@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../l10n/l10n_labels.dart';
 import '../models/account.dart';
 import '../models/game_instance.dart';
 import '../stores/accounts.dart';
@@ -212,7 +213,7 @@ class _LaunchHero extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                       _HeroMeta(
                         items: [
-                          current.loaderLabel,
+                          current.loaderLabelFor(l10n),
                           current.gameVersion,
                           l10n.instanceMods(current.modCount),
                           _lastPlayedLabel(context, l10n, current.lastPlayed),
@@ -292,7 +293,8 @@ class _HeroArt extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          loader?.label ?? 'ArchoeraCX',
+          loader?.labelFor(AppLocalizations.of(context)) ??
+              AppLocalizations.of(context).appName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: textTheme.labelMedium?.copyWith(color: tokens.textSecondary),
@@ -471,7 +473,7 @@ class _WorkspaceColumn extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         _KeyValueRow(
           label: l10n.instanceLoaderLabel,
-          value: selected?.loaderLabel ?? '—',
+          value: selected?.loaderLabelFor(l10n) ?? '—',
         ),
         const SizedBox(height: AppSpacing.xs),
         _KeyValueRow(
@@ -624,7 +626,7 @@ class _AccountColumn extends StatelessWidget {
                       style: textTheme.titleSmall,
                     ),
                     Text(
-                      account.kindLabel,
+                      account.kind.labelFor(l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.bodySmall?.copyWith(
@@ -867,7 +869,7 @@ class _InstanceRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${instance.loaderLabel} · '
+                      '${instance.loaderLabelFor(l10n)} · '
                       '${l10n.instanceMods(instance.modCount)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

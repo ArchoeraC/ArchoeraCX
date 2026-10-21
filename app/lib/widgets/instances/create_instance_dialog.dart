@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
 import '../../stores/instances.dart';
 import '../../stores/settings.dart';
@@ -166,8 +167,11 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                     value: loader,
                     child: Text(
                       loader == GameLoader.vanilla
-                          ? loader.label
-                          : '${loader.label} ${loader.defaultVersion}',
+                          ? loader.labelFor(l10n)
+                          : l10n.loaderVersionValue(
+                              loader.labelFor(l10n),
+                              loader.defaultVersion,
+                            ),
                     ),
                   ),
               ],
@@ -177,7 +181,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Minecraft $_gameVersion · ${_loader.label}',
+              l10n.instanceCreateSummary(_loader.labelFor(l10n), _gameVersion),
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: tokens.textTertiary),
             ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../l10n/l10n_labels.dart';
 import '../models/game_instance.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
@@ -73,7 +74,10 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 (instance) =>
                     instance.name.toLowerCase().contains(query) ||
                     instance.gameVersion.toLowerCase().contains(query) ||
-                    instance.loader.label.toLowerCase().contains(query),
+                    instance.loader
+                        .labelFor(AppLocalizations.of(context))
+                        .toLowerCase()
+                        .contains(query),
               )
               .toList(growable: false);
 
@@ -123,7 +127,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
           SliverToBoxAdapter(
             child: _InlineNotice(
               icon: Icons.error_outline_rounded,
-              message: '${instancesAsync.error}',
+              message: l10n.instancesLoadFailed('${instancesAsync.error}'),
               color: tokens.danger,
             ),
           )
@@ -286,7 +290,7 @@ class _InstancesToolbar extends StatelessWidget {
         Icon(Icons.grid_view_rounded, size: 16, color: tokens.textTertiary),
         const SizedBox(width: AppSpacing.xxs),
         Text(
-          query.isEmpty ? '$total ${l10n.statInstances}' : '$count / $total',
+          query.isEmpty ? l10n.instancesCount(total) : '$count / $total',
           style: Theme.of(context).textTheme.labelMedium
               ?.copyWith(color: tokens.textSecondary),
         ),
@@ -848,7 +852,7 @@ class _InstanceRow extends StatelessWidget {
 String _instanceMeta(GameInstance instance, AppLocalizations l10n) {
   final parts = <String>[
     instance.gameVersion,
-    instance.loader.label,
+    instance.loader.labelFor(l10n),
     l10n.instanceMods(instance.modCount),
   ];
   if (instance.missing) parts.insert(0, l10n.instanceMissing);
