@@ -228,7 +228,8 @@ logs/account.log              脱敏诊断日志
 - 失败登录不会写入账户文件。
 - 旧 `accounts.credentials.json` 在首次使用时迁移进保险库并删除；生产构建需包含 `archoera-vault`（CI 已构建并检查）。
 - 多账户切换和 refresh 单飞尚未完整实现。
-- 发布版账户策略：账户元数据里必须有一条带 UUID 的 Microsoft 账户，并且该账户在凭据保险库中必须有可用凭据；token 过期时会先刷新并重新校验 entitlement，才允许添加/选择离线账户或开始离线启动。仅伪造 `accounts.json` 元数据不会解锁。调试版保留开发便利，不启用该限制。
+- 发布版账户策略：账户元数据里必须有一条带 UUID 的 Microsoft 账户，并且该账户在凭据保险库中必须有可用凭据；token 过期时会先刷新并重新校验 entitlement，才允许添加/选择离线账户或开始离线启动。仅伪造 `accounts.json` 元数据不会解锁。
+- 离线启动也有 C# 硬门槛，不依赖 Dart 传入的 `requirePremium`。开发调试如确实需要跳过，可设置 `ARCHOERACX_DEV_OFFLINE=1`；发布版不得设置该变量。
 
 ### 申请前检查
 

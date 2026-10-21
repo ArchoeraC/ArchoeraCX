@@ -76,6 +76,9 @@ export ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>"
 ./tool/build-cs.sh
 ```
 
+离线启动在 C# 端要求已验证的 Microsoft 凭据；开发调试可临时设置
+`ARCHOERACX_DEV_OFFLINE=1`，发布版不要设置。
+
 CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注入；
 本地构建未设置该变量时，生成的 client ID 为空，登录会返回
 `MICROSOFT_CLIENT_ID_MISSING`，而不是发出网络请求。

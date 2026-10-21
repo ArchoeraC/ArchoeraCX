@@ -47,7 +47,8 @@ void main() {
       expect(listed.any((instance) => instance.id == created.id), isTrue);
 
       final offline = await client.prepareLaunch(created.id);
-      expect(offline.ready, isTrue);
+      expect(offline.ready, isFalse);
+      expect(offline.reason, 'ACCOUNT_REQUIRED');
       final online = await client.prepareLaunch(created.id, mode: 'online');
       expect(online.ready, isFalse);
       expect(online.reason, isNotNull);

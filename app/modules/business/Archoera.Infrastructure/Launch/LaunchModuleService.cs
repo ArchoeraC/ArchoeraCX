@@ -75,29 +75,26 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             ?? throw new LaunchException("INSTANCE_NOT_FOUND", $"instance not found: {instanceId}");
         var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false);
         var requirePremium = ReadBool(paramsJson, "requirePremium");
-        var premium = !requirePremium ||
-                      (mode == "online"
-                          ? account is { Kind: AccountKind.Microsoft } &&
-                            !string.IsNullOrWhiteSpace(account.Uuid)
-                          : await _premiumGate.HasValidAccountAsync(cancellationToken)
-                              .ConfigureAwait(false));
-
         var ready = false;
         string? reason = null;
-        if (!premium)
+
+        if (mode == "online")
         {
-            reason = "PREMIUM_ACCOUNT_REQUIRED";
-        }
-        else if (mode == "online")
-        {
+            var onlineAccount = account is { Kind: AccountKind.Microsoft } &&
+                                !string.IsNullOrWhiteSpace(account.Uuid);
             if (account is null)
             {
                 reason = "ACCOUNT_REQUIRED";
             }
-            else if (account.Kind != AccountKind.Microsoft ||
-                     string.IsNullOrWhiteSpace(account.Uuid))
+            else if (!onlineAccount)
             {
                 reason = "MICROSOFT_ACCOUNT_REQUIRED";
+            }
+            else if (requirePremium &&
+                     !await _premiumGate.HasValidAccountAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                reason = "PREMIUM_ACCOUNT_REQUIRED";
             }
             else if (string.IsNullOrWhiteSpace(_auth.Options.ClientId))
             {
@@ -110,22 +107,29 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             }
             else
             {
-                // Credentials are present. A refresh, if needed, happens in
-                // launch.start; prepare never touches the network.
                 ready = true;
             }
         }
-        else if (account is null)
-        {
-            reason = "ACCOUNT_REQUIRED";
-        }
-        else if (account.Kind != AccountKind.Offline)
-        {
-            reason = "OFFLINE_ACCOUNT_REQUIRED";
-        }
         else
         {
-            ready = true;
+            if (account is null)
+            {
+                reason = "ACCOUNT_REQUIRED";
+            }
+            else if (account.Kind != AccountKind.Offline)
+            {
+                reason = "OFFLINE_ACCOUNT_REQUIRED";
+            }
+            else if (!IsDevOfflineAllowed() &&
+                     !await _premiumGate.HasValidAccountAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                reason = "PREMIUM_ACCOUNT_REQUIRED";
+            }
+            else
+            {
+                ready = true;
+            }
         }
 
         return ModuleJson.Envelope(writer =>
@@ -248,6 +252,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 throw new LaunchException(
                     "AUTH_REQUIRED",
                     "Offline launch requires an offline account. Sign in with Microsoft or switch to online mode.");
+            }
+            else if (!IsDevOfflineAllowed() &&
+                     !await _premiumGate.HasValidAccountAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                throw new LaunchException(
+                    "PREMIUM_ACCOUNT_REQUIRED",
+                    "A verified Microsoft account is required before offline launch.");
             }
 
             var paths = LaunchPaths.Resolve(instance.RootPath);
@@ -630,6 +642,16 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     }
 
     private sealed record OnlineSession(AccountRecord Account, string AccessToken);
+
+    /// <summary>
+    /// Developer-only offline escape hatch. Public builds must not set this
+    /// environment variable; the release UI never sets it.
+    /// </summary>
+    private static bool IsDevOfflineAllowed()
+        => string.Equals(
+            Environment.GetEnvironmentVariable("ARCHOERACX_DEV_OFFLINE"),
+            "1",
+            StringComparison.Ordinal);
 
     private static bool ReadBool(string? json, string name)
     {
