@@ -155,9 +155,7 @@ class AccountRow extends StatelessWidget {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final active = account.active;
-    final meta = account.uuid == null
-        ? account.kind.labelFor(l10n)
-        : '${account.kind.labelFor(l10n)} · ${account.uuid}';
+    final meta = account.kind.labelFor(l10n);
 
     return Material(
       color: active ? tokens.accentSoft : Colors.transparent,
