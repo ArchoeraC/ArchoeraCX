@@ -1,6 +1,7 @@
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/app/shell.dart';
 import 'package:archoera_cx/services/core/build_policy.dart';
+import 'package:archoera_cx/services/core/download_policy.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -236,7 +237,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('china build hides download entry points', (tester) async {
+  testWidgets('download policy shows the manual configuration gate', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -246,15 +249,29 @@ void main() {
       ProviderScope(
         overrides: [
           coreClientProvider.overrideWithValue(null),
-          downloadEnabledProvider.overrideWithValue(false),
+          downloadPolicyProvider.overrideWith(
+            (ref) async => const DownloadPolicyState(
+              enabled: false,
+              reason: 'CONSENT_REQUIRED',
+              configPath: '/tmp/archoera/compliance.json',
+              noticeVersion: 1,
+              missingFields: ['acceptRisk'],
+            ),
+          ),
         ],
         child: const ArchoeraApp(),
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
-    expect(find.text('Download'), findsNothing);
+    expect(find.text('Downloads are disabled'), findsOneWidget);
+    expect(find.text('Re-check configuration'), findsOneWidget);
+    expect(
+      find.textContaining('/tmp/archoera/compliance.json'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

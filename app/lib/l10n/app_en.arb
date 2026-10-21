@@ -906,12 +906,24 @@
   "@accountPremiumRequiredHint": {
     "description": "Subtitle shown when offline accounts are gated."
   },
-  "downloadUnavailableTitle": "Downloads are unavailable in this build",
+  "downloadUnavailableTitle": "Downloads are disabled",
   "@downloadUnavailableTitle": {
     "description": "China build download block title."
   },
-  "downloadUnavailableMessage": "This mainland-China build does not provide online game, loader or content downloads. Use files you already have or the official Minecraft launcher.",
+  "downloadUnavailableMessage": "Downloads are disabled by local policy. Add the required fields to the configuration file, then re-check. Your existing local instances and launch features remain available.",
   "@downloadUnavailableMessage": {
     "description": "China build download block explanation."
+  },
+  "downloadConfigPath": "Configuration file: {path}",
+  "@downloadConfigPath": {
+    "description": "Download gate config path."
+  },
+  "downloadConfigFields": "Required fields: developerMode=true, acceptRisk=true, downloadLevel=L2, acknowledgement=ENABLE-DOWNLOADS 1",
+  "@downloadConfigFields": {
+    "description": "Fields required to enable downloads."
+  },
+  "downloadConfigReload": "Re-check configuration",
+  "@downloadConfigReload": {
+    "description": "Reload the local download gate."
   }
 }

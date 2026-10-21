@@ -26,16 +26,13 @@ constexpr MethodRoute kRoutes[] = {
     {"java.scan", MethodRouteKind::kModule, kCsModule},
     {"java.select", MethodRouteKind::kModule, kCsModule},
     {"version.list", MethodRouteKind::kModule, kCsModule},
-#ifndef ARCHOERACX_CHINA_BUILD
     {"version.plan", MethodRouteKind::kModule, kCsModule},
     {"version.commit", MethodRouteKind::kModule, kCsModule},
-#endif
     {"launch.start", MethodRouteKind::kModule, kCsModule},
     {"launch.prepare", MethodRouteKind::kModule, kCsModule},
     {"loader.verify", MethodRouteKind::kModule, kCsModule},
     {"loader.repair", MethodRouteKind::kModule, kCsModule},
     {"loader.check", MethodRouteKind::kModule, kCsModule},
-#ifndef ARCHOERACX_CHINA_BUILD
     {"loader.versions", MethodRouteKind::kModule, kCsModule},
     {"loader.plan", MethodRouteKind::kModule, kCsModule},
     {"loader.commit", MethodRouteKind::kModule, kCsModule},
@@ -45,7 +42,7 @@ constexpr MethodRoute kRoutes[] = {
     {"resource.project", MethodRouteKind::kModule, kCsModule},
     {"resource.plan", MethodRouteKind::kModule, kCsModule},
     {"download.execute", MethodRouteKind::kModule, kCsModule},
-#endif
+    {"download.policy", MethodRouteKind::kModule, kCsModule},
 
     {"system.memory", MethodRouteKind::kModule, kCsModule},
     {"settings.get", MethodRouteKind::kModule, kCsModule},

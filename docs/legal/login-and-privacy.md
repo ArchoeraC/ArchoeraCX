@@ -158,17 +158,19 @@ Dawn Launcher 隐私政策 <https://dawn.gg/privacy>。
 不改变现有 Dart/C++ 方法名。
 
 
-### 4.4 中国大陆构建的下载裁剪
+### 4.4 中国大陆构建的下载默认关闭
 
-在完成律师复核前，中国大陆发行构建直接裁剪在线下载能力，而非仅灰置按钮：
+中国大陆发行构建默认禁用在线下载，但保留用户手动解锁路径：
 
-- 不显示 Download 导航和入口；
-- `resource.*`、`download.execute`、`version.plan/commit`、`loader.versions/plan/commit` 不在 C++ 路由表；
-- C# 不注册 ResourceModuleService/LoaderVersionService；Version/Loader 服务只保留本地元数据/校验方法；
-- Dart CoreClient 对下载方法返回 `DOWNLOAD_DISABLED`；
-- 登录、实例管理、本地启动、本地 Mod 管理保留。
+- `compliance.json` 中要求 `developerMode=true`、`acceptRisk=true`、
+  `downloadLevel="L2"`、`acknowledgement="ENABLE-DOWNLOADS 1"`；
+- 下载页显示配置文件路径和缺失字段；
+- C# 在资源/版本/加载器下载方法入口统一检查，未解锁返回
+  `DOWNLOAD_DISABLED`；Flutter/C++ 不使用地区探测；
+- 登录、实例管理、本地启动和本地 Mod 管理不受影响。
 
-构建入口：`app/tool/build-cn.sh`。全球/开发构建仍保留下载能力，并按各自发行地区另行评估。
+这是风险门槛和产品默认值，不是法律合规认证；解锁后用户仍需自行承担第三方
+内容、平台条款和版权风险。
 
 ## 5. 尚未完成 / 需要律师确认
 

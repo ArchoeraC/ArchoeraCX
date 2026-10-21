@@ -23,9 +23,11 @@ account, profile, instance and download features. It does not apply to
 Microsoft, Xbox, Minecraft Services, Modrinth, BMCLAPI or any other third-party
 service. Those services have their own privacy policies and terms.
 
-Mainland-China distribution builds currently do not provide online game,
-loader or content downloads. Those builds still support local instances,
-local launch and Microsoft account sign-in.
+Mainland-China distribution builds disable online game, loader and content
+downloads by default. A user may manually enable them by creating a local
+`compliance.json` with explicit developer/risk-acceptance fields; the launcher
+does not create or modify that file automatically. Local instances, local
+launch and Microsoft account sign-in remain available.
 
 ## 3. Data processed
 

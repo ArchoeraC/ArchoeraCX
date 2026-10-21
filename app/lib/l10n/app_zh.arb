@@ -468,6 +468,9 @@
   "downloadModpackPending": "Modrinth 整合包安装尚未启用，需要先接入 .mrpack 暂存、overrides 与加载器流水线。",
   "accountPremiumRequired": "请先登录拥有 Minecraft 的微软账户，再添加或选择其它账户。",
   "accountPremiumRequiredHint": "发布版需要先登录已拥有 Minecraft 的正版微软账户。",
-  "downloadUnavailableTitle": "当前构建不提供下载",
-  "downloadUnavailableMessage": "中国大陆构建暂时不提供游戏、加载器或内容下载。请使用本地已有文件或官方 Minecraft 启动器。"
+  "downloadUnavailableTitle": "下载已禁用",
+  "downloadUnavailableMessage": "当前下载受本地策略限制。请在配置文件中添加所需字段，然后重新检查。已有实例和本地启动功能仍可使用。",
+  "downloadConfigPath": "配置文件：{path}",
+  "downloadConfigFields": "需要字段：developerMode=true、acceptRisk=true、downloadLevel=L2、acknowledgement=ENABLE-DOWNLOADS 1",
+  "downloadConfigReload": "重新检查配置"
 }

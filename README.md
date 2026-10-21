@@ -17,7 +17,7 @@
 - Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（HTTP、hash、原子落盘、取消）
 - Linux release bundle 自带 `libarchoera_core.so`、`archoera_cs.so` 和 `archoera-dl`
 
-当前基线：270 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+当前基线：273 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
 
 ## 架构
 
@@ -65,7 +65,7 @@ dart analyze            # 中文路径下不要用 flutter analyze
 flutter test
 flutter build linux --release
 
-# 中国大陆无下载构建（隐藏 Download 并裁剪下载路由）
+# 中国大陆默认禁用下载构建（需手动配置 compliance.json 解锁）
 ./tool/build-cn.sh
 ```
 

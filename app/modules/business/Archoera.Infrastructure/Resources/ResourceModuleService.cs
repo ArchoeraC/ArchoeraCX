@@ -6,6 +6,7 @@ using Archoera.Application.Modules;
 using Archoera.Application.Resources;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Resources;
+using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Resources.Modrinth;
 
 namespace Archoera.Infrastructure.Resources;
@@ -31,10 +32,14 @@ public sealed class ResourceModuleService : IModuleMethodHandler
     };
 
     private readonly string _downloaderPath;
+    private readonly DownloadPolicy _policy;
 
-    public ResourceModuleService(string? downloaderPath = null)
+    public ResourceModuleService(
+        string? downloaderPath = null,
+        DownloadPolicy? policy = null)
     {
         _downloaderPath = downloaderPath ?? ResolveDownloaderPath();
+        _policy = policy ?? new DownloadPolicy();
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -46,6 +51,12 @@ public sealed class ResourceModuleService : IModuleMethodHandler
     {
         try
         {
+            if (method is "resource.search" or "resource.project" or "resource.versions" or
+                "resource.plan" or "download.execute")
+            {
+                _policy.EnsureEnabled();
+            }
+
             using var document = ParseRequest(paramsJson);
             var root = document.RootElement;
 
@@ -65,6 +76,10 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             };
         }
         catch (ResourceProviderException exception)
+        {
+            return Error(exception.Code, exception.Message);
+        }
+        catch (DownloadPolicyException exception)
         {
             return Error(exception.Code, exception.Message);
         }

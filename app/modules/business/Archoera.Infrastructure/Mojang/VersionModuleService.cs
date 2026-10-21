@@ -16,11 +16,14 @@ public sealed class VersionModuleService : IModuleMethodHandler
     private readonly string[] _supportedMethods;
     private readonly IMojangMetadataClient _client;
     private readonly MojangPlanService _planService;
+    private readonly DownloadPolicy _policy;
 
     public VersionModuleService(
         IMojangMetadataClient? client = null,
-        bool enableDownloads = true)
+        bool enableDownloads = true,
+        DownloadPolicy? policy = null)
     {
+        _policy = policy ?? new DownloadPolicy();
         _supportedMethods = enableDownloads
             ? ["version.list", "version.plan", "version.commit"]
             : ["version.list"];
@@ -133,12 +136,28 @@ public sealed class VersionModuleService : IModuleMethodHandler
     {
         if (string.Equals(method, "version.plan", StringComparison.Ordinal))
         {
-            return await PlanAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _policy.EnsureEnabled();
+                return await PlanAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+            }
+            catch (DownloadPolicyException exception)
+            {
+                return ModuleJson.Error(exception.Code, exception.Message);
+            }
         }
 
         if (string.Equals(method, "version.commit", StringComparison.Ordinal))
         {
-            return Commit(paramsJson);
+            try
+            {
+                _policy.EnsureEnabled();
+                return Commit(paramsJson);
+            }
+            catch (DownloadPolicyException exception)
+            {
+                return ModuleJson.Error(exception.Code, exception.Message);
+            }
         }
 
         if (!string.Equals(method, "version.list", StringComparison.Ordinal))

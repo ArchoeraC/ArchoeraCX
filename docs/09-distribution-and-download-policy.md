@@ -159,24 +159,48 @@ A 通过（schema/枚举/布尔严格）
 ---
 
 
-### 2.5 当前中国大陆构建：直接移除下载能力
+### 2.5 当前中国大陆构建：默认禁用下载 + 手动配置解锁
 
-在律师复核完成前，中国大陆公开构建采用“无下载”策略，而不是仅把按钮置灰：
+中国大陆发行构建默认禁用下载，但保留实现能力，方便自用/开发者在明确接受风险后解锁：
 
-- Flutter 构建：`ARCHOERACX_CHINA_BUILD=true`，隐藏 Download 导航与下载入口，`/download` 显示不可用说明；
-- Dart `CoreClient`：所有资源搜索、版本下载计划、加载器版本/安装、原版安装方法在调用前抛出 `DOWNLOAD_DISABLED`；
-- C#：不注册 `ResourceModuleService`、`LoaderVersionService`；`VersionModuleService` 只保留 `version.list`；`LoaderModuleService` 只保留本地 `verify/repair/check`；
-- C++：从 `MethodRegistry` 移除 `resource.*`、`download.execute`、`version.plan/commit`、`loader.versions/plan/commit` 路由；
-- 登录、实例管理、本地启动、本地 Mod 启停/删除保留。
+- Flutter 构建使用 `ARCHOERACX_CHINA_BUILD=true`；
+- Download 导航保留，页面显示“下载已禁用”和配置文件路径；
+- 默认所有下载相关 C# 方法返回 `DOWNLOAD_DISABLED`；
+- 用户必须在本地数据根目录创建 `compliance.json`，并手动加入：
+
+```json
+{
+  "schemaVersion": 1,
+  "developerMode": true,
+  "acceptRisk": true,
+  "downloadLevel": "L2",
+  "acknowledgement": "ENABLE-DOWNLOADS 1"
+}
+```
+
+字段说明：
+
+| 字段 | 要求 |
+|---|---|
+| `schemaVersion` | 必须为 `1` |
+| `developerMode` | 必须为 `true` |
+| `acceptRisk` | 必须为 `true`，表示用户已知悉并接受下载/使用第三方内容的风险 |
+| `downloadLevel` | 当前只接受 `"L2"`（本项目下载页使用 Modrinth 等第三方内容） |
+| `acknowledgement` | 必须精确为 `ENABLE-DOWNLOADS 1` |
+
+- 修改后点击下载页“重新检查配置”，不需要重启；C# 只读取本地文件，不自动创建/修改它；
+- C++/C# 方法保留，以便配置后使用；策略在业务层拒绝，Dart 不再用编译期常量硬拦截；
+- 全球/开发构建默认 `enabled=true`，不要求该文件；
+- 本地登录、实例管理、本地启动和本地 Mod 管理始终可用。
 
 构建命令：
 
 ```bash
 cd app
-./tool/build-cn.sh
+ARCHOERACX_MICROSOFT_CLIENT_ID=<GUID> ./tool/build-cn.sh
 ```
 
-这是构建期裁剪，不是运行期地区探测；全球/开发构建仍可使用下载能力，但需遵守对应发行地区的法律与平台条款。
+这不是地域探测，也不是法律合规认证；它只是中国大陆构建的默认风险门槛。
 
 ## 3. 发行通道矩阵
 

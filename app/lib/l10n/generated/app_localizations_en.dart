@@ -1171,10 +1171,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'A verified Microsoft account is required before adding or selecting other accounts.';
 
   @override
-  String get downloadUnavailableTitle =>
-      'Downloads are unavailable in this build';
+  String get downloadUnavailableTitle => 'Downloads are disabled';
 
   @override
   String get downloadUnavailableMessage =>
-      'This mainland-China build does not provide online game, loader or content downloads. Use files you already have or the official Minecraft launcher.';
+      'Downloads are disabled by local policy. Add the required fields to the configuration file, then re-check. Your existing local instances and launch features remain available.';
+
+  @override
+  String downloadConfigPath(Object path) {
+    return 'Configuration file: $path';
+  }
+
+  @override
+  String get downloadConfigFields =>
+      'Required fields: developerMode=true, acceptRisk=true, downloadLevel=L2, acknowledgement=ENABLE-DOWNLOADS 1';
+
+  @override
+  String get downloadConfigReload => 'Re-check configuration';
 }

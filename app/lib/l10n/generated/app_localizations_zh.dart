@@ -1137,9 +1137,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountPremiumRequiredHint => '发布版需要先登录已拥有 Minecraft 的正版微软账户。';
 
   @override
-  String get downloadUnavailableTitle => '当前构建不提供下载';
+  String get downloadUnavailableTitle => '下载已禁用';
 
   @override
   String get downloadUnavailableMessage =>
-      '中国大陆构建暂时不提供游戏、加载器或内容下载。请使用本地已有文件或官方 Minecraft 启动器。';
+      '当前下载受本地策略限制。请在配置文件中添加所需字段，然后重新检查。已有实例和本地启动功能仍可使用。';
+
+  @override
+  String downloadConfigPath(Object path) {
+    return '配置文件：$path';
+  }
+
+  @override
+  String get downloadConfigFields =>
+      '需要字段：developerMode=true、acceptRisk=true、downloadLevel=L2、acknowledgement=ENABLE-DOWNLOADS 1';
+
+  @override
+  String get downloadConfigReload => '重新检查配置';
 }

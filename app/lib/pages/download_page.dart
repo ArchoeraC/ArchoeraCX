@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/build_policy.dart';
+import '../services/core/download_policy.dart';
 import '../stores/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_empty_state.dart';
@@ -37,56 +38,82 @@ class _DownloadPageState extends State<DownloadPage> {
 
     return Consumer(
       builder: (context, ref, _) {
-        if (!ref.watch(downloadEnabledProvider)) {
-          return _DownloadUnavailable(l10n: l10n);
-        }
-        return DefaultTabController(
-          length: 5,
-          child: Column(
+        final policyAsync = ref.watch(downloadPolicyProvider);
+        return policyAsync.when(
+          loading: () => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppPageHeader(
                 title: l10n.downloadTitle,
                 subtitle: l10n.downloadSubtitle,
               ),
-              const SizedBox(height: AppSpacing.sm),
-              _SourceSelector(
-                selected: _source,
-                onSelected: (source) => setState(() => _source = source),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              _CategoryTabs(l10n: l10n),
-              const SizedBox(height: AppSpacing.sm),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    const _VersionsPanel(),
-                    ResourceSearchPanel(
-                      kind: 'mod',
-                      title: l10n.tabMods,
-                      icon: Icons.extension_rounded,
-                      global: true,
-                    ),
-                    _ComingSoonTab(
-                      l10n: l10n,
-                      icon: Icons.inventory_2_rounded,
-                      message: l10n.downloadModpackPending,
-                    ),
-                    ResourceSearchPanel(
-                      kind: 'resourcepack',
-                      title: l10n.tabResourcePacks,
-                      icon: Icons.photo_library_rounded,
-                    ),
-                    ResourceSearchPanel(
-                      kind: 'shader',
-                      title: l10n.tabShaders,
-                      icon: Icons.flare_rounded,
-                    ),
-                  ],
-                ),
-              ),
+              const Expanded(child: Center(child: CircularProgressIndicator())),
             ],
           ),
+          error: (error, _) => _DownloadUnavailable(
+            l10n: l10n,
+            message: error.toString(),
+            policy: null,
+            onReload: () => ref.invalidate(downloadPolicyProvider),
+          ),
+          data: (policy) {
+            if (!policy.enabled) {
+              return _DownloadUnavailable(
+                l10n: l10n,
+                message: l10n.downloadUnavailableMessage,
+                policy: policy,
+                onReload: () => ref.invalidate(downloadPolicyProvider),
+              );
+            }
+            return DefaultTabController(
+              length: 5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppPageHeader(
+                    title: l10n.downloadTitle,
+                    subtitle: l10n.downloadSubtitle,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _SourceSelector(
+                    selected: _source,
+                    onSelected: (source) => setState(() => _source = source),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _CategoryTabs(l10n: l10n),
+                  const SizedBox(height: AppSpacing.sm),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        const _VersionsPanel(),
+                        ResourceSearchPanel(
+                          kind: 'mod',
+                          title: l10n.tabMods,
+                          icon: Icons.extension_rounded,
+                          global: true,
+                        ),
+                        _ComingSoonTab(
+                          l10n: l10n,
+                          icon: Icons.inventory_2_rounded,
+                          message: l10n.downloadModpackPending,
+                        ),
+                        ResourceSearchPanel(
+                          kind: 'resourcepack',
+                          title: l10n.tabResourcePacks,
+                          icon: Icons.photo_library_rounded,
+                        ),
+                        ResourceSearchPanel(
+                          kind: 'shader',
+                          title: l10n.tabShaders,
+                          icon: Icons.flare_rounded,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -94,12 +121,23 @@ class _DownloadPageState extends State<DownloadPage> {
 }
 
 class _DownloadUnavailable extends StatelessWidget {
-  const _DownloadUnavailable({required this.l10n});
+  const _DownloadUnavailable({
+    required this.l10n,
+    required this.message,
+    required this.policy,
+    required this.onReload,
+  });
 
   final AppLocalizations l10n;
+  final String message;
+  final DownloadPolicyState? policy;
+  final VoidCallback onReload;
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final configPath = policy?.configPath;
+    final missing = policy?.missingFields ?? const <String>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -112,7 +150,33 @@ class _DownloadUnavailable extends StatelessWidget {
           child: AppEmptyState(
             icon: Icons.download_for_offline_outlined,
             title: l10n.downloadUnavailableTitle,
-            message: l10n.downloadUnavailableMessage,
+            message: message,
+            primaryAction: FilledButton.icon(
+              onPressed: onReload,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(l10n.downloadConfigReload),
+            ),
+            secondaryAction: configPath == null || configPath.isEmpty
+                ? null
+                : Column(
+                    children: [
+                      Text(
+                        l10n.downloadConfigPath(configPath),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: tokens.textSecondary),
+                      ),
+                      if (missing.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xxs),
+                        Text(
+                          l10n.downloadConfigFields,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: tokens.textTertiary),
+                        ),
+                      ],
+                    ],
+                  ),
           ),
         ),
       ],
