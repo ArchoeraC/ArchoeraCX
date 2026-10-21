@@ -1030,4 +1030,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceModsRemoveFailed => 'Could not remove the mod.';
+
+  @override
+  String get accountDefaultSkin => 'Default appearance';
 }

@@ -21,9 +21,12 @@ class SkinHead extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = account.skinUrl;
-    if (url == null || url.isEmpty) return fallback ?? const SizedBox.shrink();
+    final ImageProvider provider = url == null || url.isEmpty
+        ? const AssetImage('assets/skins/default-offline.png')
+        : NetworkImage(url);
     return _SkinImage(
-      url: url,
+      url: url ?? '',
+      provider: provider,
       builder: (context, image) {
         if (image == null) return fallback ?? const SizedBox.shrink();
         return CustomPaint(
@@ -60,16 +63,14 @@ class SkinPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = account.skinUrl;
-    if (url == null || url.isEmpty) {
-      return _PlaceholderSkin(
-        width: width,
-        height: height,
-        tokens: context.tokens,
-      );
-    }
+    final provider =
+        imageProvider ??
+        (url == null || url.isEmpty
+            ? const AssetImage('assets/skins/default-offline.png')
+            : NetworkImage(url));
     return _SkinImage(
-      url: url,
-      provider: imageProvider,
+      url: url ?? '',
+      provider: provider,
       builder: (context, image) {
         if (image == null) {
           return _PlaceholderSkin(

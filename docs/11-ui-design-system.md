@@ -363,7 +363,7 @@ L4 浮层（对话框/任务中心/通知）
 - 150%/200% 缩放不截断；中文长文本换行。
 - 文案全部走 ARB；不拼句子；模型层不保存 UI 文案。
 - 设置页左侧分区导航固定，不随内容滚动；仅右侧内容区自行滚动。
-- 账户皮肤使用 `lib/widgets/accounts/skin_preview.dart` 的 2D 纸娃娃预览（头/身体/四肢从 64×64 或 64×32 skin atlas 裁切）；无皮肤账户显示原创格子人物占位。
+- 账户皮肤使用 `lib/widgets/accounts/skin_preview.dart` 的 2D 纸娃娃预览（头/身体/四肢从 64×64 或 64×32 skin atlas 裁切）；离线/无皮肤账户使用原创默认皮肤 `assets/skins/default-offline.png`，并标注“默认外观”。
 - 加载器图标全部使用 `assets/icons/loaders/` 素材：原版为 Wikimedia 草方块（PD），Fabric/Quilt 为 Apache-2.0，Forge/NeoForge 为 LGPL-2.1；来源与许可证记录在同目录 `SOURCES.md`。
 - 语言偏好使用系统 / English / 简体中文，切换后立即全局生效。
 - 动效可关闭；减少动画时保留状态变化。

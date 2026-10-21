@@ -743,5 +743,9 @@
   "instanceModsRemoveFailed": "Could not remove the mod.",
   "@instanceModsRemoveFailed": {
     "description": "Delete failure."
+  },
+  "accountDefaultSkin": "Default appearance",
+  "@accountDefaultSkin": {
+    "description": "Shown when an account has no skin texture."
   }
 }

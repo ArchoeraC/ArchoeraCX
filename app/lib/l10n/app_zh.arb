@@ -438,5 +438,6 @@
   "instanceModDeleteConfirm": "删除“{name}”？这会移除 Mod 文件。",
   "instanceModDisabled": "已禁用",
   "instanceModsToggleFailed": "无法更新 Mod 状态。",
-  "instanceModsRemoveFailed": "无法删除 Mod。"
+  "instanceModsRemoveFailed": "无法删除 Mod。",
+  "accountDefaultSkin": "默认外观"
 }
