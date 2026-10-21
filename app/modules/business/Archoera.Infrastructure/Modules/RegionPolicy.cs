@@ -32,8 +32,8 @@ public sealed class RegionPolicy
 
     private readonly HttpClient _http;
     private readonly string? _override;
-    private RegionPolicyState? _cached;
-    private readonly object _gate = new();
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private volatile RegionPolicyState? _cached;
 
     public RegionPolicy(HttpClient? http = null, string? regionOverride = null)
     {
@@ -43,16 +43,18 @@ public sealed class RegionPolicy
 
     public async Task<RegionPolicyState> ReadAsync(CancellationToken cancellationToken = default)
     {
-        lock (_gate)
+        if (_cached is not null) return _cached;
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
             if (_cached is not null) return _cached;
-        }
-
-        var state = await DetectAsync(cancellationToken).ConfigureAwait(false);
-        lock (_gate)
-        {
-            _cached ??= state;
+            _cached = await DetectAsync(cancellationToken).ConfigureAwait(false);
             return _cached;
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 

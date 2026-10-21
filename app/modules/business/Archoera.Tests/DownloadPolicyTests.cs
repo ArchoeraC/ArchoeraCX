@@ -5,13 +5,15 @@ namespace Archoera.Tests;
 public sealed class DownloadPolicyTests
 {
     [Fact]
-    public void Global_build_is_enabled_without_a_config_file()
+    public async Task Global_region_is_enabled_without_a_config_file()
     {
         var directory = CreateTempDirectory();
         try
         {
-            var policy = new DownloadPolicy(directory, chinaBuild: false);
-            var state = policy.Read();
+            var policy = new DownloadPolicy(
+                directory,
+                new RegionPolicy(regionOverride: "GLOBAL"));
+            var state = await policy.ReadAsync();
             Assert.True(state.Enabled);
             Assert.Equal("ENABLED", state.Reason);
             Assert.Empty(state.MissingFields);
@@ -23,17 +25,20 @@ public sealed class DownloadPolicyTests
     }
 
     [Fact]
-    public void China_build_requires_explicit_risk_acceptance()
+    public async Task Mainland_region_requires_explicit_risk_acceptance()
     {
         var directory = CreateTempDirectory();
         try
         {
-            var policy = new DownloadPolicy(directory, chinaBuild: true);
-            var state = policy.Read();
+            var policy = new DownloadPolicy(
+                directory,
+                new RegionPolicy(regionOverride: "CN"));
+            var state = await policy.ReadAsync();
             Assert.False(state.Enabled);
             Assert.Equal("CONSENT_REQUIRED", state.Reason);
             Assert.Contains("acceptRisk", state.MissingFields);
-            Assert.Throws<DownloadPolicyException>(() => policy.EnsureEnabled());
+            await Assert.ThrowsAsync<DownloadPolicyException>(
+                () => policy.EnsureEnabledAsync());
 
             File.WriteAllText(
                 policy.ConfigPath,
@@ -47,10 +52,10 @@ public sealed class DownloadPolicyTests
                 }
                 """);
 
-            var enabled = policy.Read();
+            var enabled = await policy.ReadAsync();
             Assert.True(enabled.Enabled);
             Assert.Equal("L2", enabled.DownloadLevel);
-            policy.EnsureEnabled();
+            await policy.EnsureEnabledAsync();
         }
         finally
         {
@@ -59,16 +64,18 @@ public sealed class DownloadPolicyTests
     }
 
     [Fact]
-    public void Incomplete_china_config_reports_missing_fields()
+    public async Task Incomplete_mainland_config_reports_missing_fields()
     {
         var directory = CreateTempDirectory();
         try
         {
-            var policy = new DownloadPolicy(directory, chinaBuild: true);
+            var policy = new DownloadPolicy(
+                directory,
+                new RegionPolicy(regionOverride: "CN"));
             File.WriteAllText(
                 policy.ConfigPath,
                 """{"schemaVersion":1,"developerMode":true,"acceptRisk":true}""");
-            var state = policy.Read();
+            var state = await policy.ReadAsync();
             Assert.False(state.Enabled);
             Assert.Contains("downloadLevel", state.MissingFields);
             Assert.Contains("acknowledgement", state.MissingFields);

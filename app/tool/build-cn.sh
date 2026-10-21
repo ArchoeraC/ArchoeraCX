@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Mainland-China distribution build:
-# - no online game/resource/loader downloads in the C++ route table
-# - no download methods registered in the C# business module
-# - no Download tab in Flutter
-# Account sign-in, local instances and local launch remain available.
+# Deprecated compatibility wrapper.
+# ArchoeraCX now ships one binary: mainland-China download gating is decided
+# at runtime from the coarse network region plus an optional compliance.json.
+# This script intentionally sets no ARCHOERACX_CHINA_BUILD flag.
 cd "$(dirname "$0")/.."
 
-export ARCHOERACX_CHINA_BUILD=1
+echo "note: build-cn.sh is deprecated; building the single runtime-gated distribution." >&2
 
 ./tool/build-core.sh
 ./tool/build-cs.sh
@@ -18,5 +17,4 @@ if [[ -x ./tool/build-vault.sh ]]; then
   ./tool/build-vault.sh
 fi
 
-flutter build linux --release \
-  --dart-define=ARCHOERACX_CHINA_BUILD=true
+flutter build linux --release

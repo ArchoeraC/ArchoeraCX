@@ -54,7 +54,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             if (method is "resource.search" or "resource.project" or "resource.versions" or
                 "resource.plan" or "download.execute")
             {
-                _policy.EnsureEnabled();
+                await _policy.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
             }
 
             using var document = ParseRequest(paramsJson);

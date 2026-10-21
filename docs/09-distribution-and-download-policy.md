@@ -156,11 +156,13 @@ A 通过（schema/枚举/布尔严格）
 ---
 
 
-### 2.5 当前中国大陆构建：默认禁用下载 + 手动配置解锁
+### 2.5 当前运行时地区策略：中国大陆网络默认禁用下载 + 手动配置解锁
 
-中国大陆发行构建默认禁用下载，但保留实现能力，方便自用/开发者在明确接受风险后解锁：
+ArchoeraCX 使用单一发行版，不再通过 `ARCHOERACX_CHINA_BUILD` 分割安装包。
+C# 在启动和下载策略检查时通过 Cloudflare trace 的两位国家码判断粗粒度网络地区；
+请求失败时回退系统地区/语言/时区或 Windows GeoID。
 
-- Flutter 构建使用 `ARCHOERACX_CHINA_BUILD=true`；
+- 中国大陆网络默认禁用下载，但保留实现能力，方便自用/开发者在明确接受风险后解锁；
 - 默认隐藏 Download 导航/首页下载快捷入口；直接访问 `/download` 仍会显示配置说明；
 - 默认所有下载相关 C# 方法返回 `DOWNLOAD_DISABLED`；
 - 用户必须在本地数据根目录创建 `compliance.json`，并手动加入：
@@ -187,19 +189,26 @@ A 通过（schema/枚举/布尔严格）
 
 - 修改配置文件后重启应用（或直接打开 `/download` 点击“重新检查配置”）；C# 只读取本地文件，不自动创建/修改它；
 - C++/C# 方法保留，以便配置后使用；策略在业务层拒绝，Dart 不再用编译期常量硬拦截；
-- 全球/开发构建默认 `enabled=true`，不要求该文件；
+- 非中国大陆网络默认 `enabled=true`，不要求该文件；
 - 本地登录、实例管理、本地启动和本地 Mod 管理始终可用。
 
 构建命令：
 
 ```bash
 cd app
-ARCHOERACX_MICROSOFT_CLIENT_ID=<GUID> ./tool/build-cn.sh
+ARCHOERACX_MICROSOFT_CLIENT_ID=<GUID> ./tool/build-cs.sh
+flutter build linux --release
 ```
 
-这不是地域探测，也不是法律合规认证；它只是中国大陆构建的默认风险门槛。
+`./tool/build-cn.sh` 仅为旧脚本兼容而保留，产物与普通构建相同。
+
+这是运行期地区判断和风险门槛，不是法律合规认证；VPN/代理、IP 数据库误差都可能
+影响结果。解锁后用户仍需自行承担第三方内容、平台条款和版权风险。
 
 ## 3. 发行通道矩阵
+
+以下矩阵描述产品策略层级，不代表不同二进制；当前所有通道共用同一发行版，
+由运行期地区结果和本地声明决定默认 gate。
 
 | 能力 | official-cn（L0） | official-global（L1/L2） | dev（L2） |
 |---|---|---|---|

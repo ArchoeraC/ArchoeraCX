@@ -20,8 +20,8 @@ public static class BusinessModuleRegistry
 {
     public static ModuleMethodRegistry CreateDefault(string? dataRoot = null)
     {
-        var policy = new DownloadPolicy(dataRoot);
         var region = new RegionPolicy();
+        var policy = new DownloadPolicy(dataRoot, region);
         var handlers = new List<IModuleMethodHandler>
         {
             new JavaModuleService(

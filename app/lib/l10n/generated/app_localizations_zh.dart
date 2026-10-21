@@ -1137,11 +1137,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountPremiumRequiredHint => '发布版需要先登录已拥有 Minecraft 的正版微软账户。';
 
   @override
-  String get downloadUnavailableTitle => '下载已禁用';
+  String get downloadUnavailableTitle => '该地区下载已禁用';
 
   @override
   String get downloadUnavailableMessage =>
-      '当前下载受本地策略限制。请在配置文件中添加所需字段，然后重新检查。已有实例和本地启动功能仍可使用。';
+      '检测到当前网络位于中国大陆，下载已按本地地区策略禁用。请在配置文件中添加所需字段，然后重新检查。已有实例和本地启动功能仍可使用。';
 
   @override
   String downloadConfigPath(Object path) {

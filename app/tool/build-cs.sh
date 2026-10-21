@@ -24,11 +24,6 @@ OUT_DIR="$(pwd)/build/native/cs"
 FINAL_PATH="$(pwd)/build/native/${OUTPUT_NAME}"
 PROJECT="modules/business/Archoera.Exports/Archoera.Exports.csproj"
 
-CHINA_BUILD_VALUE="${ARCHOERACX_CHINA_BUILD:-false}"
-if [[ "${CHINA_BUILD_VALUE}" == "1" ]]; then
-  CHINA_BUILD_VALUE=true
-fi
-
 mkdir -p "${OUT_DIR}" "$(dirname "${FINAL_PATH}")"
 
 dotnet publish "${PROJECT}" \
@@ -37,7 +32,6 @@ dotnet publish "${PROJECT}" \
   -p:PublishAot=true \
   -p:NativeLib=Shared \
   -p:MicrosoftClientId="${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" \
-  -p:ChinaBuild="${CHINA_BUILD_VALUE}" \
   -o "${OUT_DIR}" \
   --nologo \
   "$@"

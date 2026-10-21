@@ -56,7 +56,7 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         {
             try
             {
-                _policy.EnsureEnabled();
+                await _policy.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (DownloadPolicyException exception)
             {

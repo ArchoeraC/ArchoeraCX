@@ -138,7 +138,7 @@ public sealed class VersionModuleService : IModuleMethodHandler
         {
             try
             {
-                _policy.EnsureEnabled();
+                await _policy.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
                 return await PlanAsync(paramsJson, cancellationToken).ConfigureAwait(false);
             }
             catch (DownloadPolicyException exception)
@@ -151,7 +151,7 @@ public sealed class VersionModuleService : IModuleMethodHandler
         {
             try
             {
-                _policy.EnsureEnabled();
+                await _policy.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
                 return Commit(paramsJson);
             }
             catch (DownloadPolicyException exception)

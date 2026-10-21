@@ -16,20 +16,20 @@ public sealed class DownloadPolicyModuleService : IModuleMethodHandler
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
 
-    public Task<byte[]> HandleAsync(
+    public async Task<byte[]> HandleAsync(
         string method,
         string? paramsJson,
         CancellationToken cancellationToken)
     {
         if (!string.Equals(method, "download.policy", StringComparison.Ordinal))
         {
-            return Task.FromResult(ModuleJson.Error(
+            return ModuleJson.Error(
                 "E_UNSUPPORTED",
-                $"unsupported policy method '{method}'"));
+                $"unsupported policy method '{method}'");
         }
 
-        var state = _policy.Read();
-        return Task.FromResult(ModuleJson.Envelope(writer =>
+        var state = await _policy.ReadAsync(cancellationToken).ConfigureAwait(false);
+        return ModuleJson.Envelope(writer =>
         {
             writer.WriteBoolean("enabled", state.Enabled);
             writer.WriteString("reason", state.Reason);
@@ -42,6 +42,6 @@ public sealed class DownloadPolicyModuleService : IModuleMethodHandler
                 writer.WriteStringValue(field);
             }
             writer.WriteEndArray();
-        }));
+        });
     }
 }

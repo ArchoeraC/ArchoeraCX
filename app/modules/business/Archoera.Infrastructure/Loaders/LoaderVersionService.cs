@@ -77,7 +77,7 @@ public sealed class LoaderVersionService : IModuleMethodHandler
 
         try
         {
-            _policy.EnsureEnabled();
+            await _policy.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
             using var document = string.IsNullOrWhiteSpace(paramsJson)
                 ? JsonDocument.Parse("{}")
                 : JsonDocument.Parse(paramsJson);
