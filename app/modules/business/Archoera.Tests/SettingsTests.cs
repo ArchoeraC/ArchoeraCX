@@ -93,6 +93,66 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public async Task Store_persists_java_selection_and_preserves_roots()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "games");
+            var java = Path.Combine(directory, "jdk", "bin", "java");
+            Directory.CreateDirectory(Path.GetDirectoryName(java)!);
+            await File.WriteAllTextAsync(java, string.Empty);
+            var store = new JsonAppSettingsStore(dataRoot);
+            await store.SaveInstancesRootAsync(root);
+
+            var saved = await store.SaveJavaAsync(java, javaAuto: false);
+            Assert.Equal(Path.GetFullPath(java), saved.JavaPath);
+            Assert.False(saved.JavaAuto);
+            Assert.Equal([Path.GetFullPath(root)], saved.Roots);
+
+            var reloaded = await store.LoadAsync();
+            Assert.Equal(Path.GetFullPath(java), reloaded.JavaPath);
+            Assert.False(reloaded.JavaAuto);
+
+            var automatic = await store.SaveJavaAsync(javaPath: null, javaAuto: true);
+            Assert.Null(automatic.JavaPath);
+            Assert.True(automatic.JavaAuto);
+            Assert.Equal([Path.GetFullPath(root)], automatic.Roots);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Settings_module_updates_java_without_replacing_roots()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var service = new SettingsModuleService(
+                new JsonAppSettingsStore(Path.Combine(directory, "data")));
+            var java = Path.Combine(directory, "jdk", "bin", "java");
+            Directory.CreateDirectory(Path.GetDirectoryName(java)!);
+            await File.WriteAllTextAsync(java, string.Empty);
+
+            var payload = $$"""{"javaPath":"{{java}}","javaAuto":false}""";
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync("settings.set", payload, CancellationToken.None));
+            var settings = document.RootElement.GetProperty("data").GetProperty("settings");
+            Assert.Equal(Path.GetFullPath(java), settings.GetProperty("javaPath").GetString());
+            Assert.False(settings.GetProperty("javaAuto").GetBoolean());
+            Assert.True(settings.GetProperty("instancesRoots").GetArrayLength() >= 1);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Store_rejects_a_relative_instances_root()
     {
         var directory = TempDirectory();

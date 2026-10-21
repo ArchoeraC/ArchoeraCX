@@ -37,6 +37,10 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         {
             throw;
         }
+        catch (ArgumentException exception)
+        {
+            return Error("E_INVALID", exception.Message);
+        }
         catch (Exception exception)
         {
             return Error("E_INTERNAL", exception.Message);
@@ -58,15 +62,19 @@ public sealed class SettingsModuleService : IModuleMethodHandler
 
         IReadOnlyList<string>? instancesRoots = null;
         string? legacyRoot = null;
+        string? javaPath = null;
+        var javaPathPresent = false;
+        bool? javaAuto = null;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
             {
                 return Error("E_INVALID", "settings.set requires a JSON object");
             }
 
-            if (document.RootElement.TryGetProperty("instancesRoots", out var rootsElement) &&
+            if (root.TryGetProperty("instancesRoots", out var rootsElement) &&
                 rootsElement.ValueKind == JsonValueKind.Array)
             {
                 var roots = new List<string>();
@@ -82,10 +90,27 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 instancesRoots = roots;
             }
 
-            if (document.RootElement.TryGetProperty("instancesRoot", out var rootElement) &&
+            if (root.TryGetProperty("instancesRoot", out var rootElement) &&
                 rootElement.ValueKind == JsonValueKind.String)
             {
                 legacyRoot = rootElement.GetString();
+            }
+
+            if (root.TryGetProperty("javaPath", out var javaElement))
+            {
+                javaPathPresent = true;
+                javaPath = javaElement.ValueKind == JsonValueKind.Null
+                    ? null
+                    : javaElement.ValueKind == JsonValueKind.String
+                        ? javaElement.GetString()
+                        : throw new ArgumentException("javaPath must be a string or null");
+            }
+
+            if (root.TryGetProperty("javaAuto", out var autoElement))
+            {
+                javaAuto = autoElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? autoElement.GetBoolean()
+                    : throw new ArgumentException("javaAuto must be a boolean");
             }
         }
         catch (JsonException exception)
@@ -93,23 +118,56 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             return Error("E_INVALID", exception.Message);
         }
 
+        var current = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (instancesRoots is { Count: > 0 })
         {
-            var settings = await _store
-                .SaveInstancesRootsAsync(instancesRoots, cancellationToken)
-                .ConfigureAwait(false);
-            return Build(settings);
+            current = current with
+            {
+                InstancesRoot = instancesRoots[0],
+                InstancesRoots = instancesRoots,
+            };
         }
-
-        if (string.IsNullOrWhiteSpace(legacyRoot) ||
-            !Path.IsPathFullyQualified(legacyRoot))
+        else if (!string.IsNullOrWhiteSpace(legacyRoot))
         {
-            return Error("E_INVALID", "instancesRoots must contain absolute directories");
+            if (!Path.IsPathFullyQualified(legacyRoot))
+            {
+                return Error("E_INVALID", "instancesRoot must be an absolute directory");
+            }
+
+            current = current with
+            {
+                InstancesRoot = legacyRoot,
+                InstancesRoots = [legacyRoot],
+            };
         }
 
-        return Build(await _store
-            .SaveInstancesRootAsync(legacyRoot, cancellationToken)
-            .ConfigureAwait(false));
+        if (javaPathPresent || javaAuto is not null)
+        {
+            current = current with
+            {
+                JavaPath = javaPathPresent
+                    ? (string.IsNullOrWhiteSpace(javaPath) ? null : javaPath)
+                    : current.JavaPath,
+                JavaAuto = javaAuto ?? current.JavaAuto,
+            };
+        }
+
+        if (instancesRoots is not { Count: > 0 } &&
+            string.IsNullOrWhiteSpace(legacyRoot) &&
+            !javaPathPresent &&
+            javaAuto is null)
+        {
+            return Error("E_INVALID", "settings.set requires at least one field");
+        }
+
+        // Instances roots must be absolute and non-empty; SaveAsync validates.
+        if (current.Roots.Count == 0)
+        {
+            return Error("E_INVALID", "at least one instances root is required");
+        }
+
+        var saved = await _store.SaveAsync(current, cancellationToken).ConfigureAwait(false);
+        return Build(saved);
     }
 
     private static byte[] Build(AppSettings settings)
@@ -128,6 +186,15 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 writer.WriteStringValue(root);
             }
             writer.WriteEndArray();
+            if (string.IsNullOrWhiteSpace(settings.JavaPath))
+            {
+                writer.WriteNull("javaPath");
+            }
+            else
+            {
+                writer.WriteString("javaPath", settings.JavaPath);
+            }
+            writer.WriteBoolean("javaAuto", settings.JavaAuto);
             writer.WriteString("dataRoot", settings.DataRoot);
             writer.WriteString("settingsPath", settings.SettingsPath);
             writer.WriteEndObject();

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../models/game_instance.dart';
+import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
@@ -179,7 +180,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
 
   void _launch(GameInstance instance) {
     ref.read(selectedInstanceIdProvider.notifier).select(instance.id);
-    _notify(context, AppLocalizations.of(context).instanceLaunchNotReady);
+    launchInstance(context, ref, instance);
   }
 
   Future<void> _delete(GameInstance instance, AppLocalizations l10n) async {

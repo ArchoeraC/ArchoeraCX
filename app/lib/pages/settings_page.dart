@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
+import '../services/core/java_scan.dart';
 import '../stores/instances.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
@@ -142,7 +143,42 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ],
       ),
-      _SettingsSection.java => const JavaStatusCard(),
+      _SettingsSection.java => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SettingsCard(
+            children: [
+              _SettingRow(
+                icon: Icons.auto_awesome_rounded,
+                title: l10n.settingsJavaAuto,
+                subtitle: l10n.settingsJavaAutoHint,
+                trailing: Switch(
+                  value: settings?.javaAuto ?? true,
+                  onChanged: (value) => _setJavaAuto(context, l10n, value),
+                ),
+              ),
+              _SettingRow(
+                icon: Icons.terminal_rounded,
+                title: l10n.settingsJavaCurrent,
+                value: (settings?.javaAuto ?? true)
+                    ? l10n.settingsJavaAutoValue
+                    : (settings?.javaPath ?? '—'),
+                trailing: (settings?.javaAuto ?? true)
+                    ? null
+                    : TextButton(
+                        onPressed: () => _setJavaAuto(context, l10n, true),
+                        child: Text(l10n.settingsJavaUseAuto),
+                      ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          JavaStatusCard(
+            selectedPath: settings?.javaPath,
+            onSelect: (runtime) => _selectJava(context, l10n, runtime),
+          ),
+        ],
+      ),
       _SettingsSection.network => _SettingsCard(
         children: [
           _SettingRow(
@@ -203,6 +239,41 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ],
       ),
     };
+  }
+
+  Future<void> _setJavaAuto(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool auto,
+  ) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setJavaSelection(
+            javaPath: auto
+                ? null
+                : (ref.read(appSettingsProvider).value?.javaPath),
+            javaAuto: auto,
+          );
+      if (context.mounted) _notify(context, l10n.settingsSaved);
+    } catch (error) {
+      if (context.mounted) _notify(context, error.toString());
+    }
+  }
+
+  Future<void> _selectJava(
+    BuildContext context,
+    AppLocalizations l10n,
+    JavaRuntime runtime,
+  ) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setJavaSelection(javaPath: runtime.path, javaAuto: false);
+      if (context.mounted) _notify(context, l10n.settingsJavaSelected);
+    } catch (error) {
+      if (context.mounted) _notify(context, error.toString());
+    }
   }
 
   Future<void> _chooseInstancesRoot(

@@ -5,6 +5,8 @@ class AppSettings {
     required this.dataRoot,
     required this.settingsPath,
     this.instancesRoots = const <String>[],
+    this.javaPath,
+    this.javaAuto = true,
   });
 
   /// Primary/legacy root. Always the first entry of [instancesRoots].
@@ -15,6 +17,12 @@ class AppSettings {
 
   final String dataRoot;
   final String settingsPath;
+
+  /// Manually selected Java executable; null means automatic selection.
+  final String? javaPath;
+
+  /// True when launch chooses Java automatically for the game version.
+  final bool javaAuto;
 
   /// Normalized roots with a legacy fallback for older native modules.
   List<String> get roots =>
@@ -42,6 +50,8 @@ class AppSettings {
       instancesRoots: List<String>.unmodifiable(roots),
       dataRoot: dataRoot,
       settingsPath: _string(value['settingsPath']) ?? '',
+      javaPath: _string(value['javaPath']),
+      javaAuto: value['javaAuto'] != false,
     );
   }
 

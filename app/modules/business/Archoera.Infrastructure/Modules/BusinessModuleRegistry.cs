@@ -2,6 +2,7 @@ using Archoera.Application.Modules;
 using Archoera.Infrastructure.Accounts;
 using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Java;
+using Archoera.Infrastructure.Launch;
 using Archoera.Infrastructure.Loaders;
 using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Resources;
@@ -21,6 +22,7 @@ public static class BusinessModuleRegistry
         [
             new JavaModuleService(),
             new VersionModuleService(),
+            new LaunchModuleService(dataRoot: dataRoot),
             new LoaderModuleService(),
             new ResourceModuleService(),
             new AccountModuleService(dataRoot: dataRoot),

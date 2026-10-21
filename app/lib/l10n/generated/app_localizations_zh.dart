@@ -275,6 +275,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceLaunchNotReady => '启动流程尚未接线。';
 
   @override
+  String launchStarted(int pid) {
+    return '游戏已启动（PID $pid）。';
+  }
+
+  @override
+  String get launchFailed => '启动失败。';
+
+  @override
+  String get launchStarting => '正在启动游戏…';
+
+  @override
+  String get launchNoAccount => '请先添加离线账户。';
+
+  @override
+  String get launchOfflineOnly => '当前基础启动仅支持离线账户。';
+
+  @override
+  String get launchJavaMissing => '没有找到合适的 Java 运行时。';
+
+  @override
+  String launchLog(String path) {
+    return '日志：$path';
+  }
+
+  @override
   String get instanceCreated => '实例已创建。';
 
   @override
@@ -512,6 +537,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsJava => 'Java';
 
   @override
+  String get settingsJavaAuto => '自动选择';
+
+  @override
+  String get settingsJavaAutoHint => '按游戏版本选择最合适的 Java 运行时。';
+
+  @override
+  String get settingsJavaCurrent => '当前 Java';
+
+  @override
+  String get settingsJavaAutoValue => '自动（按游戏版本）';
+
+  @override
+  String get settingsJavaUseAuto => '改用自动选择';
+
+  @override
+  String get settingsJavaSelected => 'Java 选择已保存。';
+
+  @override
   String get settingsNetwork => '网络';
 
   @override
@@ -641,6 +684,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get javaStatusScan => '扫描 Java';
+
+  @override
+  String get javaStatusSelect => '使用此 Java';
 
   @override
   String javaStatusCount(int count) {

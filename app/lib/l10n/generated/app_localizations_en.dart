@@ -283,6 +283,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instanceLaunchNotReady => 'Launch flow is not wired yet.';
 
   @override
+  String launchStarted(int pid) {
+    return 'Game started (PID $pid).';
+  }
+
+  @override
+  String get launchFailed => 'Launch failed.';
+
+  @override
+  String get launchStarting => 'Starting game…';
+
+  @override
+  String get launchNoAccount => 'Add an offline account before launching.';
+
+  @override
+  String get launchOfflineOnly =>
+      'Basic launch supports offline accounts only.';
+
+  @override
+  String get launchJavaMissing => 'No suitable Java runtime found.';
+
+  @override
+  String launchLog(String path) {
+    return 'Log: $path';
+  }
+
+  @override
   String get instanceCreated => 'Instance created.';
 
   @override
@@ -527,6 +553,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsJava => 'Java';
 
   @override
+  String get settingsJavaAuto => 'Auto select';
+
+  @override
+  String get settingsJavaAutoHint =>
+      'Choose a Java runtime that matches the game version.';
+
+  @override
+  String get settingsJavaCurrent => 'Current Java';
+
+  @override
+  String get settingsJavaAutoValue => 'Automatic (per game version)';
+
+  @override
+  String get settingsJavaUseAuto => 'Use automatic selection';
+
+  @override
+  String get settingsJavaSelected => 'Java selection saved.';
+
+  @override
   String get settingsNetwork => 'Network';
 
   @override
@@ -661,6 +706,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get javaStatusScan => 'Scan Java';
+
+  @override
+  String get javaStatusSelect => 'Use this Java';
 
   @override
   String javaStatusCount(int count) {
