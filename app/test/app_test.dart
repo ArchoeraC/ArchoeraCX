@@ -237,7 +237,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('download policy shows the manual configuration gate', (
+  testWidgets('download policy hides the download tab when disabled', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -263,15 +263,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.download_outlined));
-    await tester.pumpAndSettle();
 
-    expect(find.text('Downloads are disabled'), findsOneWidget);
-    expect(find.text('Re-check configuration'), findsOneWidget);
-    expect(
-      find.textContaining('/tmp/archoera/compliance.json'),
-      findsOneWidget,
-    );
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.text('Download'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

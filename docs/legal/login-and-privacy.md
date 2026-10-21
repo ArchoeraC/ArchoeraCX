@@ -164,7 +164,7 @@ Dawn Launcher 隐私政策 <https://dawn.gg/privacy>。
 
 - `compliance.json` 中要求 `developerMode=true`、`acceptRisk=true`、
   `downloadLevel="L2"`、`acknowledgement="ENABLE-DOWNLOADS 1"`；
-- 下载页显示配置文件路径和缺失字段；
+- 默认隐藏下载入口；直接访问 `/download` 可查看配置路径和缺失字段；配置完成后重启应用显示下载页；
 - C# 在资源/版本/加载器下载方法入口统一检查，未解锁返回
   `DOWNLOAD_DISABLED`；Flutter/C++ 不使用地区探测；
 - 登录、实例管理、本地启动和本地 Mod 管理不受影响。

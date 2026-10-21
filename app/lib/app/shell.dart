@@ -10,6 +10,7 @@ import '../l10n/l10n_labels.dart';
 import '../models/account.dart';
 import '../models/game_instance.dart';
 import '../stores/accounts.dart';
+import '../services/core/build_policy.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
@@ -107,13 +108,14 @@ class _AppShellState extends ConsumerState<AppShell> {
         icon: Icons.grid_view_outlined,
         selectedIcon: Icons.grid_view_rounded,
       ),
-      AppDestination(
-        path: '/download',
-        branchIndex: 2,
-        label: l10n.navDownload,
-        icon: Icons.download_outlined,
-        selectedIcon: Icons.download_rounded,
-      ),
+      if (ref.watch(downloadEnabledProvider))
+        AppDestination(
+          path: '/download',
+          branchIndex: 2,
+          label: l10n.navDownload,
+          icon: Icons.download_outlined,
+          selectedIcon: Icons.download_rounded,
+        ),
       AppDestination(
         path: '/accounts',
         branchIndex: 3,
