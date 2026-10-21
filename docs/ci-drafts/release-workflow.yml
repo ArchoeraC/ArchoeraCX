@@ -1,3 +1,7 @@
+# DRAFT ONLY — not active until the maintainer explicitly enables GitHub Actions.
+# Keep this file outside .github/workflows so a push to the new repository does
+# not start a release build or publish anything.
+
 name: GitHub dev release
 
 on:
