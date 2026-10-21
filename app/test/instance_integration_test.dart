@@ -23,7 +23,9 @@ void main() {
   test(
     'instance create/list/delete crosses C++ and C# and writes instance.json',
     () async {
-      final directory = await Directory.systemTemp.createTemp('archoera-instance-');
+      final directory = await Directory.systemTemp.createTemp(
+        'archoera-instance-',
+      );
       addTearDown(() => directory.delete(recursive: true));
       final client = CoreClient.openDefault();
       addTearDown(client.close);
@@ -43,6 +45,12 @@ void main() {
 
       final listed = await client.listInstances();
       expect(listed.any((instance) => instance.id == created.id), isTrue);
+
+      final offline = await client.prepareLaunch(created.id);
+      expect(offline.ready, isTrue);
+      final online = await client.prepareLaunch(created.id, mode: 'online');
+      expect(online.ready, isFalse);
+      expect(online.reason, isNotNull);
 
       expect(await client.deleteInstance(created.id), isTrue);
       final remaining = await client.listInstances();

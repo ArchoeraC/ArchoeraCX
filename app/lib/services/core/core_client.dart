@@ -12,6 +12,7 @@ import 'core_event.dart';
 import 'event_pump.dart';
 import 'installed_mod.dart';
 import 'java_scan.dart';
+import 'launch_preparation.dart';
 import 'launch_result.dart';
 import 'loader_versions.dart';
 import 'loader_plan.dart';
@@ -419,9 +420,44 @@ final class CoreClient {
     return _decodeRawEnvelope(jsonText, fallbackMethod: methodName);
   }
 
+  /// Ask the native module whether a launch can start in [mode].
+  ///
+  /// Online launch is a reserved contract: it currently returns
+  /// `ready:false` with `ONLINE_LAUNCH_NOT_READY` until entitlement,
+  /// certificates and online launch wiring are completed.
+  Future<LaunchPreparation> prepareLaunch(
+    String instanceId, {
+    String mode = 'offline',
+    bool requirePremium = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'launch.prepare';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'instanceId': instanceId,
+        'mode': mode,
+        'requirePremium': requirePremium,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final preparation = LaunchPreparation.tryParse(data);
+    if (preparation == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an invalid preparation.',
+      );
+    }
+    return preparation;
+  }
+
   /// Start a basic offline launch through the C# module.
   Future<LaunchResult> launchInstance(
     String instanceId, {
+    String mode = 'offline',
     bool requirePremium = false,
     void Function(int done, int total)? onProgress,
   }) async {
@@ -430,6 +466,7 @@ final class CoreClient {
       methodName,
       paramsJson: jsonEncode(<String, Object?>{
         'instanceId': instanceId,
+        'mode': mode,
         'requirePremium': requirePremium,
       }),
       onProgress: onProgress,

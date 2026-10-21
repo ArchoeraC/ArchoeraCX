@@ -242,3 +242,4 @@ logs/account.log              脱敏诊断日志
 - 真实登录受 Minecraft Services 审核阻塞。
 - OS 凭据库尚未接入。
 - 启动游戏尚未消费 Minecraft token/certificates。
+- `launch.prepare`/`launch.start` 已预留 `mode=online`，当前返回 `ONLINE_LAUNCH_NOT_READY`，不会把在线账户降级成离线启动。

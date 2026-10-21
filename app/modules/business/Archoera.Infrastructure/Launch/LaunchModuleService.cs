@@ -21,7 +21,7 @@ namespace Archoera.Infrastructure.Launch;
 /// <summary>Basic offline launch through the C# business module.</summary>
 public sealed class LaunchModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods = ["launch.start"];
+    private static readonly string[] SupportedMethods = ["launch.start", "launch.prepare"];
 
     private readonly IInstanceRepository _instances;
     private readonly JsonAppSettingsStore _settings;
@@ -40,11 +40,74 @@ public sealed class LaunchModuleService : IModuleMethodHandler
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
 
+    private async Task<byte[]> PrepareAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        var instanceId = ReadRequired(paramsJson, "instanceId");
+        var mode = ReadOptional(paramsJson, "mode") ?? "offline";
+        if (mode is not ("offline" or "online"))
+        {
+            return ModuleJson.Error("E_INVALID", "mode must be 'offline' or 'online'");
+        }
+
+        var instance = (await _instances.ListAsync(cancellationToken).ConfigureAwait(false))
+            .FirstOrDefault(item => string.Equals(item.Id, instanceId, StringComparison.Ordinal))
+            ?? throw new LaunchException("INSTANCE_NOT_FOUND", $"instance not found: {instanceId}");
+        var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false);
+        var requirePremium = ReadBool(paramsJson, "requirePremium");
+        var premium = requirePremium
+            ? (await _accounts.ListAsync(cancellationToken).ConfigureAwait(false)).Any(
+                item => item.Kind == AccountKind.Microsoft &&
+                        !string.IsNullOrWhiteSpace(item.Uuid))
+            : true;
+
+        var ready = string.Equals(mode, "offline", StringComparison.Ordinal) && premium;
+        string? reason = premium ? null : "PREMIUM_ACCOUNT_REQUIRED";
+        if (!ready && reason is null)
+        {
+            if (account is null)
+            {
+                reason = "ACCOUNT_REQUIRED";
+            }
+            else if (account.Kind != AccountKind.Microsoft ||
+                     string.IsNullOrWhiteSpace(account.Uuid))
+            {
+                reason = "MICROSOFT_ACCOUNT_REQUIRED";
+            }
+            else
+            {
+                // Online launch requires an approved Minecraft client ID,
+                // entitlement verification and certificate wiring. Keep the
+                // request contract stable while those pieces are completed.
+                reason = "ONLINE_LAUNCH_NOT_READY";
+            }
+        }
+
+        return ModuleJson.Envelope(writer =>
+        {
+            writer.WriteString("instanceId", instance.Id);
+            writer.WriteString("mode", mode);
+            writer.WriteBoolean("ready", ready);
+            writer.WriteString("reason", reason);
+            writer.WriteBoolean("requiresEntitlement", !ready);
+            writer.WriteBoolean("requiresCertificates", !ready);
+            writer.WriteString(
+                "accountKind",
+                account?.Kind.ToString().ToLowerInvariant());
+        });
+    }
+
     public async Task<byte[]> HandleAsync(
         string method,
         string? paramsJson,
         CancellationToken cancellationToken)
     {
+        if (string.Equals(method, "launch.prepare", StringComparison.Ordinal))
+        {
+            return await PrepareAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        }
+
         if (!string.Equals(method, "launch.start", StringComparison.Ordinal))
         {
             return ModuleJson.Error("E_UNSUPPORTED", $"unsupported launch method '{method}'");
@@ -53,6 +116,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         try
         {
             var instanceId = ReadRequired(paramsJson, "instanceId");
+            var mode = ReadOptional(paramsJson, "mode") ?? "offline";
+            if (!string.Equals(mode, "offline", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new LaunchException(
+                    "ONLINE_LAUNCH_NOT_READY",
+                    "online launch is reserved but not enabled in this build");
+            }
+
             if (ReadBool(paramsJson, "requirePremium"))
             {
                 var accounts = await _accounts
@@ -358,6 +429,17 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         {
             return false;
         }
+    }
+
+    private static string? ReadOptional(string? json, string name)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.TryGetProperty(name, out var element) &&
+               element.ValueKind == JsonValueKind.String &&
+               !string.IsNullOrWhiteSpace(element.GetString())
+            ? element.GetString()
+            : null;
     }
 
     private static string ReadRequired(string? json, string name)
