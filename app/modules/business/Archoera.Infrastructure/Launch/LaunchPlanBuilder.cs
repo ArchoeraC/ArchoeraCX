@@ -7,6 +7,7 @@ using Archoera.Domain.Accounts;
 using Archoera.Domain.Instances;
 using Archoera.Domain.Java;
 using Archoera.Domain.Mojang;
+using Archoera.Domain.Settings;
 using Archoera.Infrastructure.Launch;
 
 namespace Archoera.Infrastructure.Launch;
@@ -18,6 +19,7 @@ internal static class LaunchPlanBuilder
         MojangVersion version,
         AccountRecord account,
         JavaRuntimeInfo java,
+        AppSettings settings,
         LaunchPaths paths)
     {
         if (string.IsNullOrWhiteSpace(version.MainClass))
@@ -64,13 +66,20 @@ internal static class LaunchPlanBuilder
 
         var jvm = new List<string>
         {
-            "-Xms512M",
-            "-Xmx2048M",
+            $"-Xms{settings.MemoryMinMb}M",
+            $"-Xmx{settings.MemoryMaxMb}M",
             "-Dfile.encoding=UTF-8",
             "-Dminecraft.launcher.brand=ArchoeraCX",
             "-Dminecraft.launcher.version=0.1.0",
             "-Djava.library.path=" + paths.NativesRoot,
         };
+        if (!string.IsNullOrWhiteSpace(settings.JvmArgs))
+        {
+            jvm.AddRange(settings.JvmArgs.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
         if (version.Arguments is { Jvm.Count: > 0 })
         {
             foreach (var argument in version.Arguments.Jvm)

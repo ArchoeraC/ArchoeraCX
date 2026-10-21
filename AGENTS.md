@@ -105,7 +105,8 @@ flutter build linux --release
 - ✅ Noto Sans SC Medium 打包为默认 UI 字体
 - ✅ Java 扫描按 `java.home` 归并 symlink/JRE 别名，扩展用户目录，UI 显示前 5 + 查看全部
 - ✅ `version.list` / `loader.check` / `loader.plan` / `loader.commit`；下载页版本列表、Forge/NeoForge 本地 installer 下载/版本写入、quick/full 依赖检查
-- ✅ `settings.get/set` 持久化 `javaPath` / `javaAuto`；设置页支持自动选择/手动选择 Java；`launch.start` 支持基础离线账户启动（自动选择匹配游戏版本的 Java，持久化日志）
+- ✅ `settings.get/set` 持久化 `javaPath` / `javaAuto` / `memoryMinMb` / `memoryMaxMb` / `jvmArgs`；设置页支持自动/手动 Java、内存与 JVM 参数；`launch.start` 支持基础离线账户启动（自动选择匹配游戏版本的 Java，持久化日志）
+- ✅ Modrinth 模组安装支持递归安装 required 依赖（深度 8、环检测），optional/incompatible 只报告不自动安装
 - ⚠️ Forge/NeoForge processors 仍需要 JVM；当前安装步骤不调用 Java，只完成下载/版本写入并提示；Fabric/Quilt 无 Java 安装待接
 - ⬜ 真实 Entra client_id + Minecraft Services client_id 审核；构建期注入 `-p:MicrosoftClientId`，调试期用 `ARCHOERACX_MICROSOFT_CLIENT_ID`
 - ⬜ 凭据库迁移：当前 refresh token 在 `accounts.credentials.json`（0600），后续接 Windows DPAPI/macOS Keychain/libsecret

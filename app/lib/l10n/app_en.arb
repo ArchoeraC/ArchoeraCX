@@ -154,6 +154,7 @@
   "commonCancel": "Cancel",
   "commonCreate": "Create",
   "commonDelete": "Delete",
+  "commonSave": "Save",
   "downloadTitle": "Download",
   "downloadSubtitle": "Versions, loaders, mods, packs, resource packs, and shaders.",
   "sourceLabel": "Source",
@@ -242,6 +243,27 @@
   "settingsJavaAutoValue": "Automatic (per game version)",
   "settingsJavaUseAuto": "Use automatic selection",
   "settingsJavaSelected": "Java selection saved.",
+  "settingsMemory": "Memory",
+  "settingsMemoryValue": "{min} – {max} MB",
+  "settingsJvmArgs": "JVM arguments",
+  "settingsJvmArgsValue": "Default",
+  "settingsRuntimeTitle": "Java and memory",
+  "settingsRuntimeHint": "Memory is applied to the next launch.",
+  "settingsMemoryMin": "Minimum memory (MB)",
+  "settingsMemoryMax": "Maximum memory (MB)",
+  "settingsJvmArgsHint": "Optional, space-separated",
+  "settingsRuntimeSaved": "Runtime settings saved.",
+  "settingsMemoryInvalid": "Memory must be 128–65536 MB and min ≤ max.",
+  "@settingsMemoryValue": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "settingsNetwork": "Network",
   "settingsCompliance": "Compliance",
   "settingsAbout": "About",

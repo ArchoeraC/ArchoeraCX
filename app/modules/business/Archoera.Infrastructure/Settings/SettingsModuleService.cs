@@ -65,6 +65,10 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         string? javaPath = null;
         var javaPathPresent = false;
         bool? javaAuto = null;
+        int? memoryMin = null;
+        int? memoryMax = null;
+        string? jvmArgs = null;
+        var jvmArgsPresent = false;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -112,6 +116,32 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                     ? autoElement.GetBoolean()
                     : throw new ArgumentException("javaAuto must be a boolean");
             }
+
+            if (root.TryGetProperty("memoryMinMb", out var minElement))
+            {
+                memoryMin = minElement.ValueKind == JsonValueKind.Number &&
+                            minElement.TryGetInt32(out var min)
+                    ? min
+                    : throw new ArgumentException("memoryMinMb must be an integer");
+            }
+
+            if (root.TryGetProperty("memoryMaxMb", out var maxElement))
+            {
+                memoryMax = maxElement.ValueKind == JsonValueKind.Number &&
+                            maxElement.TryGetInt32(out var max)
+                    ? max
+                    : throw new ArgumentException("memoryMaxMb must be an integer");
+            }
+
+            if (root.TryGetProperty("jvmArgs", out var jvmElement))
+            {
+                jvmArgsPresent = true;
+                jvmArgs = jvmElement.ValueKind == JsonValueKind.Null
+                    ? null
+                    : jvmElement.ValueKind == JsonValueKind.String
+                        ? jvmElement.GetString()
+                        : throw new ArgumentException("jvmArgs must be a string or null");
+            }
         }
         catch (JsonException exception)
         {
@@ -152,10 +182,34 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             };
         }
 
+        if (memoryMin is not null || memoryMax is not null)
+        {
+            var minimum = memoryMin ?? current.MemoryMinMb;
+            var maximum = memoryMax ?? current.MemoryMaxMb;
+            if (minimum is < 128 or > 65536 || maximum is < 128 or > 65536 ||
+                minimum > maximum)
+            {
+                return Error("E_INVALID", "memory range must be within 128–65536 MB and min <= max");
+            }
+
+            current = current with { MemoryMinMb = minimum, MemoryMaxMb = maximum };
+        }
+
+        if (jvmArgsPresent)
+        {
+            current = current with
+            {
+                JvmArgs = string.IsNullOrWhiteSpace(jvmArgs) ? null : jvmArgs,
+            };
+        }
+
         if (instancesRoots is not { Count: > 0 } &&
             string.IsNullOrWhiteSpace(legacyRoot) &&
             !javaPathPresent &&
-            javaAuto is null)
+            javaAuto is null &&
+            memoryMin is null &&
+            memoryMax is null &&
+            !jvmArgsPresent)
         {
             return Error("E_INVALID", "settings.set requires at least one field");
         }
@@ -195,6 +249,16 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 writer.WriteString("javaPath", settings.JavaPath);
             }
             writer.WriteBoolean("javaAuto", settings.JavaAuto);
+            writer.WriteNumber("memoryMinMb", settings.MemoryMinMb);
+            writer.WriteNumber("memoryMaxMb", settings.MemoryMaxMb);
+            if (string.IsNullOrWhiteSpace(settings.JvmArgs))
+            {
+                writer.WriteNull("jvmArgs");
+            }
+            else
+            {
+                writer.WriteString("jvmArgs", settings.JvmArgs);
+            }
             writer.WriteString("dataRoot", settings.DataRoot);
             writer.WriteString("settingsPath", settings.SettingsPath);
             writer.WriteEndObject();

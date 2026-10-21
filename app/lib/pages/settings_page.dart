@@ -173,7 +173,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+          _SettingsCard(
+            children: [
+              _SettingRow(
+                icon: Icons.memory_rounded,
+                title: l10n.settingsMemory,
+                value: l10n.settingsMemoryValue(
+                  settings?.memoryMinMb ?? 512,
+                  settings?.memoryMaxMb ?? 2048,
+                ),
+                onTap: () => _editRuntimeOptions(context, l10n, settings),
+              ),
+              _SettingRow(
+                icon: Icons.terminal_rounded,
+                title: l10n.settingsJvmArgs,
+                value: (settings?.jvmArgs?.trim().isNotEmpty ?? false)
+                    ? settings!.jvmArgs!
+                    : l10n.settingsJvmArgsValue,
+                onTap: () => _editRuntimeOptions(context, l10n, settings),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
           JavaStatusCard(
+            autoScan: true,
             selectedPath: settings?.javaPath,
             onSelect: (runtime) => _selectJava(context, l10n, runtime),
           ),
@@ -239,6 +262,94 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ],
       ),
     };
+  }
+
+  Future<void> _editRuntimeOptions(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppSettings? settings,
+  ) async {
+    final min = TextEditingController(text: '${settings?.memoryMinMb ?? 512}');
+    final max = TextEditingController(text: '${settings?.memoryMaxMb ?? 2048}');
+    final args = TextEditingController(text: settings?.jvmArgs ?? '');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.settingsRuntimeTitle),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.settingsRuntimeHint,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: context.tokens.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: min,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l10n.settingsMemoryMin),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: max,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l10n.settingsMemoryMax),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: args,
+                decoration: InputDecoration(
+                  labelText: l10n.settingsJvmArgs,
+                  hintText: l10n.settingsJvmArgsHint,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.commonSave),
+          ),
+        ],
+      ),
+    );
+    final minValue = int.tryParse(min.text.trim());
+    final maxValue = int.tryParse(max.text.trim());
+    final jvmArgsText = args.text.trim();
+    min.dispose();
+    max.dispose();
+    args.dispose();
+    if (saved != true || !context.mounted) return;
+    if (minValue == null ||
+        maxValue == null ||
+        minValue < 128 ||
+        maxValue > 65536 ||
+        minValue > maxValue) {
+      _notify(context, l10n.settingsMemoryInvalid);
+      return;
+    }
+
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(
+            memoryMinMb: minValue,
+            memoryMaxMb: maxValue,
+            jvmArgs: jvmArgsText,
+          );
+      if (context.mounted) _notify(context, l10n.settingsRuntimeSaved);
+    } catch (error) {
+      if (context.mounted) _notify(context, error.toString());
+    }
   }
 
   Future<void> _setJavaAuto(
@@ -647,6 +758,7 @@ class _SettingRow extends StatelessWidget {
     this.value,
     this.trailing,
     this.color,
+    this.onTap,
   });
 
   final IconData icon;
@@ -655,6 +767,7 @@ class _SettingRow extends StatelessWidget {
   final String? value;
   final Widget? trailing;
   final Color? color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -662,6 +775,7 @@ class _SettingRow extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      onTap: onTap,
       leading: Icon(icon, size: 20, color: color ?? tokens.textSecondary),
       title: Text(title, style: Theme.of(context).textTheme.bodyMedium),
       subtitle: subtitle == null

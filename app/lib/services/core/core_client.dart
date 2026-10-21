@@ -647,6 +647,7 @@ final class CoreClient {
     String? versionId,
     String? loader,
     String? shaderLoader,
+    bool includeDependencies = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'resource.plan';
@@ -661,6 +662,7 @@ final class CoreClient {
         'versionId': ?versionId,
         'loader': ?loader,
         'shaderLoader': ?shaderLoader,
+        'includeDependencies': includeDependencies,
       }),
       onProgress: onProgress,
     );
@@ -732,6 +734,26 @@ final class CoreClient {
       paramsJson: jsonEncode(<String, Object?>{
         'javaPath': javaPath,
         'javaAuto': ?javaAuto,
+      }),
+      onProgress: onProgress,
+    );
+    return _parseSettings(jsonText, methodName);
+  }
+
+  /// Persist memory and JVM options.
+  Future<AppSettings> setRuntimeOptions({
+    int? memoryMinMb,
+    int? memoryMaxMb,
+    String? jvmArgs,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'settings.set';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'memoryMinMb': ?memoryMinMb,
+        'memoryMaxMb': ?memoryMaxMb,
+        'jvmArgs': ?jvmArgs,
       }),
       onProgress: onProgress,
     );
