@@ -213,6 +213,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            WorkingDirectory = Path.GetDirectoryName(_downloaderPath) ?? AppContext.BaseDirectory,
         };
         startInfo.ArgumentList.Add(planPath);
 
@@ -594,15 +595,40 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         var names = OperatingSystem.IsWindows()
             ? new[] { "archoera-dl.exe", "archoera-dl" }
             : new[] { "archoera-dl" };
-        var bases = new[]
+        var bases = new List<string>
         {
             AppContext.BaseDirectory,
+            Path.Combine(AppContext.BaseDirectory, "lib"),
             Path.Combine(AppContext.BaseDirectory, ".."),
-            Environment.CurrentDirectory,
-            Path.Combine(Environment.CurrentDirectory, "build", "native"),
-            Path.Combine(Environment.CurrentDirectory, "app", "modules", "downloader", "target", "release"),
-            Path.Combine(Environment.CurrentDirectory, "modules", "downloader", "target", "release"),
+            Path.Combine(AppContext.BaseDirectory, "..", "lib"),
         };
+
+        var processDirectory = Environment.ProcessPath is { } processPath
+            ? Path.GetDirectoryName(processPath)
+            : null;
+        if (!string.IsNullOrWhiteSpace(processDirectory))
+        {
+            bases.Add(processDirectory);
+            bases.Add(Path.Combine(processDirectory, "lib"));
+        }
+
+        // Development fallbacks, but never fail if the process CWD is invalid.
+        string? cwd = null;
+        try
+        {
+            cwd = Environment.CurrentDirectory;
+        }
+        catch
+        {
+            // Deleted/replaced working directory; packaged paths above still work.
+        }
+
+        if (!string.IsNullOrWhiteSpace(cwd))
+        {
+            bases.Add(Path.Combine(cwd, "build", "native"));
+            bases.Add(Path.Combine(cwd, "app", "modules", "downloader", "target", "release"));
+            bases.Add(Path.Combine(cwd, "modules", "downloader", "target", "release"));
+        }
 
         foreach (var baseDirectory in bases)
         {

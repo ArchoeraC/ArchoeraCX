@@ -29,7 +29,18 @@ String defaultDataRoot() {
     }
   }
 
-  return '${Directory.current.path}/.local/archoera-cx';
+  try {
+    final cwd = Directory.current.path;
+    if (cwd.isNotEmpty) return '$cwd/.local/archoera-cx';
+  } catch (_) {
+    // The process may have been started from a deleted working directory.
+  }
+
+  final temp =
+      Platform.environment['TMPDIR'] ??
+      Platform.environment['TEMP'] ??
+      Platform.environment['TMP'];
+  return '${temp == null || temp.isEmpty ? '/tmp' : temp}/archoera-cx';
 }
 
 String fallbackInstancesRoot() => '${defaultDataRoot()}/instances';

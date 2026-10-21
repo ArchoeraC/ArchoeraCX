@@ -251,8 +251,9 @@ final class CoreClient {
     String? lastLoadError;
 
     for (final candidate in _defaultLibraryCandidates()) {
-      final file = File(candidate);
-      final absolutePath = file.absolute.path;
+      final absolutePath = _tryAbsolutePath(candidate);
+      if (absolutePath == null) continue;
+      final file = File(absolutePath);
       searchedPaths.add(absolutePath);
 
       if (!file.existsSync()) continue;
@@ -1500,44 +1501,71 @@ final class CoreClient {
 
     final name = _libraryFileName();
     final separator = Platform.pathSeparator;
-    final cwd = Directory.current.path;
     final executableDir = File(Platform.resolvedExecutable).parent.path;
 
+    // Packaged app first: this must work even when the process CWD was
+    // deleted or the app was launched from a desktop shortcut.
     candidates.addAll(<String>[
-      // Launched from the Flutter app directory.
-      '$cwd${separator}build${separator}native$separator$name',
-      // Launched from the repository root.
-      '$cwd${separator}app${separator}build${separator}native$separator$name',
-      '$cwd$separator..${separator}app${separator}build$separator'
-          'native$separator$name',
-      // Next to the packaged executable (Windows/Linux bundles).
       '$executableDir$separator$name',
       '$executableDir${separator}lib$separator$name',
-      // Packaged release bundles.
-      '$cwd${separator}build${separator}linux${separator}x64$separator'
-          'release${separator}bundle${separator}lib$separator$name',
-      '$cwd${separator}app${separator}build${separator}linux'
-          '${separator}x64${separator}release${separator}bundle'
-          '${separator}lib$separator$name',
+      '$executableDir$separator..${separator}lib$separator$name',
     ]);
 
-    if (Platform.isWindows) {
+    if (Platform.isMacOS) {
       candidates.add(
-        '$cwd${separator}build${separator}windows${separator}x64'
-        '${separator}runner${separator}Release$separator$name',
-      );
-    } else if (Platform.isMacOS) {
-      candidates.add(
-        '$executableDir$separator..$separator'
-        'Frameworks$separator$name',
-      );
-      candidates.add(
-        '$cwd${separator}build${separator}macos${separator}Build'
-        '${separator}Products${separator}Release$separator$name',
+        '$executableDir$separator..${separator}Frameworks$separator$name',
       );
     }
 
+    // Development layouts. CWD may be unavailable when the bundle directory
+    // was replaced while the process was running; never let that abort the
+    // entire lookup with PathNotFoundException.
+    final cwd = _safeCurrentDirectory();
+    if (cwd != null) {
+      candidates.addAll(<String>[
+        '$cwd${separator}build${separator}native$separator$name',
+        '$cwd${separator}app${separator}build${separator}native$separator$name',
+        '$cwd$separator..${separator}app${separator}build$separator'
+            'native$separator$name',
+        '$cwd${separator}build${separator}linux${separator}x64$separator'
+            'release${separator}bundle${separator}lib$separator$name',
+        '$cwd${separator}app${separator}build${separator}linux'
+            '${separator}x64${separator}release${separator}bundle'
+            '${separator}lib$separator$name',
+      ]);
+
+      if (Platform.isWindows) {
+        candidates.add(
+          '$cwd${separator}build${separator}windows${separator}x64'
+          '${separator}runner${separator}Release$separator$name',
+        );
+      } else if (Platform.isMacOS) {
+        candidates.add(
+          '$cwd${separator}build${separator}macos${separator}Build'
+          '${separator}Products${separator}Release$separator$name',
+        );
+      }
+    }
+
     return candidates;
+  }
+
+  static String? _safeCurrentDirectory() {
+    try {
+      final value = Directory.current.path;
+      return value.isEmpty ? null : value;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _tryAbsolutePath(String candidate) {
+    try {
+      final file = File(candidate);
+      return file.isAbsolute ? file.path : file.absolute.path;
+    } catch (_) {
+      return null;
+    }
   }
 
   static String _libraryFileName() {
