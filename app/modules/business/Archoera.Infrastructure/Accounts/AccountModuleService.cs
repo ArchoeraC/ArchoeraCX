@@ -40,6 +40,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
     private readonly IAccountRepository _accounts;
     private readonly IAccountCredentialStore _credentials;
     private readonly MicrosoftAuthClient _auth;
+    private readonly MicrosoftAccountGate _premiumGate;
     private readonly string? _diagnosticsPath;
     private readonly object _logGate = new();
     private readonly object _flowGate = new();
@@ -61,6 +62,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
         _accounts = accounts;
         _credentials = credentials;
         _auth = auth ?? new MicrosoftAuthClient(Http, new MicrosoftAuthOptions());
+        _premiumGate = new MicrosoftAccountGate(_accounts, _credentials, _auth);
 
         var diagnosticRoot = dataRoot;
         if (diagnosticRoot is null && accounts is JsonAccountStore jsonStore)
@@ -486,10 +488,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         if (!required) return;
-        var accounts = await _accounts.ListAsync(cancellationToken).ConfigureAwait(false);
-        if (accounts.Any(account =>
-                account.Kind == AccountKind.Microsoft &&
-                !string.IsNullOrWhiteSpace(account.Uuid)))
+        if (await _premiumGate.HasValidAccountAsync(cancellationToken).ConfigureAwait(false))
         {
             return;
         }

@@ -247,6 +247,27 @@ public sealed class AccountAuthTests
                 DateTimeOffset.UtcNow,
                 DateTimeOffset.UtcNow));
 
+            // Metadata alone is not enough: there is no vault credential yet.
+            var stillBlocked = await service.HandleAsync(
+                "account.login.offline",
+                """{"name":"Steve","requirePremium":true}""",
+                CancellationToken.None);
+            using (var document = JsonDocument.Parse(stillBlocked))
+            {
+                Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+                Assert.Equal(
+                    "PREMIUM_ACCOUNT_REQUIRED",
+                    document.RootElement.GetProperty("error").GetProperty("code").GetString());
+            }
+
+            await store.SaveCredentialAsync(new AccountCredential(
+                "ms-premium",
+                "ms-refresh",
+                "mc-access",
+                DateTimeOffset.UtcNow.AddHours(1),
+                null,
+                DateTimeOffset.UtcNow));
+
             var allowed = await service.HandleAsync(
                 "account.login.offline",
                 """{"name":"Steve","requirePremium":true}""",
