@@ -477,5 +477,7 @@
   "accountMicrosoftOnlyHint": "该地区仅允许微软验证账户，离线账户和第三方账户已禁用。",
   "accountsSubtitleMicrosoftOnly": "该地区仅支持微软验证账户。",
   "accountNoAccountsMicrosoftOnly": "添加微软账户后即可开始使用。",
-  "launchOnlineNotReady": "当前版本尚未启用在线启动。"
+  "launchOnlineNotReady": "当前版本尚未启用在线启动。",
+  "developmentBuildBadge": "开发版",
+  "developmentBuildWarning": "开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。"
 }

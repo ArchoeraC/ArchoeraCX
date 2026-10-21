@@ -24,6 +24,7 @@ void main() {
 
     expect(find.byType(AppShell), findsOneWidget);
     expect(find.textContaining('ArchoeraCX'), findsWidgets);
+    expect(find.textContaining('Development build'), findsOneWidget);
     expect(find.text('Quick launch'), findsOneWidget);
     expect(find.text('Instances'), findsWidgets);
     expect(find.text('Download'), findsWidgets);

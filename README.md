@@ -2,7 +2,10 @@
 
 跨平台 Minecraft: Java Edition 启动器。Flutter 负责 UI，C++ 做唯一枢纽，C# 负责业务/API/SQLite，Rust 负责下载执行。
 
-> 当前处于 **Phase 1（可运行垂直切片）**：能扫描 Java、管理实例、搜索/下载 Modrinth 资源、校验/修复 Forge/NeoForge 生成物，并完成 Microsoft Device Code 登录链。正式安装原版、真实启动游戏、OS 凭据库和 CurseForge 尚未完成。
+> **开发版 / Development build**  
+> 本项目目前仅通过 GitHub 发布开发版。功能不完整，可能损坏实例或配置数据；**请勿用于正式环境或重要实例**。不提供稳定性、兼容性或数据安全保证。
+
+> 当前为 GitHub-only alpha：已完成实例管理、原版文件安装、离线启动、Modrinth 搜索/下载与加载器安装；在线启动/Entitlement 校验、整合包、Fabric/Quilt 无 Java 安装和 CurseForge 尚未完成。
 
 ## 当前能力
 
@@ -17,7 +20,7 @@
 - Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（HTTP、hash、原子落盘、取消）
 - Linux release bundle 自带 `libarchoera_core.so`、`archoera_cs.so` 和 `archoera-dl`
 
-当前基线：273 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+当前基线：277 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
 
 ## 架构
 
