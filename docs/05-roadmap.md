@@ -12,8 +12,8 @@
 | P0 | 完成 | 选型、许可证、架构、构建骨架 |
 | P1 | 部分完成 | C++ 核心、模块/方法注册表、事件泵、C# AOT、Java 扫描、Forge/NeoForge 生成物、Rust 计划执行器 |
 | P2 | 部分完成 | Flutter AppShell、实例/设置/下载页、CoreClient |
-| P3 | 部分完成 | Microsoft Device Code、XBL/XSTS/Minecraft、离线账户；待 Minecraft client_id 审核与 OS 凭据库 |
-| P4 | 部分完成 | Forge/NeoForge 计划与生成物校验/修复；尚未接安装 UI |
+| P3 | 部分完成 | Microsoft Device Code、XBL/XSTS/Minecraft、离线账户；凭据保险库已接入（crypto/file），待 Minecraft client_id 审核 |
+| P4 | 部分完成 | Forge/NeoForge 计划、生成物校验/修复、实例内安装 UI |
 | P5 | 部分完成 | 实例 SQLite、Modrinth；CurseForge/整合包未完成 |
 | P6 | 进行中 | 设计令牌、主题、i18n、账户/实例 UI |
 | P7 | 未开始 | 更新器、签名、安装包、正式发布 |
@@ -126,7 +126,7 @@
 
 - Microsoft OAuth 2.0 device code flow（自有 Entra 应用）
 - Xbox Live → XSTS → Minecraft Services → profile
-- refresh token 持久化（DPAPI / Keychain / libsecret）
+- refresh token 持久化（凭据保险库：OS 安全存储 crypto / file 降级）
 - 离线账户（明确提示仅离线/局域网）
 - 第三方认证：`authlib-injector` 以独立 agent 调用
 - 多账户切换、token 失效自动刷新、登出清理

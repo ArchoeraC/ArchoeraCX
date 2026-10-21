@@ -40,6 +40,7 @@ cd app
 ./tool/build-core.sh
 ./tool/build-cs.sh
 ./tool/build-dl.sh
+./tool/build-vault.sh
 ./build/native/abi_smoke
 ./build/native/async_smoke
 ./build/native/module_smoke
@@ -111,6 +112,6 @@ flutter build linux --release
 - ✅ Forge/NeoForge 安装前通过 `java.select` 选择 Java，下载后调用 `loader.repair` 执行 processors；仍需 JVM（自动选择或手动指定）
 - ⚠️ Fabric/Quilt 无 Java 安装待接
 - ⬜ 真实 Entra client_id + Minecraft Services client_id 审核；构建期注入 `-p:MicrosoftClientId`，调试期用 `ARCHOERACX_MICROSOFT_CLIENT_ID`
-- ⬜ 凭据库迁移：当前 refresh token 在 `accounts.credentials.json`（0600），后续接 Windows DPAPI/macOS Keychain/libsecret
+- ✅ 凭据保险库：`core/vault-rs`（ArchoeraMusic 同系列 AGPL 实现）已接入 C# `VaultCredentialStore`；仅暴露 crypto/file 免密模式，旧 `accounts.credentials.json` 首次使用时迁移并删除
 - ⬜ CurseForge provider（鉴权后置）
 - ⬜ 正式 C++ DownloadManager / 安装原版；`launch.start` 目前只支持离线账户，进程状态/停止/日志流待接

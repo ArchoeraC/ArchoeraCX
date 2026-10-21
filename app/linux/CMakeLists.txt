@@ -136,6 +136,10 @@ install(CODE "
     file(INSTALL DESTINATION \"${INSTALL_BUNDLE_LIB_DIR}\" TYPE PROGRAM
       FILES \"${ARCHOERACX_NATIVE_DIR}/archoera-dl\")
   endif()
+  if(EXISTS \"${ARCHOERACX_NATIVE_DIR}/archoera-vault\")
+    file(INSTALL DESTINATION \"${INSTALL_BUNDLE_LIB_DIR}\" TYPE PROGRAM
+      FILES \"${ARCHOERACX_NATIVE_DIR}/archoera-vault\")
+  endif()
 " COMPONENT Runtime)
 
 # Fully re-copy the assets directory on each build to avoid having stale files

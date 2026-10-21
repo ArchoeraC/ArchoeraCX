@@ -17,6 +17,8 @@ app/coverage/
 
 # Rust
 app/modules/downloader/target/
+app/core/vault-rs/target/
+app/core/vault-rs/build/
 
 # Native / CMake
 build/

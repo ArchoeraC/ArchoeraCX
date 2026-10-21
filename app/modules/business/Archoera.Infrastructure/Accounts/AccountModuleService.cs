@@ -103,6 +103,11 @@ public sealed class AccountModuleService : IModuleMethodHandler
             Log(method, exception.Code, exception.Message);
             return ModuleJson.Error(exception.Code, exception.Message);
         }
+        catch (CredentialVaultException exception)
+        {
+            Log(method, "E_VAULT", exception.Message);
+            return ModuleJson.Error("E_VAULT", exception.Message);
+        }
         catch (ArgumentException exception)
         {
             Log(method, "E_INVALID", exception.Message);
@@ -351,8 +356,13 @@ public sealed class AccountModuleService : IModuleMethodHandler
     {
         var id = RequireString(paramsJson, "id");
         var removed = await _accounts.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        // Offline profiles have no vault entry; do not initialize the vault
+        // merely to delete an account that never stored credentials.
+        if (removed is { Kind: not AccountKind.Offline })
+        {
+            await _credentials.DeleteCredentialAsync(id, cancellationToken).ConfigureAwait(false);
+        }
         var deleted = await _accounts.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
-        await _credentials.DeleteCredentialAsync(id, cancellationToken).ConfigureAwait(false);
 
         // Removing the active account should leave a usable current account
         // when other accounts remain.
