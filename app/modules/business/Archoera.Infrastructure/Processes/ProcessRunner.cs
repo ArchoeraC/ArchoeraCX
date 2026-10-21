@@ -18,6 +18,7 @@ internal static class ProcessRunner
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            WorkingDirectory = SafeWorkingDirectory(),
         };
 
         foreach (var argument in arguments)
@@ -65,6 +66,18 @@ internal static class ProcessRunner
             // failures are all "not a usable Java runtime" for this scan.
             return null;
         }
+    }
+
+    private static string SafeWorkingDirectory()
+    {
+        var baseDirectory = AppContext.BaseDirectory;
+        if (!string.IsNullOrWhiteSpace(baseDirectory) && Directory.Exists(baseDirectory))
+        {
+            return baseDirectory;
+        }
+
+        var temp = Path.GetTempPath();
+        return Directory.Exists(temp) ? temp : string.Empty;
     }
 
     private static void TryKill(Process process)
