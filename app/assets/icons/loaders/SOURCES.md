@@ -7,11 +7,11 @@ ArchoeraCX assets and do not imply endorsement.
 |---|---|---|
 | `fabric.png` | [FabricMC/fabric-loader `fabric_x128.png`](https://github.com/FabricMC/fabric-loader/blob/master/src/main/resources/ui/icon/fabric_x128.png) | Apache-2.0 |
 | `quilt.png` | [QuiltMC/quilt-loader `quilt_x128.png`](https://github.com/QuiltMC/quilt-loader/blob/develop/src/main/resources/ui/icon/quilt_x128.png) | Apache-2.0 |
-| `forge.png` | [MinecraftForge/MinecraftForge `forge_anvil.png`](https://github.com/MinecraftForge/MinecraftForge/blob/1.20.x/fmlearlydisplay/src/main/resources/forge_anvil.png), first frame | LGPL-2.1 |
+| `forge.png` | [MinecraftForge/MinecraftForge `icon.ico`](https://github.com/MinecraftForge/MinecraftForge/blob/1.20.x/icon.ico) | LGPL-2.1 |
 | `neoforge.png` | [neoforged/NeoForge `installer_profile_icon.png`](https://github.com/neoforged/NeoForge/blob/26.3.x/docs/assets/installer_profile_icon.png) | LGPL-2.1 |
-| `vanilla` | Original ArchoeraCX vector drawn in `lib/widgets/common/loader_mark.dart` | Project license |
+| `vanilla.png` | [Wikimedia Commons: Grass block stylized](https://commons.wikimedia.org/wiki/File:Grass_block_stylized.svg) | Public domain (simple geometry; trademark notice applies) |
 
-The Forge icon is the official anvil/hammer frame, tinted at runtime to match
-the current theme. Fabric, Quilt and NeoForge keep their original colors.
+All loader icons keep their original source colors. The vanilla mark is an
+unofficial grass-block illustration and is not an official Minecraft asset.
 
 Full license texts are in `LICENSE-APACHE-2.0.txt` and `LICENSE-LGPL-2.1.txt`.
