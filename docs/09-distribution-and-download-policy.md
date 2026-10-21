@@ -220,6 +220,14 @@ flutter build linux --release
 
 GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对应的 AGPL 源码获取方式。
 
+### 2.7 发布渠道与构建期密钥
+
+- 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
+- Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
+- 未来的 CurseForge API key 采用同一策略：只在 CI 编译期注入，不能出现在源码、资源、日志或发布说明中。
+- Release 附件应包含源码 tag、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。
+- 不发布带有未审核 Microsoft client ID 的公共构建；若审核未完成，发布说明必须明确在线登录/在线启动的不可用状态。
+
 ## 3. 发行通道矩阵
 
 以下矩阵描述产品策略层级，不代表不同二进制；当前所有通道共用同一发行版，

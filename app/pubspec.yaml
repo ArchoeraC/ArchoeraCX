@@ -27,6 +27,7 @@ flutter:
   uses-material-design: true
   generate: true
   assets:
+    - assets/branding/archoera_icon_256.png
     - assets/skins/default-offline.png
     - assets/icons/loaders/vanilla.png
     - assets/icons/loaders/fabric.png

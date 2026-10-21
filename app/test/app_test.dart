@@ -180,14 +180,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    final images = tester.widgetList<RawImage>(find.byType(RawImage)).toList();
+    final images = tester
+        .widgetList<RawImage>(find.byType(RawImage))
+        .where((image) => image.fit == BoxFit.fitWidth)
+        .toList();
     expect(images, isNotEmpty);
     expect(
-      images.every(
-        (image) =>
-            image.fit == BoxFit.fitWidth &&
-            image.alignment == Alignment.topCenter,
-      ),
+      images.every((image) => image.alignment == Alignment.topCenter),
       isTrue,
     );
 

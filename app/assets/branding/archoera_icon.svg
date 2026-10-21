@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#08111F"/><stop offset="0.48" stop-color="#10253F"/><stop offset="1" stop-color="#0A1323"/></linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.36" r="0.58"><stop offset="0" stop-color="#6DF4EA" stop-opacity="0.24"/><stop offset="0.58" stop-color="#4D8BFF" stop-opacity="0.07"/><stop offset="1" stop-color="#4D8BFF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D4FFF9"/><stop offset="0.30" stop-color="#64E7E3"/><stop offset="0.70" stop-color="#4B93EC"/><stop offset="1" stop-color="#7047D6"/></linearGradient>
+    <linearGradient id="portal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0D3A4C"/><stop offset="0.52" stop-color="#0B1F36"/><stop offset="1" stop-color="#08111F"/></linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7AE" stop-opacity="0.95"/><stop offset="1" stop-color="#5CE4E1" stop-opacity="0.04"/></linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1C9"/><stop offset="0.5" stop-color="#F5BE67"/><stop offset="1" stop-color="#D77A25"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="145%" height="170%"><feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#000000" flood-opacity="0.55"/></filter>
+  </defs>
+  <rect x="24" y="24" width="976" height="976" rx="232" fill="url(#bg)"/>
+  <rect x="24" y="24" width="976" height="976" rx="232" fill="url(#halo)"/>
+  <path d="M188 112 H836 L912 188 V836 L836 912 H188 L112 836 V188 Z" fill="none" stroke="#7DEBE8" stroke-opacity="0.12" stroke-width="6"/>
+  <g filter="url(#shadow)">
+    <!-- angular gate, back plane -->
+    <path d="M272 832 V466 L358 326 L448 230 H616 L706 326 L792 466 V832 H644 V480 L588 368 L532 320 L476 368 L420 480 V832 Z" fill="#182B56" opacity="0.92"/>
+    <!-- angular gate, front plane -->
+    <path d="M252 812 V450 L346 296 L440 200 H584 L678 296 L772 450 V812 H624 V464 L574 346 L512 294 L450 346 L400 464 V812 Z" fill="url(#frame)"/>
+    <path d="M282 812 V456 L370 312 L456 238 H568 L664 312 L742 456 V812 H654 V470 L600 362 L512 312 L424 362 L370 470 V812 Z" fill="url(#portal)"/>
+    <path d="M252 812 V450 L346 296 L440 200 H512 V234 H456 L370 316 L294 456 V812 Z" fill="#D9FFF9" opacity="0.24"/>
+    <path d="M772 812 V450 L678 296 L584 200 H512 V234 H568 L654 316 L730 456 V812 Z" fill="#A6A0FF" opacity="0.17"/>
+    <path d="M512 390 V812" stroke="url(#beam)" stroke-width="48" opacity="0.45"/>
+    <path d="M512 432 L536 474 L584 498 L536 522 L512 566 L488 522 L440 498 L488 474 Z" fill="#FFF0C8"/>
+    <path d="M512 452 L526 484 L558 498 L526 512 L512 544 L498 512 L466 498 L498 484 Z" fill="#FFFFFF" opacity="0.80"/>
+    <path d="M214 824 H810 L786 864 H238 Z" fill="url(#amber)"/>
+    <path d="M238 824 H786 L774 844 H250 Z" fill="#FFF4D8" opacity="0.75"/>
+    <path d="M238 864 H786 L780 876 H244 Z" fill="#85400F" opacity="0.35"/>
+  </g>
+</svg>
