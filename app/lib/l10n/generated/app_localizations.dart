@@ -2173,6 +2173,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Online launch is not enabled in this build yet.'**
   String get launchOnlineNotReady;
+
+  /// Persistent development-build badge.
+  ///
+  /// In en, this message translates to:
+  /// **'DEV'**
+  String get developmentBuildBadge;
+
+  /// Persistent development-build warning banner.
+  ///
+  /// In en, this message translates to:
+  /// **'Development build — incomplete and may corrupt data. Do not use it for production or important instances.'**
+  String get developmentBuildWarning;
 }
 
 class _AppLocalizationsDelegate

@@ -14,6 +14,7 @@ import '../services/core/build_policy.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
+import '../utils/app_info.dart';
 import '../widgets/common/task_center_button.dart';
 import '../widgets/layout/app_background.dart';
 
@@ -143,6 +144,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         body: Column(
           children: [
             _TopBar(l10n: l10n),
+            if (AppInfo.isDevelopmentBuild) _DevelopmentBanner(l10n: l10n),
             Expanded(
               child: Align(
                 alignment: Alignment.topCenter,
@@ -192,6 +194,62 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DevelopmentBanner extends StatelessWidget {
+  const _DevelopmentBanner({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: tokens.warning.withValues(alpha: 0.10),
+        border: Border(
+          bottom: BorderSide(color: tokens.warning.withValues(alpha: 0.35)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: ShapeDecoration(
+              color: tokens.warning.withValues(alpha: 0.16),
+              shape: BeveledRectangleBorder(
+                side: BorderSide(color: tokens.warning.withValues(alpha: 0.5)),
+                borderRadius: BorderRadius.circular(tokens.radiusS),
+              ),
+            ),
+            child: Text(
+              l10n.developmentBuildBadge,
+              style: textTheme.labelSmall?.copyWith(
+                color: tokens.warning,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              l10n.developmentBuildWarning,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodySmall?.copyWith(color: tokens.textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -945,5 +945,13 @@
   "launchOnlineNotReady": "Online launch is not enabled in this build yet.",
   "@launchOnlineNotReady": {
     "description": "Online launch reserved message."
+  },
+  "developmentBuildBadge": "DEV",
+  "developmentBuildWarning": "Development build — incomplete and may corrupt data. Do not use it for production or important instances.",
+  "@developmentBuildBadge": {
+    "description": "Persistent development-build badge."
+  },
+  "@developmentBuildWarning": {
+    "description": "Persistent development-build warning banner."
   }
 }

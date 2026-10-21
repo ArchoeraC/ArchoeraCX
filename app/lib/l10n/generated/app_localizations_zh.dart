@@ -1169,4 +1169,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get launchOnlineNotReady => '当前版本尚未启用在线启动。';
+
+  @override
+  String get developmentBuildBadge => '开发版';
+
+  @override
+  String get developmentBuildWarning => '开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。';
 }

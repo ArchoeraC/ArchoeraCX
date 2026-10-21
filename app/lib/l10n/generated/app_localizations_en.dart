@@ -1209,4 +1209,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get launchOnlineNotReady =>
       'Online launch is not enabled in this build yet.';
+
+  @override
+  String get developmentBuildBadge => 'DEV';
+
+  @override
+  String get developmentBuildWarning =>
+      'Development build — incomplete and may corrupt data. Do not use it for production or important instances.';
 }
