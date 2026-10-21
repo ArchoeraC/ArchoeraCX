@@ -92,6 +92,13 @@ public sealed record ForgeDownloadPlanOptions
     /// </summary>
     public bool IncludeClientJar { get; init; }
 
+    /// <summary>
+    /// Optional BMCLAPI mirror root for NeoForge/Forge Maven artifacts. When
+    /// set, the mirror is tried first and the official URL stays as a mirror.
+    /// Hashes still come from the installer metadata.
+    /// </summary>
+    public Uri? MavenMirror { get; init; }
+
     /// <summary>Defaults: generated installer destination, no client jar.</summary>
     public static ForgeDownloadPlanOptions Default { get; } = new();
 }

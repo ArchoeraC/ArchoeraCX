@@ -317,6 +317,14 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             """;
         AddParameters(command, record);
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+        // `.archoera/instance.json` is authoritative for known ArchoeraCX
+        // instances. Never create it for adopted external launcher folders.
+        if (Directory.Exists(record.RootPath) &&
+            File.Exists(Path.Combine(record.RootPath, ".archoera", "instance.json")))
+        {
+            await WriteInstanceFileAsync(record, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static bool SameMetadata(GameInstanceRecord left, GameInstanceRecord right)

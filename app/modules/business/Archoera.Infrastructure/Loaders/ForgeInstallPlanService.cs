@@ -52,7 +52,8 @@ public sealed class ForgeInstallPlanService
         string loaderVersion,
         string installerPath,
         MojangPlatform platform,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ForgeDownloadPlanOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(platform);
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
@@ -104,7 +105,8 @@ public sealed class ForgeInstallPlanService
                 loaderVersion,
                 descriptor,
                 archive,
-                cancellationToken: cancellationToken);
+                options,
+                cancellationToken);
         }
 
         var combined = DownloadPlanCombiner.Combine([vanillaPlan, forge.Plan]);

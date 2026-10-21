@@ -52,6 +52,10 @@ public sealed record ResourceTarget(
     public static ResourceTarget ForResourcePack(string gameVersion)
         => new(gameVersion);
 
+    /// <summary>Target for a modpack version list; loader is optional.</summary>
+    public static ResourceTarget ForModpack(string? gameVersion, string? loader = null)
+        => new(gameVersion ?? string.Empty, loader);
+
     /// <summary>
     /// True when the target carries everything the kind needs: mods need a
     /// known loader, shaders need a known shader loader.
@@ -61,6 +65,7 @@ public sealed record ResourceTarget(
         ResourceKind.Mod => NormalizedLoader is { } loader && ModLoaders.Contains(loader),
         ResourceKind.Shader => NormalizedShaderLoader is { } shader && ShaderLoaders.Contains(shader),
         ResourceKind.ResourcePack => true,
+        ResourceKind.Modpack => !string.IsNullOrWhiteSpace(GameVersion),
         _ => false,
     };
 

@@ -12,8 +12,112 @@ using Archoera.Infrastructure.Launch;
 
 namespace Archoera.Infrastructure.Launch;
 
+/// <summary>Result of a read-only launch-file preflight.</summary>
+internal sealed record LaunchFileCheck(bool Ok, string? Code, string? Message)
+{
+    public static LaunchFileCheck Valid { get; } = new(true, null, null);
+}
+
 internal static class LaunchPlanBuilder
 {
+    /// <summary>
+    /// Checks launch-critical files without writing or starting anything.
+    /// Downloadable files are intentionally not excluded: a missing library,
+    /// client jar or asset index is reported so the caller can repair it.
+    /// </summary>
+    internal static LaunchFileCheck CheckFiles(MojangVersion version, LaunchPaths paths)
+    {
+        var platform = MojangPlatform.Current();
+        var missing = new List<string>();
+        foreach (var library in version.Libraries)
+        {
+            if (!MojangRuleEvaluator.IsAllowed(library.Rules, platform)) continue;
+            var relative = LibraryRelativePath(library);
+            if (relative is null) continue;
+            if (!File.Exists(Path.Combine(paths.LibrariesRoot, relative)))
+            {
+                missing.Add(relative);
+                if (missing.Count >= 3) break;
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            return new LaunchFileCheck(
+                false,
+                "LIBRARIES_MISSING",
+                $"missing {missing.Count} libraries, first: {missing[0]}");
+        }
+
+        if (!ClientJarCandidates(version, paths).Any(File.Exists))
+        {
+            return new LaunchFileCheck(
+                false,
+                "CLIENT_JAR_MISSING",
+                $"client jar not found under {paths.InstanceRoot}");
+        }
+
+        var assetIndex = version.AssetIndex?.Id ?? version.Assets;
+        if (!string.IsNullOrWhiteSpace(assetIndex) &&
+            !string.Equals(assetIndex, "legacy", StringComparison.OrdinalIgnoreCase))
+        {
+            var indexFile = Path.Combine(
+                paths.AssetsRoot,
+                "indexes",
+                assetIndex + ".json");
+            if (!File.Exists(indexFile))
+            {
+                return new LaunchFileCheck(
+                    false,
+                    "ASSET_INDEX_MISSING",
+                    $"asset index '{assetIndex}' is missing");
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(indexFile));
+                if (document.RootElement.TryGetProperty("objects", out var objects) &&
+                    objects.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var item in objects.EnumerateObject())
+                    {
+                        if (item.Value.ValueKind != JsonValueKind.Object ||
+                            !item.Value.TryGetProperty("hash", out var hashElement) ||
+                            hashElement.ValueKind != JsonValueKind.String)
+                        {
+                            continue;
+                        }
+
+                        var hash = hashElement.GetString() ?? string.Empty;
+                        if (hash.Length < 2) continue;
+                        var objectPath = Path.Combine(
+                            paths.AssetsRoot,
+                            "objects",
+                            hash[..2],
+                            hash);
+                        if (!File.Exists(objectPath))
+                        {
+                            return new LaunchFileCheck(
+                                false,
+                                "ASSET_MISSING",
+                                $"asset '{item.Name}' is missing");
+                        }
+                    }
+                }
+            }
+            catch (Exception exception) when (
+                exception is IOException or JsonException or UnauthorizedAccessException)
+            {
+                return new LaunchFileCheck(
+                    false,
+                    "ASSET_INDEX_INVALID",
+                    $"asset index '{assetIndex}' cannot be read: {exception.Message}");
+            }
+        }
+
+        return LaunchFileCheck.Valid;
+    }
+
     public static LaunchPlan Build(
         GameInstanceRecord instance,
         MojangVersion version,
@@ -196,18 +300,23 @@ internal static class LaunchPlanBuilder
     }
 
     private static string FindClientJar(MojangVersion version, LaunchPaths paths)
+        => ClientJarCandidates(version, paths).FirstOrDefault(File.Exists)
+           ?? throw new LaunchException(
+               "CLIENT_JAR_MISSING",
+               $"client jar not found under {paths.InstanceRoot}");
+
+    private static IEnumerable<string> ClientJarCandidates(
+        MojangVersion version,
+        LaunchPaths paths)
     {
         var name = Path.GetFileName(paths.InstanceRoot);
-        var candidates = new[]
-        {
-            Path.Combine(paths.InstanceRoot, $"{name}.jar"),
-            Path.Combine(paths.InstanceRoot, $"{version.Id}.jar"),
-            Path.Combine(paths.SharedRoot, "versions", version.Id, $"{version.Id}.jar"),
-        };
-        return candidates.FirstOrDefault(File.Exists)
-               ?? throw new LaunchException(
-                   "CLIENT_JAR_MISSING",
-                   $"client jar not found under {paths.InstanceRoot}");
+        yield return Path.Combine(paths.InstanceRoot, $"{name}.jar");
+        yield return Path.Combine(paths.InstanceRoot, $"{version.Id}.jar");
+        yield return Path.Combine(
+            paths.SharedRoot,
+            "versions",
+            version.Id,
+            $"{version.Id}.jar");
     }
 
     private static void ExtractNatives(

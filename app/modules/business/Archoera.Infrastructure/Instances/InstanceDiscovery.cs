@@ -184,7 +184,7 @@ internal static class InstanceDiscovery
                 String(root, "loader") ?? "vanilla",
                 String(root, "loaderVersion") ?? string.Empty,
                 directory,
-                Int(root, "modCount") ?? CountMods(directory),
+                CountMods(directory),
                 root.TryGetProperty("favorite", out var favorite) &&
                 favorite.ValueKind == JsonValueKind.True,
                 Date(root, "createdAt") ?? Directory.GetCreationTimeUtc(directory),
@@ -555,13 +555,6 @@ internal static class InstanceDiscovery
            element.ValueKind == JsonValueKind.String &&
            !string.IsNullOrWhiteSpace(element.GetString())
             ? element.GetString()
-            : null;
-
-    private static int? Int(JsonElement root, string name)
-        => root.TryGetProperty(name, out var element) &&
-           element.ValueKind == JsonValueKind.Number &&
-           element.TryGetInt32(out var value)
-            ? value
             : null;
 
     private static DateTimeOffset? Date(JsonElement root, string name)

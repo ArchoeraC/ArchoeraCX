@@ -142,7 +142,13 @@ public static class ForgeDownloadPlanBuilder
             }
 
             destinations[dest] = (hash, size, what);
-            planBuilder.AddFile(url, dest, hash, size, mirrors);
+            var sources = ResolveSources(url, mirrors, resolvedOptions.MavenMirror);
+            planBuilder.AddFile(
+                sources.Primary,
+                dest,
+                hash,
+                size,
+                sources.Mirrors);
         }
 
         AddFile(
@@ -184,6 +190,33 @@ public static class ForgeDownloadPlanBuilder
         }
 
         return new ForgeDownloadPlanResult(planBuilder.Build(), warnings);
+    }
+
+    private static (string Primary, IReadOnlyList<string> Mirrors) ResolveSources(
+        string url,
+        IReadOnlyList<string>? mirrors,
+        Uri? mavenMirror)
+    {
+        if (mavenMirror is not null &&
+            ForgeMavenMirror.TryRewrite(url, mavenMirror, out var primary, out var fallback))
+        {
+            var combined = new List<string>(fallback);
+            if (mirrors is not null)
+            {
+                foreach (var mirror in mirrors)
+                {
+                    if (!string.IsNullOrWhiteSpace(mirror) &&
+                        !combined.Contains(mirror, StringComparer.Ordinal))
+                    {
+                        combined.Add(mirror);
+                    }
+                }
+            }
+
+            return (primary, combined);
+        }
+
+        return (url, mirrors ?? []);
     }
 
     private static void AddLibraries(

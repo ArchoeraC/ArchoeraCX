@@ -139,6 +139,21 @@ public sealed class ModrinthClient : IResourceProvider
     }
 
     /// <summary>
+    /// Lists every version without compatibility filtering. Used for modpacks,
+    /// whose target game/loader is carried by the selected version itself.
+    /// </summary>
+    public async Task<IReadOnlyList<ResourceVersion>> GetAllVersionsAsync(
+        string projectIdOrSlug,
+        CancellationToken cancellationToken = default)
+    {
+        var id = RequireId(projectIdOrSlug, nameof(projectIdOrSlug));
+        using var document = await SendJsonAsync(
+            $"project/{Uri.EscapeDataString(id)}/version",
+            cancellationToken).ConfigureAwait(false);
+        return ModrinthJson.ParseVersions(document.RootElement);
+    }
+
+    /// <summary>
     /// Builds a one-file plan for a selected version/file. Convenience wrapper
     /// around <see cref="ResourceDownloadPlanBuilder"/>; the caller still owns
     /// project/version selection and the absolute root.
@@ -236,6 +251,9 @@ public sealed class ModrinthClient : IResourceProvider
                 case ResourceKind.ResourcePack:
                     loaders.Add("minecraft");
                     break;
+                case ResourceKind.Modpack when target.NormalizedLoader is { } packLoader:
+                    loaders.Add(packLoader);
+                    break;
             }
         }
 
@@ -296,6 +314,9 @@ public sealed class ModrinthClient : IResourceProvider
                 break;
             case ResourceKind.ResourcePack:
                 loaders.Add("minecraft");
+                break;
+            case ResourceKind.Modpack when target.NormalizedLoader is { } packLoader:
+                loaders.Add(packLoader);
                 break;
         }
 

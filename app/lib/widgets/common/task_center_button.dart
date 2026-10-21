@@ -234,6 +234,9 @@ class _TaskRow extends ConsumerWidget {
     'loader.commit' ||
     'loader.repair' ||
     'loader.versions' => l10n.taskCenterLoader,
+    'modpack.install' ||
+    'modpack.installLocal' ||
+    'modpack.inspect' => l10n.taskCenterModpack,
     'java.scan' => l10n.taskCenterJavaScan,
     _ => l10n.taskCenterTask,
   };

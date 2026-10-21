@@ -16,7 +16,10 @@ public static class LoaderManifestJson
         LoaderArtifactManifest manifest,
         LoaderVerification verification,
         LoaderRepairResult? repair = null,
-        LoaderVerifyMode? mode = null)
+        LoaderVerifyMode? mode = null,
+        bool? launchFilesOk = null,
+        string? launchFilesCode = null,
+        string? launchFilesMessage = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(verification);
@@ -25,7 +28,11 @@ public static class LoaderManifestJson
         using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
         {
             writer.WriteStartObject();
-            writer.WriteBoolean("ok", verification.Ok && (repair?.Ok ?? true));
+            writer.WriteBoolean(
+                "ok",
+                verification.Ok &&
+                (repair?.Ok ?? true) &&
+                (launchFilesOk ?? true));
             writer.WriteStartObject("data");
             if (mode is not null)
             {
@@ -41,6 +48,63 @@ public static class LoaderManifestJson
                 WriteRepair(writer, repair);
             }
 
+            if (launchFilesOk is not null)
+            {
+                writer.WritePropertyName("launchFiles");
+                writer.WriteStartObject();
+                writer.WriteBoolean("ok", launchFilesOk.Value);
+                writer.WriteString("code", launchFilesCode);
+                writer.WriteString("message", launchFilesMessage);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndObject();
+            writer.WriteStartObject("meta");
+            writer.WriteNumber("schemaVersion", WireSchemaVersion);
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+        }
+
+        return buffer.WrittenSpan.ToArray();
+    }
+
+    /// <summary>
+    /// Envelope for loaders without installer artifacts (vanilla/Fabric/Quilt).
+    /// It reports only launch-file readiness and keeps the same shape as the
+    /// Forge/NeoForge check response.
+    /// </summary>
+    public static byte[] BuildLaunchOnlyEnvelope(
+        LoaderVerifyMode mode,
+        bool ok,
+        string? code,
+        string? message)
+    {
+        var buffer = new ArrayBufferWriter<byte>(512);
+        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
+        {
+            writer.WriteStartObject();
+            writer.WriteBoolean("ok", ok);
+            writer.WriteStartObject("data");
+            writer.WriteString("mode", mode.ToWire());
+            writer.WriteStartObject("verification");
+            writer.WriteBoolean("ok", ok);
+            writer.WriteStartArray("missing");
+            writer.WriteEndArray();
+            writer.WriteStartArray("mismatched");
+            writer.WriteEndArray();
+            writer.WriteStartArray("details");
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                writer.WriteStringValue(message);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+            writer.WriteStartObject("launchFiles");
+            writer.WriteBoolean("ok", ok);
+            writer.WriteString("code", code);
+            writer.WriteString("message", message);
+            writer.WriteEndObject();
             writer.WriteEndObject();
             writer.WriteStartObject("meta");
             writer.WriteNumber("schemaVersion", WireSchemaVersion);

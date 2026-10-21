@@ -92,10 +92,11 @@ class _DownloadPageState extends State<DownloadPage> {
                           icon: Icons.extension_rounded,
                           global: true,
                         ),
-                        _ComingSoonTab(
-                          l10n: l10n,
+                        ResourceSearchPanel(
+                          kind: 'modpack',
+                          title: l10n.tabPacks,
                           icon: Icons.inventory_2_rounded,
-                          message: l10n.downloadModpackPending,
+                          global: true,
                         ),
                         ResourceSearchPanel(
                           kind: 'resourcepack',
@@ -345,29 +346,6 @@ class _CategoryTabs extends StatelessWidget {
         Tab(text: l10n.tabPacks),
         Tab(text: l10n.tabResourcePacks),
         Tab(text: l10n.tabShaders),
-      ],
-    );
-  }
-}
-
-/// Honest placeholder for categories whose native flow is not wired yet.
-class _ComingSoonTab extends StatelessWidget {
-  const _ComingSoonTab({required this.l10n, required this.icon, this.message});
-
-  final AppLocalizations l10n;
-  final IconData icon;
-  final String? message;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-      children: [
-        AppEmptyState(
-          icon: icon,
-          title: l10n.comingSoon,
-          message: message ?? l10n.providerNotWired,
-        ),
       ],
     );
   }

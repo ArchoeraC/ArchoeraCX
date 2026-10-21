@@ -6,6 +6,7 @@ public enum ResourceKind
     Mod,
     Shader,
     ResourcePack,
+    Modpack,
 }
 
 /// <summary>Modrinth version channel.</summary>
@@ -43,6 +44,7 @@ public static class ResourceWire
         ResourceKind.Mod => "mod",
         ResourceKind.Shader => "shader",
         ResourceKind.ResourcePack => "resourcepack",
+        ResourceKind.Modpack => "modpack",
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
@@ -58,6 +60,9 @@ public static class ResourceWire
                 return true;
             case "resourcepack" or "resource_pack" or "resource-pack":
                 kind = ResourceKind.ResourcePack;
+                return true;
+            case "modpack" or "modpacks" or "mod_pack" or "mod-pack":
+                kind = ResourceKind.Modpack;
                 return true;
             default:
                 kind = default;

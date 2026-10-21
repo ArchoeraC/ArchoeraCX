@@ -1413,6 +1413,18 @@ JavaLocator
 6. 若未来增加解压型 `post`，必须同样检查绝对路径、`..`、symlink entry、超长路径、总量/压缩比；v1 不提供。
 7. 威胁模型是“本地误操作 + 恶意整合包”，不是提权；但 TOCTOU 仍要尽量收紧（Unix `O_NOFOLLOW`、Windows `FILE_FLAG_OPEN_REPARSE_POINT` 可作为增强）。
 
+### 9.3.1 整合包安装（`.mrpack`）
+
+`modpack.install` / `modpack.installLocal` 由 C# 编排，Rust 仍只收到并执行 `DownloadPlan`：
+
+1. 读取 `modrinth.index.json`（`formatVersion=1`、`game=minecraft`），校验依赖、路径、哈希、大小、`env`；拒绝绝对路径、`..`、`.archoera/`、`versions/`/`libraries/`/`assets/` 等启动器保留根、Windows 保留名与重复路径。
+2. 按 `dependencies` 新建实例；`minecraft` 必填，`fabric-loader`/`quilt-loader` 走 profile JSON + 版本合并，Forge/NeoForge 暂未接入自动安装。
+3. 先构建原版 + 加载器计划并由 Rust 执行，再提交合并后的 `versions/<id>/<id>.json`。
+4. 解压 `overrides/` 与 `client-overrides/`（客户端）或 `server-overrides/`（服务端）：拒绝 symlink entry、路径逃逸、超限条目/总量；`client-overrides` 覆盖同名 `overrides`。
+5. 以解压出的相对路径为排除集生成索引文件 `DownloadPlan`；包内自带文件优先，即使索引声明同一路径也不再下载。解压与索引下载并发执行。
+6. 成功后写 `.archoera/pack.json` 记录来源、包版本、加载器与文件计数；它只是溯源信息，不是 SQLite 权威索引。
+
+
 ### 9.4 调度与配额
 
 | 层 | 默认 | 说明 |
@@ -2104,16 +2116,42 @@ C#: 合并 version.json → 校验 outputs → 写实例组件
 ### 12.7 整合包导入
 
 ```
-UI: 拖入 .mrpack/zip → modpack.probe
-C#: magic → 格式 → descriptor → 预览（名称/版本/加载器/文件数/大小）
-UI: 选择安装模式/可选 Mod
-C#: resolve → DownloadPlan + overrides
-Rust: 下载
-C#: 解压 overrides（安全校验）→ 安装加载器 → staging
-C#: 事务提交 → 注册 → 事件
+UI: 本地 .mrpack / Modrinth 版本 → modpack.inspect（本地预览）
+UI → modpack.installLocal / modpack.install
+C#: 下载 .mrpack（Modrinth）→ 读取 modrinth.index.json → 依赖/路径/哈希校验
+C#: 按依赖创建实例
+    vanilla/Fabric/Quilt: profile → 合并版本 → 下载计划
+    Forge/NeoForge: 下载并校验 installer（sidecar/SHA-1）→ 组合计划
+Rust: 下载原版 + 加载器库 + installer
+C#: Forge/NeoForge 选择 Java → 运行 processors → 写回合并版 versions/<id>/<id>.json
+C#: 并发执行 overrides 解压 + 索引文件 DownloadPlan
+Rust: 下载索引文件（排除包内自带路径）
+C#: 写 .archoera/pack.json → 注册 → 事件
 ```
 
-**失败**：未知格式（提示解压）；恶意 zip（拒绝并报告条目）；磁盘不足（预检）；加载器失败（staging 回滚）。
+- 包内 `overrides/`、`client-overrides/` 优先；同路径索引文件不再下载。
+- 解压在 C# 完成：拒绝 symlink、绝对路径、`..`、启动器保留根、超限条目/总量。
+- Forge/NeoForge processor 需要 Java；按游戏版本自动选择，失败在创建实例/大下载前报告。
+- NeoForge 官方 Maven 在部分网络不可达：installer 由 C# 经 BMCLAPI 镜像引导下载并计算 SHA-1；库仍由 Rust 按 installer 元数据 hash 校验。合并计划中的 NeoForge/Forge Maven URL 优先走镜像，官方 URL 作为 fallback。
+- 部分 NeoForge installer 不声明 processor outputs（`MC_SLIM`/`MC_EXTRA`）：repair 从 `--output/--slim/--extra` 参数推导本次运行会生成的路径。
+- repair 不把 installer 自带 `version.json` 当作生成物覆盖合并版；合并版 JSON 由安装事务单独提交。
+
+**失败**：未知格式（提示解压）；恶意 zip（拒绝并报告条目）；磁盘不足（下载失败）；加载器失败（实例保留可诊断，不自动删除用户目录）。
+
+### 12.7.1 启动依赖预检与自动修复
+
+```
+launch.prepare: 账户就绪 + CheckFiles（库/client jar/asset index/asset objects）
+launch.start: CheckFiles 失败或 version JSON 未合并
+  → 校验 DownloadPolicy
+  → vanilla/Fabric/Quilt: 重新生成 profile/原版计划（Rust 跳过已存在文件）
+  → Forge/NeoForge: 组合计划 + loader processors 修复生成物 + 重新提交合并版 JSON
+  → 重新 CheckFiles → 构建 LaunchPlan
+```
+
+- 自动修复只尝试一次；失败返回 `AUTO_REPAIR_FAILED`，下载被策略禁用返回 `AUTO_REPAIR_BLOCKED`。
+- `loader.check` / `loader.autoRepair` 与启动预检覆盖全部五类实例：vanilla、Fabric、Quilt、Forge、NeoForge。
+- `CheckFiles` 是只读的；不写文件、不启动 JVM。
 
 ### 12.8 崩溃诊断
 
@@ -2296,6 +2334,7 @@ public interface IDownloadProvider {
 | `loader.plan` | C# | 从本地 installer 生成原版 + 加载器依赖 + installer 组合计划 |
 | `loader.commit` | C# | 原子写入合并后的 `versions/<id>/<id>.json` |
 | `loader.repair` | C# | 从最早缺失 processor 重跑；写回校验结果（processors 需要 JVM） |
+| `loader.autoRepair` | C# | 按实例补全下载；Forge/NeoForge 重跑 processors；提交合并版（依赖检查 UI） |
 | `account.list` | C# | 账户列表 |
 | `account.current` | C# | 当前账户（无则 null） |
 | `account.select` | C# | 设为默认 |
@@ -2325,9 +2364,9 @@ public interface IDownloadProvider {
 | `mod.enable` / `mod.disable` | C# | `.disabled` |
 | `mod.delete` | C# | 移入 trash |
 | `mod.update` | C# | 更新单个 |
-| `modpack.probe` | C# | 格式探测/预览 |
-| `modpack.plan` | C# | 解析/计划 |
-| `modpack.import` | C# | 安装/合并 |
+| `modpack.inspect` | C# | 读取本地 `.mrpack` 索引与 overrides 预览 |
+| `modpack.install` | C# | Modrinth 整合包版本 → 新建实例 |
+| `modpack.installLocal` | C# | 本地 `.mrpack` → 新建实例 |
 | `modpack.export` | C# | 导出 |
 | `download.configure` | Rust | 更新代理/限速/并发（不重下） |
 | `download.submit` | Rust | 提交计划（正式路径待接） |
@@ -2909,7 +2948,7 @@ ArchoeraCX/
 - Java 探测等子进程必须显式设置有效 `WorkingDirectory`，避免子进程继承已删除的 CWD。
 - 数据目录仍优先使用 `ARCHOERACX_DATA_DIR`，否则按 Windows `%APPDATA%`、macOS `Application Support`、Linux XDG/`~/.local/share` 解析。
 
-**当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 支持离线账户与在线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；页面切换：首页切换用旧页快照覆盖，其他页面之间上浮淡入，切回首页收回；快照等比绘制避免底栏高度变化导致形变；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表、全局 Mod 搜索、项目详情画廊与排序/分页；Mod/资源包/光影结果带图标，详情通过 `resource.project` 获取 Modrinth 画廊。实例创建与 Forge/NeoForge 安装弹窗通过 `loader.versions` 列出全部加载器版本，可选择旧版。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Authorization Code + PKCE（loopback）登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组，内联编辑内存/GC/JVM/游戏参数，并展示系统总内存、可用内存和启动后预计占用；下载任务通过模块 ABI v2 上报进度，右上角任务中心可查看/取消；实例创建支持 `versions/` 版本隔离，原版下载优先官方源、失败回退 BMCLAPI，跨类型依赖按项目类型补全；发布版必须先存在已验证的微软账户，才允许添加/选择离线账户并启动；单一发行版按运行期 IP/系统地区判断，中国大陆网络默认返回 DISABLED，需手动配置 compliance.json 后重检解锁；真实 Entra client_id 已申请，Minecraft Services 审核材料已准备；在线启动已接入凭据刷新、accessToken/clientId/xuid/userType=msa。295 个 C# 测试、37 个 Flutter 测试通过；Fabric/Quilt 无 Java 安装、正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、凭据保险库已接入（crypto/file），CurseForge 尚待接入。
+**当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 支持离线账户与在线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；页面切换：首页切换用旧页快照覆盖，其他页面之间上浮淡入，切回首页收回；快照等比绘制避免底栏高度变化导致形变；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表、全局 Mod 搜索、项目详情画廊与排序/分页；Mod/资源包/光影结果带图标，详情通过 `resource.project` 获取 Modrinth 画廊。实例创建与 Forge/NeoForge 安装弹窗通过 `loader.versions` 列出全部加载器版本，可选择旧版。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Authorization Code + PKCE（loopback）登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组，内联编辑内存/GC/JVM/游戏参数，并展示系统总内存、可用内存和启动后预计占用；下载任务通过模块 ABI v2 上报进度，右上角任务中心可查看/取消；实例创建支持 `versions/` 版本隔离，原版下载优先官方源、失败回退 BMCLAPI，跨类型依赖按项目类型补全；发布版必须先存在已验证的微软账户，才允许添加/选择离线账户并启动；单一发行版按运行期 IP/系统地区判断，中国大陆网络默认返回 DISABLED，需手动配置 compliance.json 后重检解锁；真实 Entra client_id 已申请，Minecraft Services 审核材料已准备；在线启动已接入凭据刷新、accessToken/clientId/xuid/userType=msa。340 个 C# 测试、37 个 Flutter 测试通过；Fabric/Quilt 通过整合包流程以 profile JSON 安装，正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、凭据保险库已接入（crypto/file），CurseForge 尚待接入。
 
 **P1 完成定义**
 

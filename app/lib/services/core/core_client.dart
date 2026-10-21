@@ -17,12 +17,20 @@ import 'launch_preparation.dart';
 import 'launch_result.dart';
 import 'loader_versions.dart';
 import 'loader_plan.dart';
+import 'pack_install_result.dart';
 import 'version_models.dart';
 import 'region_policy.dart';
 import 'resource_models.dart';
 import 'system_memory.dart';
 import 'task_update.dart';
 import 'vanilla_install_plan.dart';
+
+/// Progress callback carrying the module-provided phase/current line.
+typedef CoreDetailedProgress = void Function(
+  int done,
+  int total,
+  String? message,
+);
 
 /// The error structure returned by the native core ABI.
 ///
@@ -808,7 +816,7 @@ final class CoreClient {
   Future<List<ResourceVersion>> modrinthVersions({
     required String projectId,
     required String kind,
-    required String gameVersion,
+    String? gameVersion,
     String? loader,
     String? shaderLoader,
     void Function(int done, int total)? onProgress,
@@ -820,7 +828,7 @@ final class CoreClient {
         'provider': 'modrinth',
         'projectId': projectId,
         'kind': kind,
-        'gameVersion': gameVersion,
+        'gameVersion': ?gameVersion,
         'loader': ?loader,
         'shaderLoader': ?shaderLoader,
       }),
@@ -866,6 +874,118 @@ final class CoreClient {
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
     return _asMap(data['plan'], methodName);
+  }
+
+  /// Parse a local `.mrpack` without installing anything.
+  Future<PackInspection> inspectModpack(
+    String path, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'modpack.inspect';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'path': path}),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final inspection = PackInspection.tryParse(data);
+    if (inspection == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned no pack metadata.',
+      );
+    }
+    return inspection;
+  }
+
+  /// Install a local `.mrpack` into a new instance.
+  Future<PackInstallResult> installModpackLocal({
+    required String path,
+    String? name,
+    String? rootPath,
+    CoreDetailedProgress? onDetailedProgress,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'modpack.installLocal';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'path': path,
+        'name': ?name,
+        'rootPath': ?rootPath,
+      }),
+      onProgress: onProgress,
+      onDetailedProgress: onDetailedProgress,
+    );
+    return _parsePackInstall(jsonText, methodName);
+  }
+
+  /// Install a Modrinth modpack version into a new instance.
+  Future<PackInstallResult> installModpackFromModrinth({
+    required String projectId,
+    required String versionId,
+    String? name,
+    String? rootPath,
+    CoreDetailedProgress? onDetailedProgress,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'modpack.install';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'provider': 'modrinth',
+        'projectId': projectId,
+        'versionId': versionId,
+        'name': ?name,
+        'rootPath': ?rootPath,
+      }),
+      onProgress: onProgress,
+      onDetailedProgress: onDetailedProgress,
+    );
+    return _parsePackInstall(jsonText, methodName);
+  }
+
+  /// Repair an existing Forge/NeoForge instance: restore missing downloads
+  /// and rerun loader processors. Used by the dependency-check dialog.
+  Future<PackRepairResult> repairInstanceDependencies(
+    String instanceId, {
+    CoreDetailedProgress? onDetailedProgress,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'loader.autoRepair';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
+      onProgress: onProgress,
+      onDetailedProgress: onDetailedProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final result = PackRepairResult.tryParse(data);
+    if (result == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned no repaired instance.',
+      );
+    }
+    return result;
+  }
+
+  PackInstallResult _parsePackInstall(String jsonText, String methodName) {
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final result = PackInstallResult.tryParse(data);
+    if (result == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned no installed instance.',
+      );
+    }
+    return result;
   }
 
   /// Execute a validated DownloadPlan through the current Rust bridge.
@@ -1357,6 +1477,7 @@ final class CoreClient {
   Future<String> _runAsync(
     String methodName, {
     void Function(int done, int total)? onProgress,
+    CoreDetailedProgress? onDetailedProgress,
     String paramsJson = '{}',
   }) async {
     final core = _requireCore();
@@ -1386,7 +1507,10 @@ final class CoreClient {
           taskId,
           onEvent: (event) {
             if (event.type == CoreEventType.taskProgress) {
+              final line =
+                  event.payload['current']?.toString() ?? event.message;
               onProgress?.call(event.done, event.total);
+              onDetailedProgress?.call(event.done, event.total, line);
               _emitTask(
                 TaskUpdate(
                   taskId: taskId,

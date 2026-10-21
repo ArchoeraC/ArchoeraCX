@@ -65,6 +65,9 @@ Future<void> launchInstance(
         l10n.accountPremiumRequired,
       CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
         l10n.launchJavaMissing,
+      CoreException(code: 'AUTO_REPAIR_FAILED') => l10n.launchAutoRepairFailed,
+      CoreException(code: 'AUTO_REPAIR_BLOCKED') =>
+        l10n.launchAutoRepairBlocked,
       _ => error.toString(),
     };
     toast(message, type: ToastType.error, duration: const Duration(seconds: 4));

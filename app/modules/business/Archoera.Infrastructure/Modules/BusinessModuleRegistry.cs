@@ -5,6 +5,7 @@ using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Launch;
 using Archoera.Infrastructure.Loaders;
 using Archoera.Infrastructure.Mojang;
+using Archoera.Infrastructure.Packs;
 using Archoera.Infrastructure.Resources;
 using Archoera.Infrastructure.Settings;
 using Archoera.Infrastructure.SystemInfo;
@@ -27,6 +28,10 @@ public static class BusinessModuleRegistry
     {
         var region = new RegionPolicy();
         var policy = new DownloadPolicy(dataRoot, region);
+        var settings = dataRoot is null ? null : new JsonAppSettingsStore(dataRoot);
+        var instances = dataRoot is null
+            ? null
+            : new SqliteInstanceRepository(dataRoot, settings);
         var accounts = new JsonAccountStore(dataRoot);
         var credentials = new VaultCredentialStore(dataRoot);
         var auth = new MicrosoftAuthClient(AuthHttp, new MicrosoftAuthOptions());
@@ -54,12 +59,13 @@ public static class BusinessModuleRegistry
             new SettingsModuleService(
                 dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new InstanceModuleService(
-                dataRoot is null
-                    ? null
-                    : new SqliteInstanceRepository(
-                        dataRoot,
-                        new JsonAppSettingsStore(dataRoot)),
-                dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
+                instances,
+                settings),
+            new PackModuleService(
+                new PackInstallService(
+                    repository: instances,
+                    settings: settings),
+                policy),
         };
 
         return new ModuleMethodRegistry(handlers);

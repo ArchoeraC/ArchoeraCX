@@ -1,11 +1,10 @@
-using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using Archoera.Application.Downloads;
 using Archoera.Application.Modules;
 using Archoera.Application.Resources;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Resources;
+using Archoera.Infrastructure.Downloads;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Resources.Modrinth;
 
@@ -31,14 +30,14 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         Timeout = TimeSpan.FromSeconds(60),
     };
 
-    private readonly string _downloaderPath;
+    private readonly DownloadPlanRunner _runner;
     private readonly DownloadPolicy _policy;
 
     public ResourceModuleService(
         string? downloaderPath = null,
         DownloadPolicy? policy = null)
     {
-        _downloaderPath = downloaderPath ?? ResolveDownloaderPath();
+        _runner = new DownloadPlanRunner(downloaderPath);
         _policy = policy ?? new DownloadPolicy();
     }
 
@@ -130,7 +129,6 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         var provider = ReadProvider(root);
         var project = RequireString(root, "projectId");
         var kind = ReadKind(root);
-        var target = ReadTarget(root, kind);
         var client = CreateClient(root);
 
         if (!string.Equals(provider, Modrinth, StringComparison.OrdinalIgnoreCase))
@@ -140,6 +138,17 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                 "CurseForge requires an API key and is not wired yet");
         }
 
+        if (kind == ResourceKind.Modpack)
+        {
+            // Packs are self-contained: do not filter by the selected
+            // instance. The chosen version carries its own game/loader deps.
+            var allVersions = await client
+                .GetAllVersionsAsync(project, cancellationToken)
+                .ConfigureAwait(false);
+            return BuildVersions(provider, allVersions);
+        }
+
+        var target = ReadTarget(root, kind);
         var versions = await client
             .GetVersionsAsync(project, kind, target, cancellationToken)
             .ConfigureAwait(false);
@@ -160,6 +169,13 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         }
 
         var kind = ReadKind(root);
+        if (kind == ResourceKind.Modpack)
+        {
+            throw new ResourceProviderException(
+                ResourceErrorCode.InvalidRequest,
+                "modpacks are installed through modpack.install, not resource.plan");
+        }
+
         var target = ReadTarget(root, kind);
         var project = RequireString(root, "projectId");
         var versionId = ReadOptionalString(root, "versionId");
@@ -234,131 +250,42 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                 ResourceErrorCode.InvalidRequest,
                 "plan is required");
 
-        if (string.IsNullOrWhiteSpace(_downloaderPath) || !File.Exists(_downloaderPath))
+        if (!_runner.IsAvailable)
         {
             return Error(
                 "DOWNLOADER_MISSING",
                 "archoera-dl was not found; build app/modules/downloader and set ARCHOERACX_DL_BIN");
         }
 
-        string rootPath;
-        try
-        {
-            using var planDocument = JsonDocument.Parse(planJson);
-            rootPath = RequireString(planDocument.RootElement, "root");
-        }
-        catch (JsonException exception)
-        {
-            return Error(ResourceErrorCode.InvalidRequest, exception.Message);
-        }
-
-        var planDirectory = Path.Combine(rootPath, ".archoera", "plans");
-        Directory.CreateDirectory(planDirectory);
-        var planPath = Path.Combine(
-            planDirectory,
-            $"plan-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.json");
-        await File.WriteAllTextAsync(
-                planPath,
-                planJson,
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-                cancellationToken)
-            .ConfigureAwait(false);
-
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = _downloaderPath,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = Path.GetDirectoryName(_downloaderPath) ?? AppContext.BaseDirectory,
-        };
-        startInfo.ArgumentList.Add(planPath);
-
-        using var process = new Process { StartInfo = startInfo };
-        if (!process.Start())
-        {
-            return Error("DOWNLOADER_FAILED", "archoera-dl did not start");
-        }
-
-        var startedAt = Stopwatch.GetTimestamp();
-        var lastProgressAt = startedAt;
-        long lastDone = 0;
-        var stdout = new StringBuilder();
-        var stderr = new StringBuilder();
-
-        var stdoutTask = PumpLinesAsync(
-            process.StandardOutput,
-            line =>
-            {
-                if (stdout.Length < 256 * 1024) stdout.AppendLine(line);
-            });
-        var stderrTask = PumpLinesAsync(
-            process.StandardError,
-            line =>
-            {
-                if (stderr.Length < 64 * 1024) stderr.AppendLine(line);
-                if (!TryParseProgress(line, out var done, out var total)) return;
-                var now = Stopwatch.GetTimestamp();
-                var elapsed = Stopwatch.GetElapsedTime(lastProgressAt, now).TotalSeconds;
-                var rate = elapsed > 0
-                    ? Math.Max(0, (long)((done - lastDone) / elapsed))
-                    : 0;
-                lastDone = Math.Max(lastDone, done);
-                lastProgressAt = now;
-                ModuleProgress.Report(done, total, rate, line);
-            });
-
-        using var waitSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        waitSource.CancelAfter(TimeSpan.FromMinutes(30));
-        try
-        {
-            await process.WaitForExitAsync(waitSource.Token).ConfigureAwait(false);
-            await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            try
-            {
-                if (!process.HasExited) process.Kill(entireProcessTree: true);
-            }
-            catch
-            {
-                // best effort
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            return Error("DOWNLOAD_TIMEOUT", "download timed out");
-        }
-
-        var stdoutText = stdout.ToString();
-        var stderrText = stderr.ToString();
-        var resultText = LastJsonLine(stdoutText);
-        if (resultText is null)
+        if (!DownloadPlanJson.TryParse(planJson, out var plan, out var issue))
         {
             return Error(
-                "DOWNLOADER_FAILED",
-                $"archoera-dl returned no result: {Tail(stderrText, 500)}");
+                issue?.Code ?? DownloadPlanErrorCode.InvalidPlan,
+                issue?.Message ?? "plan is not valid");
         }
 
-        using var resultDocument = JsonDocument.Parse(resultText);
-        var result = resultDocument.RootElement;
-        var status = result.TryGetProperty("status", out var statusElement)
-            ? statusElement.GetString()
-            : null;
-        var ok = string.Equals(status, "completed", StringComparison.OrdinalIgnoreCase);
-
-        return BuildEnvelope(writer =>
+        try
         {
-            writer.WriteStartObject("data");
-            writer.WriteString("status", status ?? "failed");
-            writer.WriteBoolean("downloadOk", ok);
-            writer.WriteString("planPath", planPath);
-            writer.WriteString("stdout", Tail(stdoutText, 4000));
-            writer.WriteString("stderr", Tail(stderrText, 4000));
-            writer.WriteEndObject();
-            writer.WriteBoolean("ok", ok);
-        });
+            var result = await _runner
+                .ExecuteAsync(plan!, cancellationToken)
+                .ConfigureAwait(false);
+            return BuildEnvelope(writer =>
+            {
+                writer.WriteStartObject("data");
+                writer.WriteString("status", result.Status);
+                writer.WriteBoolean("downloadOk", result.Ok);
+                writer.WriteString("planPath", result.PlanPath);
+                writer.WriteString("stdout", result.Stdout);
+                writer.WriteString("stderr", result.Stderr);
+                writer.WriteNumber("failedCount", result.FailedCount);
+                writer.WriteEndObject();
+                writer.WriteBoolean("ok", result.Ok);
+            });
+        }
+        catch (DownloadRunnerException exception)
+        {
+            return Error(exception.Code, exception.Message);
+        }
     }
 
     private static ResourceSearchRequest ParseSearch(JsonElement root)
@@ -413,6 +340,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             ResourceKind.Mod => ResourceTarget.ForMod(game, loader ?? "fabric"),
             ResourceKind.Shader => new ResourceTarget(game, loader, shader ?? "iris"),
             ResourceKind.ResourcePack => new ResourceTarget(game, loader),
+            ResourceKind.Modpack => new ResourceTarget(game, loader),
             _ => throw new ResourceProviderException(
                 ResourceErrorCode.InvalidRequest,
                 "unsupported resource kind"),
@@ -454,7 +382,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             ? kind
             : throw new ResourceProviderException(
                 ResourceErrorCode.InvalidRequest,
-                "kind must be mod, shader or resourcepack");
+                "kind must be mod, shader, resourcepack or modpack");
     }
 
     private static JsonDocument ParseRequest(string? json)
@@ -712,127 +640,4 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         return value;
     }
 
-    private static async Task PumpLinesAsync(
-        StreamReader reader,
-        Action<string> onLine)
-    {
-        while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
-        {
-            onLine(line);
-        }
-    }
-
-    private static bool TryParseProgress(
-        string line,
-        out long done,
-        out long total)
-    {
-        done = 0;
-        total = 0;
-        if (line.Length == 0 || line[0] != '{') return false;
-        try
-        {
-            using var document = JsonDocument.Parse(line);
-            var root = document.RootElement;
-            if (!root.TryGetProperty("event", out var eventElement) ||
-                eventElement.ValueKind != JsonValueKind.String ||
-                !string.Equals(
-                    eventElement.GetString(),
-                    "progress",
-                    StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (!root.TryGetProperty("doneBytes", out var doneElement) ||
-                !doneElement.TryGetInt64(out done) ||
-                !root.TryGetProperty("totalBytes", out var totalElement) ||
-                !totalElement.TryGetInt64(out total))
-            {
-                return false;
-            }
-
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    private static string? LastJsonLine(string text)
-    {
-        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        for (var index = lines.Length - 1; index >= 0; index--)
-        {
-            var line = lines[index].Trim();
-            if (line.StartsWith('{') && line.EndsWith('}'))
-            {
-                return line;
-            }
-        }
-
-        return null;
-    }
-
-    private static string Tail(string text, int max)
-        => text.Length <= max ? text : text[^max..];
-
-    private static string ResolveDownloaderPath()
-    {
-        var configured = Environment.GetEnvironmentVariable("ARCHOERACX_DL_BIN");
-        if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured))
-        {
-            return configured;
-        }
-
-        var names = OperatingSystem.IsWindows()
-            ? new[] { "archoera-dl.exe", "archoera-dl" }
-            : new[] { "archoera-dl" };
-        var bases = new List<string>
-        {
-            AppContext.BaseDirectory,
-            Path.Combine(AppContext.BaseDirectory, "lib"),
-            Path.Combine(AppContext.BaseDirectory, ".."),
-            Path.Combine(AppContext.BaseDirectory, "..", "lib"),
-        };
-
-        var processDirectory = Environment.ProcessPath is { } processPath
-            ? Path.GetDirectoryName(processPath)
-            : null;
-        if (!string.IsNullOrWhiteSpace(processDirectory))
-        {
-            bases.Add(processDirectory);
-            bases.Add(Path.Combine(processDirectory, "lib"));
-        }
-
-        // Development fallbacks, but never fail if the process CWD is invalid.
-        string? cwd = null;
-        try
-        {
-            cwd = Environment.CurrentDirectory;
-        }
-        catch
-        {
-            // Deleted/replaced working directory; packaged paths above still work.
-        }
-
-        if (!string.IsNullOrWhiteSpace(cwd))
-        {
-            bases.Add(Path.Combine(cwd, "build", "native"));
-            bases.Add(Path.Combine(cwd, "app", "modules", "downloader", "target", "release"));
-            bases.Add(Path.Combine(cwd, "modules", "downloader", "target", "release"));
-        }
-
-        foreach (var baseDirectory in bases)
-        {
-            foreach (var name in names)
-            {
-                var candidate = Path.Combine(baseDirectory, name);
-                if (File.Exists(candidate)) return candidate;
-            }
-        }
-
-        return string.Empty;
-    }
 }

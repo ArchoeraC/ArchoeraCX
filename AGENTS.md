@@ -68,6 +68,8 @@ flutter build linux --release
 - C++ 枢纽不做 Mojang/Modrinth/加载器业务。
 - C# 是 API、业务、SQLite 的唯一 owner。
 - Rust 只消费 `DownloadPlan`：不解压、不写 SQLite、不理解业务语义。
+- `.mrpack` 由 C# 解析与解压（zip-slip、symlink、size/entry 上限）；Rust 仍只执行 `DownloadPlan`。
+- 例外：Forge/NeoForge 官方 Maven 不可达时，C# 仅对 installer 做 BMCLAPI 镜像引导下载并计算 SHA-1；所有库与游戏文件仍由 Rust 按计划下载。
 - SQLite 只由 C# 持有；Flutter 不引入数据库插件、不直接读 SQLite；C++ 只路由。Linux/macOS 使用系统 SQLite，Windows 使用随 C# 模块分发的 `e_sqlite3.dll`。
 - 跨模块协作走效果协议，不直接互调。
 - 核事件必须 **wake 驱动**：C++ 调 `wake`，Dart `NativeCallable.listener` 收到后批量 drain；**禁止 `Timer.periodic` 轮询**。
@@ -115,4 +117,9 @@ flutter build linux --release
 - ✅ 凭据保险库：`core/vault-rs`（ArchoeraMusic 同系列 AGPL 实现）已接入 C# `VaultCredentialStore`；仅暴露 crypto/file 免密模式，旧 `accounts.credentials.json` 首次使用时迁移并删除
 - ⬜ CurseForge provider（鉴权后置）
 - ✅ 在线启动：凭据刷新、真实 accessToken/clientId/xuid/userType=msa 已接入 `LaunchPlan`；
+- ✅ 整合包：`modpack.inspect` / `modpack.install` / `modpack.installLocal`；Modrinth 与本地 `.mrpack` 均按依赖新建实例，自动安装原版 + Fabric/Quilt（profile JSON）或 Forge/NeoForge（installer + processor 链），C# 安全解压 `overrides`/`client-overrides` 并与索引下载并发执行；包内自带文件按路径优先，冲突的索引文件不再下载；实例写入 `.archoera/pack.json` 来源记录
+- ✅ Forge/NeoForge 整合包：installer 通过 Maven sidecar 校验后下载；NeoForge 官方 Maven 不可达时用 BMCLAPI 镜像引导 installer 并计算 SHA-1，库按 installer 元数据 hash 校验；processor 需要 Java（按游戏版本自动选择），修复完成后再写入合并版 `versions/<id>/<id>.json`
+- ✅ Forge/NeoForge repair 不再把 installer 自带 `version.json` 当作 artifact 覆盖合并版；合并版 JSON 由 `loader.commit` / 整合包流程单独写入
+- ✅ 启动依赖预检：`launch.prepare` / `launch.start` 校验库、client jar、asset index、asset objects 与 Forge/NeoForge 生成物；任一加载器缺失时在 `launch.start` 自动执行一次“下载补全”，Forge/NeoForge 额外重跑 processor repair；下载策略关闭时返回 `AUTO_REPAIR_BLOCKED`
+- ✅ `loader.check` 支持 vanilla/Fabric/Quilt/Forge/NeoForge 并返回 `launchFiles`（库/client/资源）状态；实例“依赖检查”对话框可调用 `loader.autoRepair` 补全下载，Forge/NeoForge 额外重跑 processors，然后自动复检
 - ⬜ 正式 C++ DownloadManager / 安装原版、进程状态/停止/日志流待接
