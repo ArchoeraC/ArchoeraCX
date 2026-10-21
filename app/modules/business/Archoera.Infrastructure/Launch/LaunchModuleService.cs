@@ -38,6 +38,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     private readonly JsonAccountStore _accounts;
     private readonly IAccountCredentialStore _credentials;
     private readonly MicrosoftAuthClient _auth;
+    private readonly MicrosoftAccountGate _premiumGate;
     private readonly JavaScanner _java = new();
 
     public LaunchModuleService(
@@ -53,6 +54,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         _accounts = accounts ?? new JsonAccountStore(dataRoot);
         _credentials = credentials ?? _accounts;
         _auth = auth ?? new MicrosoftAuthClient(Http, new MicrosoftAuthOptions());
+        _premiumGate = new MicrosoftAccountGate(_accounts, _credentials, _auth);
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -77,9 +79,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                       (mode == "online"
                           ? account is { Kind: AccountKind.Microsoft } &&
                             !string.IsNullOrWhiteSpace(account.Uuid)
-                          : (await _accounts.ListAsync(cancellationToken).ConfigureAwait(false)).Any(
-                              item => item.Kind == AccountKind.Microsoft &&
-                                      !string.IsNullOrWhiteSpace(item.Uuid)));
+                          : await _premiumGate.HasValidAccountAsync(cancellationToken)
+                              .ConfigureAwait(false));
 
         var ready = false;
         string? reason = null;
@@ -198,19 +199,12 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             }
 
             var requirePremium = ReadBool(paramsJson, "requirePremium");
-            if (requirePremium)
+            if (requirePremium &&
+                !await _premiumGate.HasValidAccountAsync(cancellationToken).ConfigureAwait(false))
             {
-                var accounts = await _accounts
-                    .ListAsync(cancellationToken)
-                    .ConfigureAwait(false);
-                if (!accounts.Any(account =>
-                        account.Kind == AccountKind.Microsoft &&
-                        !string.IsNullOrWhiteSpace(account.Uuid)))
-                {
-                    throw new LaunchException(
-                        "PREMIUM_ACCOUNT_REQUIRED",
-                        "Sign in with a Microsoft account that owns Minecraft before launching.");
-                }
+                throw new LaunchException(
+                    "PREMIUM_ACCOUNT_REQUIRED",
+                    "Sign in with a verified Microsoft account before launching.");
             }
 
             var instance = (await _instances.ListAsync(cancellationToken).ConfigureAwait(false))
