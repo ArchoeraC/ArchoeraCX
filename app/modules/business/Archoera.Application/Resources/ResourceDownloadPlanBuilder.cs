@@ -109,6 +109,9 @@ public static class ResourceDownloadPlanBuilder
         ResourceKind.Mod => Folders.Mods,
         ResourceKind.Shader => Folders.ShaderPacks,
         ResourceKind.ResourcePack => Folders.ResourcePacks,
+        ResourceKind.Modpack => throw new ResourceProviderException(
+            ResourceErrorCode.InvalidRequest,
+            "modpacks are installed through modpack.install, not a single-file plan"),
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 

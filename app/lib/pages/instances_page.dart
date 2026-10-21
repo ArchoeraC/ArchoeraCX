@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,10 +7,12 @@ import '../l10n/generated/app_localizations.dart';
 import '../l10n/l10n_labels.dart';
 import '../models/game_instance.dart';
 import '../services/core/build_policy.dart';
+import '../services/core/core_client.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
+import '../stores/tasks.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/toast.dart';
@@ -17,6 +20,7 @@ import '../widgets/common/loader_mark.dart';
 import '../widgets/instances/instance_mods_dialog.dart';
 import '../widgets/instances/loader_install_dialog.dart';
 import '../widgets/instances/vanilla_install_dialog.dart';
+import '../widgets/download/pack_install_dialog.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/instances/create_instance_dialog.dart';
 
@@ -67,6 +71,20 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
     }
   }
 
+  Future<void> _importPack(AppLocalizations l10n) async {
+    const typeGroup = XTypeGroup(
+      label: 'Modrinth modpack',
+      extensions: <String>['mrpack'],
+    );
+    final file = await openFile(acceptedTypeGroups: const [typeGroup]);
+    if (file == null || !mounted) return;
+    await showPackInstallDialog(
+      context,
+      localPath: file.path,
+      title: l10n.packImportTitle,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -101,11 +119,9 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 subtitle: l10n.instancesSubtitle,
                 actions: [
                   OutlinedButton.icon(
-                    onPressed: () => _notify(
-                      context,
-                      l10n.commonCoreNotConnected,
-                      type: ToastType.error,
-                    ),
+                    onPressed: downloadsEnabled
+                        ? () => _importPack(l10n)
+                        : null,
                     icon: const Icon(Icons.file_download_outlined, size: 18),
                     label: Text(l10n.importPack),
                   ),
@@ -252,8 +268,12 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
       if (!mounted) return;
       await showDialog<void>(
         context: context,
-        builder: (context) =>
-            _DependencyCheckDialog(l10n: l10n, mode: mode, envelope: envelope),
+        builder: (context) => _DependencyCheckDialog(
+          l10n: l10n,
+          instance: instance,
+          mode: mode,
+          envelope: envelope,
+        ),
       );
     } catch (error) {
       if (mounted) _notify(context, error.toString(), type: ToastType.error);
@@ -637,22 +657,130 @@ class _InlineNotice extends StatelessWidget {
   }
 }
 
-class _DependencyCheckDialog extends StatelessWidget {
+class _DependencyCheckDialog extends ConsumerStatefulWidget {
   const _DependencyCheckDialog({
     required this.l10n,
+    required this.instance,
     required this.mode,
     required this.envelope,
   });
 
   final AppLocalizations l10n;
+  final GameInstance instance;
   final String mode;
   final Map<String, Object?> envelope;
 
   @override
+  ConsumerState<_DependencyCheckDialog> createState() =>
+      _DependencyCheckDialogState();
+}
+
+class _DependencyCheckDialogState
+    extends ConsumerState<_DependencyCheckDialog> {
+  late Map<String, Object?> _envelope;
+  bool _busy = false;
+  bool _repaired = false;
+  String? _error;
+  String? _phase;
+  int _done = 0;
+  int _total = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _envelope = widget.envelope;
+  }
+
+  bool get _canRepair => true;
+
+  void _cancelRepair() {
+    final client = ref.read(coreClientProvider);
+    if (client == null) return;
+    for (final task in ref.read(taskCenterProvider)) {
+      if (task.isTerminal || task.method != 'loader.autoRepair') continue;
+      try {
+        client.cancel(task.taskId);
+        setState(() => _phase = widget.l10n.instanceCheckRepairing);
+      } catch (error) {
+        if (mounted) setState(() => _error = error.toString());
+      }
+
+      return;
+    }
+  }
+
+  Future<void> _repair() async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      setState(() => _error = widget.l10n.commonCoreNotConnected);
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+      _phase = widget.l10n.instanceCheckRepairing;
+      _done = 0;
+      _total = 0;
+    });
+
+    try {
+      await client.repairInstanceDependencies(
+        widget.instance.id,
+        onDetailedProgress: (done, total, message) {
+          if (!mounted) return;
+          setState(() {
+            _done = done;
+            _total = total;
+            if (message != null && message.isNotEmpty) _phase = message;
+          });
+        },
+        onProgress: (done, total) {
+          if (!mounted) return;
+          setState(() {
+            _done = done;
+            _total = total;
+          });
+        },
+      );
+
+      final envelope = await client.checkLoader(
+        root: widget.instance.rootPath,
+        kind: widget.instance.loader.name,
+        gameVersion: widget.instance.gameVersion,
+        loaderVersion: widget.instance.loaderVersion,
+        mode: widget.mode,
+      );
+      if (!mounted) return;
+      setState(() {
+        _envelope = envelope;
+        _busy = false;
+        _repaired = true;
+        _phase = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      final l10n = widget.l10n;
+      setState(() {
+        _busy = false;
+        _phase = null;
+        _error = switch (error) {
+          CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
+            l10n.launchJavaMissing,
+          CoreException(code: 'DOWNLOAD_DISABLED') =>
+            l10n.downloadUnavailableTitle,
+          _ => '${l10n.instanceCheckRepairFailed} $error',
+        };
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = widget.l10n;
     final tokens = context.tokens;
-    final data = envelope['data'] is Map
-        ? envelope['data'] as Map<Object?, Object?>
+    final data = _envelope['data'] is Map
+        ? _envelope['data'] as Map<Object?, Object?>
         : const <Object?, Object?>{};
     final verification = data['verification'] is Map
         ? data['verification'] as Map<Object?, Object?>
@@ -663,44 +791,106 @@ class _DependencyCheckDialog extends StatelessWidget {
     final mismatched = verification['mismatched'] is List
         ? (verification['mismatched'] as List).length
         : 0;
-    final ok = envelope['ok'] == true && verification['ok'] == true;
-    final error = envelope['error'] is Map
-        ? envelope['error'] as Map<Object?, Object?>
+    final launchFiles = data['launchFiles'] is Map
+        ? data['launchFiles'] as Map<Object?, Object?>
+        : const <Object?, Object?>{};
+    final launchOk = launchFiles['ok'] != false;
+    final launchIssue =
+        launchFiles['message']?.toString() ?? launchFiles['code']?.toString();
+    final ok =
+        _envelope['ok'] == true && verification['ok'] == true && launchOk;
+    final error = _envelope['error'] is Map
+        ? _envelope['error'] as Map<Object?, Object?>
         : null;
     final errorCode = error?['code']?.toString();
     final errorMessage = errorCode == 'MANIFEST_MISSING'
         ? l10n.instanceManifestMissing
         : error?['message']?.toString() ?? l10n.instanceCheckFailed;
+    final downloadsEnabled = ref.watch(downloadEnabledProvider);
+    final progress = _total > 0 ? (_done / _total).clamp(0.0, 1.0) : null;
 
     return AlertDialog(
       title: Text(l10n.instanceCheckTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            mode == 'full' ? l10n.instanceCheckFull : l10n.instanceCheckQuick,
-            style: Theme.of(context).textTheme.labelLarge
-                ?.copyWith(color: tokens.accent),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (ok)
-            Text(l10n.instanceCheckOk, style: TextStyle(color: tokens.success))
-          else if (error != null)
-            Text(errorMessage, style: TextStyle(color: tokens.danger))
-          else ...[
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              l10n.instanceCheckFailed,
-              style: TextStyle(color: tokens.danger),
+              widget.mode == 'full'
+                  ? l10n.instanceCheckFull
+                  : l10n.instanceCheckQuick,
+              style: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(color: tokens.accent),
             ),
-            if (missing > 0) Text(l10n.instanceCheckMissing(missing)),
-            if (mismatched > 0) Text(l10n.instanceCheckMismatched(mismatched)),
+            const SizedBox(height: AppSpacing.sm),
+            if (ok)
+              Text(
+                _repaired ? l10n.instanceCheckRepairDone : l10n.instanceCheckOk,
+                style: TextStyle(color: tokens.success),
+              )
+            else if (error != null)
+              Text(errorMessage, style: TextStyle(color: tokens.danger))
+            else ...[
+              Text(
+                l10n.instanceCheckFailed,
+                style: TextStyle(color: tokens.danger),
+              ),
+              if (missing > 0) Text(l10n.instanceCheckMissing(missing)),
+              if (mismatched > 0)
+                Text(l10n.instanceCheckMismatched(mismatched)),
+              if (!launchOk && launchIssue != null)
+                Text(l10n.instanceCheckLaunchFiles(launchIssue)),
+            ],
+            if (!ok && _canRepair) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                l10n.instanceCheckRepairHint,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+            ],
+            if (_busy) ...[
+              const SizedBox(height: AppSpacing.md),
+              LinearProgressIndicator(value: progress),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                _phase ?? l10n.instanceCheckRepairing,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                _error!,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: tokens.danger),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
       actions: [
+        if (_busy)
+          OutlinedButton(
+            onPressed: _cancelRepair,
+            child: Text(l10n.commonCancel),
+          ),
+        if (!ok && _canRepair && downloadsEnabled)
+          FilledButton.icon(
+            onPressed: _busy ? null : _repair,
+            icon: const Icon(Icons.build_rounded, size: 18),
+            label: Text(
+              _busy ? l10n.instanceCheckRepairing : l10n.instanceCheckRepair,
+            ),
+          ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
           child: Text(l10n.commonClose),
         ),
       ],
@@ -849,29 +1039,26 @@ class _InstanceRow extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (instance.loader == GameLoader.forge ||
-                          instance.loader == GameLoader.neoforge) ...[
-                        PopupMenuItem(
-                          value: 'checkQuick',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.bolt_rounded, size: 20),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(l10n.instanceCheckQuick),
-                            ],
-                          ),
+                      PopupMenuItem(
+                        value: 'checkQuick',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.bolt_rounded, size: 20),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(l10n.instanceCheckQuick),
+                          ],
                         ),
-                        PopupMenuItem(
-                          value: 'checkFull',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.fact_check_outlined, size: 20),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(l10n.instanceCheckFull),
-                            ],
-                          ),
+                      ),
+                      PopupMenuItem(
+                        value: 'checkFull',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.fact_check_outlined, size: 20),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(l10n.instanceCheckFull),
+                          ],
                         ),
-                      ],
+                      ),
                       PopupMenuItem(
                         value: 'delete',
                         child: Row(

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Archoera.Application.Loaders;
 using Archoera.DevHost;
 using Archoera.Domain.Loaders;
@@ -199,6 +200,101 @@ public sealed class LoaderRepairTests
         Assert.Contains(
             result.Details,
             detail => detail.Contains("output verification failed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Verify_reports_a_manually_deleted_generated_artifact()
+    {
+        using var temp = new TempFixture("verify-missing-generated");
+        var fixture = temp.Loader;
+        var manifest = await fixture.PlanAsync();
+        fixture.WriteAllValid(manifest);
+
+        File.Delete(fixture.Resolve(fixture.Find(manifest, "PATCHED")));
+
+        var verification = new LoaderArtifactVerifier().Verify(
+            manifest,
+            fixture.Root,
+            LoaderVerifyMode.Quick);
+
+        Assert.False(verification.Ok);
+        Assert.Contains(
+            verification.Missing,
+            artifact => string.Equals(artifact.Key, "PATCHED", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Loader_check_reports_missing_launch_files()
+    {
+        using var temp = new TempFixture("check-launch-files");
+        var fixture = temp.Loader;
+        var manifest = await fixture.PlanAsync();
+        fixture.WriteAllValid(manifest);
+
+        var installerTarget = Path.Combine(
+            fixture.Root,
+            "downloads",
+            "loaders",
+            "forge",
+            "1.20.1-47.2.0-installer.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(installerTarget)!);
+        File.Copy(fixture.InstallerPath, installerTarget, overwrite: true);
+
+        var versionId = "1.20.1-forge-47.2.0";
+        var versionDir = Path.Combine(fixture.Root, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+        File.WriteAllText(
+            Path.Combine(versionDir, $"{versionId}.json"),
+            $$"""
+              {
+                "id": "{{versionId}}",
+                "type": "release",
+                "mainClass": "net.minecraft.client.main.Main",
+                "libraries": []
+              }
+              """);
+        var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
+        File.WriteAllText(clientJar, "client");
+
+        var service = new LoaderModuleService();
+        var paramsJson = $$"""
+                           {
+                             "root": "{{fixture.Root.Replace("\\", "\\\\")}}",
+                             "kind": "forge",
+                             "gameVersion": "1.20.1",
+                             "loaderVersion": "47.2.0",
+                             "mode": "quick"
+                           }
+                           """;
+        var result = await service.HandleAsync(
+            "loader.check",
+            paramsJson,
+            CancellationToken.None);
+        using (var document = JsonDocument.Parse(result))
+        {
+            Assert.True(document.RootElement.GetProperty("ok").GetBoolean());
+            Assert.True(
+                document.RootElement
+                    .GetProperty("data")
+                    .GetProperty("launchFiles")
+                    .GetProperty("ok")
+                    .GetBoolean());
+        }
+
+        File.Delete(clientJar);
+        var missing = await service.HandleAsync(
+            "loader.check",
+            paramsJson,
+            CancellationToken.None);
+        using var missingDocument = JsonDocument.Parse(missing);
+        Assert.False(missingDocument.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal(
+            "CLIENT_JAR_MISSING",
+            missingDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("launchFiles")
+                .GetProperty("code")
+                .GetString());
     }
 
     [Fact]

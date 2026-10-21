@@ -350,6 +350,96 @@ abstract class AppLocalizations {
   /// **'Import pack'**
   String get importPack;
 
+  /// Progress dialog title for Modrinth .mrpack installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Install modpack'**
+  String get packInstallTitle;
+
+  /// Dialog title when installing a local .mrpack file.
+  ///
+  /// In en, this message translates to:
+  /// **'Import modpack'**
+  String get packImportTitle;
+
+  /// Explains that pack installation creates a new isolated instance.
+  ///
+  /// In en, this message translates to:
+  /// **'A new instance will be created. Minecraft and the pack loader are installed from the pack dependencies, then bundled overrides are merged.'**
+  String get packInstallHint;
+
+  /// Progress dialog status while a pack installs.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing modpack…'**
+  String get packInstallRunning;
+
+  /// Progress dialog success status.
+  ///
+  /// In en, this message translates to:
+  /// **'Modpack installed.'**
+  String get packInstallDone;
+
+  /// Progress dialog failure status.
+  ///
+  /// In en, this message translates to:
+  /// **'Modpack installation failed.'**
+  String get packInstallFailed;
+
+  /// Pack details line: Minecraft version and loader build.
+  ///
+  /// In en, this message translates to:
+  /// **'{game} · {loader} {loaderVersion}'**
+  String packInspectMeta(String game, String loader, String loaderVersion);
+
+  /// Pack details line: download count and bundled override count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} index files · {overrides} bundled overrides'**
+  String packInspectFiles(int count, int overrides);
+
+  /// shown when a local .mrpack cannot be parsed.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is not a valid Modrinth modpack.'**
+  String get packInspectFailed;
+
+  /// Shown for Forge/NeoForge modpack dependencies.
+  ///
+  /// In en, this message translates to:
+  /// **'This pack loader is not supported. Supported loaders: vanilla, Fabric, Quilt, Forge and NeoForge.'**
+  String get packLoaderUnsupported;
+
+  /// Shown when Forge/NeoForge processors have no usable Java.
+  ///
+  /// In en, this message translates to:
+  /// **'This pack needs a Java runtime for its loader processors. Install or select a matching Java in Settings first.'**
+  String get packJavaMissing;
+
+  /// Shown while a modpack task is being cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling…'**
+  String get packCancelling;
+
+  /// Shown after a modpack task is cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Modpack installation was cancelled.'**
+  String get packCancelled;
+
+  /// Modpack search header: no existing instance is used.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a new instance'**
+  String get packTargetNewInstance;
+
+  /// Success summary after a pack install.
+  ///
+  /// In en, this message translates to:
+  /// **'{downloaded} files downloaded · {bundled} bundled'**
+  String packResultSummary(int downloaded, int bundled);
+
   /// No description provided for @instanceCreateTitle.
   ///
   /// In en, this message translates to:
@@ -536,6 +626,42 @@ abstract class AppLocalizations {
   /// **'Dependency check failed.'**
   String get instanceCheckFailed;
 
+  /// Dependency check line for missing libraries/client/assets.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch files: {issue}'**
+  String instanceCheckLaunchFiles(String issue);
+
+  /// Button that restores missing loader files and reruns processors.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair dependencies'**
+  String get instanceCheckRepair;
+
+  /// Explains what the dependency repair action does.
+  ///
+  /// In en, this message translates to:
+  /// **'Restores missing libraries/assets and reruns loader processors when needed.'**
+  String get instanceCheckRepairHint;
+
+  /// Progress text while repairing loader dependencies.
+  ///
+  /// In en, this message translates to:
+  /// **'Repairing dependencies…'**
+  String get instanceCheckRepairing;
+
+  /// Success text after dependency repair.
+  ///
+  /// In en, this message translates to:
+  /// **'Dependencies repaired.'**
+  String get instanceCheckRepairDone;
+
+  /// Failure text after dependency repair.
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency repair failed.'**
+  String get instanceCheckRepairFailed;
+
   /// No description provided for @instanceManifestMissing.
   ///
   /// In en, this message translates to:
@@ -577,6 +703,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Basic launch supports offline accounts only.'**
   String get launchOfflineOnly;
+
+  /// Launch error after a failed automatic Forge/NeoForge repair.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch files are missing and automatic repair failed. Reinstall the loader from the instance menu.'**
+  String get launchAutoRepairFailed;
+
+  /// Launch error when auto-repair needs downloads but the local policy blocks them.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch files are missing, but downloads are disabled. Enable downloads to repair them.'**
+  String get launchAutoRepairBlocked;
 
   /// No description provided for @launchJavaMissing.
   ///
@@ -2072,6 +2210,12 @@ abstract class AppLocalizations {
   /// **'Loader'**
   String get taskCenterLoader;
 
+  /// Task centre label for .mrpack installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Modpack'**
+  String get taskCenterModpack;
+
   /// Vanilla install task label.
   ///
   /// In en, this message translates to:
@@ -2119,12 +2263,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The game data lives in versions/<name>; libraries and assets are shared with the parent game folder.'**
   String get instanceVersionIsolationHint;
-
-  /// Modpack placeholder message.
-  ///
-  /// In en, this message translates to:
-  /// **'Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.'**
-  String get downloadModpackPending;
 
   /// Release-mode account policy error.
   ///

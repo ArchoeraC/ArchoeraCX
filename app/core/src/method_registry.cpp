@@ -44,6 +44,10 @@ constexpr MethodRoute kRoutes[] = {
     {"download.execute", MethodRouteKind::kModule, kCsModule},
     {"download.policy", MethodRouteKind::kModule, kCsModule},
     {"region.policy", MethodRouteKind::kModule, kCsModule},
+    {"modpack.inspect", MethodRouteKind::kModule, kCsModule},
+    {"modpack.install", MethodRouteKind::kModule, kCsModule},
+    {"modpack.installLocal", MethodRouteKind::kModule, kCsModule},
+    {"loader.autoRepair", MethodRouteKind::kModule, kCsModule},
 
     {"system.memory", MethodRouteKind::kModule, kCsModule},
     {"settings.get", MethodRouteKind::kModule, kCsModule},

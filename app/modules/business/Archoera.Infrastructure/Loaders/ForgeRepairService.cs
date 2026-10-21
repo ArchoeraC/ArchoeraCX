@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using Archoera.Application.Loaders;
+using Archoera.Application.Modules;
 using Archoera.Domain.Loaders;
 
 namespace Archoera.Infrastructure.Loaders;
@@ -12,7 +13,7 @@ namespace Archoera.Infrastructure.Loaders;
 /// </summary>
 public sealed class ForgeRepairService : IForgeRepairService
 {
-    private static readonly TimeSpan DefaultProcessorTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan DefaultProcessorTimeout = TimeSpan.FromMinutes(10);
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> LoaderLocks = new(StringComparer.Ordinal);
 
     private readonly IProcessorRunner _runner;
@@ -212,13 +213,44 @@ public sealed class ForgeRepairService : IForgeRepairService
             "versions",
             manifest.LoaderId.GameVersion,
             $"{manifest.LoaderId.GameVersion}.jar"));
+        if (!File.Exists(minecraftJarFull) &&
+            !string.IsNullOrWhiteSpace(manifest.VersionId))
+        {
+            // The merged loader profile downloads the vanilla client under its
+            // own version id. Forge processors only need the same bytes, so
+            // fall back to that copy instead of requiring a duplicate vanilla
+            // versions/<game>/<game>.jar.
+            var mergedJar = Path.GetFullPath(Path.Combine(
+                rootFull,
+                "versions",
+                manifest.VersionId,
+                $"{manifest.VersionId}.jar"));
+            if (File.Exists(mergedJar))
+            {
+                minecraftJarFull = mergedJar;
+            }
+        }
 
         var runSteps = manifest.Processors.Skip(firstNeeded).ToArray();
+        // Some installers do not list processor outputs (NeoForge 21.1 leaves
+        // producerIndex=-1 for MC_SLIM/MC_EXTRA). In addition to declared
+        // outputs, treat arguments following output flags as files this run will
+        // create, so a later step's input is allowed to be absent up front.
         var plannedOutputs = new HashSet<string>(
             runSteps
                 .SelectMany(processor => OutputsForProcessor(manifest, processor))
                 .Select(output => ResolveArtifactPath(rootFull, librariesFull, output)),
             PathComparer);
+        foreach (var processor in runSteps)
+        {
+            AddOutputArgumentPaths(
+                processor,
+                rootFull,
+                librariesFull,
+                installerFull,
+                minecraftJarFull,
+                plannedOutputs);
+        }
 
         foreach (var processor in runSteps)
         {
@@ -236,10 +268,16 @@ public sealed class ForgeRepairService : IForgeRepairService
             }
         }
 
+        var totalProcessors = manifest.Processors.Count;
         foreach (var processor in runSteps)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            ModuleProgress.Report(
+                processor.Index,
+                Math.Max(1, totalProcessors),
+                0,
+                $"Running processor {processor.Index + 1}/{totalProcessors}");
             DeleteInvalidOutputs(manifest, rootFull, librariesFull, processor);
             var resolved = ProcessorStepResolver.Resolve(
                 processor,
@@ -291,6 +329,11 @@ public sealed class ForgeRepairService : IForgeRepairService
 
             processorsRun.Add(processor.Index);
             changed = true;
+            ModuleProgress.Report(
+                processor.Index + 1,
+                Math.Max(1, totalProcessors),
+                0,
+                $"Processor {processor.Index + 1}/{totalProcessors} complete");
 
             var outputVerification = _verifier.Verify(
                 manifest with { Artifacts = OutputsForProcessor(manifest, processor) },
@@ -367,6 +410,42 @@ public sealed class ForgeRepairService : IForgeRepairService
         }
 
         return results;
+    }
+
+    private static void AddOutputArgumentPaths(
+        ProcessorStep processor,
+        string rootFull,
+        string librariesFull,
+        string installerFull,
+        string minecraftJarFull,
+        HashSet<string> outputPaths)
+    {
+        for (var index = 0; index + 1 < processor.Arguments.Count; index++)
+        {
+            var flag = processor.Arguments[index];
+            if (flag is not ("--output" or "--slim" or "--extra"))
+            {
+                continue;
+            }
+
+            var raw = processor.Arguments[index + 1];
+            if (!LooksLikePathArgument(raw)) continue;
+            var expanded = LoaderPaths.ExpandToken(
+                raw,
+                rootFull,
+                librariesFull,
+                installerFull,
+                minecraftJarFull);
+            try
+            {
+                outputPaths.Add(Path.GetFullPath(expanded));
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                // Input checking will report the unsafe path later.
+            }
+        }
     }
 
     private static bool CheckProcessorInputs(

@@ -138,6 +138,60 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importPack => 'Import pack';
 
   @override
+  String get packInstallTitle => 'Install modpack';
+
+  @override
+  String get packImportTitle => 'Import modpack';
+
+  @override
+  String get packInstallHint =>
+      'A new instance will be created. Minecraft and the pack loader are installed from the pack dependencies, then bundled overrides are merged.';
+
+  @override
+  String get packInstallRunning => 'Installing modpack…';
+
+  @override
+  String get packInstallDone => 'Modpack installed.';
+
+  @override
+  String get packInstallFailed => 'Modpack installation failed.';
+
+  @override
+  String packInspectMeta(String game, String loader, String loaderVersion) {
+    return '$game · $loader $loaderVersion';
+  }
+
+  @override
+  String packInspectFiles(int count, int overrides) {
+    return '$count index files · $overrides bundled overrides';
+  }
+
+  @override
+  String get packInspectFailed => 'This file is not a valid Modrinth modpack.';
+
+  @override
+  String get packLoaderUnsupported =>
+      'This pack loader is not supported. Supported loaders: vanilla, Fabric, Quilt, Forge and NeoForge.';
+
+  @override
+  String get packJavaMissing =>
+      'This pack needs a Java runtime for its loader processors. Install or select a matching Java in Settings first.';
+
+  @override
+  String get packCancelling => 'Cancelling…';
+
+  @override
+  String get packCancelled => 'Modpack installation was cancelled.';
+
+  @override
+  String get packTargetNewInstance => 'Creates a new instance';
+
+  @override
+  String packResultSummary(int downloaded, int bundled) {
+    return '$downloaded files downloaded · $bundled bundled';
+  }
+
+  @override
   String get instanceCreateTitle => 'Create instance';
 
   @override
@@ -264,6 +318,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instanceCheckFailed => 'Dependency check failed.';
 
   @override
+  String instanceCheckLaunchFiles(String issue) {
+    return 'Launch files: $issue';
+  }
+
+  @override
+  String get instanceCheckRepair => 'Repair dependencies';
+
+  @override
+  String get instanceCheckRepairHint =>
+      'Restores missing libraries/assets and reruns loader processors when needed.';
+
+  @override
+  String get instanceCheckRepairing => 'Repairing dependencies…';
+
+  @override
+  String get instanceCheckRepairDone => 'Dependencies repaired.';
+
+  @override
+  String get instanceCheckRepairFailed => 'Dependency repair failed.';
+
+  @override
   String get instanceManifestMissing =>
       'Loader installer not found in this instance.';
 
@@ -287,6 +362,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get launchOfflineOnly =>
       'Basic launch supports offline accounts only.';
+
+  @override
+  String get launchAutoRepairFailed =>
+      'Launch files are missing and automatic repair failed. Reinstall the loader from the instance menu.';
+
+  @override
+  String get launchAutoRepairBlocked =>
+      'Launch files are missing, but downloads are disabled. Enable downloads to repair them.';
 
   @override
   String get launchJavaMissing => 'No suitable Java runtime found.';
@@ -1147,6 +1230,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskCenterLoader => 'Loader';
 
   @override
+  String get taskCenterModpack => 'Modpack';
+
+  @override
   String get taskCenterGameFiles => 'Game files';
 
   @override
@@ -1173,10 +1259,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get instanceVersionIsolationHint =>
       'The game data lives in versions/<name>; libraries and assets are shared with the parent game folder.';
-
-  @override
-  String get downloadModpackPending =>
-      'Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.';
 
   @override
   String get accountPremiumRequired =>

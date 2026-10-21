@@ -8,6 +8,7 @@ using Archoera.Domain.Downloads;
 using Archoera.Domain.Loaders;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Mojang;
+using Archoera.Infrastructure.Launch;
 using Archoera.Domain.Mojang;
 
 namespace Archoera.Infrastructure.Loaders;
@@ -258,13 +259,17 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             var kindText = ReadString(rootElement, "kind");
             var gameVersion = ReadString(rootElement, "gameVersion");
             var loaderVersion = ReadString(rootElement, "loaderVersion");
+            var loaderName = kindText?.Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(instanceRoot) ||
                 !Path.IsPathFullyQualified(instanceRoot) ||
                 string.IsNullOrWhiteSpace(gameVersion) ||
-                string.IsNullOrWhiteSpace(loaderVersion) ||
-                !TryParseKind(kindText, out var kind))
+                (loaderName != "vanilla" && string.IsNullOrWhiteSpace(loaderVersion)) ||
+                !IsCheckableLoader(loaderName))
             {
-                return ModuleJson.Error("E_INVALID", "loader.check requires root, kind, gameVersion and loaderVersion");
+                return ModuleJson.Error(
+                    "E_INVALID",
+                    "loader.check requires root, kind (vanilla/fabric/quilt/forge/neoforge), " +
+                    "gameVersion and loaderVersion");
             }
 
             var modeText = ReadString(rootElement, "mode");
@@ -275,10 +280,26 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             }
             LoaderVerifyModeExtensions.TryParse(modeText, out var mode);
 
+            var launchFiles = CheckLaunchFiles(
+                Path.GetFullPath(instanceRoot),
+                loaderName!,
+                gameVersion,
+                loaderVersion ?? string.Empty);
+
+            if (loaderName is not ("forge" or "neoforge"))
+            {
+                return LoaderManifestJson.BuildLaunchOnlyEnvelope(
+                    mode,
+                    launchFiles.Ok,
+                    launchFiles.Code,
+                    launchFiles.Message);
+            }
+
+            var kind = loaderName == "forge" ? LoaderKind.Forge : LoaderKind.NeoForge;
             var relative = ForgeMavenUrls.DefaultInstallerRelativePath(
                 kind,
                 gameVersion,
-                loaderVersion);
+                loaderVersion!);
             var installerPath = Path.Combine(
                 Path.GetFullPath(instanceRoot),
                 relative.Replace('/', Path.DirectorySeparatorChar));
@@ -294,7 +315,13 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 .ParseAsync(installerPath, instanceRoot, librariesPath, kind, cancellationToken)
                 .ConfigureAwait(false);
             var verification = _verifier.Verify(manifest, instanceRoot, mode);
-            return LoaderManifestJson.BuildEnvelope(manifest, verification, mode: mode);
+            return LoaderManifestJson.BuildEnvelope(
+                manifest,
+                verification,
+                mode: mode,
+                launchFilesOk: launchFiles.Ok,
+                launchFilesCode: launchFiles.Code,
+                launchFilesMessage: launchFiles.Message);
         }
         catch (LoaderManifestException exception)
         {
@@ -304,6 +331,45 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             exception is IOException or JsonException or ArgumentException)
         {
             return LoaderManifestJson.BuildError("E_INVALID", exception.Message);
+        }
+    }
+
+    private static bool IsCheckableLoader(string? loaderName)
+        => loaderName is "vanilla" or "fabric" or "quilt" or "forge" or "neoforge";
+
+    private static LaunchFileCheck CheckLaunchFiles(
+        string instanceRoot,
+        string loaderName,
+        string gameVersion,
+        string loaderVersion)
+    {
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            var record = new Archoera.Domain.Instances.GameInstanceRecord(
+                "dependencies",
+                Path.GetFileName(Path.TrimEndingDirectorySeparator(instanceRoot)),
+                gameVersion,
+                loaderName,
+                loaderVersion,
+                Path.GetFullPath(instanceRoot),
+                0,
+                false,
+                now,
+                now,
+                null);
+            var paths = LaunchPaths.Resolve(record.RootPath);
+            var version = LaunchModuleService.LoadVersion(record, paths);
+            return LaunchPlanBuilder.CheckFiles(version, paths);
+        }
+        catch (LaunchException exception)
+        {
+            return new LaunchFileCheck(false, exception.Code, exception.Message);
+        }
+        catch (Exception exception) when (
+            exception is IOException or ArgumentException or InvalidOperationException)
+        {
+            return new LaunchFileCheck(false, "LAUNCH_FILES_UNREADABLE", exception.Message);
         }
     }
 

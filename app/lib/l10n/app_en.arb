@@ -48,6 +48,79 @@
   "filterAll": "All",
   "createInstance": "Create instance",
   "importPack": "Import pack",
+  "packInstallTitle": "Install modpack",
+  "@packInstallTitle": {
+    "description": "Progress dialog title for Modrinth .mrpack installation."
+  },
+  "packImportTitle": "Import modpack",
+  "@packImportTitle": {
+    "description": "Dialog title when installing a local .mrpack file."
+  },
+  "packInstallHint": "A new instance will be created. Minecraft and the pack loader are installed from the pack dependencies, then bundled overrides are merged.",
+  "@packInstallHint": {
+    "description": "Explains that pack installation creates a new isolated instance."
+  },
+  "packInstallRunning": "Installing modpack…",
+  "@packInstallRunning": {
+    "description": "Progress dialog status while a pack installs."
+  },
+  "packInstallDone": "Modpack installed.",
+  "@packInstallDone": {
+    "description": "Progress dialog success status."
+  },
+  "packInstallFailed": "Modpack installation failed.",
+  "@packInstallFailed": {
+    "description": "Progress dialog failure status."
+  },
+  "packInspectMeta": "{game} · {loader} {loaderVersion}",
+  "@packInspectMeta": {
+    "description": "Pack details line: Minecraft version and loader build.",
+    "placeholders": {
+      "game": {"type": "String"},
+      "loader": {"type": "String"},
+      "loaderVersion": {"type": "String"}
+    }
+  },
+  "packInspectFiles": "{count} index files · {overrides} bundled overrides",
+  "@packInspectFiles": {
+    "description": "Pack details line: download count and bundled override count.",
+    "placeholders": {
+      "count": {"type": "int"},
+      "overrides": {"type": "int"}
+    }
+  },
+  "packInspectFailed": "This file is not a valid Modrinth modpack.",
+  "@packInspectFailed": {
+    "description": "shown when a local .mrpack cannot be parsed."
+  },
+  "packLoaderUnsupported": "This pack loader is not supported. Supported loaders: vanilla, Fabric, Quilt, Forge and NeoForge.",
+  "packJavaMissing": "This pack needs a Java runtime for its loader processors. Install or select a matching Java in Settings first.",
+  "packCancelling": "Cancelling…",
+  "@packCancelling": {
+    "description": "Shown while a modpack task is being cancelled."
+  },
+  "packCancelled": "Modpack installation was cancelled.",
+  "@packCancelled": {
+    "description": "Shown after a modpack task is cancelled."
+  },
+  "@packJavaMissing": {
+    "description": "Shown when Forge/NeoForge processors have no usable Java."
+  },
+  "@packLoaderUnsupported": {
+    "description": "Shown for Forge/NeoForge modpack dependencies."
+  },
+  "packTargetNewInstance": "Creates a new instance",
+  "@packTargetNewInstance": {
+    "description": "Modpack search header: no existing instance is used."
+  },
+  "packResultSummary": "{downloaded} files downloaded · {bundled} bundled",
+  "@packResultSummary": {
+    "description": "Success summary after a pack install.",
+    "placeholders": {
+      "downloaded": {"type": "int"},
+      "bundled": {"type": "int"}
+    }
+  },
   "instanceCreateTitle": "Create instance",
   "instanceNameLabel": "Name",
   "instanceNameHint": "e.g. 1.21.4 · Fabric",
@@ -101,6 +174,33 @@
   "instanceCheckMissing": "Missing: {count}",
   "instanceCheckMismatched": "Mismatched: {count}",
   "instanceCheckFailed": "Dependency check failed.",
+  "instanceCheckLaunchFiles": "Launch files: {issue}",
+  "@instanceCheckLaunchFiles": {
+    "description": "Dependency check line for missing libraries/client/assets.",
+    "placeholders": {
+      "issue": {"type": "String"}
+    }
+  },
+  "instanceCheckRepair": "Repair dependencies",
+  "@instanceCheckRepair": {
+    "description": "Button that restores missing loader files and reruns processors."
+  },
+  "instanceCheckRepairHint": "Restores missing libraries/assets and reruns loader processors when needed.",
+  "@instanceCheckRepairHint": {
+    "description": "Explains what the dependency repair action does."
+  },
+  "instanceCheckRepairing": "Repairing dependencies…",
+  "@instanceCheckRepairing": {
+    "description": "Progress text while repairing loader dependencies."
+  },
+  "instanceCheckRepairDone": "Dependencies repaired.",
+  "@instanceCheckRepairDone": {
+    "description": "Success text after dependency repair."
+  },
+  "instanceCheckRepairFailed": "Dependency repair failed.",
+  "@instanceCheckRepairFailed": {
+    "description": "Failure text after dependency repair."
+  },
   "instanceManifestMissing": "Loader installer not found in this instance.",
   "@instanceCheckMissing": {
     "placeholders": {
@@ -130,6 +230,14 @@
   "launchStarting": "Starting game…",
   "launchNoAccount": "Add an account before launching.",
   "launchOfflineOnly": "Basic launch supports offline accounts only.",
+  "launchAutoRepairFailed": "Launch files are missing and automatic repair failed. Reinstall the loader from the instance menu.",
+  "@launchAutoRepairFailed": {
+    "description": "Launch error after a failed automatic Forge/NeoForge repair."
+  },
+  "launchAutoRepairBlocked": "Launch files are missing, but downloads are disabled. Enable downloads to repair them.",
+  "@launchAutoRepairBlocked": {
+    "description": "Launch error when auto-repair needs downloads but the local policy blocks them."
+  },
   "launchJavaMissing": "No suitable Java runtime found.",
   "launchLog": "Log: {path}",
   "@launchStarted": {
@@ -878,6 +986,10 @@
   "@taskCenterLoader": {
     "description": "Loader task label."
   },
+  "taskCenterModpack": "Modpack",
+  "@taskCenterModpack": {
+    "description": "Task centre label for .mrpack installation."
+  },
   "taskCenterGameFiles": "Game files",
   "@taskCenterGameFiles": {
     "description": "Vanilla install task label."
@@ -909,10 +1021,6 @@
   "instanceVersionIsolationHint": "The game data lives in versions/<name>; libraries and assets are shared with the parent game folder.",
   "@instanceVersionIsolationHint": {
     "description": "Version isolation explanation."
-  },
-  "downloadModpackPending": "Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.",
-  "@downloadModpackPending": {
-    "description": "Modpack placeholder message."
   },
   "accountPremiumRequired": "Sign in with a Microsoft account that owns Minecraft first.",
   "@accountPremiumRequired": {

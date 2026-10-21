@@ -15,6 +15,7 @@ using Archoera.Infrastructure.Accounts;
 using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Modules;
+using Archoera.Infrastructure.Packs;
 using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Launch;
@@ -40,6 +41,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     private readonly MicrosoftAuthClient _auth;
     private readonly MicrosoftAccountGate _premiumGate;
     private readonly JavaScanner _java = new();
+    private readonly JavaRuntimeSelectionService _javaSelection;
+    private readonly PackInstallService? _instanceRepair;
+    private readonly DownloadPolicy _downloadPolicy;
 
     public LaunchModuleService(
         IInstanceRepository? instances = null,
@@ -47,7 +51,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         string? dataRoot = null,
         JsonAccountStore? accounts = null,
         IAccountCredentialStore? credentials = null,
-        MicrosoftAuthClient? auth = null)
+        MicrosoftAuthClient? auth = null,
+        PackInstallService? instanceRepair = null,
+        DownloadPolicy? downloadPolicy = null)
     {
         _settings = settings ?? new JsonAppSettingsStore(dataRoot);
         _instances = instances ?? new SqliteInstanceRepository(dataRoot, _settings);
@@ -55,9 +61,72 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         _credentials = credentials ?? _accounts;
         _auth = auth ?? new MicrosoftAuthClient(Http, new MicrosoftAuthOptions());
         _premiumGate = new MicrosoftAccountGate(_accounts, _credentials, _auth);
+        _instanceRepair = instanceRepair;
+        _javaSelection = new JavaRuntimeSelectionService(_java, _settings);
+        _downloadPolicy = downloadPolicy ??
+                          new DownloadPolicy(dataRoot ?? _settings.DataRoot);
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
+
+    private static bool IsForgeInstance(GameInstanceRecord instance)
+        => instance.Loader.Equals("forge", StringComparison.OrdinalIgnoreCase) ||
+           instance.Loader.Equals("neoforge", StringComparison.OrdinalIgnoreCase);
+
+    private async Task RepairLaunchAsync(
+        GameInstanceRecord instance,
+        string? javaPath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _downloadPolicy
+                .EnsureEnabledAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var repair = _instanceRepair ?? new PackInstallService(settings: _settings);
+            if (IsForgeInstance(instance))
+            {
+                if (string.IsNullOrWhiteSpace(javaPath))
+                {
+                    throw new LaunchException(
+                        "JAVA_MISSING",
+                        "a Java runtime is required to repair this loader");
+                }
+
+                await repair
+                    .RepairForgeInstanceAsync(instance, javaPath, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await repair
+                    .RepairSimpleInstanceAsync(instance, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (LaunchException)
+        {
+            throw;
+        }
+        catch (DownloadPolicyException exception)
+        {
+            throw new LaunchException(
+                "AUTO_REPAIR_BLOCKED",
+                "launch files are missing and downloads are disabled: " +
+                exception.Message);
+        }
+        catch (Exception exception)
+        {
+            throw new LaunchException(
+                "AUTO_REPAIR_FAILED",
+                "launch files are missing and automatic repair failed: " +
+                exception.Message);
+        }
+    }
 
     private async Task<byte[]> PrepareAsync(
         string? paramsJson,
@@ -131,14 +200,43 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             }
         }
 
+        var accountReady = ready;
+        var filesReady = true;
+        string? fileIssue = null;
+        var autoRepairAvailable = false;
+        try
+        {
+            var paths = LaunchPaths.Resolve(instance.RootPath);
+            var version = LoadVersion(instance, paths);
+            var check = LaunchPlanBuilder.CheckFiles(version, paths);
+            filesReady = check.Ok;
+            fileIssue = check.Code;
+            autoRepairAvailable = !filesReady ||
+                                  !string.IsNullOrWhiteSpace(version.InheritsFrom);
+        }
+        catch (LaunchException exception)
+        {
+            filesReady = false;
+            fileIssue = exception.Code;
+            autoRepairAvailable = true;
+        }
+
+        if (accountReady && !filesReady)
+        {
+            reason = fileIssue;
+        }
+
         return ModuleJson.Envelope(writer =>
         {
             writer.WriteString("instanceId", instance.Id);
             writer.WriteString("mode", mode);
-            writer.WriteBoolean("ready", ready);
+            writer.WriteBoolean("ready", accountReady && filesReady);
             writer.WriteString("reason", reason);
-            writer.WriteBoolean("requiresEntitlement", !ready);
-            writer.WriteBoolean("requiresCertificates", !ready);
+            writer.WriteBoolean("requiresEntitlement", !accountReady);
+            writer.WriteBoolean("requiresCertificates", !accountReady);
+            writer.WriteBoolean("filesReady", filesReady);
+            writer.WriteString("fileIssue", fileIssue);
+            writer.WriteBoolean("autoRepairAvailable", autoRepairAvailable);
             writer.WriteString(
                 "accountKind",
                 account?.Kind.ToString().ToLowerInvariant());
@@ -261,8 +359,81 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             }
 
             var paths = LaunchPaths.Resolve(instance.RootPath);
-            var version = LoadVersion(instance, paths);
-            var java = await SelectJavaAsync(settings, version, cancellationToken).ConfigureAwait(false);
+            MojangVersion version;
+            try
+            {
+                version = LoadVersion(instance, paths);
+            }
+            catch (LaunchException exception) when (
+                exception.Code is "VERSION_JSON_MISSING" or "VERSION_NOT_MERGED")
+            {
+                // The merged launch profile is missing, but the instance still
+                // records its loader/game versions; rebuild it in place.
+                JavaRuntimeInfo? repairJava = null;
+                if (IsForgeInstance(instance))
+                {
+                    try
+                    {
+                        repairJava = await _javaSelection
+                            .SelectAsync(null, instance.GameVersion, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (JavaSelectionException selectionError)
+                    {
+                        throw new LaunchException(
+                            selectionError.Code,
+                            selectionError.Message);
+                    }
+                }
+
+                await RepairLaunchAsync(
+                        instance,
+                        repairJava?.Path,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                version = LoadVersion(instance, paths);
+            }
+
+            var java = !string.IsNullOrWhiteSpace(version.InheritsFrom)
+                ? await _javaSelection
+                    .SelectAsync(null, instance.GameVersion, cancellationToken)
+                    .ConfigureAwait(false)
+                : await SelectJavaAsync(settings, version, cancellationToken)
+                    .ConfigureAwait(false);
+
+            // Forge/NeoForge instances also need generated-artifact checks.
+            // Other loaders are repaired from a fresh merged/profile plan.
+            var needsRepair =
+                !LaunchPlanBuilder.CheckFiles(version, paths).Ok ||
+                !string.IsNullOrWhiteSpace(version.InheritsFrom);
+            if (IsForgeInstance(instance) && !needsRepair)
+            {
+                var loaderCheck = _instanceRepair is null
+                    ? new PackInstallService(settings: _settings)
+                    : _instanceRepair;
+                needsRepair = !(await loaderCheck
+                        .CheckForgeInstanceAsync(instance, cancellationToken)
+                        .ConfigureAwait(false))
+                    .Ok;
+            }
+
+            if (needsRepair)
+            {
+                await RepairLaunchAsync(instance, java.Path, cancellationToken)
+                    .ConfigureAwait(false);
+                version = LoadVersion(instance, paths);
+                java = await SelectJavaAsync(settings, version, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            var fileCheck = LaunchPlanBuilder.CheckFiles(version, paths);
+            if (!fileCheck.Ok)
+            {
+                throw new LaunchException(
+                    fileCheck.Code ?? "LAUNCH_FILES_MISSING",
+                    fileCheck.Message ?? "launch files are missing");
+            }
+
             var plan = LaunchPlanBuilder.Build(
                 instance,
                 version,

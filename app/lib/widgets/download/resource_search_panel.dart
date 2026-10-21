@@ -14,6 +14,7 @@ import '../common/app_empty_state.dart';
 import '../common/app_network_image.dart';
 import '../common/app_section.dart';
 import '../common/toast.dart';
+import 'pack_install_dialog.dart';
 
 /// Real Modrinth search + install surface for one content tab.
 ///
@@ -30,7 +31,7 @@ class ResourceSearchPanel extends ConsumerStatefulWidget {
     this.global = false,
   });
 
-  /// `mod`, `shader` or `resourcepack`.
+  /// `mod`, `shader`, `resourcepack` or `modpack`.
   final String kind;
   final String title;
   final IconData icon;
@@ -196,6 +197,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   }
 
   String _targetFor(GameInstance? instance, AppLocalizations l10n) {
+    if (widget.kind == 'modpack') return l10n.packTargetNewInstance;
     if (widget.global) return l10n.downloadGlobalTarget;
     final game = instance?.gameVersion ?? '1.21.1';
     final loader = (instance?.loader ?? GameLoader.fabric).labelFor(l10n);
@@ -250,8 +252,13 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     }
 
     final instance = ref.read(selectedInstanceProvider);
-    final game = widget.global ? null : (instance?.gameVersion ?? '1.21.1');
-    final loader = instance == null ? 'fabric' : _loaderFor(instance);
+    final packMode = widget.kind == 'modpack';
+    final game = widget.global || packMode
+        ? null
+        : (instance?.gameVersion ?? '1.21.1');
+    final loader = packMode
+        ? null
+        : (instance == null ? 'fabric' : _loaderFor(instance));
     final requestSeq = ++_requestSeq;
     final page = reset ? 0 : _page + 1;
 
@@ -272,7 +279,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         query: _queryController.text.trim(),
         kind: widget.kind,
         gameVersion: game,
-        loader: widget.global ? null : loader,
+        loader: widget.global || packMode ? null : loader,
         shaderLoader: !widget.global && widget.kind == 'shader' ? 'iris' : null,
         sort: _sort,
         page: page,
@@ -326,6 +333,11 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         AppLocalizations.of(context).commonCoreNotConnected,
         type: ToastType.error,
       );
+      return;
+    }
+
+    if (widget.kind == 'modpack') {
+      await _openPackVersions(project);
       return;
     }
 
@@ -384,12 +396,55 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     }
   }
 
+  Future<void> _openPackVersions(ResourceProject project) async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) return;
+    final l10n = AppLocalizations.of(context);
+
+    setState(() => _installing = true);
+    try {
+      final versions = await client.modrinthVersions(
+        projectId: project.id,
+        kind: 'modpack',
+      );
+      if (!mounted) return;
+      if (versions.isEmpty) {
+        _notify(l10n.downloadNoVersions, type: ToastType.warning);
+        return;
+      }
+
+      final selected = await showModalBottomSheet<ResourceVersion>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+        ),
+        builder: (context) =>
+            _VersionSheet(project: project, versions: versions),
+      );
+      if (selected != null && mounted) {
+        await showPackInstallDialog(
+          context,
+          projectId: project.id,
+          versionId: selected.id,
+          title: l10n.packInstallTitle,
+        );
+      }
+    } catch (error) {
+      if (mounted) _notify(error.toString(), type: ToastType.error);
+    } finally {
+      if (mounted) setState(() => _installing = false);
+    }
+  }
+
   Future<void> _install(
     ResourceProject project,
     ResourceVersion version,
   ) async {
     final client = ref.read(coreClientProvider);
     if (client == null) return;
+
     final instance = ref.read(selectedInstanceProvider);
     if (instance == null) {
       _notify(

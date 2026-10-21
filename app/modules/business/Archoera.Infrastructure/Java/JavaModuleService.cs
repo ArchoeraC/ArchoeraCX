@@ -13,14 +13,14 @@ public sealed class JavaModuleService : IModuleMethodHandler
     private static readonly string[] SupportedMethods = ["java.scan", "java.select"];
 
     private readonly IJavaScanner _scanner;
-    private readonly JsonAppSettingsStore _settings;
+    private readonly JavaRuntimeSelectionService _selection;
 
     public JavaModuleService(
         IJavaScanner? scanner = null,
         JsonAppSettingsStore? settings = null)
     {
         _scanner = scanner ?? new JavaScanner();
-        _settings = settings ?? new JsonAppSettingsStore();
+        _selection = new JavaRuntimeSelectionService(_scanner, settings);
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -86,52 +86,18 @@ public sealed class JavaModuleService : IModuleMethodHandler
             return Task.FromResult(ModuleJson.Error("E_INVALID", exception.Message));
         }
 
-        requiredMajor ??= InferMajor(gameVersion);
-        var settings = _settings.LoadAsync(cancellationToken).GetAwaiter().GetResult();
-        IReadOnlyList<JavaRuntimeInfo> items;
-        if (!settings.JavaAuto && !string.IsNullOrWhiteSpace(settings.JavaPath))
+        try
         {
-            items = _scanner.Scan(
-                new JavaScanRequest
-                {
-                    IncludeDefaults = false,
-                    Executables = [settings.JavaPath],
-                },
-                cancellationToken);
-            if (items.Count == 0)
-            {
-                return Task.FromResult(ModuleJson.Error(
-                    "JAVA_MISSING",
-                    $"configured Java is not usable: {settings.JavaPath}"));
-            }
+            var selected = _selection
+                .SelectAsync(requiredMajor, gameVersion, cancellationToken)
+                .GetAwaiter()
+                .GetResult();
+            return Task.FromResult(JavaScanJson.BuildSelection(selected));
         }
-        else
+        catch (JavaSelectionException exception)
         {
-            items = _scanner.Scan(JavaScanRequest.Default, cancellationToken);
+            return Task.FromResult(ModuleJson.Error(exception.Code, exception.Message));
         }
-
-        var selected = JavaSelector.Select(items, requiredMajor);
-        if (selected is null)
-        {
-            return Task.FromResult(ModuleJson.Error(
-                requiredMajor is null ? "JAVA_MISSING" : "JAVA_VERSION_MISMATCH",
-                requiredMajor is null
-                    ? "no Java runtime found"
-                    : $"no Java {requiredMajor}+ runtime found"));
-        }
-
-        return Task.FromResult(JavaScanJson.BuildSelection(selected));
     }
 
-    private static int? InferMajor(string? id)
-    {
-        if (string.IsNullOrWhiteSpace(id)) return null;
-        if (id.StartsWith("26.", StringComparison.Ordinal)) return 25;
-        if (id.StartsWith("1.20.5", StringComparison.Ordinal) ||
-            id.StartsWith("1.21", StringComparison.Ordinal)) return 21;
-        if (id.StartsWith("1.18", StringComparison.Ordinal) ||
-            id.StartsWith("1.19", StringComparison.Ordinal)) return 17;
-        if (id.StartsWith("1.17", StringComparison.Ordinal)) return 16;
-        return null;
-    }
 }

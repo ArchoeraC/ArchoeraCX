@@ -10,6 +10,9 @@ final class LaunchPreparation {
     this.reason,
     this.requiresEntitlement = false,
     this.requiresCertificates = false,
+    this.filesReady = true,
+    this.fileIssue,
+    this.autoRepairAvailable = false,
     this.accountKind,
   });
 
@@ -19,6 +22,16 @@ final class LaunchPreparation {
   final String? reason;
   final bool requiresEntitlement;
   final bool requiresCertificates;
+
+  /// False when libraries/client jar/asset index are missing on disk.
+  final bool filesReady;
+
+  /// Stable code such as `LIBRARIES_MISSING`, or null when files are ready.
+  final String? fileIssue;
+
+  /// Forge/NeoForge instances can rebuild missing files and processors.
+  final bool autoRepairAvailable;
+
   final String? accountKind;
 
   static LaunchPreparation? tryParse(Object? value) {
@@ -33,6 +46,9 @@ final class LaunchPreparation {
       reason: value['reason']?.toString(),
       requiresEntitlement: value['requiresEntitlement'] == true,
       requiresCertificates: value['requiresCertificates'] == true,
+      filesReady: value['filesReady'] != false,
+      fileIssue: value['fileIssue']?.toString(),
+      autoRepairAvailable: value['autoRepairAvailable'] == true,
       accountKind: value['accountKind']?.toString(),
     );
   }

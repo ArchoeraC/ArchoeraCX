@@ -42,6 +42,8 @@ public static class ResourceCompatibility
             ResourceKind.Mod => MatchesLoader(loaders, target.NormalizedLoader),
             ResourceKind.Shader => MatchesLoader(loaders, target.NormalizedShaderLoader),
             ResourceKind.ResourcePack => MatchesLoader(loaders, "minecraft"),
+            ResourceKind.Modpack => string.IsNullOrWhiteSpace(target.NormalizedLoader)
+                                    || MatchesLoader(loaders, target.NormalizedLoader),
             _ => false,
         };
     }

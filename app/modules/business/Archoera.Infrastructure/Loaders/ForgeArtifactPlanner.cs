@@ -207,7 +207,6 @@ internal sealed class PlanBuilder
         ResolveBinpatchCoordinate(profile, versionJson);
 
         AddEmbeddedMavenArtifacts();
-        AddVersionJsonArtifact();
 
         // Resolving data early creates the client.lzma (BINPATCH) extraction
         // artifact and validates every variable used by processors.
@@ -457,28 +456,6 @@ internal sealed class PlanBuilder
                 Kind: LoaderArtifactKind.Extracted,
                 Location: LoaderArtifactLocation.Libraries));
         }
-    }
-
-    private void AddVersionJsonArtifact()
-    {
-        var entryName = ForgeArtifactPlanner.FindEntry(_archive, "version.json")?.FullName;
-        if (entryName is null)
-        {
-            throw new LoaderManifestException(
-                "E_INSTALLER_ENTRY_MISSING",
-                "installer does not contain version.json");
-        }
-
-        var (sha1, size) = GetEntryDigest(entryName);
-        AddArtifact(new LoaderArtifact(
-            $"installer:{entryName}",
-            $"versions/{_versionId}/{_versionId}.json",
-            sha1,
-            size,
-            ProducerIndex: -1,
-            RequiredForLaunch: true,
-            Kind: LoaderArtifactKind.Extracted,
-            Location: LoaderArtifactLocation.Root));
     }
 
     private void BuildProcessors(JsonElement profile)

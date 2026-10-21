@@ -205,6 +205,7 @@ public sealed class LaunchModuleOnlineTests
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             null);
+        WriteMinimalInstance(instance);
         var service = new LaunchModuleService(
             instances: new StubInstances(instance),
             dataRoot: directory,
@@ -212,6 +213,30 @@ public sealed class LaunchModuleOnlineTests
             credentials: store,
             auth: auth);
         return (service, store, handler);
+    }
+
+    private static void WriteMinimalInstance(GameInstanceRecord instance)
+    {
+        Directory.CreateDirectory(Path.Combine(instance.RootPath, "libraries"));
+        Directory.CreateDirectory(Path.Combine(instance.RootPath, "assets"));
+        var versionDirectory = Path.Combine(
+            instance.RootPath,
+            "versions",
+            instance.GameVersion);
+        Directory.CreateDirectory(versionDirectory);
+        File.WriteAllText(
+            Path.Combine(versionDirectory, $"{instance.GameVersion}.json"),
+            $$"""
+              {
+                "id": "{{instance.GameVersion}}",
+                "type": "release",
+                "mainClass": "net.minecraft.client.main.Main",
+                "libraries": []
+              }
+              """);
+        File.WriteAllText(
+            Path.Combine(versionDirectory, $"{instance.GameVersion}.jar"),
+            "client");
     }
 
     private static async Task<AccountRecord> SaveMicrosoftAccountAsync(JsonAccountStore store)

@@ -153,6 +153,38 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
+    public async Task Sync_recounts_mods_instead_of_trusting_a_stale_instance_file()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var repository = new SqliteInstanceRepository(
+                dataRoot,
+                new JsonAppSettingsStore(dataRoot));
+            var created = await repository.CreateAsync(
+                "Pack Instance",
+                "1.21.1",
+                "fabric",
+                "0.19.3",
+                rootPath: null);
+
+            var mods = Path.Combine(created.RootPath, "mods");
+            Directory.CreateDirectory(mods);
+            await File.WriteAllTextAsync(Path.Combine(mods, "a.jar"), "a");
+            await File.WriteAllTextAsync(Path.Combine(mods, "b.jar"), "b");
+
+            var report = await repository.SyncAsync(null, dryRun: false);
+            var item = Assert.Single(report.Items);
+            Assert.Equal(2, item.ModCount);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Module_create_list_delete_round_trip()
     {
         var directory = TempDirectory();
