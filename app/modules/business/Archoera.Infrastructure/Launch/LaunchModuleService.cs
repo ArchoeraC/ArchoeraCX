@@ -120,8 +120,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             {
                 reason = "OFFLINE_ACCOUNT_REQUIRED";
             }
-            else if (!IsDevOfflineAllowed() &&
-                     !await _premiumGate.HasValidAccountAsync(cancellationToken)
+            else if (!await _premiumGate.HasValidAccountAsync(cancellationToken)
                          .ConfigureAwait(false))
             {
                 reason = "PREMIUM_ACCOUNT_REQUIRED";
@@ -253,8 +252,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     "AUTH_REQUIRED",
                     "Offline launch requires an offline account. Sign in with Microsoft or switch to online mode.");
             }
-            else if (!IsDevOfflineAllowed() &&
-                     !await _premiumGate.HasValidAccountAsync(cancellationToken)
+            else if (!await _premiumGate.HasValidAccountAsync(cancellationToken)
                          .ConfigureAwait(false))
             {
                 throw new LaunchException(
@@ -642,16 +640,6 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     }
 
     private sealed record OnlineSession(AccountRecord Account, string AccessToken);
-
-    /// <summary>
-    /// Developer-only offline escape hatch. Public builds must not set this
-    /// environment variable; the release UI never sets it.
-    /// </summary>
-    private static bool IsDevOfflineAllowed()
-        => string.Equals(
-            Environment.GetEnvironmentVariable("ARCHOERACX_DEV_OFFLINE"),
-            "1",
-            StringComparison.Ordinal);
 
     private static bool ReadBool(string? json, string name)
     {
