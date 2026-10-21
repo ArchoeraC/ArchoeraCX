@@ -17,13 +17,14 @@ constexpr std::string_view kCsModule = "archoera_cs";
  * to a named module. The module still validates parameters and owns all
  * business semantics.
  */
-constexpr std::array<MethodRoute, 32> kRoutes = {{
+constexpr std::array<MethodRoute, 33> kRoutes = {{
     {"system.ping", MethodRouteKind::kCorePing, {}},
     {"system.pingAsync", MethodRouteKind::kCorePingAsync, {}},
     {"system.info", MethodRouteKind::kCoreInfo, {}},
     {"system.modules", MethodRouteKind::kCoreModules, {}},
 
     {"java.scan", MethodRouteKind::kModule, kCsModule},
+    {"java.select", MethodRouteKind::kModule, kCsModule},
     {"version.list", MethodRouteKind::kModule, kCsModule},
     {"launch.start", MethodRouteKind::kModule, kCsModule},
     {"loader.verify", MethodRouteKind::kModule, kCsModule},

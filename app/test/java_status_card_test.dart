@@ -20,6 +20,8 @@ void main() {
     JavaScanCallback? scan,
     PickDirectory? pickDirectory,
     PickExecutable? pickExecutable,
+    String? selectedPath,
+    ValueChanged<JavaRuntime>? onSelect,
   }) {
     return MaterialApp(
       theme: AppTheme.light,
@@ -34,6 +36,8 @@ void main() {
             scan: scan,
             pickDirectory: pickDirectory,
             pickExecutable: pickExecutable,
+            selectedPath: selectedPath,
+            onSelect: onSelect,
           ),
         ),
       ),
@@ -205,6 +209,32 @@ void main() {
     expect(find.text('Java runtimes (6)'), findsOneWidget);
     expect(find.text('/java/six'), findsOneWidget);
 
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('selects a runtime from the scan list', (tester) async {
+    JavaRuntime? selected;
+    await tester.pumpWidget(
+      buildCard(
+        onSelect: (runtime) => selected = runtime,
+        scan:
+            ({
+              List<String> roots = const <String>[],
+              List<String> executables = const <String>[],
+              bool includeDefaults = true,
+              void Function(int done, int total)? onProgress,
+            }) async => scanResult([
+              runtime('/opt/jdk-21/bin/java', '21.0.4', 'amd64'),
+              runtime('/opt/jdk-17/bin/java', '17.0.12', 'amd64'),
+            ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Scan Java'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('/opt/jdk-17/bin/java'));
+    expect(selected?.path, '/opt/jdk-17/bin/java');
     expect(tester.takeException(), isNull);
   });
 

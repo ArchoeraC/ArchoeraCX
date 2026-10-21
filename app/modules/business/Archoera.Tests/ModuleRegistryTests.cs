@@ -14,6 +14,7 @@ public sealed class ModuleRegistryTests
             var registry = BusinessModuleRegistry.CreateDefault(directory);
 
             Assert.Contains("java.scan", registry.Methods);
+            Assert.Contains("java.select", registry.Methods);
             Assert.Contains("loader.verify", registry.Methods);
             Assert.Contains("loader.repair", registry.Methods);
             Assert.Contains("loader.check", registry.Methods);

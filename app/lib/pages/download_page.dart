@@ -345,6 +345,9 @@ class _LoaderInstallPanelState extends ConsumerState<_LoaderInstallPanel> {
       _requiresJava = false;
     });
     try {
+      // Forge/NeoForge processors need a JVM; resolve it before downloading
+      // so a missing/too-old runtime fails before a large install starts.
+      final java = await client.selectJava(gameVersion: game);
       final plan = await client.planLoaderInstall(
         root: instance.rootPath,
         installerPath: installer,
@@ -368,6 +371,23 @@ class _LoaderInstallPanelState extends ConsumerState<_LoaderInstallPanel> {
         versionId: plan.versionId,
         versionJson: plan.versionJson,
       );
+      if (plan.requiresJava) {
+        final installerPath = plan.installerPath;
+        if (installerPath == null || installerPath.isEmpty) {
+          throw StateError('loader plan did not return an installer path');
+        }
+        final repair = await client.repairLoader(
+          installerPath: installerPath,
+          root: instance.rootPath,
+          kind: _kind,
+          javaPath: java.path,
+        );
+        if (repair['ok'] != true) {
+          final error = repair['error'];
+          final detail = error is Map ? error['message']?.toString() : null;
+          throw StateError(detail ?? l10n.loaderInstallFailed);
+        }
+      }
       if (!mounted) return;
       setState(() {
         _busy = false;

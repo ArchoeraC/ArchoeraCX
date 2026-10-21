@@ -165,13 +165,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         }
 
         if (required is null) return runtimes[0];
-        var exact = runtimes.FirstOrDefault(item => item.Major == required);
-        if (exact is not null) return exact;
-        var newer = runtimes
-            .Where(item => item.Major > required)
-            .OrderBy(item => item.Major)
-            .FirstOrDefault();
-        if (newer is not null) return newer;
+        var selected = JavaSelector.Select(runtimes, required);
+        if (selected is not null) return selected;
         throw new LaunchException(
             "JAVA_VERSION_MISMATCH",
             $"no Java {required}+ runtime found");

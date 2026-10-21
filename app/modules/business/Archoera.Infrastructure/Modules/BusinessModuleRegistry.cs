@@ -20,7 +20,8 @@ public static class BusinessModuleRegistry
     public static ModuleMethodRegistry CreateDefault(string? dataRoot = null)
         => new(
         [
-            new JavaModuleService(),
+            new JavaModuleService(
+                settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new VersionModuleService(),
             new LaunchModuleService(dataRoot: dataRoot),
             new LoaderModuleService(),
