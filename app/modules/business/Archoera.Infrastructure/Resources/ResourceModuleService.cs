@@ -134,6 +134,11 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         var project = RequireString(root, "projectId");
         var versionId = ReadOptionalString(root, "versionId");
         var rootPath = RequireString(root, "root");
+        var includeDependencies = root.TryGetProperty(
+                "includeDependencies",
+                out var includeDependenciesElement) &&
+            includeDependenciesElement.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+            includeDependenciesElement.GetBoolean();
         Directory.CreateDirectory(rootPath);
         var client = CreateClient(root);
 
@@ -157,12 +162,34 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                 .ConfigureAwait(false);
         }
 
-        var plan = ResourceDownloadPlanBuilder.Build(
-            rootPath,
-            kind,
-            target,
-            version);
+        var plans = new List<DownloadPlan>
+        {
+            ResourceDownloadPlanBuilder.Build(rootPath, kind, target, version),
+        };
+        if (includeDependencies && version.DependencyList.Count > 0)
+        {
+            var dependencies = await ResourceDependencyResolver
+                .ResolveAsync(client, kind, target, version, cancellationToken)
+                .ConfigureAwait(false);
+            if (dependencies.Incompatible.Count > 0)
+            {
+                throw new ResourceProviderException(
+                    ResourceErrorCode.DependencyConflict,
+                    $"version {version.Id} declares {dependencies.Incompatible.Count} incompatible dependencies");
+            }
 
+            foreach (var dependency in dependencies.Required)
+            {
+                plans.Add(
+                    ResourceDownloadPlanBuilder.Build(
+                        rootPath,
+                        kind,
+                        target,
+                        dependency));
+            }
+        }
+
+        var plan = plans.Count == 1 ? plans[0] : DownloadPlanCombiner.Combine(plans);
         return BuildPlan(plan);
     }
 

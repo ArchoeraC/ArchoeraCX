@@ -16,10 +16,13 @@ public sealed record AppSettings(
     string SettingsPath,
     IReadOnlyList<string>? InstancesRoots = null,
     string? JavaPath = null,
-    bool JavaAuto = true)
+    bool JavaAuto = true,
+    int MemoryMinMb = 512,
+    int MemoryMaxMb = 2048,
+    string? JvmArgs = null)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     /// <summary>Configured roots, falling back to the legacy primary root.</summary>
     public IReadOnlyList<string> Roots =>

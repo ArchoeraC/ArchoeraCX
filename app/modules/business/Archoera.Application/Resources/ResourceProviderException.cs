@@ -24,6 +24,9 @@ public static class ResourceErrorCode
     /// <summary>Caller supplied an unusable request.</summary>
     public const string InvalidRequest = "INVALID_REQUEST";
 
+    /// <summary>Required dependency graph contains an incompatible edge.</summary>
+    public const string DependencyConflict = "DEPENDENCY_CONFLICT";
+
     /// <summary>Transport failure (DNS/TLS/timeout) before an HTTP status.</summary>
     public const string Network = "NETWORK_ERROR";
 }

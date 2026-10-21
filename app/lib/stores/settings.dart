@@ -86,6 +86,39 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await setInstancesRoots(roots);
   }
 
+  Future<void> setRuntimeOptions({
+    int? memoryMinMb,
+    int? memoryMaxMb,
+    String? jvmArgs,
+  }) async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      final current = state.value ?? _fallback;
+      state = AsyncData(
+        AppSettings(
+          instancesRoot: current.instancesRoot,
+          instancesRoots: current.instancesRoots,
+          dataRoot: current.dataRoot,
+          settingsPath: current.settingsPath,
+          javaPath: current.javaPath,
+          javaAuto: current.javaAuto,
+          memoryMinMb: memoryMinMb ?? current.memoryMinMb,
+          memoryMaxMb: memoryMaxMb ?? current.memoryMaxMb,
+          jvmArgs: jvmArgs ?? current.jvmArgs,
+        ),
+      );
+      return;
+    }
+
+    state = AsyncData(
+      await client.setRuntimeOptions(
+        memoryMinMb: memoryMinMb,
+        memoryMaxMb: memoryMaxMb,
+        jvmArgs: jvmArgs,
+      ),
+    );
+  }
+
   Future<void> setDefaultInstanceRoot(String path) async {
     final current = state.value ?? _fallback;
     if (!current.roots.contains(path)) return;

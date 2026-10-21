@@ -312,6 +312,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonDelete => '删除';
 
   @override
+  String get commonSave => '保存';
+
+  @override
   String get downloadTitle => '下载';
 
   @override
@@ -553,6 +556,41 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsJavaSelected => 'Java 选择已保存。';
+
+  @override
+  String get settingsMemory => '内存';
+
+  @override
+  String settingsMemoryValue(int min, int max) {
+    return '$min – $max MB';
+  }
+
+  @override
+  String get settingsJvmArgs => 'JVM 参数';
+
+  @override
+  String get settingsJvmArgsValue => '默认';
+
+  @override
+  String get settingsRuntimeTitle => 'Java 与内存';
+
+  @override
+  String get settingsRuntimeHint => '内存设置将在下次启动时生效。';
+
+  @override
+  String get settingsMemoryMin => '最小内存（MB）';
+
+  @override
+  String get settingsMemoryMax => '最大内存（MB）';
+
+  @override
+  String get settingsJvmArgsHint => '可选，空格分隔';
+
+  @override
+  String get settingsRuntimeSaved => '运行参数已保存。';
+
+  @override
+  String get settingsMemoryInvalid => '内存需在 128–65536 MB 之间，且最小值不能大于最大值。';
 
   @override
   String get settingsNetwork => '网络';

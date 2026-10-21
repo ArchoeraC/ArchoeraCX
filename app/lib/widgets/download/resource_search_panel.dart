@@ -246,6 +246,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         gameVersion: game,
         loader: widget.kind == 'mod' ? loader : null,
         shaderLoader: widget.kind == 'shader' ? 'iris' : null,
+        includeDependencies: true,
         root: downloadRoot,
       );
       if (!mounted) return;

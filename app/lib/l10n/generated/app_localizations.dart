@@ -638,6 +638,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get commonDelete;
 
+  /// No description provided for @commonSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get commonSave;
+
   /// No description provided for @downloadTitle.
   ///
   /// In en, this message translates to:
@@ -1117,6 +1123,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Java selection saved.'**
   String get settingsJavaSelected;
+
+  /// No description provided for @settingsMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get settingsMemory;
+
+  /// No description provided for @settingsMemoryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{min} – {max} MB'**
+  String settingsMemoryValue(int min, int max);
+
+  /// No description provided for @settingsJvmArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'JVM arguments'**
+  String get settingsJvmArgs;
+
+  /// No description provided for @settingsJvmArgsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get settingsJvmArgsValue;
+
+  /// No description provided for @settingsRuntimeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Java and memory'**
+  String get settingsRuntimeTitle;
+
+  /// No description provided for @settingsRuntimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory is applied to the next launch.'**
+  String get settingsRuntimeHint;
+
+  /// No description provided for @settingsMemoryMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum memory (MB)'**
+  String get settingsMemoryMin;
+
+  /// No description provided for @settingsMemoryMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum memory (MB)'**
+  String get settingsMemoryMax;
+
+  /// No description provided for @settingsJvmArgsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional, space-separated'**
+  String get settingsJvmArgsHint;
+
+  /// No description provided for @settingsRuntimeSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime settings saved.'**
+  String get settingsRuntimeSaved;
+
+  /// No description provided for @settingsMemoryInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory must be 128–65536 MB and min ≤ max.'**
+  String get settingsMemoryInvalid;
 
   /// No description provided for @settingsNetwork.
   ///

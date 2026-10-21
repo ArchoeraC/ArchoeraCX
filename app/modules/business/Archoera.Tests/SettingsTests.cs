@@ -127,6 +127,61 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public async Task Store_persists_memory_and_jvm_options()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var store = new JsonAppSettingsStore(dataRoot);
+            var saved = await store.SaveAsync(
+                (await store.LoadAsync()) with
+                {
+                    MemoryMinMb = 1024,
+                    MemoryMaxMb = 4096,
+                    JvmArgs = "-XX:+UseG1GC",
+                });
+
+            Assert.Equal(1024, saved.MemoryMinMb);
+            Assert.Equal(4096, saved.MemoryMaxMb);
+            Assert.Equal("-XX:+UseG1GC", saved.JvmArgs);
+
+            var reloaded = await store.LoadAsync();
+            Assert.Equal(1024, reloaded.MemoryMinMb);
+            Assert.Equal(4096, reloaded.MemoryMaxMb);
+            Assert.Equal("-XX:+UseG1GC", reloaded.JvmArgs);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Settings_module_updates_runtime_options()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var service = new SettingsModuleService(
+                new JsonAppSettingsStore(Path.Combine(directory, "data")));
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"memoryMinMb":1024,"memoryMaxMb":4096,"jvmArgs":"-XX:+UseG1GC"}""",
+                    CancellationToken.None));
+            var settings = document.RootElement.GetProperty("data").GetProperty("settings");
+            Assert.Equal(1024, settings.GetProperty("memoryMinMb").GetInt32());
+            Assert.Equal(4096, settings.GetProperty("memoryMaxMb").GetInt32());
+            Assert.Equal("-XX:+UseG1GC", settings.GetProperty("jvmArgs").GetString());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Settings_module_updates_java_without_replacing_roots()
     {
         var directory = TempDirectory();

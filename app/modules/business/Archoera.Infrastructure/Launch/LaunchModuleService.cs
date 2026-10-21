@@ -69,7 +69,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             var paths = LaunchPaths.Resolve(instance.RootPath);
             var version = LoadVersion(paths);
             var java = await SelectJavaAsync(settings, version, cancellationToken).ConfigureAwait(false);
-            var plan = LaunchPlanBuilder.Build(instance, version, account, java, paths);
+            var plan = LaunchPlanBuilder.Build(instance, version, account, java, settings, paths);
             var (process, logPath) = Start(plan);
             return ModuleJson.Envelope(writer =>
             {

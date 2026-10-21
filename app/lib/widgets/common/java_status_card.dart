@@ -41,6 +41,7 @@ class JavaStatusCard extends StatefulWidget {
     this.pickExecutable,
     this.selectedPath,
     this.onSelect,
+    this.autoScan = false,
   });
 
   /// Opens the core client used by [CoreClient.scanJava].
@@ -63,6 +64,9 @@ class JavaStatusCard extends StatefulWidget {
 
   /// Called when the user chooses a runtime; null keeps the card read-only.
   final ValueChanged<JavaRuntime>? onSelect;
+
+  /// Runs one machine scan after the first frame (used by the settings page).
+  final bool autoScan;
 
   @override
   State<JavaStatusCard> createState() => _JavaStatusCardState();
@@ -99,6 +103,11 @@ class _JavaStatusCardState extends State<JavaStatusCard> {
     super.initState();
     _store = widget.pathStore;
     _pathsReady = _loadSavedPaths();
+    if (widget.autoScan) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _runScan();
+      });
+    }
   }
 
   @override

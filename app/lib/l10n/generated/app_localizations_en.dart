@@ -321,6 +321,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDelete => 'Delete';
 
   @override
+  String get commonSave => 'Save';
+
+  @override
   String get downloadTitle => 'Download';
 
   @override
@@ -570,6 +573,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsJavaSelected => 'Java selection saved.';
+
+  @override
+  String get settingsMemory => 'Memory';
+
+  @override
+  String settingsMemoryValue(int min, int max) {
+    return '$min – $max MB';
+  }
+
+  @override
+  String get settingsJvmArgs => 'JVM arguments';
+
+  @override
+  String get settingsJvmArgsValue => 'Default';
+
+  @override
+  String get settingsRuntimeTitle => 'Java and memory';
+
+  @override
+  String get settingsRuntimeHint => 'Memory is applied to the next launch.';
+
+  @override
+  String get settingsMemoryMin => 'Minimum memory (MB)';
+
+  @override
+  String get settingsMemoryMax => 'Maximum memory (MB)';
+
+  @override
+  String get settingsJvmArgsHint => 'Optional, space-separated';
+
+  @override
+  String get settingsRuntimeSaved => 'Runtime settings saved.';
+
+  @override
+  String get settingsMemoryInvalid =>
+      'Memory must be 128–65536 MB and min ≤ max.';
 
   @override
   String get settingsNetwork => 'Network';

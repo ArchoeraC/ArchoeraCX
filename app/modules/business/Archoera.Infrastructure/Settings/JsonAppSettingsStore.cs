@@ -84,6 +84,11 @@ public sealed class JsonAppSettingsStore
             var javaAuto = !root.TryGetProperty("javaAuto", out var autoElement) ||
                            autoElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
                            autoElement.GetBoolean();
+            var memoryMin = ReadInt(root, "memoryMinMb") ?? fallback.MemoryMinMb;
+            var memoryMax = ReadInt(root, "memoryMaxMb") ?? fallback.MemoryMaxMb;
+            if (memoryMin < 128) memoryMin = fallback.MemoryMinMb;
+            if (memoryMax < memoryMin) memoryMax = Math.Max(memoryMin, fallback.MemoryMaxMb);
+            var jvmArgs = ReadString(root, "jvmArgs");
 
             return fallback with
             {
@@ -91,6 +96,9 @@ public sealed class JsonAppSettingsStore
                 InstancesRoots = normalized,
                 JavaPath = string.IsNullOrWhiteSpace(javaPath) ? null : Path.GetFullPath(javaPath),
                 JavaAuto = javaAuto,
+                MemoryMinMb = memoryMin,
+                MemoryMaxMb = memoryMax,
+                JvmArgs = string.IsNullOrWhiteSpace(jvmArgs) ? null : jvmArgs,
             };
         }
         catch (Exception exception) when (
@@ -204,6 +212,12 @@ public sealed class JsonAppSettingsStore
                 writer.WriteString("javaPath", settings.JavaPath);
             }
             writer.WriteBoolean("javaAuto", settings.JavaAuto);
+            writer.WriteNumber("memoryMinMb", settings.MemoryMinMb);
+            writer.WriteNumber("memoryMaxMb", settings.MemoryMaxMb);
+            if (!string.IsNullOrWhiteSpace(settings.JvmArgs))
+            {
+                writer.WriteString("jvmArgs", settings.JvmArgs);
+            }
             writer.WriteString("updatedAt", DateTimeOffset.UtcNow.ToString("O"));
             writer.WriteEndObject();
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -274,6 +288,13 @@ public sealed class JsonAppSettingsStore
             ? result
             : throw new ArgumentException("at least one valid instances root is required", nameof(roots));
     }
+
+    private static int? ReadInt(JsonElement root, string name)
+        => root.TryGetProperty(name, out var element) &&
+           element.ValueKind == JsonValueKind.Number &&
+           element.TryGetInt32(out var value)
+            ? value
+            : null;
 
     private static string? ReadString(JsonElement root, string name)
         => root.TryGetProperty(name, out var element) &&

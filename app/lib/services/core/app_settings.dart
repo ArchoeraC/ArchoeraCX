@@ -7,6 +7,9 @@ class AppSettings {
     this.instancesRoots = const <String>[],
     this.javaPath,
     this.javaAuto = true,
+    this.memoryMinMb = 512,
+    this.memoryMaxMb = 2048,
+    this.jvmArgs,
   });
 
   /// Primary/legacy root. Always the first entry of [instancesRoots].
@@ -23,6 +26,10 @@ class AppSettings {
 
   /// True when launch chooses Java automatically for the game version.
   final bool javaAuto;
+
+  final int memoryMinMb;
+  final int memoryMaxMb;
+  final String? jvmArgs;
 
   /// Normalized roots with a legacy fallback for older native modules.
   List<String> get roots =>
@@ -52,7 +59,16 @@ class AppSettings {
       settingsPath: _string(value['settingsPath']) ?? '',
       javaPath: _string(value['javaPath']),
       javaAuto: value['javaAuto'] != false,
+      memoryMinMb: _int(value['memoryMinMb']) ?? 512,
+      memoryMaxMb: _int(value['memoryMaxMb']) ?? 2048,
+      jvmArgs: _string(value['jvmArgs']),
     );
+  }
+
+  static int? _int(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 
   static String? _string(Object? value) {
