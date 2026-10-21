@@ -815,14 +815,8 @@ abstract class AppLocalizations {
   /// No description provided for @loaderInstallDone.
   ///
   /// In en, this message translates to:
-  /// **'Loader files downloaded and version JSON written.'**
+  /// **'Loader files downloaded, version JSON written, and processors completed.'**
   String get loaderInstallDone;
-
-  /// No description provided for @loaderInstallRequiresJava.
-  ///
-  /// In en, this message translates to:
-  /// **'Forge/NeoForge processors still need a JVM; this step never invokes Java.'**
-  String get loaderInstallRequiresJava;
 
   /// No description provided for @loaderInstallNoInstance.
   ///
@@ -841,12 +835,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loader install failed.'**
   String get loaderInstallFailed;
-
-  /// No description provided for @loaderInstallNoJavaTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'No Java was invoked'**
-  String get loaderInstallNoJavaTitle;
 
   /// No description provided for @searchDownload.
   ///
@@ -1291,12 +1279,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Language'**
   String get settingsLanguage;
-
-  /// No description provided for @settingsLanguageValue.
-  ///
-  /// In en, this message translates to:
-  /// **'English / 简体中文'**
-  String get settingsLanguageValue;
 
   /// No description provided for @settingsMotion.
   ///
@@ -1747,6 +1729,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Selected'**
   String get instanceSelected;
+
+  /// Vanilla loader name.
+  ///
+  /// In en, this message translates to:
+  /// **'Vanilla'**
+  String get loaderVanilla;
+
+  /// Fabric loader name.
+  ///
+  /// In en, this message translates to:
+  /// **'Fabric'**
+  String get loaderFabric;
+
+  /// Quilt loader name.
+  ///
+  /// In en, this message translates to:
+  /// **'Quilt'**
+  String get loaderQuilt;
+
+  /// Forge loader name.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge'**
+  String get loaderForge;
+
+  /// NeoForge loader name.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoForge'**
+  String get loaderNeoForge;
+
+  /// Loader name followed by its version.
+  ///
+  /// In en, this message translates to:
+  /// **'{loader} {version}'**
+  String loaderVersionValue(String loader, String version);
+
+  /// Microsoft account type.
+  ///
+  /// In en, this message translates to:
+  /// **'Microsoft'**
+  String get accountMicrosoft;
+
+  /// Authlib account type.
+  ///
+  /// In en, this message translates to:
+  /// **'Authlib'**
+  String get accountAuthlib;
+
+  /// Network proxy setting label.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy'**
+  String get settingsProxy;
+
+  /// Proxy follows the operating system.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settingsProxySystem;
+
+  /// Download concurrency setting label.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get settingsDownloads;
+
+  /// Number of parallel download streams.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 stream} other{{count} streams}}'**
+  String settingsDownloadsStreams(int count);
+
+  /// Content provider setting label.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get settingsProvider;
+
+  /// Download compliance level label.
+  ///
+  /// In en, this message translates to:
+  /// **'Download level'**
+  String get settingsDownloadLevel;
+
+  /// Current download compliance level.
+  ///
+  /// In en, this message translates to:
+  /// **'L0 · official-cn'**
+  String get settingsDownloadLevelValue;
+
+  /// Telemetry/consent setting label.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent'**
+  String get settingsConsent;
+
+  /// Consent has not been accepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Not accepted'**
+  String get settingsConsentNotAccepted;
+
+  /// Action that opens diagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get settingsDiagnosticsOpen;
+
+  /// Use the operating system language.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow system'**
+  String get settingsLanguageSystem;
+
+  /// English language option.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageEnglish;
+
+  /// Simplified Chinese language option.
+  ///
+  /// In en, this message translates to:
+  /// **'简体中文'**
+  String get settingsLanguageChinese;
+
+  /// Language preference saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Language changed.'**
+  String get settingsLanguageChanged;
+
+  /// Stable provider release channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Release'**
+  String get resourceVersionRelease;
+
+  /// Beta provider release channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta'**
+  String get resourceVersionBeta;
+
+  /// Alpha provider release channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Alpha'**
+  String get resourceVersionAlpha;
+
+  /// Fallback when a Java version is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get javaStatusUnknownVersion;
+
+  /// Instance summary in the create dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'{loader} · Minecraft {version}'**
+  String instanceCreateSummary(String loader, String version);
+
+  /// Resource search target for a base game.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft {version}'**
+  String resourceTargetGame(String version);
+
+  /// Resource search target with a loader.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft {version} · {loader}'**
+  String resourceTargetGameLoader(String version, String loader);
+
+  /// Resource search target for shader packs.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft {version} · Iris'**
+  String resourceTargetShader(String version);
+
+  /// Loader install processor completion note.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge/NeoForge processors completed with the selected Java.'**
+  String get loaderProcessorsDone;
+
+  /// Instance count label.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No instances} =1{1 instance} other{{count} instances}}'**
+  String instancesCount(int count);
+
+  /// Instance list load failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load instances: {message}'**
+  String instancesLoadFailed(String message);
+
+  /// Account list load failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load accounts: {message}'**
+  String accountsLoadFailed(String message);
 }
 
 class _AppLocalizationsDelegate

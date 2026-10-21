@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../l10n/l10n_labels.dart';
 import '../models/account.dart';
 import '../services/core/core_client.dart';
 import '../stores/accounts.dart';
@@ -68,7 +69,7 @@ class AccountsPage extends ConsumerWidget {
                 accounts: accounts,
                 loading: accountsAsync.isLoading,
                 error: accountsAsync.hasError && accounts.isEmpty
-                    ? '${accountsAsync.error}'
+                    ? l10n.accountsLoadFailed('${accountsAsync.error}')
                     : null,
                 onSelect: (account) => _select(context, ref, account),
                 onRefresh: (account) => _refresh(context, ref, account),
@@ -403,7 +404,7 @@ class _CurrentAccountCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      account.kindLabel,
+                      account.kind.labelFor(l10n),
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: tokens.textSecondary),
                     ),
@@ -427,7 +428,7 @@ class _CurrentAccountCard extends StatelessWidget {
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
-                    account.uuid ?? account.kindLabel,
+                    account.uuid ?? account.kind.labelFor(l10n),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall
@@ -808,7 +809,7 @@ class _AccountTile extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     Text(
-                      account.uuid ?? account.kindLabel,
+                      account.uuid ?? account.kind.labelFor(l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall

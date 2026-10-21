@@ -6,8 +6,10 @@ import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
 import '../services/core/java_scan.dart';
 import '../stores/instances.dart';
+import '../stores/locale.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
+import '../utils/app_info.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/common/java_status_card.dart';
 import '../widgets/common/app_page_header.dart';
@@ -101,6 +103,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AppLocalizations l10n,
     AppSettings? settings,
   ) {
+    final locale = ref.watch(localeProvider);
     return switch (_section) {
       _SettingsSection.appearance => _SettingsCard(
         children: [
@@ -112,7 +115,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _SettingRow(
             icon: Icons.translate_rounded,
             title: l10n.settingsLanguage,
-            value: l10n.settingsLanguageValue,
+            value: _languageLabel(l10n, locale),
+            onTap: () => _chooseLanguage(context, l10n),
           ),
           _SettingRow(
             icon: Icons.animation_rounded,
@@ -220,18 +224,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           _SettingRow(
             icon: Icons.wifi_rounded,
-            title: 'Proxy',
-            value: 'System',
+            title: l10n.settingsProxy,
+            value: l10n.settingsProxySystem,
           ),
           _SettingRow(
             icon: Icons.speed_rounded,
-            title: 'Downloads',
-            value: '16 streams',
+            title: l10n.settingsDownloads,
+            value: l10n.settingsDownloadsStreams(16),
           ),
           _SettingRow(
             icon: Icons.cloud_outlined,
-            title: 'Provider',
-            value: 'Modrinth',
+            title: l10n.settingsProvider,
+            value: l10n.sourceModrinth,
           ),
         ],
       ),
@@ -239,14 +243,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           _SettingRow(
             icon: Icons.shield_outlined,
-            title: 'Download level',
-            value: 'L0 · official-cn',
+            title: l10n.settingsDownloadLevel,
+            value: l10n.settingsDownloadLevelValue,
             color: Theme.of(context).extension<AppTokens>()?.warning,
           ),
           _SettingRow(
             icon: Icons.description_outlined,
-            title: 'Consent',
-            value: 'Not accepted',
+            title: l10n.settingsConsent,
+            value: l10n.settingsConsentNotAccepted,
           ),
         ],
       ),
@@ -255,7 +259,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _SettingRow(
             icon: Icons.info_outline_rounded,
             title: l10n.settingsVersion,
-            value: '0.1.0+1',
+            value: AppInfo.version,
           ),
           _SettingRow(
             icon: Icons.gavel_rounded,
@@ -271,11 +275,52 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: Icons.health_and_safety_outlined,
             title: l10n.settingsDiagnostics,
             subtitle: l10n.settingsDiagnosticsDesc,
-            value: 'Open',
+            value: l10n.settingsDiagnosticsOpen,
           ),
         ],
       ),
     };
+  }
+
+  String _languageLabel(AppLocalizations l10n, Locale? locale) {
+    return switch (locale?.languageCode) {
+      'en' => l10n.settingsLanguageEnglish,
+      'zh' => l10n.settingsLanguageChinese,
+      _ => l10n.settingsLanguageSystem,
+    };
+  }
+
+  Future<void> _chooseLanguage(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.settingsLanguage),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop('system'),
+            child: Text(l10n.settingsLanguageSystem),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop('en'),
+            child: Text(l10n.settingsLanguageEnglish),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop('zh'),
+            child: Text(l10n.settingsLanguageChinese),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    await ref
+        .read(localeProvider.notifier)
+        .setLocale(choice == 'system' ? null : Locale(choice));
+    if (context.mounted) {
+      _notify(context, AppLocalizations.of(context).settingsLanguageChanged);
+    }
   }
 
   Future<void> _editRuntimeOptions(

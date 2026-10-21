@@ -1649,6 +1649,8 @@ void _drain() {
 ### 10.10 i18n 与无障碍
 
 - ARB + `intl`；`zh-Hans`/`en` 起步；不拼句子。
+- UI 文案统一使用 `AppLocalizations.of(context)`；模型不持有文案，枚举标签由 `lib/l10n/l10n_labels.dart` 映射。
+- 语言偏好保存在 `shared_preferences` 的 `ui.locale`（`en` / `zh`；缺省跟随系统），设置页外观可切换。
 - 日期/数字/文件大小用 locale；审计用 UTC ISO-8601。
 - 键盘导航、焦点陷阱、读屏标签；锁图标不能是唯一信息载体。
 - 伪语言 `en_XA` 检查截断；德语长词/阿语 RTL 单独验收。

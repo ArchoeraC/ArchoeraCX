@@ -374,7 +374,7 @@ class _LoaderInstallPanelState extends ConsumerState<_LoaderInstallPanel> {
       if (plan.requiresJava) {
         final installerPath = plan.installerPath;
         if (installerPath == null || installerPath.isEmpty) {
-          throw StateError('loader plan did not return an installer path');
+          throw StateError(l10n.loaderInstallFailed);
         }
         final repair = await client.repairLoader(
           installerPath: installerPath,
@@ -446,9 +446,15 @@ class _LoaderInstallPanelState extends ConsumerState<_LoaderInstallPanel> {
               child: DropdownButtonFormField<String>(
                 initialValue: _kind,
                 decoration: InputDecoration(labelText: l10n.loaderKindLabel),
-                items: const [
-                  DropdownMenuItem(value: 'forge', child: Text('Forge')),
-                  DropdownMenuItem(value: 'neoforge', child: Text('NeoForge')),
+                items: [
+                  DropdownMenuItem(
+                    value: 'forge',
+                    child: Text(l10n.loaderForge),
+                  ),
+                  DropdownMenuItem(
+                    value: 'neoforge',
+                    child: Text(l10n.loaderNeoForge),
+                  ),
                 ],
                 onChanged: _busy
                     ? null
@@ -537,7 +543,7 @@ class _LoaderInstallPanelState extends ConsumerState<_LoaderInstallPanel> {
         if (_requiresJava) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
-            l10n.loaderInstallRequiresJava,
+            l10n.loaderProcessorsDone,
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: tokens.warning),
           ),

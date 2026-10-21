@@ -183,12 +183,10 @@
   "loaderChooseInstaller": "Choose installer",
   "loaderInstallAction": "Download and commit",
   "loaderInstalling": "Downloading and committing…",
-  "loaderInstallDone": "Loader files downloaded and version JSON written.",
-  "loaderInstallRequiresJava": "Forge/NeoForge processors still need a JVM; this step never invokes Java.",
+  "loaderInstallDone": "Loader files downloaded, version JSON written, and processors completed.",
   "loaderInstallNoInstance": "Select an instance first.",
   "loaderInstallPickInstaller": "Choose a Forge/NeoForge installer jar first.",
   "loaderInstallFailed": "Loader install failed.",
-  "loaderInstallNoJavaTitle": "No Java was invoked",
   "searchDownload": "Search resources",
   "downloadSearchAction": "Search",
   "downloadSearchEmpty": "No compatible projects found.",
@@ -281,7 +279,6 @@
   "settingsTheme": "Theme",
   "settingsThemeSystem": "Follow system",
   "settingsLanguage": "Language",
-  "settingsLanguageValue": "English / 简体中文",
   "settingsMotion": "Motion",
   "settingsMotionDesc": "Reduce transitions and background effects.",
   "settingsDiagnostics": "Diagnostics",
@@ -594,5 +591,195 @@
       }
     }
   },
-  "instanceSelected": "Selected"
+  "instanceSelected": "Selected",
+  "loaderVanilla": "Vanilla",
+  "@loaderVanilla": {
+    "description": "Vanilla loader name."
+  },
+  "loaderFabric": "Fabric",
+  "@loaderFabric": {
+    "description": "Fabric loader name."
+  },
+  "loaderQuilt": "Quilt",
+  "@loaderQuilt": {
+    "description": "Quilt loader name."
+  },
+  "loaderForge": "Forge",
+  "@loaderForge": {
+    "description": "Forge loader name."
+  },
+  "loaderNeoForge": "NeoForge",
+  "@loaderNeoForge": {
+    "description": "NeoForge loader name."
+  },
+  "loaderVersionValue": "{loader} {version}",
+  "@loaderVersionValue": {
+    "description": "Loader name followed by its version.",
+    "placeholders": {
+      "loader": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "accountMicrosoft": "Microsoft",
+  "@accountMicrosoft": {
+    "description": "Microsoft account type."
+  },
+  "accountAuthlib": "Authlib",
+  "@accountAuthlib": {
+    "description": "Authlib account type."
+  },
+  "settingsProxy": "Proxy",
+  "@settingsProxy": {
+    "description": "Network proxy setting label."
+  },
+  "settingsProxySystem": "System",
+  "@settingsProxySystem": {
+    "description": "Proxy follows the operating system."
+  },
+  "settingsDownloads": "Downloads",
+  "@settingsDownloads": {
+    "description": "Download concurrency setting label."
+  },
+  "settingsDownloadsStreams": "{count, plural, =1{1 stream} other{{count} streams}}",
+  "@settingsDownloadsStreams": {
+    "description": "Number of parallel download streams.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsProvider": "Provider",
+  "@settingsProvider": {
+    "description": "Content provider setting label."
+  },
+  "settingsDownloadLevel": "Download level",
+  "@settingsDownloadLevel": {
+    "description": "Download compliance level label."
+  },
+  "settingsDownloadLevelValue": "L0 · official-cn",
+  "@settingsDownloadLevelValue": {
+    "description": "Current download compliance level."
+  },
+  "settingsConsent": "Consent",
+  "@settingsConsent": {
+    "description": "Telemetry/consent setting label."
+  },
+  "settingsConsentNotAccepted": "Not accepted",
+  "@settingsConsentNotAccepted": {
+    "description": "Consent has not been accepted."
+  },
+  "settingsDiagnosticsOpen": "Open",
+  "@settingsDiagnosticsOpen": {
+    "description": "Action that opens diagnostics."
+  },
+  "settingsLanguageSystem": "Follow system",
+  "@settingsLanguageSystem": {
+    "description": "Use the operating system language."
+  },
+  "settingsLanguageEnglish": "English",
+  "@settingsLanguageEnglish": {
+    "description": "English language option."
+  },
+  "settingsLanguageChinese": "简体中文",
+  "@settingsLanguageChinese": {
+    "description": "Simplified Chinese language option."
+  },
+  "settingsLanguageChanged": "Language changed.",
+  "@settingsLanguageChanged": {
+    "description": "Language preference saved."
+  },
+  "resourceVersionRelease": "Release",
+  "@resourceVersionRelease": {
+    "description": "Stable provider release channel."
+  },
+  "resourceVersionBeta": "Beta",
+  "@resourceVersionBeta": {
+    "description": "Beta provider release channel."
+  },
+  "resourceVersionAlpha": "Alpha",
+  "@resourceVersionAlpha": {
+    "description": "Alpha provider release channel."
+  },
+  "javaStatusUnknownVersion": "Unknown",
+  "@javaStatusUnknownVersion": {
+    "description": "Fallback when a Java version is unknown."
+  },
+  "instanceCreateSummary": "{loader} · Minecraft {version}",
+  "@instanceCreateSummary": {
+    "description": "Instance summary in the create dialog.",
+    "placeholders": {
+      "loader": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "resourceTargetGame": "Minecraft {version}",
+  "@resourceTargetGame": {
+    "description": "Resource search target for a base game.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "resourceTargetGameLoader": "Minecraft {version} · {loader}",
+  "@resourceTargetGameLoader": {
+    "description": "Resource search target with a loader.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "loader": {
+        "type": "String"
+      }
+    }
+  },
+  "resourceTargetShader": "Minecraft {version} · Iris",
+  "@resourceTargetShader": {
+    "description": "Resource search target for shader packs.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "loaderProcessorsDone": "Forge/NeoForge processors completed with the selected Java.",
+  "@loaderProcessorsDone": {
+    "description": "Loader install processor completion note."
+  },
+  "instancesCount": "{count, plural, =0{No instances} =1{1 instance} other{{count} instances}}",
+  "@instancesCount": {
+    "description": "Instance count label.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "instancesLoadFailed": "Could not load instances: {message}",
+  "@instancesLoadFailed": {
+    "description": "Instance list load failure.",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsLoadFailed": "Could not load accounts: {message}",
+  "@accountsLoadFailed": {
+    "description": "Account list load failure.",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
 }

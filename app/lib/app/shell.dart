@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../l10n/l10n_labels.dart';
 import '../models/account.dart';
 import '../models/game_instance.dart';
 import '../stores/accounts.dart';
@@ -190,7 +191,7 @@ class _TopBar extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.xs),
           Text(
-            'ArchoeraCX',
+            l10n.appName,
             style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
           ),
           const Spacer(),
@@ -476,7 +477,7 @@ class _AccountButton extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final current = account;
     final name = current?.displayName ?? l10n.addAccount;
-    final detail = current?.kindLabel ?? l10n.accountNoAccounts;
+    final detail = current?.kind.labelFor(l10n) ?? l10n.accountNoAccounts;
     final initial = current == null ? '+' : name.characters.first.toUpperCase();
 
     return Tooltip(

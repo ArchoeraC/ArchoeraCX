@@ -5,15 +5,14 @@ import 'package:flutter/foundation.dart';
 /// Fabric/Quilt/Forge/NeoForge are display values only for now; installation
 /// and launch still go through the native core in later slices.
 enum GameLoader {
-  vanilla('Vanilla', ''),
-  fabric('Fabric', '0.16.10'),
-  quilt('Quilt', '0.27.0'),
-  forge('Forge', '47.2.0'),
-  neoforge('NeoForge', '21.1.209');
+  vanilla(''),
+  fabric('0.16.10'),
+  quilt('0.27.0'),
+  forge('47.2.0'),
+  neoforge('21.1.209');
 
-  const GameLoader(this.label, this.defaultVersion);
+  const GameLoader(this.defaultVersion);
 
-  final String label;
   final String defaultVersion;
 }
 
@@ -100,11 +99,6 @@ class GameInstance {
     if (value is! String) return null;
     return DateTime.tryParse(value);
   }
-
-  String get loaderLabel =>
-      loader == GameLoader.vanilla || loaderVersion.isEmpty
-      ? loader.label
-      : '${loader.label} $loaderVersion';
 
   GameInstance copyWith({
     String? name,

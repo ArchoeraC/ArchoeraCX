@@ -29,12 +29,6 @@ final class Account {
   final DateTime? updatedAt;
   final DateTime? lastLoginAt;
 
-  String get kindLabel => switch (kind) {
-    AccountKind.microsoft => 'Microsoft',
-    AccountKind.offline => 'Offline',
-    AccountKind.authlib => 'Authlib',
-  };
-
   static Account? fromNative(Object? value) {
     if (value is! Map) return null;
     final id = value['id']?.toString();
