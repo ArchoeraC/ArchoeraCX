@@ -1203,4 +1203,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get downloadModpackPending =>
       'Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.';
+
+  @override
+  String get accountPremiumRequired =>
+      'Sign in with a Microsoft account that owns Minecraft first.';
+
+  @override
+  String get accountPremiumRequiredHint =>
+      'A verified Microsoft account is required before adding or selecting other accounts.';
 }

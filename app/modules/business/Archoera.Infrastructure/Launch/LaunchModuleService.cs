@@ -53,6 +53,21 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         try
         {
             var instanceId = ReadRequired(paramsJson, "instanceId");
+            if (ReadBool(paramsJson, "requirePremium"))
+            {
+                var accounts = await _accounts
+                    .ListAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                if (!accounts.Any(account =>
+                        account.Kind == AccountKind.Microsoft &&
+                        !string.IsNullOrWhiteSpace(account.Uuid)))
+                {
+                    throw new LaunchException(
+                        "PREMIUM_ACCOUNT_REQUIRED",
+                        "Sign in with a Microsoft account that owns Minecraft before launching.");
+                }
+            }
+
             var instance = (await _instances.ListAsync(cancellationToken).ConfigureAwait(false))
                 .FirstOrDefault(item => string.Equals(item.Id, instanceId, StringComparison.Ordinal))
                 ?? throw new LaunchException("INSTANCE_NOT_FOUND", $"instance not found: {instanceId}");
@@ -327,6 +342,22 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             }
         };
         return (process, logPath);
+    }
+
+    private static bool ReadBool(string? json, string name)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return false;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.TryGetProperty(name, out var element) &&
+                   element.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                   element.GetBoolean();
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private static string ReadRequired(string? json, string name)

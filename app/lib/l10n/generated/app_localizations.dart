@@ -2167,6 +2167,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.'**
   String get downloadModpackPending;
+
+  /// Release-mode account policy error.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with a Microsoft account that owns Minecraft first.'**
+  String get accountPremiumRequired;
+
+  /// Subtitle shown when offline accounts are gated.
+  ///
+  /// In en, this message translates to:
+  /// **'A verified Microsoft account is required before adding or selecting other accounts.'**
+  String get accountPremiumRequiredHint;
 }
 
 class _AppLocalizationsDelegate

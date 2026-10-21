@@ -198,6 +198,7 @@ logs/account.log              脱敏诊断日志
 - 失败登录不会写入账户文件。
 - 旧 `accounts.credentials.json` 在首次使用时迁移进保险库并删除；生产构建需包含 `archoera-vault`（CI 已构建并检查）。
 - 多账户切换和 refresh 单飞尚未完整实现。
+- 发布版账户策略：必须存在已验证的 Microsoft/Minecraft 账户（有 UUID 的 Microsoft 账户），才允许添加/选择离线账户；启动也向后端传递 `requirePremium`，C# 会再次检查。调试版保留开发便利，不启用该限制。
 
 ### 申请前检查
 

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../models/account.dart';
 import '../services/core/core_client.dart';
+import '../stores/account_policy.dart';
 import '../stores/accounts.dart';
 import '../stores/providers.dart';
 import '../theme/tokens.dart';
@@ -27,6 +28,7 @@ class AccountsPage extends ConsumerWidget {
     final accountsAsync = ref.watch(accountsProvider);
     final accounts = accountsAsync.value ?? const <Account>[];
     final current = ref.watch(currentAccountProvider);
+    final policy = ref.watch(accountPolicyProvider);
     final loadFailed = accountsAsync.hasError && accounts.isEmpty;
     final empty =
         accounts.isEmpty &&
@@ -53,6 +55,9 @@ class AccountsPage extends ConsumerWidget {
       body = EmptyAccountsPanel(
         onMicrosoft: () => _addAccount(context, ref, 'microsoft'),
         onOffline: () => _addAccount(context, ref, 'offline'),
+        offlineHint: policy.canUseOtherAccounts
+            ? null
+            : l10n.accountPremiumRequiredHint,
       );
     } else {
       body = Column(
@@ -97,7 +102,35 @@ class AccountsPage extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          if (policy.requirePremium && !policy.hasPremium) ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: context.tokens.warning.withValues(alpha: 0.10),
+                border: Border.all(
+                  color: context.tokens.warning.withValues(alpha: 0.45),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.verified_user_outlined,
+                    size: 18,
+                    color: context.tokens.warning,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      l10n.accountPremiumRequiredHint,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: context.tokens.warning),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           body,
         ],
       ),
@@ -116,10 +149,22 @@ class AccountsPage extends ConsumerWidget {
       builder: (sheetContext) => AddAccountSheet(
         onMicrosoft: () => Navigator.of(sheetContext).pop('microsoft'),
         onOffline: () => Navigator.of(sheetContext).pop('offline'),
+        offlineHint: ref.read(accountPolicyProvider).canUseOtherAccounts
+            ? null
+            : AppLocalizations.of(context).accountPremiumRequiredHint,
       ),
     );
 
     if (!context.mounted) return;
+    if (choice == 'offline' &&
+        !ref.read(accountPolicyProvider).canUseOtherAccounts) {
+      _notify(
+        context,
+        AppLocalizations.of(context).accountPremiumRequired,
+        error: true,
+      );
+      return;
+    }
     if (choice == 'microsoft') {
       await _loginMicrosoft(context, ref);
     } else if (choice == 'offline') {
@@ -150,6 +195,10 @@ class AccountsPage extends ConsumerWidget {
 
   Future<void> _loginOffline(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
+    if (!ref.read(accountPolicyProvider).canUseOtherAccounts) {
+      _notify(context, l10n.accountPremiumRequired, error: true);
+      return;
+    }
     final client = ref.read(coreClientProvider);
     if (client == null) {
       _notify(context, l10n.commonCoreNotConnected, error: true);
@@ -189,7 +238,10 @@ class AccountsPage extends ConsumerWidget {
 
     if (name == null || name.trim().length < 3 || !context.mounted) return;
     try {
-      await client.loginOffline(name.trim());
+      await client.loginOffline(
+        name.trim(),
+        requirePremium: ref.read(accountPolicyProvider).requirePremium,
+      );
       await ref.read(accountsProvider.notifier).reload();
       if (context.mounted) _notify(context, l10n.accountSelected);
     } catch (error) {
@@ -206,8 +258,18 @@ class AccountsPage extends ConsumerWidget {
   ) async {
     if (account.active) return;
     final l10n = AppLocalizations.of(context);
+    if (account.kind != AccountKind.microsoft &&
+        !ref.read(accountPolicyProvider).canUseOtherAccounts) {
+      _notify(context, l10n.accountPremiumRequired, error: true);
+      return;
+    }
     try {
-      await ref.read(accountsProvider.notifier).select(account.id);
+      await ref
+          .read(accountsProvider.notifier)
+          .select(
+            account.id,
+            requirePremium: ref.read(accountPolicyProvider).requirePremium,
+          );
       if (context.mounted) _notify(context, l10n.accountSelected);
     } catch (error) {
       if (context.mounted) {

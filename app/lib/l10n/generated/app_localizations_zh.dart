@@ -1164,4 +1164,10 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get downloadModpackPending =>
       'Modrinth 整合包安装尚未启用，需要先接入 .mrpack 暂存、overrides 与加载器流水线。';
+
+  @override
+  String get accountPremiumRequired => '请先登录拥有 Minecraft 的微软账户，再添加或选择其它账户。';
+
+  @override
+  String get accountPremiumRequiredHint => '发布版需要先登录已拥有 Minecraft 的正版微软账户。';
 }

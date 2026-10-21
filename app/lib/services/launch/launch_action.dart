@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
+import '../../stores/account_policy.dart';
 import '../../stores/providers.dart';
 import '../core/core_client.dart';
 import '../../widgets/common/toast.dart';
@@ -15,6 +16,11 @@ Future<void> launchInstance(
   GameInstance instance,
 ) async {
   final l10n = AppLocalizations.of(context);
+  final policy = ref.read(accountPolicyProvider);
+  if (!policy.canUseOtherAccounts) {
+    toast(l10n.accountPremiumRequired, type: ToastType.error);
+    return;
+  }
   final client = ref.read(coreClientProvider);
   toast(l10n.launchStarting, duration: const Duration(seconds: 4));
 
@@ -24,7 +30,10 @@ Future<void> launchInstance(
   }
 
   try {
-    final result = await client.launchInstance(instance.id);
+    final result = await client.launchInstance(
+      instance.id,
+      requirePremium: policy.requirePremium,
+    );
     if (!context.mounted) return;
     toast(l10n.launchStarted(result.pid), type: ToastType.success);
   } catch (error) {
@@ -32,6 +41,8 @@ Future<void> launchInstance(
     final message = switch (error) {
       CoreException(code: 'ACCOUNT_REQUIRED') => l10n.launchNoAccount,
       CoreException(code: 'AUTH_REQUIRED') => l10n.launchOfflineOnly,
+      CoreException(code: 'PREMIUM_ACCOUNT_REQUIRED') =>
+        l10n.accountPremiumRequired,
       CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
         l10n.launchJavaMissing,
       _ => error.toString(),

@@ -167,6 +167,61 @@ public sealed class AccountAuthTests
         Delete(directory);
     }
 
+
+    [Fact]
+    public async Task Release_policy_requires_a_premium_account_before_offline_login()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var store = new JsonAccountStore(directory);
+            var service = new AccountModuleService(store, store, auth: null, dataRoot: directory);
+
+            var blocked = await service.HandleAsync(
+                "account.login.offline",
+                """{"name":"Steve","requirePremium":true}""",
+                CancellationToken.None);
+            using (var document = JsonDocument.Parse(blocked))
+            {
+                Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+                Assert.Equal(
+                    "PREMIUM_ACCOUNT_REQUIRED",
+                    document.RootElement.GetProperty("error").GetProperty("code").GetString());
+            }
+
+            await store.SaveAsync(new AccountRecord(
+                "ms-premium",
+                AccountKind.Microsoft,
+                "Premium",
+                Uuid,
+                "xuid",
+                null,
+                null,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow));
+
+            var allowed = await service.HandleAsync(
+                "account.login.offline",
+                """{"name":"Steve","requirePremium":true}""",
+                CancellationToken.None);
+            using var allowedDocument = JsonDocument.Parse(allowed);
+            Assert.True(allowedDocument.RootElement.GetProperty("ok").GetBoolean());
+            Assert.Equal(
+                "offline",
+                allowedDocument.RootElement
+                    .GetProperty("data")
+                    .GetProperty("account")
+                    .GetProperty("kind")
+                    .GetString());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
     [Fact]
     public async Task Removing_the_active_account_selects_another_account()
     {

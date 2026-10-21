@@ -85,7 +85,7 @@ flutter build linux --release
 
 ## 当前进度
 
-- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n；全局文案走 ARB，支持跟随系统/English/简体中文切换；首页改为 Hero + 单行快捷条 + 最近实例网格，使用斜切角/直线面板；底栏降至 60（首页动画收至 46）且首页隐藏启动按钮；首页切换使用旧页快照覆盖、其他页面之间上浮淡入、切回首页使用收回动效；账户页改为当前账户 Hero + 单列表，并支持 2D 纸娃娃皮肤预览与离线默认外观；全局通知改为标题栏下方斜切角 Toast，设置页保留分区导航 + 平铺设置组，内存/GC/JVM/游戏参数改为内联编辑并展示系统总内存/可用内存/启动后预计占用；下载页 Modrinth 结果支持图标、详情画廊、排序、自动分页与图片预览；实例创建/加载器安装支持选择旧版加载器；页面切换快照按等比宽度绘制，避免底栏高度变化造成形变；实例支持 `versions/` 版本隔离，原版下载优先官方源、失败回退 BMCLAPI；右上角任务中心展示真实下载进度/速度并可取消；模块 ABI v2 增加进度回调；加载器图标全部使用素材资产（原版为 Wikimedia 草方块，Fabric/Quilt/Forge/NeoForge 为官方图标），来源/许可证见 `assets/icons/loaders/SOURCES.md`
+- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n；全局文案走 ARB，支持跟随系统/English/简体中文切换；首页改为 Hero + 单行快捷条 + 最近实例网格，使用斜切角/直线面板；底栏降至 60（首页动画收至 46）且首页隐藏启动按钮；首页切换使用旧页快照覆盖、其他页面之间上浮淡入、切回首页使用收回动效；账户页改为当前账户 Hero + 单列表，并支持 2D 纸娃娃皮肤预览与离线默认外观；全局通知改为标题栏下方斜切角 Toast，设置页保留分区导航 + 平铺设置组，内存/GC/JVM/游戏参数改为内联编辑并展示系统总内存/可用内存/启动后预计占用；下载页 Modrinth 结果支持图标、详情画廊、排序、自动分页与图片预览；实例创建/加载器安装支持选择旧版加载器；页面切换快照按等比宽度绘制，避免底栏高度变化造成形变；实例支持 `versions/` 版本隔离，原版下载优先官方源、失败回退 BMCLAPI；右上角任务中心展示真实下载进度/速度并可取消；模块 ABI v2 增加进度回调；发布版必须先登录已验证的微软账户，才允许其它账户登录/选择与启动；加载器图标全部使用素材资产（原版为 Wikimedia 草方块，Fabric/Quilt/Forge/NeoForge 为官方图标），来源/许可证见 `assets/icons/loaders/SOURCES.md`
 - ✅ `system.ping` / `system.pingAsync`：C++ ABI / C harness / Dart `CoreClient` / integration test；首页不再暴露调试卡片
 - ✅ 事件泵：wake + `NativeCallable.listener` + 批量 drain；无定时器/轮询
 - ✅ C# `java.scan`：C++ ModuleRegistry + NativeAOT `archoera_cs` + Java status 卡；支持手动目录/可执行文件回退与持久化

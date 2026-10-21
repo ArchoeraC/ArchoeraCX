@@ -422,12 +422,16 @@ final class CoreClient {
   /// Start a basic offline launch through the C# module.
   Future<LaunchResult> launchInstance(
     String instanceId, {
+    bool requirePremium = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'launch.start';
     final jsonText = await _runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
+      paramsJson: jsonEncode(<String, Object?>{
+        'instanceId': instanceId,
+        'requirePremium': requirePremium,
+      }),
       onProgress: onProgress,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
@@ -1217,12 +1221,16 @@ final class CoreClient {
 
   Future<Account> selectAccount(
     String id, {
+    bool requirePremium = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'account.select';
     final jsonText = await _runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{'id': id}),
+      paramsJson: jsonEncode(<String, Object?>{
+        'id': id,
+        'requirePremium': requirePremium,
+      }),
       onProgress: onProgress,
     );
     return _parseAccountEnvelope(jsonText, methodName);
@@ -1230,12 +1238,16 @@ final class CoreClient {
 
   Future<Account> loginOffline(
     String name, {
+    bool requirePremium = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'account.login.offline';
     final jsonText = await _runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{'name': name}),
+      paramsJson: jsonEncode(<String, Object?>{
+        'name': name,
+        'requirePremium': requirePremium,
+      }),
       onProgress: onProgress,
     );
     return _parseAccountEnvelope(jsonText, methodName);

@@ -940,5 +940,13 @@
   "downloadModpackPending": "Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.",
   "@downloadModpackPending": {
     "description": "Modpack placeholder message."
+  },
+  "accountPremiumRequired": "Sign in with a Microsoft account that owns Minecraft first.",
+  "@accountPremiumRequired": {
+    "description": "Release-mode account policy error."
+  },
+  "accountPremiumRequiredHint": "A verified Microsoft account is required before adding or selecting other accounts.",
+  "@accountPremiumRequiredHint": {
+    "description": "Subtitle shown when offline accounts are gated."
   }
 }

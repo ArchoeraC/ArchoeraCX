@@ -165,6 +165,8 @@ public sealed class AccountModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         var id = RequireString(paramsJson, "id");
+        await EnsurePremiumAsync(ReadBool(paramsJson, "requirePremium"), cancellationToken)
+            .ConfigureAwait(false);
         var account = await _accounts.SetActiveAsync(id, cancellationToken).ConfigureAwait(false)
                       ?? throw new ArgumentException("account not found");
         return ModuleJson.Envelope(writer =>
@@ -271,6 +273,8 @@ public sealed class AccountModuleService : IModuleMethodHandler
         string? paramsJson,
         CancellationToken cancellationToken)
     {
+        await EnsurePremiumAsync(ReadBool(paramsJson, "requirePremium"), cancellationToken)
+            .ConfigureAwait(false);
         var name = RequireString(paramsJson, "name").Trim();
         if (name.Length is < 3 or > 16 ||
             name.Any(character => !(char.IsAsciiLetterOrDigit(character) || character == '_')))
@@ -303,6 +307,40 @@ public sealed class AccountModuleService : IModuleMethodHandler
             writer.WritePropertyName("account");
             WriteAccount(writer, account);
         });
+    }
+
+    private async Task EnsurePremiumAsync(
+        bool required,
+        CancellationToken cancellationToken)
+    {
+        if (!required) return;
+        var accounts = await _accounts.ListAsync(cancellationToken).ConfigureAwait(false);
+        if (accounts.Any(account =>
+                account.Kind == AccountKind.Microsoft &&
+                !string.IsNullOrWhiteSpace(account.Uuid)))
+        {
+            return;
+        }
+
+        throw new AccountAuthException(
+            "PREMIUM_ACCOUNT_REQUIRED",
+            "Sign in with a Microsoft account that owns Minecraft before using another account.");
+    }
+
+    private static bool ReadBool(string? json, string name)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return false;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.TryGetProperty(name, out var element) &&
+                   element.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                   element.GetBoolean();
+        }
+        catch (JsonException exception)
+        {
+            throw new ArgumentException($"request is not valid JSON: {exception.Message}");
+        }
     }
 
     private async Task<byte[]> RefreshAsync(
