@@ -1,15 +1,32 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Compile-time distribution policy.
-///
-/// Mainland-China distribution builds are compiled with
-/// `--dart-define=ARCHOERACX_CHINA_BUILD=true`; the native core and C# module
-/// are built with the matching `ARCHOERACX_CHINA_BUILD`/`ChinaBuild` flag.
+import '../../stores/providers.dart';
+import 'download_policy.dart';
+
+/// Compile-time distribution policy. The native module owns the authoritative
+/// gate; this constant is only kept for build diagnostics.
 const bool kChinaBuild = bool.fromEnvironment(
   'ARCHOERACX_CHINA_BUILD',
   defaultValue: false,
 );
 
-/// UI-level availability check. Tests can override this provider without
-/// changing the compile-time native policy.
-final downloadEnabledProvider = Provider<bool>((ref) => !kChinaBuild);
+/// Reads the local compliance.json gate. China builds default to disabled;
+/// global/dev builds return enabled without requiring the file.
+final downloadPolicyProvider = FutureProvider<DownloadPolicyState>((ref) async {
+  final client = ref.watch(coreClientProvider);
+  if (client == null) {
+    return DownloadPolicyState(
+      enabled: !kReleaseMode,
+      reason: 'CORE_UNAVAILABLE',
+      configPath: '',
+      noticeVersion: 1,
+    );
+  }
+  return client.getDownloadPolicy();
+});
+
+/// Synchronous convenience for navigation/shortcut visibility.
+final downloadEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(downloadPolicyProvider).value?.enabled ?? false,
+);

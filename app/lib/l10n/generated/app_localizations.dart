@@ -2117,14 +2117,32 @@ abstract class AppLocalizations {
   /// China build download block title.
   ///
   /// In en, this message translates to:
-  /// **'Downloads are unavailable in this build'**
+  /// **'Downloads are disabled'**
   String get downloadUnavailableTitle;
 
   /// China build download block explanation.
   ///
   /// In en, this message translates to:
-  /// **'This mainland-China build does not provide online game, loader or content downloads. Use files you already have or the official Minecraft launcher.'**
+  /// **'Downloads are disabled by local policy. Add the required fields to the configuration file, then re-check. Your existing local instances and launch features remain available.'**
   String get downloadUnavailableMessage;
+
+  /// Download gate config path.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration file: {path}'**
+  String downloadConfigPath(Object path);
+
+  /// Fields required to enable downloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Required fields: developerMode=true, acceptRisk=true, downloadLevel=L2, acknowledgement=ENABLE-DOWNLOADS 1'**
+  String get downloadConfigFields;
+
+  /// Reload the local download gate.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-check configuration'**
+  String get downloadConfigReload;
 }
 
 class _AppLocalizationsDelegate

@@ -8,7 +8,7 @@ import 'package:ffi/ffi.dart';
 import '../../models/account.dart';
 import '../../models/game_instance.dart';
 import 'app_settings.dart';
-import 'build_policy.dart';
+import 'download_policy.dart';
 import 'core_event.dart';
 import 'event_pump.dart';
 import 'installed_mod.dart';
@@ -498,7 +498,6 @@ final class CoreClient {
     required String gameVersion,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'loader.versions';
     final jsonText = await _runAsync(
       methodName,
@@ -529,7 +528,6 @@ final class CoreClient {
     required String loaderVersion,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'loader.plan';
     final jsonText = await _runAsync(
       methodName,
@@ -570,7 +568,6 @@ final class CoreClient {
     required String versionJson,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'loader.commit';
     final jsonText = await _runAsync(
       methodName,
@@ -652,7 +649,6 @@ final class CoreClient {
     required String versionId,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'version.plan';
     final jsonText = await _runAsync(
       methodName,
@@ -690,7 +686,6 @@ final class CoreClient {
     required String versionJson,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'version.commit';
     final jsonText = await _runAsync(
       methodName,
@@ -745,7 +740,6 @@ final class CoreClient {
     int pageSize = 20,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'resource.search';
     final jsonText = await _runAsync(
       methodName,
@@ -784,7 +778,6 @@ final class CoreClient {
     required String projectId,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'resource.project';
     final jsonText = await _runAsync(
       methodName,
@@ -816,7 +809,6 @@ final class CoreClient {
     String? shaderLoader,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'resource.versions';
     final jsonText = await _runAsync(
       methodName,
@@ -851,7 +843,6 @@ final class CoreClient {
     bool includeDependencies = false,
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'resource.plan';
     final jsonText = await _runAsync(
       methodName,
@@ -882,7 +873,6 @@ final class CoreClient {
     Map<String, Object?> plan, {
     void Function(int done, int total)? onProgress,
   }) async {
-    _ensureDownloadsEnabled();
     const methodName = 'download.execute';
     final jsonText = await _runAsync(
       methodName,
@@ -1468,13 +1458,23 @@ final class CoreClient {
     }
   }
 
-  void _ensureDownloadsEnabled() {
-    if (!kChinaBuild) return;
-    throw const CoreException(
-      status: _ok,
-      code: 'DOWNLOAD_DISABLED',
-      message: 'Downloads are unavailable in this mainland-China build.',
-    );
+  /// Read the local download-risk gate.
+  Future<DownloadPolicyState> getDownloadPolicy({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'download.policy';
+    final jsonText = await _runAsync(methodName, onProgress: onProgress);
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final policy = DownloadPolicyState.tryParse(data);
+    if (policy == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an invalid policy.',
+      );
+    }
+    return policy;
   }
 
   /// Ask the core to cancel [taskId].

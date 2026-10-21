@@ -19,13 +19,16 @@ public sealed class LoaderModuleService : IModuleMethodHandler
     private readonly IForgeArtifactPlanner _planner;
     private readonly ILoaderArtifactVerifier _verifier;
     private readonly IForgeRepairService _repairService;
+    private readonly DownloadPolicy _policy;
 
     public LoaderModuleService(
         IForgeArtifactPlanner? planner = null,
         ILoaderArtifactVerifier? verifier = null,
         IForgeRepairService? repairService = null,
-        bool enableDownloads = true)
+        bool enableDownloads = true,
+        DownloadPolicy? policy = null)
     {
+        _policy = policy ?? new DownloadPolicy();
         _supportedMethods = enableDownloads
             ? ["loader.verify", "loader.repair", "loader.check", "loader.plan", "loader.commit"]
             : ["loader.verify", "loader.repair", "loader.check"];
@@ -46,6 +49,19 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         if (string.Equals(method, "loader.check", StringComparison.Ordinal))
         {
             return await CheckAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.Equals(method, "loader.plan", StringComparison.Ordinal) ||
+            string.Equals(method, "loader.commit", StringComparison.Ordinal))
+        {
+            try
+            {
+                _policy.EnsureEnabled();
+            }
+            catch (DownloadPolicyException exception)
+            {
+                return ModuleJson.Error(exception.Code, exception.Message);
+            }
         }
 
         if (string.Equals(method, "loader.plan", StringComparison.Ordinal))

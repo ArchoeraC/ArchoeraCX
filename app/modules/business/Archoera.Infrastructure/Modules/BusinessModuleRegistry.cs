@@ -20,16 +20,17 @@ public static class BusinessModuleRegistry
 {
     public static ModuleMethodRegistry CreateDefault(string? dataRoot = null)
     {
-        var chinaBuild = false;
-#if ARCHOERACX_CHINA_BUILD
-        chinaBuild = true;
-#endif
+        var policy = new DownloadPolicy(dataRoot);
         var handlers = new List<IModuleMethodHandler>
         {
             new JavaModuleService(
                 settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
-            new VersionModuleService(enableDownloads: !chinaBuild),
+            new VersionModuleService(policy: policy),
             new LaunchModuleService(dataRoot: dataRoot),
+            new LoaderVersionService(policy: policy),
+            new LoaderModuleService(policy: policy),
+            new ResourceModuleService(policy: policy),
+            new DownloadPolicyModuleService(policy),
             new AccountModuleService(
                 accounts: new JsonAccountStore(dataRoot),
                 credentials: new VaultCredentialStore(dataRoot),
@@ -46,19 +47,7 @@ public static class BusinessModuleRegistry
                 dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
         };
 
-        if (!chinaBuild)
-        {
-            handlers.Add(new LoaderVersionService());
-            handlers.Add(new ResourceModuleService());
-            handlers.Add(new LoaderModuleService());
-        }
-        else
-        {
-            // Local verification/repair remains available; plan/commit and all
-            // resource/download methods are not registered in the China build.
-            handlers.Add(new LoaderModuleService(enableDownloads: false));
-        }
-
         return new ModuleMethodRegistry(handlers);
+
     }
 }

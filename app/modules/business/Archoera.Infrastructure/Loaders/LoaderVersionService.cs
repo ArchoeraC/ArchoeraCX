@@ -42,11 +42,14 @@ public sealed class LoaderVersionService : IModuleMethodHandler
 
     private readonly HttpClient _http;
     private readonly LoaderVersionEndpoints _endpoints;
+    private readonly DownloadPolicy _policy;
 
     public LoaderVersionService(
         HttpClient? httpClient = null,
-        LoaderVersionEndpoints? endpoints = null)
+        LoaderVersionEndpoints? endpoints = null,
+        DownloadPolicy? policy = null)
     {
+        _policy = policy ?? new DownloadPolicy();
         _http = httpClient ?? new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(25),
@@ -74,6 +77,7 @@ public sealed class LoaderVersionService : IModuleMethodHandler
 
         try
         {
+            _policy.EnsureEnabled();
             using var document = string.IsNullOrWhiteSpace(paramsJson)
                 ? JsonDocument.Parse("{}")
                 : JsonDocument.Parse(paramsJson);
@@ -106,6 +110,10 @@ public sealed class LoaderVersionService : IModuleMethodHandler
 
                 writer.WriteEndArray();
             });
+        }
+        catch (DownloadPolicyException exception)
+        {
+            return ModuleJson.Error(exception.Code, exception.Message);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
