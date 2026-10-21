@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
+import '../../services/core/loader_versions.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
 import '../../theme/tokens.dart';
+import 'loader_version_picker.dart';
 
 /// Loader installation moved out of the Download hub and into instance
 /// management: it always writes into one concrete instance root.
@@ -39,6 +43,11 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
   bool _requiresJava = false;
   bool _ok = false;
   String? _message;
+  List<LoaderVersionInfo> _versions = const [];
+  bool _loadingVersions = false;
+  String? _versionError;
+  int _versionRequest = 0;
+  Timer? _gameDebounce;
 
   @override
   void initState() {
@@ -50,13 +59,106 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
     _kind = widget.instance.loader == GameLoader.neoforge
         ? 'neoforge'
         : 'forge';
+    _gameController.addListener(_onGameChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadVersions();
+    });
+  }
+
+  void _onGameChanged() {
+    _gameDebounce?.cancel();
+    setState(() {
+      _versions = const [];
+      _loaderController.text = '';
+      _versionError = null;
+    });
+    _gameDebounce = Timer(const Duration(milliseconds: 600), () {
+      if (mounted) _loadVersions();
+    });
   }
 
   @override
   void dispose() {
-    _gameController.dispose();
+    _gameDebounce?.cancel();
+    _gameController
+      ..removeListener(_onGameChanged)
+      ..dispose();
     _loaderController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadVersions() async {
+    final game = _gameController.text.trim();
+    final request = ++_versionRequest;
+    if (game.isEmpty) {
+      setState(() {
+        _versions = const [];
+        _loadingVersions = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingVersions = true;
+      _versionError = null;
+    });
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      if (!mounted || request != _versionRequest) return;
+      setState(() {
+        _loadingVersions = false;
+        _versionError = AppLocalizations.of(context).commonCoreNotConnected;
+      });
+      return;
+    }
+
+    try {
+      final versions = await client.getLoaderVersions(
+        kind: _kind,
+        gameVersion: game,
+      );
+      if (!mounted || request != _versionRequest) return;
+      if (versions.isEmpty) {
+        setState(() {
+          _versions = const [];
+          _loadingVersions = false;
+          _versionError = AppLocalizations.of(context).loaderVersionEmpty;
+        });
+        return;
+      }
+      final preferred = versions.firstWhere(
+        (item) => item.recommended,
+        orElse: () => versions.first,
+      );
+      setState(() {
+        _versions = versions;
+        _loadingVersions = false;
+        _versionError = null;
+        _loaderController.text = preferred.version;
+      });
+    } catch (error) {
+      if (!mounted || request != _versionRequest) return;
+      setState(() {
+        _loadingVersions = false;
+        _versionError = AppLocalizations.of(context).loaderVersionLoadFailed;
+      });
+    }
+  }
+
+  Future<void> _pickVersion(AppLocalizations l10n) async {
+    if (_versions.isEmpty) {
+      setState(() => _versionError ??= l10n.loaderVersionEmpty);
+      return;
+    }
+    final selected = await showLoaderVersionPicker(
+      context,
+      versions: _versions,
+      selected: _loaderController.text.trim(),
+      gameVersion: _gameController.text.trim(),
+    );
+    if (selected != null && mounted) {
+      setState(() => _loaderController.text = selected);
+    }
   }
 
   Future<void> _chooseInstaller(AppLocalizations l10n) async {
@@ -229,9 +331,13 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                       onChanged: _busy
                           ? null
                           : (value) {
-                              if (value != null) {
-                                setState(() => _kind = value);
-                              }
+                              if (value == null) return;
+                              setState(() {
+                                _kind = value;
+                                _versions = const [];
+                                _loaderController.text = '';
+                              });
+                              _loadVersions();
                             },
                     ),
                   ),
@@ -246,12 +352,27 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                     ),
                   ),
                   SizedBox(
-                    width: 160,
+                    width: 220,
                     child: TextField(
                       controller: _loaderController,
                       enabled: !_busy,
                       decoration: InputDecoration(
                         labelText: l10n.loaderVersionLabel,
+                        suffixIcon: IconButton(
+                          onPressed: _busy || _loadingVersions
+                              ? null
+                              : () => _pickVersion(l10n),
+                          tooltip: l10n.loaderVersionSelect,
+                          icon: _loadingVersions
+                              ? const SizedBox(
+                                  width: 15,
+                                  height: 15,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.list_rounded, size: 19),
+                        ),
                       ),
                     ),
                   ),

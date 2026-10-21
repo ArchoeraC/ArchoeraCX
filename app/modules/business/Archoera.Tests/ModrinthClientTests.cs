@@ -92,6 +92,11 @@ public sealed class ModrinthClientTests
         Assert.Equal(45, project.Follows);
         Assert.Equal("lgpl-3.0-only", project.License);
         Assert.Equal("required", project.ClientSide);
+        Assert.Equal("https://github.com/CaffeineMC/sodium", project.SourceUrl);
+        Assert.NotNull(project.Body);
+        var gallery = Assert.Single(project.GalleryList);
+        Assert.True(gallery.Featured);
+        Assert.Equal("https://cdn.modrinth.com/data/AANobbMI/gallery/one.png", gallery.Url);
         Assert.Equal("/v2/project/AANobbMI", handler.Requests[0].Uri.AbsolutePath);
     }
 
@@ -342,7 +347,19 @@ public sealed class ModrinthClientTests
           "updated": "2026-09-01T12:00:00Z",
           "game_versions": ["1.21.1"],
           "loaders": ["fabric"],
-          "license": { "id": "lgpl-3.0-only", "name": "LGPL-3.0-only" }
+          "license": { "id": "lgpl-3.0-only", "name": "LGPL-3.0-only" },
+          "source_url": "https://github.com/CaffeineMC/sodium",
+          "body": "A modern rendering engine.",
+          "published": "2020-12-01T00:00:00Z",
+          "gallery": [
+            {
+              "url": "https://cdn.modrinth.com/data/AANobbMI/gallery/one.png",
+              "featured": true,
+              "title": "In-game",
+              "description": "Sodium running in a world.",
+              "ordering": 0
+            }
+          ]
         }
         """;
 

@@ -363,12 +363,20 @@ class _PageTransitionState extends State<_PageTransition>
             Positioned.fill(
               child: SlideTransition(
                 position: _outOffset,
-                child: RawImage(image: previous, fit: BoxFit.fill),
+                child: RawImage(
+                  image: previous,
+                  fit: BoxFit.fitWidth,
+                  alignment: Alignment.topCenter,
+                ),
               ),
             ),
           ] else if (_mode == _PageTransitionMode.lift) ...[
             Positioned.fill(
-              child: RawImage(image: previous, fit: BoxFit.fill),
+              child: RawImage(
+                image: previous,
+                fit: BoxFit.fitWidth,
+                alignment: Alignment.topCenter,
+              ),
             ),
             Positioned.fill(
               child: FadeTransition(
@@ -378,7 +386,11 @@ class _PageTransitionState extends State<_PageTransition>
             ),
           ] else ...[
             Positioned.fill(
-              child: RawImage(image: previous, fit: BoxFit.fill),
+              child: RawImage(
+                image: previous,
+                fit: BoxFit.fitWidth,
+                alignment: Alignment.topCenter,
+              ),
             ),
             Positioned.fill(
               child: SlideTransition(position: _offset, child: current),

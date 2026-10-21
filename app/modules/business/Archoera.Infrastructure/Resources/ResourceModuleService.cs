@@ -21,7 +21,7 @@ namespace Archoera.Infrastructure.Resources;
 public sealed class ResourceModuleService : IModuleMethodHandler
 {
     private static readonly string[] SupportedMethods =
-        ["resource.search", "resource.versions", "resource.plan", "download.execute"];
+        ["resource.search", "resource.project", "resource.versions", "resource.plan", "download.execute"];
 
     public const string Modrinth = "modrinth";
 
@@ -52,6 +52,8 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             return method switch
             {
                 "resource.search" => await SearchAsync(root, cancellationToken)
+                    .ConfigureAwait(false),
+                "resource.project" => await ProjectAsync(root, cancellationToken)
                     .ConfigureAwait(false),
                 "resource.versions" => await VersionsAsync(root, cancellationToken)
                     .ConfigureAwait(false),
@@ -91,6 +93,19 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             .ConfigureAwait(false);
 
         return BuildSearch(result);
+    }
+
+    private async Task<byte[]> ProjectAsync(
+        JsonElement root,
+        CancellationToken cancellationToken)
+    {
+        var provider = ReadProvider(root);
+        var project = RequireString(root, "projectId");
+        var client = CreateClient(root);
+        var result = await client
+            .GetProjectAsync(project, cancellationToken)
+            .ConfigureAwait(false);
+        return BuildProject(result);
     }
 
     private async Task<byte[]> VersionsAsync(
@@ -310,6 +325,14 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         var query = ReadOptionalString(root, "query") ?? string.Empty;
         var page = ReadInt(root, "page", 0);
         var pageSize = ReadInt(root, "pageSize", 20);
+        var sortText = ReadOptionalString(root, "sort") ?? "relevance";
+        if (!ResourceWire.TryParseSort(sortText, out var sort))
+        {
+            throw new ResourceProviderException(
+                ResourceErrorCode.InvalidRequest,
+                "sort must be relevance, downloads, follows, newest or updated");
+        }
+
         var target = ReadSearchTarget(root, kind);
 
         return new ResourceSearchRequest
@@ -317,6 +340,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             Query = query,
             Kind = kind,
             Target = target,
+            Sort = sort,
             Page = page,
             PageSize = pageSize,
         };
@@ -429,6 +453,14 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             writer.WriteBoolean("ok", true);
         });
 
+    private static byte[] BuildProject(ResourceProject project)
+        => BuildEnvelope(writer =>
+        {
+            writer.WritePropertyName("data");
+            WriteProject(writer, project);
+            writer.WriteBoolean("ok", true);
+        });
+
     private static byte[] BuildVersions(
         string provider,
         IReadOnlyList<ResourceVersion> versions)
@@ -502,9 +534,27 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         writer.WriteString("iconUrl", project.IconUrl);
         writer.WriteString("clientSide", project.ClientSide);
         writer.WriteString("license", project.License);
+        writer.WriteString("sourceUrl", project.SourceUrl);
+        writer.WriteString("issuesUrl", project.IssuesUrl);
+        writer.WriteString("wikiUrl", project.WikiUrl);
+        writer.WriteString("publishedAt", project.PublishedAt?.ToString("O"));
+        writer.WriteString("body", project.Body);
         WriteStrings(writer, "categories", project.CategoryList);
         WriteStrings(writer, "loaders", project.LoaderList);
         WriteStrings(writer, "gameVersions", project.GameVersionList);
+        writer.WriteStartArray("gallery");
+        foreach (var image in project.GalleryList)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("url", image.Url);
+            writer.WriteBoolean("featured", image.Featured);
+            writer.WriteString("title", image.Title);
+            writer.WriteString("description", image.Description);
+            writer.WriteNumber("ordering", image.Ordering);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
         writer.WriteEndObject();
     }
 

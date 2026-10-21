@@ -1036,4 +1036,85 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsMemoryOverAvailable =>
       'Estimated usage exceeds available memory.';
+
+  @override
+  String downloadResults(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count results',
+      one: '1 result',
+      zero: 'No results',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get downloadSort => 'Sort';
+
+  @override
+  String get downloadSortRelevance => 'Relevance';
+
+  @override
+  String get downloadSortDownloads => 'Downloads';
+
+  @override
+  String get downloadSortFollows => 'Follows';
+
+  @override
+  String get downloadSortNewest => 'Newest';
+
+  @override
+  String get downloadSortUpdated => 'Recently updated';
+
+  @override
+  String get downloadScreenshots => 'Screenshots';
+
+  @override
+  String downloadDependencies(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dependencies',
+      one: '1 dependency',
+      zero: 'No dependencies',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get downloadLoadMore => 'Load more';
+
+  @override
+  String get downloadImagePreview => 'Image preview';
+
+  @override
+  String downloadByAuthor(Object author) {
+    return 'by $author';
+  }
+
+  @override
+  String get loaderVersionSelect => 'Select loader version';
+
+  @override
+  String get loaderVersionSearch => 'Search versions';
+
+  @override
+  String get loaderVersionLatest => 'Latest';
+
+  @override
+  String get loaderVersionRecommended => 'Recommended';
+
+  @override
+  String get loaderVersionBeta => 'Beta';
+
+  @override
+  String get loaderVersionLoadFailed => 'Could not load loader versions.';
+
+  @override
+  String get loaderVersionEmpty =>
+      'No loader versions were found for this game version.';
+
+  @override
+  String get downloadDescription => 'Description';
 }

@@ -15,6 +15,7 @@ public sealed class ModuleRegistryTests
 
             Assert.Contains("java.scan", registry.Methods);
             Assert.Contains("java.select", registry.Methods);
+            Assert.Contains("loader.versions", registry.Methods);
             Assert.Contains("loader.verify", registry.Methods);
             Assert.Contains("loader.repair", registry.Methods);
             Assert.Contains("loader.check", registry.Methods);
@@ -23,6 +24,7 @@ public sealed class ModuleRegistryTests
             Assert.Contains("version.list", registry.Methods);
             Assert.Contains("launch.start", registry.Methods);
             Assert.Contains("resource.search", registry.Methods);
+            Assert.Contains("resource.project", registry.Methods);
             Assert.Contains("settings.get", registry.Methods);
             Assert.Contains("instance.list", registry.Methods);
             Assert.Contains("instance.sync", registry.Methods);

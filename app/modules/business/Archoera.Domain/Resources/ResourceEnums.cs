@@ -132,4 +132,29 @@ public static class ResourceWire
         ResourceSort.Updated => "updated",
         _ => throw new ArgumentOutOfRangeException(nameof(sort)),
     };
+
+    public static bool TryParseSort(string? value, out ResourceSort sort)
+    {
+        switch (value?.Trim().ToLowerInvariant())
+        {
+            case "relevance":
+                sort = ResourceSort.Relevance;
+                return true;
+            case "downloads":
+                sort = ResourceSort.Downloads;
+                return true;
+            case "follows":
+                sort = ResourceSort.Follows;
+                return true;
+            case "newest":
+                sort = ResourceSort.Newest;
+                return true;
+            case "updated":
+                sort = ResourceSort.Updated;
+                return true;
+            default:
+                sort = default;
+                return false;
+        }
+    }
 }
