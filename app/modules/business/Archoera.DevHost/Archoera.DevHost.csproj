@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Archoera.DevHost</RootNamespace>
+    <AssemblyName>Archoera.DevHost</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Archoera.Application/Archoera.Application.csproj" />
+    <ProjectReference Include="../Archoera.Infrastructure/Archoera.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

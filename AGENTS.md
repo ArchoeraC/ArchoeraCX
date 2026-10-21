@@ -1,0 +1,108 @@
+# AGENTS.md — ArchoeraCX 维护指引
+
+面向在本仓库工作的 AI 助手与维护者。当前阶段：**Phase 1，Flutter UI + C++/C# 模块注册表 + 实例/下载/账户垂直切片**。
+
+## 工作范围
+
+- 只处理本仓库；不要修改仓库之外的目录。
+- 不要复制 LauncherX / HMCL / Prism / Modrinth 的代码、XAML、图标、插画、文案或字体。
+- 不接受外部代码贡献的仓库政策见 `CONTRIBUTING.md`。
+
+## 目录
+
+```text
+app/                 # 单应用根
+├─ lib/
+│  ├─ app/           # app / router / shell
+│  ├─ pages/         # 页面
+│  ├─ services/      # CoreClient / 事件 / 平台服务
+│  ├─ stores/        # Riverpod providers
+│  ├─ theme/         # tokens / app_theme
+│  ├─ widgets/       # common / layout
+│  ├─ utils/
+│  └─ l10n/          # ARB + generated/
+├─ core/             # C++ archoera_core
+├─ modules/          # C# / Rust（下一步）
+├─ native/           # 平台桥接（下一步）
+├─ contracts/        # ABI / schema
+├─ assets/
+├─ tool/             # build-core.sh / build-core.bat
+└─ test/
+docs/                # 架构 / UI / 预研 / 发行
+Reference/           # 只读参考，不参与构建
+```
+
+## 提交前必跑
+
+```bash
+# 原生核心 + C# 模块
+cd app
+./tool/build-core.sh
+./tool/build-cs.sh
+./tool/build-dl.sh
+./build/native/abi_smoke
+./build/native/async_smoke
+./build/native/module_smoke
+dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
+dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
+dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
+cargo test --manifest-path modules/downloader/Cargo.toml
+
+# Flutter
+flutter pub get
+flutter gen-l10n
+dart analyze          # 中文路径下不要用 flutter analyze
+flutter test
+ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
+ARCHOERACX_SETTINGS_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-settings flutter test test/settings_integration_test.dart
+ARCHOERACX_INSTANCE_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-instance flutter test test/instance_integration_test.dart
+ARCHOERACX_ACCOUNT_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-account flutter test test/account_integration_test.dart
+flutter build linux --release
+```
+
+## 架构红线
+
+- Dart 只通过 `app/lib/services/core/CoreClient` 调 C++ 枢纽；**不直连业务 API**。
+- UI 不读文件、不起进程；图片加载是唯一例外。
+- C++ 枢纽不做 Mojang/Modrinth/加载器业务。
+- C# 是 API、业务、SQLite 的唯一 owner。
+- Rust 只消费 `DownloadPlan`：不解压、不写 SQLite、不理解业务语义。
+- SQLite 只由 C# 持有；Flutter 不引入数据库插件、不直接读 SQLite；C++ 只路由。Linux/macOS 使用系统 SQLite，Windows 使用随 C# 模块分发的 `e_sqlite3.dll`。
+- 跨模块协作走效果协议，不直接互调。
+- 核事件必须 **wake 驱动**：C++ 调 `wake`，Dart `NativeCallable.listener` 收到后批量 drain；**禁止 `Timer.periodic` 轮询**。
+- 所有跨边界数据都有 schema、owner、生命周期和失败路径。
+- 新方法必须同时登记到 C++ `method_registry` 与 C# `BusinessModuleRegistry`；未知方法返回 `E_UNSUPPORTED`，不允许在导出层加 if 分支。
+- Microsoft 登录默认 Device Code Flow；device code / access token / refresh token 不跨 ABI，也不写日志。
+- Microsoft client id **不硬编码**：CI/发布构建用 `-p:MicrosoftClientId=<GUID>` 注入编译期默认值；本地调试用 `ARCHOERACX_MICROSOFT_CLIENT_ID` 运行时临时覆盖（运行时优先）。
+
+## 子代理协作
+
+- 按边界拆任务：C++/CMake、Dart/Flutter、文档/契约可以并行。
+- 不要让两个代理同时改同一个文件；共享契约先由主代理冻结。
+- 子代理完成后必须由主代理统一跑构建/测试，不直接相信报告。
+- 涉及 ABI 的改动必须同时改 `app/contracts/abi/archoera_abi.h`、C++、Dart 和 C harness。
+
+## 当前进度
+
+- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n
+- ✅ `system.ping` / `system.pingAsync`：C++ ABI / C harness / Dart `CoreClient` / 首页 Core status 卡
+- ✅ 事件泵：wake + `NativeCallable.listener` + 批量 drain；无定时器/轮询
+- ✅ C# `java.scan`：C++ ModuleRegistry + NativeAOT `archoera_cs` + Java status 卡；支持手动目录/可执行文件回退与持久化
+- ✅ Forge/NeoForge 生成物清单 + 校验 + 修复；`loader.verify`/`loader.repair` 已接 ModuleRegistry/CoreClient（待接 launch preflight/UI）
+- ✅ Rust `DownloadPlan` 执行器 MVP（待接 C++ ModuleRegistry）
+- ✅ C# `DownloadPlan` 契约 + Modrinth provider（Mod/光影/资源包；待接 ModuleRegistry/UI）
+- ✅ Mojang 原版 `DownloadPlan`（manifest/version/assets/libraries/logging；待接 ModuleRegistry/UI）
+- ✅ Forge/NeoForge installer + 依赖库 `DownloadPlan`（生成物不进计划；待接安装流程/UI）
+- ✅ 版本合并 / `EffectiveVersion`（inheritsFrom、库去重、参数拼接、legacy 参数）
+- ✅ Forge/NeoForge 安装下载组合计划（原版 + 加载器依赖 + installer）
+- ✅ Mojang Java runtime 下载计划（all.json → platform manifest → raw/executable）
+- ✅ C++ `ModuleRegistry` + `MethodRegistry`；`system.modules` 可查询已加载模块；C# `BusinessModuleRegistry` 统一注册业务方法
+- ✅ Microsoft Device Code 登录：Microsoft token → XBL → XSTS → Minecraft login → profile/certificates；账户页可登录/切换/刷新/移除，离线账户可用
+- ✅ 实例 UI：创建/选择/删除/搜索、可选实例目录；C# SQLite 索引 + `instance.json` 权威源
+- ✅ C# `settings.get/set`：实例根目录选择/持久化；Flutter 设置页与创建实例对话框已接入
+- ✅ C# SQLite 实例索引 + `instance.json` 权威源；Flutter 通过 `instance.*` 模块方法读写
+- ✅ Modrinth 端到端：Flutter 搜索/版本/安装 → C# 计划 → Rust `archoera-dl` 下载并校验（Sodium 1.21.1 Fabric 实测）
+- ⬜ 真实 Entra client_id + Minecraft Services client_id 审核；构建期注入 `-p:MicrosoftClientId`，调试期用 `ARCHOERACX_MICROSOFT_CLIENT_ID`
+- ⬜ 凭据库迁移：当前 refresh token 在 `accounts.credentials.json`（0600），后续接 Windows DPAPI/macOS Keychain/libsecret
+- ⬜ CurseForge provider（鉴权后置）
+- ⬜ 正式 C++ DownloadManager / 安装原版 + 启动

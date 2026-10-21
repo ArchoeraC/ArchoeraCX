@@ -1,0 +1,57 @@
+# Flutter / Dart
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/coverage/
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+**/MicrosoftBuildConfig.g.cs
+
+# Rust
+app/modules/downloader/target/
+
+# Native / CMake
+build/
+out/
+dist/
+*.dmp
+*.pdb
+*.ilk
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local-only material: reverse-engineering samples, upstream checkouts,
+# downloaded test fixtures, local service data
+.local/
+Reference/upstream/
+Reference/LauncherX/
+LauncherX-*.md
+
+# Local credentials / database / logs
+*.log
+accounts.json
+accounts.credentials.json
+archoera.db
+archoera.db-shm
+archoera.db-wal
+settings.json
+.env
+.env.*
