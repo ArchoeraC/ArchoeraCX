@@ -2515,7 +2515,8 @@ public interface IDownloadProvider {
 
 ### 14.3 密钥与凭据
 
-- 无凭据库时：0600 文件 + 明确警告；不把密钥写进 `config.json`。
+- 保险库优先使用 OS 安全存储（DPAPI / Keychain / libsecret）；无桌面钥匙串时降级到 0600 `secret.key` 的 encrypted-file 模式，不写明文。
+- 旧 `accounts.credentials.json` 首次访问时迁移到保险库并删除；不把密钥写进 `config.json` 或日志。
 - 日志脱敏顺序：Bearer/Authorization → token 字段 → 邮箱 → UUID → 路径 → IP。
 - 崩溃转储默认本地；上传前提示可能含内存内容；不自动上传。
 
@@ -2896,7 +2897,7 @@ ArchoeraCX/
 - Java 探测等子进程必须显式设置有效 `WorkingDirectory`，避免子进程继承已删除的 CWD。
 - 数据目录仍优先使用 `ARCHOERACX_DATA_DIR`，否则按 Windows `%APPDATA%`、macOS `Application Support`、Linux XDG/`~/.local/share` 解析。
 
-**当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 当前支持离线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表与全局 Mod 搜索。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Device Code 登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组；真实 Entra client_id 与 Minecraft Services 审核仍待完成。260 个 C# 测试、27 个 Flutter 测试通过；Fabric/Quilt 无 Java 安装、正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、OS 凭据库与 CurseForge 尚待接入。
+**当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 当前支持离线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表与全局 Mod 搜索。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Device Code 登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组；真实 Entra client_id 与 Minecraft Services 审核仍待完成。261 个 C# 测试、27 个 Flutter 测试通过；Fabric/Quilt 无 Java 安装、正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、凭据保险库已接入（crypto/file），CurseForge 尚待接入。
 
 **P1 完成定义**
 
@@ -2946,7 +2947,7 @@ ArchoeraCX/
 | D2 | macOS 架构 | **仅 Apple Silicon arm64**；不做 x64/universal，下载页明确标注 |
 | D3 | 微软 OAuth 重定向 | **默认 Device Code Flow（无 redirect URI）**；浏览器备选用 **loopback + auth code + PKCE**（`http://localhost:<ephemeral>/callback`）；自定义协议不作为主方案 |
 | D4 | SQLite 归属 | **只由 C# 持有**；Flutter 不引入数据库插件/不直接读 SQLite；C++ 只路由。Linux/macOS 用系统 SQLite，Windows 随 C# 模块分发 `e_sqlite3.dll` |
-| D5 | 账户凭据 | device code/access/refresh token **不跨 ABI、不写日志**；当前 refresh token 存 C# `accounts.credentials.json`（Unix 0600），后续迁移 OS 凭据库 |
+| D5 | 账户凭据 | device code/access/refresh token **不跨 ABI、不写日志**；C# `VaultCredentialStore` 经 `archoera-vault` 加密存储，旧 `accounts.credentials.json` 首次迁移后删除 |
 
 ### 21.3 待决策
 

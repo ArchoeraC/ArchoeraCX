@@ -31,16 +31,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final l10n = AppLocalizations.of(context);
     final settings = ref.watch(appSettingsProvider).value;
 
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: AppPageHeader(
-            title: l10n.settingsTitle,
-            subtitle: l10n.settingsSubtitle,
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppPageHeader(
+          title: l10n.settingsTitle,
+          subtitle: l10n.settingsSubtitle,
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
-        SliverToBoxAdapter(
+        const SizedBox(height: AppSpacing.md),
+        Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 820;
@@ -75,11 +74,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     const SizedBox(width: AppSpacing.lg),
                     Expanded(
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 920),
-                          child: content,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 920),
+                            child: content,
+                          ),
                         ),
                       ),
                     ),
@@ -88,20 +90,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               }
 
               return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _SettingsTabs(
                     selected: _section,
                     onSelected: (value) => setState(() => _section = value),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  content,
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                      child: content,
+                    ),
+                  ),
                 ],
               );
             },
           ),
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
       ],
     );
   }

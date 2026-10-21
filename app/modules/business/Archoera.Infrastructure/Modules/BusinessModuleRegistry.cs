@@ -26,7 +26,10 @@ public static class BusinessModuleRegistry
             new LaunchModuleService(dataRoot: dataRoot),
             new LoaderModuleService(),
             new ResourceModuleService(),
-            new AccountModuleService(dataRoot: dataRoot),
+            new AccountModuleService(
+                accounts: new JsonAccountStore(dataRoot),
+                credentials: new VaultCredentialStore(dataRoot),
+                dataRoot: dataRoot),
             new SettingsModuleService(
                 dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new InstanceModuleService(
