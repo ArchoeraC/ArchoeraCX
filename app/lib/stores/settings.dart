@@ -52,6 +52,28 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
 
   Future<void> setInstancesRoot(String path) => setInstancesRoots([path]);
 
+  Future<void> setJavaSelection({String? javaPath, bool? javaAuto}) async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      final current = state.value ?? _fallback;
+      state = AsyncData(
+        AppSettings(
+          instancesRoot: current.instancesRoot,
+          instancesRoots: current.instancesRoots,
+          dataRoot: current.dataRoot,
+          settingsPath: current.settingsPath,
+          javaPath: javaPath,
+          javaAuto: javaAuto ?? current.javaAuto,
+        ),
+      );
+      return;
+    }
+
+    state = AsyncData(
+      await client.setJavaSelection(javaPath: javaPath, javaAuto: javaAuto),
+    );
+  }
+
   Future<void> addInstanceRoot(String path) async {
     final current = state.value ?? _fallback;
     await setInstancesRoots([...current.roots, path]);

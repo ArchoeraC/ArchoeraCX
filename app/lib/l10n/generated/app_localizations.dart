@@ -572,6 +572,48 @@ abstract class AppLocalizations {
   /// **'Launch flow is not wired yet.'**
   String get instanceLaunchNotReady;
 
+  /// No description provided for @launchStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Game started (PID {pid}).'**
+  String launchStarted(int pid);
+
+  /// No description provided for @launchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch failed.'**
+  String get launchFailed;
+
+  /// No description provided for @launchStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting game…'**
+  String get launchStarting;
+
+  /// No description provided for @launchNoAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an offline account before launching.'**
+  String get launchNoAccount;
+
+  /// No description provided for @launchOfflineOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic launch supports offline accounts only.'**
+  String get launchOfflineOnly;
+
+  /// No description provided for @launchJavaMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No suitable Java runtime found.'**
+  String get launchJavaMissing;
+
+  /// No description provided for @launchLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Log: {path}'**
+  String launchLog(String path);
+
   /// No description provided for @instanceCreated.
   ///
   /// In en, this message translates to:
@@ -1040,6 +1082,42 @@ abstract class AppLocalizations {
   /// **'Java'**
   String get settingsJava;
 
+  /// No description provided for @settingsJavaAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto select'**
+  String get settingsJavaAuto;
+
+  /// No description provided for @settingsJavaAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Java runtime that matches the game version.'**
+  String get settingsJavaAutoHint;
+
+  /// No description provided for @settingsJavaCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Java'**
+  String get settingsJavaCurrent;
+
+  /// No description provided for @settingsJavaAutoValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic (per game version)'**
+  String get settingsJavaAutoValue;
+
+  /// No description provided for @settingsJavaUseAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Use automatic selection'**
+  String get settingsJavaUseAuto;
+
+  /// No description provided for @settingsJavaSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Java selection saved.'**
+  String get settingsJavaSelected;
+
   /// No description provided for @settingsNetwork.
   ///
   /// In en, this message translates to:
@@ -1273,6 +1351,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scan Java'**
   String get javaStatusScan;
+
+  /// No description provided for @javaStatusSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this Java'**
+  String get javaStatusSelect;
 
   /// Number of Java runtimes found by the last scan.
   ///

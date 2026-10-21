@@ -39,6 +39,8 @@ class JavaStatusCard extends StatefulWidget {
     this.pathStore = const JavaPathStore(),
     this.pickDirectory,
     this.pickExecutable,
+    this.selectedPath,
+    this.onSelect,
   });
 
   /// Opens the core client used by [CoreClient.scanJava].
@@ -55,6 +57,12 @@ class JavaStatusCard extends StatefulWidget {
 
   /// Optional executable picker; defaults to `file_selector`.
   final PickExecutable? pickExecutable;
+
+  /// Java path persisted by the settings service.
+  final String? selectedPath;
+
+  /// Called when the user chooses a runtime; null keeps the card read-only.
+  final ValueChanged<JavaRuntime>? onSelect;
 
   @override
   State<JavaStatusCard> createState() => _JavaStatusCardState();
@@ -326,6 +334,14 @@ class _JavaStatusCardState extends State<JavaStatusCard> {
                         return _JavaRuntimeTile(
                           runtime: result.items[index],
                           l10n: l10n,
+                          selected:
+                              result.items[index].path == widget.selectedPath,
+                          onSelect: widget.onSelect == null
+                              ? null
+                              : (runtime) {
+                                  Navigator.of(dialogContext).pop();
+                                  widget.onSelect!(runtime);
+                                },
                         );
                       },
                     ),
@@ -497,7 +513,12 @@ class _JavaStatusCardState extends State<JavaStatusCard> {
               for (final runtime in result.items.take(5))
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
-                  child: _JavaRuntimeTile(runtime: runtime, l10n: l10n),
+                  child: _JavaRuntimeTile(
+                    runtime: runtime,
+                    l10n: l10n,
+                    selected: runtime.path == widget.selectedPath,
+                    onSelect: widget.onSelect,
+                  ),
                 ),
               if (result.items.length > 5)
                 Align(
@@ -640,38 +661,76 @@ class _PathChip extends StatelessWidget {
 }
 
 class _JavaRuntimeTile extends StatelessWidget {
-  const _JavaRuntimeTile({required this.runtime, required this.l10n});
+  const _JavaRuntimeTile({
+    required this.runtime,
+    required this.l10n,
+    this.selected = false,
+    this.onSelect,
+  });
 
   final JavaRuntime runtime;
   final AppLocalizations l10n;
+  final bool selected;
+  final ValueChanged<JavaRuntime>? onSelect;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
 
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Tooltip(
-            message: runtime.path,
-            child: Text(
-              runtime.home ?? runtime.path,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.labelLarge,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Tooltip(
+                  message: runtime.path,
+                  child: Text(
+                    runtime.home ?? runtime.path,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelLarge?.copyWith(
+                      color: selected ? tokens.accent : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  l10n.javaStatusMeta(
+                    runtime.displayVersion,
+                    runtime.arch ?? '—',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: tokens.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 1),
-          Text(
-            l10n.javaStatusMeta(runtime.displayVersion, runtime.arch ?? '—'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodySmall?.copyWith(color: tokens.textSecondary),
-          ),
+          if (selected)
+            Icon(Icons.check_rounded, size: 18, color: tokens.accent)
+          else if (onSelect != null)
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: tokens.textTertiary,
+            ),
         ],
+      ),
+    );
+
+    if (onSelect == null) return content;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onSelect!(runtime),
+        hoverColor: tokens.surface2,
+        child: content,
       ),
     );
   }

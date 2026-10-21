@@ -10,6 +10,7 @@ import '../../models/account.dart';
 import '../../models/game_instance.dart';
 import 'app_settings.dart';
 import 'java_scan.dart';
+import 'launch_result.dart';
 import 'loader_plan.dart';
 import 'version_models.dart';
 import 'resource_models.dart';
@@ -377,6 +378,37 @@ final class CoreClient {
     return _decodeRawEnvelope(jsonText, fallbackMethod: methodName);
   }
 
+  /// Start a basic offline launch through the C# module.
+  Future<LaunchResult> launchInstance(
+    String instanceId, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'launch.start';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final pid = _asInt(data['pid']);
+    if (pid == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned no pid.',
+      );
+    }
+    return LaunchResult(
+      pid: pid,
+      instanceId: _asString(data['instanceId']) ?? instanceId,
+      javaPath: _asString(data['javaPath']) ?? '',
+      javaVersion: _asString(data['javaVersion']),
+      accountName: _asString(data['accountName']),
+      logPath: _asString(data['logPath']),
+    );
+  }
+
   /// Build a Forge/NeoForge install plan from a local installer.
   ///
   /// The plan covers vanilla + loader libraries + the installer. Downloading
@@ -682,6 +714,24 @@ final class CoreClient {
       methodName,
       paramsJson: jsonEncode(<String, Object?>{
         'instancesRoots': instancesRoots,
+      }),
+      onProgress: onProgress,
+    );
+    return _parseSettings(jsonText, methodName);
+  }
+
+  /// Persist the manual Java selection or switch back to automatic.
+  Future<AppSettings> setJavaSelection({
+    String? javaPath,
+    bool? javaAuto,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'settings.set';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'javaPath': javaPath,
+        'javaAuto': ?javaAuto,
       }),
       onProgress: onProgress,
     );

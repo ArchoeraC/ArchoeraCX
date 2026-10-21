@@ -129,6 +129,27 @@
     }
   },
   "instanceLaunchNotReady": "Launch flow is not wired yet.",
+  "launchStarted": "Game started (PID {pid}).",
+  "launchFailed": "Launch failed.",
+  "launchStarting": "Starting game…",
+  "launchNoAccount": "Add an offline account before launching.",
+  "launchOfflineOnly": "Basic launch supports offline accounts only.",
+  "launchJavaMissing": "No suitable Java runtime found.",
+  "launchLog": "Log: {path}",
+  "@launchStarted": {
+    "placeholders": {
+      "pid": {
+        "type": "int"
+      }
+    }
+  },
+  "@launchLog": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "instanceCreated": "Instance created.",
   "commonCancel": "Cancel",
   "commonCreate": "Create",
@@ -215,6 +236,12 @@
   "settingsChooseFolder": "Choose folder",
   "settingsSaved": "Saved",
   "settingsJava": "Java",
+  "settingsJavaAuto": "Auto select",
+  "settingsJavaAutoHint": "Choose a Java runtime that matches the game version.",
+  "settingsJavaCurrent": "Current Java",
+  "settingsJavaAutoValue": "Automatic (per game version)",
+  "settingsJavaUseAuto": "Use automatic selection",
+  "settingsJavaSelected": "Java selection saved.",
   "settingsNetwork": "Network",
   "settingsCompliance": "Compliance",
   "settingsAbout": "About",
@@ -367,6 +394,7 @@
     "description": "Generic explanation when Java scanning cannot run."
   },
   "javaStatusScan": "Scan Java",
+  "javaStatusSelect": "Use this Java",
   "@javaStatusScan": {
     "description": "Button label that calls java.scan."
   },

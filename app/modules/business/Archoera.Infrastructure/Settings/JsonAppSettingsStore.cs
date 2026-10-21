@@ -74,10 +74,23 @@ public sealed class JsonAppSettingsStore
                 normalized = [fallback.InstancesRoot];
             }
 
+            var javaPath = ReadString(root, "javaPath");
+            if (!string.IsNullOrWhiteSpace(javaPath) &&
+                !Path.IsPathFullyQualified(javaPath))
+            {
+                javaPath = null;
+            }
+
+            var javaAuto = !root.TryGetProperty("javaAuto", out var autoElement) ||
+                           autoElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                           autoElement.GetBoolean();
+
             return fallback with
             {
                 InstancesRoot = normalized[0],
                 InstancesRoots = normalized,
+                JavaPath = string.IsNullOrWhiteSpace(javaPath) ? null : Path.GetFullPath(javaPath),
+                JavaAuto = javaAuto,
             };
         }
         catch (Exception exception) when (
@@ -110,6 +123,45 @@ public sealed class JsonAppSettingsStore
         }
 
         var normalized = NormalizeRoots(instancesRoots);
+        var current = await LoadAsync(cancellationToken).ConfigureAwait(false);
+        return await SaveAsync(
+                current with
+                {
+                    InstancesRoot = normalized[0],
+                    InstancesRoots = normalized,
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<AppSettings> SaveJavaAsync(
+        string? javaPath,
+        bool javaAuto,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(javaPath))
+        {
+            if (!Path.IsPathFullyQualified(javaPath))
+            {
+                throw new ArgumentException("javaPath must be absolute", nameof(javaPath));
+            }
+
+            javaPath = Path.GetFullPath(javaPath);
+        }
+
+        var current = await LoadAsync(cancellationToken).ConfigureAwait(false);
+        return await SaveAsync(
+                current with { JavaPath = javaPath, JavaAuto = javaAuto },
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<AppSettings> SaveAsync(
+        AppSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        var normalized = NormalizeRoots(settings.Roots);
         foreach (var root in normalized)
         {
             try
@@ -119,12 +171,11 @@ public sealed class JsonAppSettingsStore
             catch (Exception exception) when (
                 exception is IOException or UnauthorizedAccessException)
             {
-                // A drive may be offline now; keep the configured path and let
-                // instance.sync report it as unavailable.
+                // Keep offline/removable roots configured; instance.sync reports it.
             }
         }
-        Directory.CreateDirectory(_dataRoot);
 
+        Directory.CreateDirectory(_dataRoot);
         var temporary = _settingsPath + ".tmp";
         await using (var stream = new FileStream(
                          temporary,
@@ -148,6 +199,11 @@ public sealed class JsonAppSettingsStore
             }
 
             writer.WriteEndArray();
+            if (!string.IsNullOrWhiteSpace(settings.JavaPath))
+            {
+                writer.WriteString("javaPath", settings.JavaPath);
+            }
+            writer.WriteBoolean("javaAuto", settings.JavaAuto);
             writer.WriteString("updatedAt", DateTimeOffset.UtcNow.ToString("O"));
             writer.WriteEndObject();
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -155,7 +211,11 @@ public sealed class JsonAppSettingsStore
         }
 
         File.Move(temporary, _settingsPath, overwrite: true);
-        return new AppSettings(normalized[0], _dataRoot, _settingsPath, normalized);
+        return settings with
+        {
+            InstancesRoot = normalized[0],
+            InstancesRoots = normalized,
+        };
     }
 
     private AppSettings Defaults()

@@ -6,6 +6,7 @@ import '../l10n/generated/app_localizations.dart';
 import '../models/account.dart';
 import '../models/game_instance.dart';
 import '../stores/accounts.dart';
+import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
 import '../widgets/layout/app_background.dart';
@@ -107,7 +108,7 @@ class AppShell extends ConsumerWidget {
                 ref
                     .read(selectedInstanceIdProvider.notifier)
                     .select(selectedInstance.id);
-                _notify(context, l10n.instanceLaunchNotReady);
+                launchInstance(context, ref, selectedInstance);
               },
             ),
           ],
