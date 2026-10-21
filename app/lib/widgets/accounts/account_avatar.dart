@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/account.dart';
 import '../../theme/tokens.dart';
 import 'account_visuals.dart';
+import 'skin_preview.dart';
 
 /// Angular account avatar: a bevel-cut square rather than a generic circle.
 ///
@@ -40,26 +41,20 @@ class AccountAvatar extends StatelessWidget {
       ),
     );
 
-    final skinUrl = account.skinUrl;
-    final content = skinUrl == null
-        ? fallback
-        : Image.network(
-            skinUrl,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            semanticLabel: account.displayName,
-            errorBuilder: (context, error, stackTrace) => fallback,
-          );
+    final content = SkinHead(account: account, size: size, fallback: fallback);
 
-    return SizedBox(
-      width: size,
-      height: size,
-      child: DecoratedBox(
-        decoration: ShapeDecoration(shape: shape),
-        child: ClipPath(
-          clipper: ShapeBorderClipper(shape: shape),
-          child: content,
+    return Semantics(
+      label: account.displayName,
+      image: true,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: DecoratedBox(
+          decoration: ShapeDecoration(shape: shape),
+          child: ClipPath(
+            clipper: ShapeBorderClipper(shape: shape),
+            child: content,
+          ),
         ),
       ),
     );

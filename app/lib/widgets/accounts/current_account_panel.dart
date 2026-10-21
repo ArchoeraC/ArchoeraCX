@@ -7,6 +7,7 @@ import '../../theme/tokens.dart';
 import '../common/app_panel.dart';
 import 'account_avatar.dart';
 import 'account_visuals.dart';
+import 'skin_preview.dart';
 
 /// Hero for the signed-in account.
 ///
@@ -188,18 +189,37 @@ class _KindArt extends StatelessWidget {
               color: tokens.border.withValues(alpha: 0.5),
             ),
           ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.lg,
+            ),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SkinPreview(account: account, width: 150, height: 230),
+              ),
+            ),
+          ),
+          Positioned(
+            left: AppSpacing.md,
+            right: AppSpacing.md,
+            bottom: AppSpacing.sm,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(account.kind.icon, size: 56, color: color),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  account.kind.labelFor(l10n),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium
-                      ?.copyWith(color: tokens.textSecondary),
+                Icon(account.kind.icon, size: 15, color: color),
+                const SizedBox(width: AppSpacing.xxs),
+                Flexible(
+                  child: Text(
+                    account.kind.labelFor(l10n),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium
+                        ?.copyWith(color: tokens.textSecondary),
+                  ),
                 ),
               ],
             ),
