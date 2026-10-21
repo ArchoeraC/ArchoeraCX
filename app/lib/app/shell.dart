@@ -193,14 +193,10 @@ class _PageTransitionState extends State<_PageTransition>
     duration: const Duration(milliseconds: 220),
     value: 1,
   );
-  late final Animation<double> _opacity = CurvedAnimation(
+  late final Animation<double> _reveal = CurvedAnimation(
     parent: _controller,
     curve: Curves.easeOutCubic,
   );
-  late final Animation<Offset> _offset = Tween<Offset>(
-    begin: const Offset(0, 0.018),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
   @override
   void didUpdateWidget(covariant _PageTransition oldWidget) {
@@ -218,11 +214,29 @@ class _PageTransitionState extends State<_PageTransition>
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(position: _offset, child: widget.child),
+    return AnimatedBuilder(
+      animation: _reveal,
+      builder: (context, child) =>
+          ClipRect(clipper: _BottomRevealClipper(_reveal.value), child: child),
+      child: widget.child,
     );
   }
+}
+
+class _BottomRevealClipper extends CustomClipper<Rect> {
+  const _BottomRevealClipper(this.progress);
+
+  final double progress;
+
+  @override
+  Rect getClip(Size size) {
+    final visible = size.height * progress.clamp(0.0, 1.0);
+    return Rect.fromLTWH(0, size.height - visible, size.width, visible);
+  }
+
+  @override
+  bool shouldReclip(covariant _BottomRevealClipper oldClipper) =>
+      oldClipper.progress != progress;
 }
 
 /// Full-width footer command bar.
@@ -304,20 +318,22 @@ class _CommandBar extends StatelessWidget {
                     compact: compactAccount,
                     onTap: onAccount,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _LaunchButton(
-                    compact: compactLaunch,
-                    hasInstance: selectedInstance != null,
-                    onPressed: selectedInstance == null
-                        ? onChooseInstance
-                        : onLaunch,
-                    label: selectedInstance == null
-                        ? l10n.selectInstance
-                        : l10n.launch,
-                    tooltip: selectedInstance == null
-                        ? l10n.selectInstance
-                        : l10n.launch,
-                  ),
+                  if (currentIndex != 0) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    _LaunchButton(
+                      compact: compactLaunch,
+                      hasInstance: selectedInstance != null,
+                      onPressed: selectedInstance == null
+                          ? onChooseInstance
+                          : onLaunch,
+                      label: selectedInstance == null
+                          ? l10n.selectInstance
+                          : l10n.launch,
+                      tooltip: selectedInstance == null
+                          ? l10n.selectInstance
+                          : l10n.launch,
+                    ),
+                  ],
                 ],
               ),
             );
@@ -352,7 +368,7 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         hoverColor: tokens.surface2,
         child: Container(
-          height: 46,
+          height: 40,
           padding: EdgeInsets.symmetric(
             horizontal: compact ? AppSpacing.sm : AppSpacing.md,
           ),
@@ -499,7 +515,7 @@ class _LaunchButton extends StatelessWidget {
               style: IconButton.styleFrom(
                 backgroundColor: tokens.accent,
                 foregroundColor: tokens.onAccent,
-                minimumSize: const Size(42, 42),
+                minimumSize: const Size(38, 38),
               ),
               icon: Icon(
                 hasInstance
@@ -511,7 +527,7 @@ class _LaunchButton extends StatelessWidget {
           : FilledButton.icon(
               onPressed: onPressed,
               style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 44),
+                minimumSize: const Size(0, 38),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               ),
               icon: Icon(
