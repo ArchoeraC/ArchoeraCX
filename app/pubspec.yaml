@@ -26,6 +26,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/icons/loaders/fabric.png
+    - assets/icons/loaders/quilt.png
+    - assets/icons/loaders/forge.png
+    - assets/icons/loaders/neoforge.png
   fonts:
     - family: NotoSansSC
       fonts:

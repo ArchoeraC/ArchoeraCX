@@ -362,7 +362,7 @@ L4 浮层（对话框/任务中心/通知）
 - 读屏：按钮有语义标签；图标按钮有 tooltip。
 - 150%/200% 缩放不截断；中文长文本换行。
 - 文案全部走 ARB；不拼句子；模型层不保存 UI 文案。
-- 加载器图标使用 `lib/widgets/common/loader_mark.dart` 的原创矢量轮廓：原版方块、Fabric 织线/针、Quilt 拼布、Forge 铁砧、NeoForge 火焰铁砧；不直接引入无授权品牌资产。
+- 加载器图标使用 `lib/widgets/common/loader_mark.dart`：原版为自绘等距方块；Fabric/Quilt/Forge/NeoForge 使用官方项目图标，来源与许可证记录在 `assets/icons/loaders/SOURCES.md`。
 - 语言偏好使用系统 / English / 简体中文，切换后立即全局生效。
 - 动效可关闭；减少动画时保留状态变化。
 
