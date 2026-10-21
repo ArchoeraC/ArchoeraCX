@@ -27,6 +27,10 @@ final downloadPolicyProvider = FutureProvider<DownloadPolicyState>((ref) async {
 });
 
 /// Synchronous convenience for navigation/shortcut visibility.
-final downloadEnabledProvider = Provider<bool>(
-  (ref) => ref.watch(downloadPolicyProvider).value?.enabled ?? false,
-);
+final downloadEnabledProvider = Provider<bool>((ref) {
+  final policy = ref.watch(downloadPolicyProvider).value;
+  if (policy != null) return policy.enabled;
+  // Global/dev builds should not flicker while the async policy is loading.
+  // China builds stay hidden until the local compliance file enables them.
+  return !kChinaBuild;
+});
