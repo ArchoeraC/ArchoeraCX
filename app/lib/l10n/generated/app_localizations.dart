@@ -953,7 +953,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Appearance, Java, network, compliance, and diagnostics.'**
+  /// **'Appearance, storage, Java, and about.'**
   String get settingsSubtitle;
 
   /// No description provided for @settingsGeneral.
@@ -1177,18 +1177,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Memory must be 128–65536 MB and min ≤ max.'**
   String get settingsMemoryInvalid;
-
-  /// No description provided for @settingsNetwork.
-  ///
-  /// In en, this message translates to:
-  /// **'Network'**
-  String get settingsNetwork;
-
-  /// No description provided for @settingsCompliance.
-  ///
-  /// In en, this message translates to:
-  /// **'Compliance'**
-  String get settingsCompliance;
 
   /// No description provided for @settingsAbout.
   ///
@@ -1621,60 +1609,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Authlib'**
   String get accountAuthlib;
-
-  /// Network proxy setting label.
-  ///
-  /// In en, this message translates to:
-  /// **'Proxy'**
-  String get settingsProxy;
-
-  /// Proxy follows the operating system.
-  ///
-  /// In en, this message translates to:
-  /// **'System'**
-  String get settingsProxySystem;
-
-  /// Download concurrency setting label.
-  ///
-  /// In en, this message translates to:
-  /// **'Downloads'**
-  String get settingsDownloads;
-
-  /// Number of parallel download streams.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 stream} other{{count} streams}}'**
-  String settingsDownloadsStreams(int count);
-
-  /// Content provider setting label.
-  ///
-  /// In en, this message translates to:
-  /// **'Provider'**
-  String get settingsProvider;
-
-  /// Download compliance level label.
-  ///
-  /// In en, this message translates to:
-  /// **'Download level'**
-  String get settingsDownloadLevel;
-
-  /// Current download compliance level.
-  ///
-  /// In en, this message translates to:
-  /// **'L0 · official-cn'**
-  String get settingsDownloadLevelValue;
-
-  /// Telemetry/consent setting label.
-  ///
-  /// In en, this message translates to:
-  /// **'Consent'**
-  String get settingsConsent;
-
-  /// Consent has not been accepted.
-  ///
-  /// In en, this message translates to:
-  /// **'Not accepted'**
-  String get settingsConsentNotAccepted;
 
   /// Action that opens diagnostics.
   ///

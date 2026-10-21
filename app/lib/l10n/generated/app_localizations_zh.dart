@@ -470,7 +470,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsTitle => '设置';
 
   @override
-  String get settingsSubtitle => '外观、Java、网络、合规与诊断。';
+  String get settingsSubtitle => '外观、存储、Java 与关于。';
 
   @override
   String get settingsGeneral => '通用';
@@ -582,12 +582,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsMemoryInvalid => '内存需在 128–65536 MB 之间，且最小值不能大于最大值。';
-
-  @override
-  String get settingsNetwork => '网络';
-
-  @override
-  String get settingsCompliance => '合规';
 
   @override
   String get settingsAbout => '关于';
@@ -838,35 +832,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get accountAuthlib => 'Authlib';
-
-  @override
-  String get settingsProxy => '代理';
-
-  @override
-  String get settingsProxySystem => '跟随系统';
-
-  @override
-  String get settingsDownloads => '下载';
-
-  @override
-  String settingsDownloadsStreams(int count) {
-    return '$count 个并发';
-  }
-
-  @override
-  String get settingsProvider => '内容源';
-
-  @override
-  String get settingsDownloadLevel => '下载级别';
-
-  @override
-  String get settingsDownloadLevelValue => 'L0 · 官方中国';
-
-  @override
-  String get settingsConsent => '用户同意';
-
-  @override
-  String get settingsConsentNotAccepted => '未接受';
 
   @override
   String get settingsDiagnosticsOpen => '打开';

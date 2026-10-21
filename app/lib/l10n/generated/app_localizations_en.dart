@@ -485,8 +485,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
-  String get settingsSubtitle =>
-      'Appearance, Java, network, compliance, and diagnostics.';
+  String get settingsSubtitle => 'Appearance, storage, Java, and about.';
 
   @override
   String get settingsGeneral => 'General';
@@ -602,12 +601,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsMemoryInvalid =>
       'Memory must be 128–65536 MB and min ≤ max.';
-
-  @override
-  String get settingsNetwork => 'Network';
-
-  @override
-  String get settingsCompliance => 'Compliance';
 
   @override
   String get settingsAbout => 'About';
@@ -866,41 +859,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountAuthlib => 'Authlib';
-
-  @override
-  String get settingsProxy => 'Proxy';
-
-  @override
-  String get settingsProxySystem => 'System';
-
-  @override
-  String get settingsDownloads => 'Downloads';
-
-  @override
-  String settingsDownloadsStreams(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count streams',
-      one: '1 stream',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get settingsProvider => 'Provider';
-
-  @override
-  String get settingsDownloadLevel => 'Download level';
-
-  @override
-  String get settingsDownloadLevelValue => 'L0 · official-cn';
-
-  @override
-  String get settingsConsent => 'Consent';
-
-  @override
-  String get settingsConsentNotAccepted => 'Not accepted';
 
   @override
   String get settingsDiagnosticsOpen => 'Open';

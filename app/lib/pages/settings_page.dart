@@ -19,7 +19,7 @@ import '../widgets/common/toast.dart';
 import '../widgets/common/java_status_card.dart';
 import '../widgets/common/app_page_header.dart';
 
-enum _SettingsSection { appearance, storage, java, network, compliance, about }
+enum _SettingsSection { appearance, storage, java, about }
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -193,40 +193,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             autoScan: true,
             selectedPath: settings?.javaPath,
             onSelect: (runtime) => _selectJava(context, l10n, runtime),
-          ),
-        ],
-      ),
-      _SettingsSection.network => _SettingsCard(
-        children: [
-          _SettingRow(
-            icon: Icons.wifi_rounded,
-            title: l10n.settingsProxy,
-            value: l10n.settingsProxySystem,
-          ),
-          _SettingRow(
-            icon: Icons.speed_rounded,
-            title: l10n.settingsDownloads,
-            value: l10n.settingsDownloadsStreams(16),
-          ),
-          _SettingRow(
-            icon: Icons.cloud_outlined,
-            title: l10n.settingsProvider,
-            value: l10n.sourceModrinth,
-          ),
-        ],
-      ),
-      _SettingsSection.compliance => _SettingsCard(
-        children: [
-          _SettingRow(
-            icon: Icons.shield_outlined,
-            title: l10n.settingsDownloadLevel,
-            value: l10n.settingsDownloadLevelValue,
-            color: Theme.of(context).extension<AppTokens>()?.warning,
-          ),
-          _SettingRow(
-            icon: Icons.description_outlined,
-            title: l10n.settingsConsent,
-            value: l10n.settingsConsentNotAccepted,
           ),
         ],
       ),
@@ -666,16 +632,6 @@ List<_SettingsItem> _settingsItems(AppLocalizations l10n) => [
     Icons.folder_outlined,
   ),
   _SettingsItem(_SettingsSection.java, l10n.settingsJava, Icons.coffee_rounded),
-  _SettingsItem(
-    _SettingsSection.network,
-    l10n.settingsNetwork,
-    Icons.wifi_rounded,
-  ),
-  _SettingsItem(
-    _SettingsSection.compliance,
-    l10n.settingsCompliance,
-    Icons.shield_outlined,
-  ),
   _SettingsItem(
     _SettingsSection.about,
     l10n.settingsAbout,
@@ -1120,7 +1076,6 @@ class _SettingRow extends StatelessWidget {
     this.subtitle,
     this.value,
     this.trailing,
-    this.color,
     this.onTap,
   });
 
@@ -1129,7 +1084,6 @@ class _SettingRow extends StatelessWidget {
   final String? subtitle;
   final String? value;
   final Widget? trailing;
-  final Color? color;
   final VoidCallback? onTap;
 
   @override
@@ -1139,7 +1093,7 @@ class _SettingRow extends StatelessWidget {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       onTap: onTap,
-      leading: Icon(icon, size: 20, color: color ?? tokens.textSecondary),
+      leading: Icon(icon, size: 20, color: tokens.textSecondary),
       title: Text(title, style: Theme.of(context).textTheme.bodyMedium),
       subtitle: subtitle == null
           ? null
@@ -1159,7 +1113,7 @@ class _SettingRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: color ?? tokens.textTertiary),
+                        ?.copyWith(color: tokens.textTertiary),
                   ),
                 )),
     );

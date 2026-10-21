@@ -192,7 +192,7 @@ LauncherX 的暖黄只作为“可选主题”存在，不作为默认品牌识�
 | `/instances` | Instances | 实例列表、筛选、创建/导入入口 |
 | `/download` | Download | 版本、全局 Mod、整合包、资源包、光影（Tab） |
 | `/accounts` | Accounts | 账户列表、添加账户、当前账户 |
-| `/settings` | Settings | 通用/外观/Java/网络/合规/关于 |
+| `/settings` | Settings | 外观/存储/Java/关于 |
 | overlay | Task Center | 下载/安装队列、暂停/取消 |
 | overlay | Notifications | 成功/失败/更新提示 |
 
@@ -337,7 +337,7 @@ L4 浮层（对话框/任务中心/通知）
 
 ### 6.5 Settings
 
-- 分组：通用、外观、Java、网络、下载、合规、关于。
+- 分组：外观、存储、Java、关于。
 - 外观：主题（系统/浅/深）、强调色、背景、动效开关。
 - 危险操作单独分区，二次确认。
 - 关于：版本、模块版本、许可证、源码获取方式、诊断导出。
