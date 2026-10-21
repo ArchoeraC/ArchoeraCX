@@ -154,16 +154,6 @@ class _AccountMeta extends StatelessWidget {
             ),
           ),
         ),
-        if (account.uuid != null)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 340),
-            child: Text(
-              account.uuid!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
-            ),
-          ),
       ],
     );
   }
