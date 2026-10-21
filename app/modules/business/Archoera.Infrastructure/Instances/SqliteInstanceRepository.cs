@@ -191,14 +191,10 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             var count = 0;
             if (exists)
             {
-                foreach (var directory in SafeGetDirectories(root))
+                foreach (var record in InstanceDiscovery.Discover(root, cancellationToken))
                 {
-                    var record = await ReadInstanceFileAsync(directory, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (record is null) continue;
-                    if (!found.ContainsKey(record.Id))
+                    if (found.TryAdd(record.Id, record))
                     {
-                        found[record.Id] = record;
                         count++;
                     }
                 }

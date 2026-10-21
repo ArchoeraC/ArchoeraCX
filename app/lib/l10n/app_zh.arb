@@ -88,6 +88,8 @@
   "instanceEmptyTitle": "还没有实例",
   "instanceEmptyMessage": "创建一个原版或带加载器的实例开始吧。",
   "instanceNoMatches": "没有匹配的实例。",
+  "instanceScanAction": "扫描实例",
+  "instanceScanning": "正在扫描实例目录…",
   "instanceDelete": "删除实例",
   "instanceDeleteConfirm": "删除“{name}”？",
   "instanceCheckQuick": "快速检查",

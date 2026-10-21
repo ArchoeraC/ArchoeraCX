@@ -21,6 +21,41 @@ class InstancesPage extends ConsumerStatefulWidget {
 
 class _InstancesPageState extends ConsumerState<InstancesPage> {
   String _query = '';
+  bool _syncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sync(silent: true);
+    });
+  }
+
+  Future<void> _sync({bool silent = false}) async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    try {
+      final result = await ref.read(instancesProvider.notifier).sync();
+      if (!mounted) return;
+      if (!silent ||
+          (result != null &&
+              (result.adopted.isNotEmpty || result.updated.isNotEmpty))) {
+        final l10n = AppLocalizations.of(context);
+        final message = StringBuffer(l10n.instanceSyncDone);
+        if (result != null && result.adopted.isNotEmpty) {
+          message.write(' ${l10n.instanceSyncAdopted(result.adopted.length)}');
+        }
+        if (result != null && result.missing.isNotEmpty) {
+          message.write(' ${l10n.instanceSyncMissing(result.missing.length)}');
+        }
+        _notify(context, message.toString());
+      }
+    } catch (error) {
+      if (mounted && !silent) _notify(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +104,8 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 query: _query,
                 count: filtered.length,
                 total: instances.length,
+                syncing: _syncing,
+                onSync: () => _sync(),
                 onChanged: (value) => setState(() => _query = value),
               ),
             ],
@@ -217,12 +254,16 @@ class _InstancesToolbar extends StatelessWidget {
     required this.query,
     required this.count,
     required this.total,
+    required this.syncing,
+    required this.onSync,
     required this.onChanged,
   });
 
   final String query;
   final int count;
   final int total;
+  final bool syncing;
+  final VoidCallback onSync;
   final ValueChanged<String> onChanged;
 
   @override
@@ -257,13 +298,36 @@ class _InstancesToolbar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final syncButton = IconButton(
+            onPressed: syncing ? null : onSync,
+            tooltip: l10n.instanceScanAction,
+            icon: syncing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync_rounded, size: 20),
+          );
           if (constraints.maxWidth < 720) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 field,
                 const SizedBox(height: AppSpacing.xs),
-                Align(alignment: Alignment.centerRight, child: countLabel),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (syncing)
+                      Text(
+                        l10n.instanceScanning,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: tokens.textTertiary),
+                      ),
+                    syncButton,
+                    countLabel,
+                  ],
+                ),
               ],
             );
           }
@@ -272,6 +336,16 @@ class _InstancesToolbar extends StatelessWidget {
             children: [
               SizedBox(width: 380, child: field),
               const Spacer(),
+              if (syncing)
+                Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.xs),
+                  child: Text(
+                    l10n.instanceScanning,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: tokens.textTertiary),
+                  ),
+                ),
+              syncButton,
               countLabel,
             ],
           );
