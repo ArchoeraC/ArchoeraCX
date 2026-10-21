@@ -69,6 +69,17 @@ flutter test
 flutter build linux --release
 ```
 
+Microsoft 登录的 client ID 必须在这个 C# 构建步骤注入：
+
+```bash
+export ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>"
+./tool/build-cs.sh
+```
+
+CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注入；
+本地构建未设置该变量时，生成的 client ID 为空，登录会返回
+`MICROSOFT_CLIENT_ID_MISSING`，而不是发出网络请求。
+
 
 启动 release bundle：
 
