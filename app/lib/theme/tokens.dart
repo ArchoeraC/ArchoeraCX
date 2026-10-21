@@ -269,5 +269,6 @@ abstract final class AppSpacing {
 abstract final class AppLayout {
   static const titleBarHeight = 56.0;
   static const bottomBarHeight = 60.0;
+  static const homeBarHeight = 52.0;
   static const contentMaxWidth = 1400.0;
 }

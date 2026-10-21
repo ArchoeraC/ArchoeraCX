@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,13 +15,71 @@ import '../stores/instances.dart';
 import '../theme/tokens.dart';
 import '../widgets/layout/app_background.dart';
 
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  final GlobalKey _pageKey = GlobalKey();
+  ui.Image? _coverImage;
+
+  @override
+  void dispose() {
+    _coverImage?.dispose();
+    super.dispose();
+  }
+
+  Future<ui.Image?> _capturePage() async {
+    final boundary = _pageKey.currentContext?.findRenderObject();
+    if (boundary is! RenderRepaintBoundary) return null;
+    try {
+      return await boundary.toImage(
+        pixelRatio: MediaQuery.devicePixelRatioOf(context),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _selectBranch(int index) async {
+    final navigationShell = widget.navigationShell;
+    final current = navigationShell.currentIndex;
+    if (index == current) {
+      navigationShell.goBranch(index, initialLocation: true);
+      return;
+    }
+
+    final homeRelated = current == 0 || index == 0;
+    ui.Image? image;
+    if (homeRelated) {
+      image = await _capturePage();
+      if (!mounted) {
+        image?.dispose();
+        return;
+      }
+      setState(() => _coverImage = image);
+    }
+
+    navigationShell.goBranch(index);
+  }
+
+  void _finishCover(ui.Image image) {
+    if (identical(_coverImage, image)) {
+      setState(() => _coverImage = null);
+      // RawImage may still be in the tree for this frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) => image.dispose());
+    } else {
+      image.dispose();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final destinations = <AppDestination>[
       AppDestination(
@@ -53,6 +114,7 @@ class AppShell extends ConsumerWidget {
       ),
     ];
 
+    final navigationShell = widget.navigationShell;
     final index = navigationShell.currentIndex;
     final selectedInstance = ref.watch(selectedInstanceProvider);
     final account = ref.watch(currentAccountProvider);
@@ -77,9 +139,14 @@ class AppShell extends ConsumerWidget {
                       AppSpacing.xl,
                       AppSpacing.xs,
                     ),
-                    child: _PageTransition(
-                      index: index,
-                      child: navigationShell,
+                    child: RepaintBoundary(
+                      key: _pageKey,
+                      child: _PageTransition(
+                        index: index,
+                        coverImage: _coverImage,
+                        onCoverFinished: _finishCover,
+                        child: navigationShell,
+                      ),
                     ),
                   ),
                 ),
@@ -90,15 +157,12 @@ class AppShell extends ConsumerWidget {
               currentIndex: index,
               account: account,
               selectedInstance: selectedInstance,
-              onSelected: (i) => navigationShell.goBranch(
-                i,
-                initialLocation: i == navigationShell.currentIndex,
-              ),
-              onAccount: () => context.go('/accounts'),
-              onChooseInstance: () => context.go('/instances'),
+              onSelected: _selectBranch,
+              onAccount: () => _selectBranch(3),
+              onChooseInstance: () => _selectBranch(1),
               onLaunch: () {
                 if (selectedInstance == null) {
-                  context.go('/instances');
+                  _selectBranch(1);
                   return;
                 }
                 ref
@@ -177,10 +241,17 @@ class _TopBar extends StatelessWidget {
 }
 
 class _PageTransition extends StatefulWidget {
-  const _PageTransition({required this.index, required this.child});
+  const _PageTransition({
+    required this.index,
+    required this.child,
+    required this.coverImage,
+    required this.onCoverFinished,
+  });
 
   final int index;
   final Widget child;
+  final ui.Image? coverImage;
+  final ValueChanged<ui.Image> onCoverFinished;
 
   @override
   State<_PageTransition> createState() => _PageTransitionState();
@@ -190,53 +261,82 @@ class _PageTransitionState extends State<_PageTransition>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 220),
+    duration: const Duration(milliseconds: 320),
     value: 1,
-  );
-  late final Animation<double> _reveal = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutCubic,
-  );
+  )..addStatusListener(_onStatusChanged);
+
+  late final Animation<Offset> _offset = Tween<Offset>(
+    begin: const Offset(0, 1),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+  ui.Image? _previous;
+  bool _finishing = false;
 
   @override
   void didUpdateWidget(covariant _PageTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.index != widget.index) {
-      _controller.forward(from: 0);
+    if (oldWidget.index == widget.index) return;
+
+    final homeRelated = oldWidget.index == 0 || widget.index == 0;
+    if (!homeRelated || widget.coverImage == null) {
+      _clearPrevious();
+      _controller.value = 1;
+      return;
+    }
+
+    _previous = widget.coverImage;
+    _finishing = false;
+    _controller.forward(from: 0);
+  }
+
+  void _onStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.completed) _finishPrevious();
+  }
+
+  void _finishPrevious() {
+    final image = _previous;
+    if (image == null || _finishing) return;
+    _finishing = true;
+    _previous = null;
+    if (mounted) setState(() {});
+    widget.onCoverFinished(image);
+  }
+
+  void _clearPrevious() {
+    final image = _previous;
+    _previous = null;
+    if (image != null) {
+      _finishing = true;
+      widget.onCoverFinished(image);
     }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _clearPrevious();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _reveal,
-      builder: (context, child) =>
-          ClipRect(clipper: _BottomRevealClipper(_reveal.value), child: child),
-      child: widget.child,
+    final current = Material(color: context.tokens.bg, child: widget.child);
+    final previous = _previous;
+    if (previous == null) return current;
+
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: RawImage(image: previous, fit: BoxFit.fill),
+          ),
+          SlideTransition(position: _offset, child: current),
+        ],
+      ),
     );
   }
-}
-
-class _BottomRevealClipper extends CustomClipper<Rect> {
-  const _BottomRevealClipper(this.progress);
-
-  final double progress;
-
-  @override
-  Rect getClip(Size size) {
-    final visible = size.height * progress.clamp(0.0, 1.0);
-    return Rect.fromLTWH(0, size.height - visible, size.width, visible);
-  }
-
-  @override
-  bool shouldReclip(covariant _BottomRevealClipper oldClipper) =>
-      oldClipper.progress != progress;
 }
 
 /// Full-width footer command bar.
@@ -273,7 +373,9 @@ class _CommandBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        height: AppLayout.bottomBarHeight,
+        height: currentIndex == 0
+            ? AppLayout.homeBarHeight
+            : AppLayout.bottomBarHeight,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         decoration: BoxDecoration(
           color: tokens.surface1.withValues(alpha: 0.86),
