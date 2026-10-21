@@ -21,12 +21,17 @@ class ResourceSearchPanel extends ConsumerStatefulWidget {
     required this.kind,
     required this.title,
     required this.icon,
+    this.global = false,
   });
 
   /// `mod`, `shader` or `resourcepack`.
   final String kind;
   final String title;
   final IconData icon;
+
+  /// Global searches omit the game-version/loader facets. Versions and install
+  /// still resolve against the selected instance.
+  final bool global;
 
   @override
   ConsumerState<ResourceSearchPanel> createState() =>
@@ -115,6 +120,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   }
 
   String _targetFor(GameInstance? instance, AppLocalizations l10n) {
+    if (widget.global) return l10n.downloadGlobalTarget;
     final game = instance?.gameVersion ?? '1.21.1';
     final loader = (instance?.loader ?? GameLoader.fabric).labelFor(l10n);
     return switch (widget.kind) {
@@ -134,7 +140,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     }
 
     final instance = ref.read(selectedInstanceProvider);
-    final game = instance?.gameVersion ?? '1.21.1';
+    final game = instance?.gameVersion;
     final loader = switch (instance?.loader) {
       GameLoader.fabric => 'fabric',
       GameLoader.forge => 'forge',
@@ -151,9 +157,9 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
       final result = await client.searchModrinth(
         query: _queryController.text,
         kind: widget.kind,
-        gameVersion: game,
-        loader: widget.kind == 'mod' ? loader : null,
-        shaderLoader: widget.kind == 'shader' ? 'iris' : null,
+        gameVersion: widget.global ? null : (game ?? '1.21.1'),
+        loader: !widget.global && widget.kind == 'mod' ? loader : null,
+        shaderLoader: !widget.global && widget.kind == 'shader' ? 'iris' : null,
       );
       if (!mounted) return;
       setState(() => _items = result.items);
@@ -173,8 +179,12 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     }
 
     final instance = ref.read(selectedInstanceProvider);
-    final game = instance?.gameVersion ?? '1.21.1';
-    final loader = switch (instance?.loader) {
+    if (instance == null) {
+      _notify(AppLocalizations.of(context).selectInstance);
+      return;
+    }
+    final game = instance.gameVersion;
+    final loader = switch (instance.loader) {
       GameLoader.fabric => 'fabric',
       GameLoader.forge => 'forge',
       GameLoader.neoforge => 'neoforge',
@@ -220,8 +230,12 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     final client = ref.read(coreClientProvider);
     if (client == null) return;
     final instance = ref.read(selectedInstanceProvider);
-    final game = instance?.gameVersion ?? '1.21.1';
-    final loader = switch (instance?.loader) {
+    if (instance == null) {
+      _notify(AppLocalizations.of(context).selectInstance);
+      return;
+    }
+    final game = instance.gameVersion;
+    final loader = switch (instance.loader) {
       GameLoader.fabric => 'fabric',
       GameLoader.forge => 'forge',
       GameLoader.neoforge => 'neoforge',
@@ -229,13 +243,14 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
       _ => 'fabric',
     };
 
+    final downloadRoot = instance.rootPath;
+    if (downloadRoot.isEmpty) {
+      _notify(AppLocalizations.of(context).selectInstance);
+      return;
+    }
+
     setState(() => _installing = true);
     try {
-      final downloadRoot = instance?.rootPath;
-      if (downloadRoot == null || downloadRoot.isEmpty) {
-        _notify(AppLocalizations.of(context).selectInstance);
-        return;
-      }
       final plan = await client.planModrinthDownload(
         projectId: project.id,
         versionId: version.id,

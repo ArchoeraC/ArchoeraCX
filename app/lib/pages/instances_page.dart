@@ -12,6 +12,7 @@ import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/loader_mark.dart';
+import '../widgets/instances/loader_install_dialog.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/instances/create_instance_dialog.dart';
 
@@ -170,6 +171,8 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                         .select(filtered[i].id),
                     onLaunch: () => _launch(filtered[i]),
                     onCheck: (mode) => _check(filtered[i], mode, l10n),
+                    onManageLoader: () =>
+                        showLoaderInstallDialog(context, filtered[i]),
                     onDelete: () => _delete(filtered[i], l10n),
                   ),
                   if (i < filtered.length - 1)
@@ -709,6 +712,7 @@ class _InstanceRow extends StatelessWidget {
     required this.onSelect,
     required this.onLaunch,
     required this.onCheck,
+    required this.onManageLoader,
     required this.onDelete,
   });
 
@@ -717,6 +721,7 @@ class _InstanceRow extends StatelessWidget {
   final VoidCallback onSelect;
   final VoidCallback onLaunch;
   final ValueChanged<String> onCheck;
+  final VoidCallback onManageLoader;
   final VoidCallback onDelete;
 
   @override
@@ -789,17 +794,28 @@ class _InstanceRow extends StatelessWidget {
                     label: Text(l10n.launch),
                   ),
                   PopupMenuButton<String>(
-                    tooltip: l10n.settingsGeneral,
+                    tooltip: l10n.instanceManage,
                     icon: Icon(
                       Icons.more_horiz_rounded,
                       color: tokens.textSecondary,
                     ),
                     onSelected: (value) {
                       if (value == 'delete') onDelete();
+                      if (value == 'manageLoader') onManageLoader();
                       if (value == 'checkQuick') onCheck('quick');
                       if (value == 'checkFull') onCheck('full');
                     },
                     itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'manageLoader',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.build_circle_outlined, size: 20),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(l10n.instanceManageLoader),
+                          ],
+                        ),
+                      ),
                       if (instance.loader == GameLoader.forge ||
                           instance.loader == GameLoader.neoforge) ...[
                         PopupMenuItem(

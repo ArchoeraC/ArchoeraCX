@@ -310,7 +310,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         var query = ReadOptionalString(root, "query") ?? string.Empty;
         var page = ReadInt(root, "page", 0);
         var pageSize = ReadInt(root, "pageSize", 20);
-        var target = ReadTarget(root, kind);
+        var target = ReadSearchTarget(root, kind);
 
         return new ResourceSearchRequest
         {
@@ -320,6 +320,20 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             Page = page,
             PageSize = pageSize,
         };
+    }
+
+    private static ResourceTarget? ReadSearchTarget(
+        JsonElement root,
+        ResourceKind kind)
+    {
+        // A missing gameVersion means a global provider search. Installation
+        // still requires ReadTarget because it writes into a concrete instance.
+        if (string.IsNullOrWhiteSpace(ReadOptionalString(root, "gameVersion")))
+        {
+            return null;
+        }
+
+        return ReadTarget(root, kind);
     }
 
     private static ResourceTarget ReadTarget(JsonElement root, ResourceKind kind)

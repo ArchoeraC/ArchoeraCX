@@ -152,7 +152,7 @@
   "commonDelete": "Delete",
   "commonSave": "Save",
   "downloadTitle": "Download",
-  "downloadSubtitle": "Versions, loaders, mods, packs, resource packs, and shaders.",
+  "downloadSubtitle": "Versions, mods, packs, resource packs, and shaders.",
   "sourceLabel": "Source",
   "tabVersions": "Game versions",
   "versionListTitle": "Minecraft versions",
@@ -162,7 +162,6 @@
   "versionLoadFailed": "Could not load versions.",
   "versionLoading": "Loading versions…",
   "versionEmpty": "No versions match.",
-  "tabLoaders": "Loaders",
   "tabMods": "Mods",
   "tabPacks": "Modpacks",
   "tabResourcePacks": "Resource packs",
@@ -180,7 +179,6 @@
   "loaderInstallAction": "Download and commit",
   "loaderInstalling": "Downloading and committing…",
   "loaderInstallDone": "Loader files downloaded, version JSON written, and processors completed.",
-  "loaderInstallNoInstance": "Select an instance first.",
   "loaderInstallPickInstaller": "Choose a Forge/NeoForge installer jar first.",
   "loaderInstallFailed": "Loader install failed.",
   "searchDownload": "Search resources",
@@ -684,5 +682,20 @@
         "type": "String"
       }
     }
+  },
+  "downloadGlobalTarget": "All versions · all loaders",
+  "@downloadGlobalTarget": {
+    "description": "Global Modrinth search target label."
+  },
+  "instanceManage": "Manage",
+  "@instanceManage": {
+    "description": "Instance overflow menu tooltip."
+  },
+  "instanceManageLoader": "Install / update loader",
+  "@instanceManageLoader": {
+    "description": "Open the loader installation dialog for an instance."
+  },
+  "@downloadSubtitle": {
+    "description": "Download hub subtitle."
   }
 }

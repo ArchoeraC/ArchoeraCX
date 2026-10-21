@@ -146,7 +146,7 @@
   "commonDelete": "删除",
   "commonSave": "保存",
   "downloadTitle": "下载",
-  "downloadSubtitle": "游戏版本、加载器、Mod、整合包、资源包与光影。",
+  "downloadSubtitle": "游戏版本、Mod、整合包、资源包与光影。",
   "sourceLabel": "内容来源",
   "tabVersions": "游戏版本",
   "versionListTitle": "Minecraft 版本",
@@ -156,7 +156,6 @@
   "versionLoadFailed": "版本列表加载失败。",
   "versionLoading": "正在加载版本…",
   "versionEmpty": "没有匹配的版本。",
-  "tabLoaders": "加载器",
   "tabMods": "Mod",
   "tabPacks": "整合包",
   "tabResourcePacks": "资源包",
@@ -174,7 +173,6 @@
   "loaderInstallAction": "下载并写入版本",
   "loaderInstalling": "下载并写入中…",
   "loaderInstallDone": "加载器文件已下载，版本 JSON 已写入，processors 已完成。",
-  "loaderInstallNoInstance": "请先选择实例。",
   "loaderInstallPickInstaller": "请先选择 Forge/NeoForge 安装包。",
   "loaderInstallFailed": "加载器安装失败。",
   "searchDownload": "搜索资源",
@@ -428,5 +426,8 @@
   "loaderProcessorsDone": "已使用选定的 Java 执行 Forge/NeoForge processors。",
   "instancesCount": "{count, plural, other{{count} 个实例}}",
   "instancesLoadFailed": "实例列表加载失败：{message}",
-  "accountsLoadFailed": "账户列表加载失败：{message}"
+  "accountsLoadFailed": "账户列表加载失败：{message}",
+  "downloadGlobalTarget": "全部版本 · 全部加载器",
+  "instanceManage": "管理",
+  "instanceManageLoader": "安装 / 更新加载器"
 }

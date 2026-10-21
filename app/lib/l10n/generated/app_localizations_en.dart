@@ -316,7 +316,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadSubtitle =>
-      'Versions, loaders, mods, packs, resource packs, and shaders.';
+      'Versions, mods, packs, resource packs, and shaders.';
 
   @override
   String get sourceLabel => 'Source';
@@ -344,9 +344,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get versionEmpty => 'No versions match.';
-
-  @override
-  String get tabLoaders => 'Loaders';
 
   @override
   String get tabMods => 'Mods';
@@ -401,9 +398,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get loaderInstallDone =>
       'Loader files downloaded, version JSON written, and processors completed.';
-
-  @override
-  String get loaderInstallNoInstance => 'Select an instance first.';
 
   @override
   String get loaderInstallPickInstaller =>
@@ -996,4 +990,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String accountsLoadFailed(String message) {
     return 'Could not load accounts: $message';
   }
+
+  @override
+  String get downloadGlobalTarget => 'All versions · all loaders';
+
+  @override
+  String get instanceManage => 'Manage';
+
+  @override
+  String get instanceManageLoader => 'Install / update loader';
 }
