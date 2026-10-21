@@ -98,7 +98,7 @@ flutter build linux --release
 - ✅ Forge/NeoForge 安装下载组合计划（原版 + 加载器依赖 + installer）
 - ✅ Mojang Java runtime 下载计划（all.json → platform manifest → raw/executable）
 - ✅ C++ `ModuleRegistry` + `MethodRegistry`；`system.modules` 可查询已加载模块；C# `BusinessModuleRegistry` 统一注册业务方法
-- ✅ Microsoft Device Code 登录：Microsoft token → XBL → XSTS → Minecraft login → profile/certificates；账户页可登录/切换/刷新/移除，离线账户可用
+- ✅ Microsoft Device Code 登录：Microsoft token → XBL → XSTS → Minecraft login → entitlement/profile/certificates；账户页可登录/切换/刷新/移除，离线账户可用
 - ✅ 实例 UI：创建/选择/删除/搜索、可选实例目录；C# SQLite 索引 + `instance.json` 权威源
 - ✅ C# `settings.get/set`：多实例根目录（`instancesRoots`，首项默认）；`instance.sync` 采纳/刷新/标记缺失；Flutter 设置页与创建实例对话框已接入
 - ✅ C# SQLite 实例索引 + `instance.json` 权威源；Flutter 通过 `instance.*` 模块方法读写
@@ -113,4 +113,5 @@ flutter build linux --release
 - ⬜ 真实 Entra client_id + Minecraft Services client_id 审核；构建期注入 `-p:MicrosoftClientId`，调试期用 `ARCHOERACX_MICROSOFT_CLIENT_ID`
 - ✅ 凭据保险库：`core/vault-rs`（ArchoeraMusic 同系列 AGPL 实现）已接入 C# `VaultCredentialStore`；仅暴露 crypto/file 免密模式，旧 `accounts.credentials.json` 首次使用时迁移并删除
 - ⬜ CurseForge provider（鉴权后置）
-- ⬜ 正式 C++ DownloadManager / 安装原版；`launch.start` 目前只支持离线账户，进程状态/停止/日志流待接
+- ✅ 在线启动：凭据刷新、真实 accessToken/clientId/xuid/userType=msa 已接入 `LaunchPlan`；
+- ⬜ 正式 C++ DownloadManager / 安装原版、进程状态/停止/日志流待接

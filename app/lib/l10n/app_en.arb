@@ -128,7 +128,7 @@
   "launchStarted": "Game started (PID {pid}).",
   "launchFailed": "Launch failed.",
   "launchStarting": "Starting game…",
-  "launchNoAccount": "Add an offline account before launching.",
+  "launchNoAccount": "Add an account before launching.",
   "launchOfflineOnly": "Basic launch supports offline accounts only.",
   "launchJavaMissing": "No suitable Java runtime found.",
   "launchLog": "Log: {path}",
@@ -953,5 +953,17 @@
   },
   "@developmentBuildWarning": {
     "description": "Persistent development-build warning banner."
+  },
+  "launchOnlineSessionExpired": "Your Minecraft session expired. Sign in again.",
+  "launchMicrosoftAccountRequired": "Select a Microsoft account to launch online.",
+  "launchOnlineNotConfigured": "Online launch is not configured in this build.",
+  "@launchOnlineSessionExpired": {
+    "description": "Online launch session expired."
+  },
+  "@launchMicrosoftAccountRequired": {
+    "description": "Online launch requires a Microsoft account."
+  },
+  "@launchOnlineNotConfigured": {
+    "description": "Online launch client ID missing."
   }
 }

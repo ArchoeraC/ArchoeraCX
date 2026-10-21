@@ -424,9 +424,8 @@ final class CoreClient {
 
   /// Ask the native module whether a launch can start in [mode].
   ///
-  /// Online launch is a reserved contract: it currently returns
-  /// `ready:false` with `ONLINE_LAUNCH_NOT_READY` until entitlement,
-  /// certificates and online launch wiring are completed.
+  /// `mode=online` requires an active Microsoft account with a stored
+  /// Minecraft session; the C# module may refresh it before launching.
   Future<LaunchPreparation> prepareLaunch(
     String instanceId, {
     String mode = 'offline',

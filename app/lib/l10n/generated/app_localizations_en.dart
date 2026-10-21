@@ -282,7 +282,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get launchStarting => 'Starting game…';
 
   @override
-  String get launchNoAccount => 'Add an offline account before launching.';
+  String get launchNoAccount => 'Add an account before launching.';
 
   @override
   String get launchOfflineOnly =>
@@ -1216,4 +1216,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get developmentBuildWarning =>
       'Development build — incomplete and may corrupt data. Do not use it for production or important instances.';
+
+  @override
+  String get launchOnlineSessionExpired =>
+      'Your Minecraft session expired. Sign in again.';
+
+  @override
+  String get launchMicrosoftAccountRequired =>
+      'Select a Microsoft account to launch online.';
+
+  @override
+  String get launchOnlineNotConfigured =>
+      'Online launch is not configured in this build.';
 }

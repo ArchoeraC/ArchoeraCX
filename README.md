@@ -5,7 +5,7 @@
 > **开发版 / Development build**  
 > 本项目目前仅通过 GitHub 发布开发版。功能不完整，可能损坏实例或配置数据；**请勿用于正式环境或重要实例**。不提供稳定性、兼容性或数据安全保证。
 
-> 当前为 GitHub-only alpha：已完成实例管理、原版文件安装、离线启动、Modrinth 搜索/下载与加载器安装；在线启动/Entitlement 校验、整合包、Fabric/Quilt 无 Java 安装和 CurseForge 尚未完成。
+> 当前为 GitHub-only alpha：已完成实例管理、原版文件安装、微软登录、权益校验、离线/在线启动、Modrinth 搜索/下载与加载器安装；整合包、Fabric/Quilt 无 Java 安装和 CurseForge 尚未完成。
 
 ## 当前能力
 
@@ -16,11 +16,11 @@
 - 实例：创建/选择/删除/搜索、自定义目录、SQLite 索引 + `instance.json` 权威元数据
 - 设置：实例根目录持久化（C# 持有）
 - Modrinth：搜索、版本选择、`DownloadPlan`、Rust 下载与 hash 校验
-- 账户：Microsoft Device Code → XBL → XSTS → Minecraft → profile/certificates；离线账户
+- 账户：Microsoft Device Code → XBL → XSTS → Minecraft → entitlement/profile/certificates；离线/在线启动
 - Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（HTTP、hash、原子落盘、取消）
 - Linux release bundle 自带 `libarchoera_core.so`、`archoera_cs.so` 和 `archoera-dl`
 
-当前基线：278 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+当前基线：287 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
 
 ## 架构
 

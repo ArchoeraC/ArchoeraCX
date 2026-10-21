@@ -122,7 +122,7 @@
   "launchStarted": "游戏已启动（PID {pid}）。",
   "launchFailed": "启动失败。",
   "launchStarting": "正在启动游戏…",
-  "launchNoAccount": "请先添加离线账户。",
+  "launchNoAccount": "请先添加账户。",
   "launchOfflineOnly": "当前基础启动仅支持离线账户。",
   "launchJavaMissing": "没有找到合适的 Java 运行时。",
   "launchLog": "日志：{path}",
@@ -479,5 +479,8 @@
   "accountNoAccountsMicrosoftOnly": "添加微软账户后即可开始使用。",
   "launchOnlineNotReady": "当前版本尚未启用在线启动。",
   "developmentBuildBadge": "开发版",
-  "developmentBuildWarning": "开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。"
+  "developmentBuildWarning": "开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。",
+  "launchOnlineSessionExpired": "Minecraft 会话已过期，请重新登录。",
+  "launchMicrosoftAccountRequired": "请选择微软账户进行在线启动。",
+  "launchOnlineNotConfigured": "当前构建未配置在线启动。"
 }

@@ -231,6 +231,7 @@ logs/account.log              脱敏诊断日志
 - `AccountAuthTests`：完整 mock 链路、pending、XSTS 错误、refresh、离线账户、日志脱敏。
 - `account_integration_test.dart`：离线账户通过 C++/C#/SQLite 持久化。
 - `microsoft_start_test.dart`：运行时 client ID 能真实发起 device code（需网络与 client ID）。
+- `LaunchOnlinePlanTests` / `LaunchModuleOnlineTests`：在线启动参数、准备状态和错误映射。
 
 人工上线验收：
 
@@ -243,11 +244,23 @@ logs/account.log              脱敏诊断日志
 - [ ] 重启应用后 refresh 可用
 - [ ] 日志不出现 token/device code
 
-## 9. 已知限制
+## 9. 在线启动
+
+`launch.prepare` / `launch.start` 的 `mode=online` 已接通：
+
+- 只允许活动账户为 Microsoft 且具有 Minecraft profile；
+- 从凭据保险库读取 Minecraft access token；
+- 会话在 2 分钟内到期或已过期时，用 refresh token 重新走
+  Microsoft → XBL/XSTS → `login_with_xbox` → entitlement/profile；
+- 刷新成功后更新账户元数据和保险库；
+- 启动参数使用真实的 `auth_access_token`、`clientid`、`auth_xuid`、
+  `user_type=msa` 和 profile UUID；
+- 不会把在线账户静默降级为离线启动；离线模式仍只接受离线账户。
+
+已知限制：
 
 - 只实现 Device Code；loopback + PKCE 尚未实现。
 - 审核提交文本见 [`docs/legal/minecraft-app-review.md`](legal/minecraft-app-review.md)；不要提交与实现不一致的 authorization-code/sessionserver 描述。
-- 真实登录受 Minecraft Services 审核阻塞。
-- OS 凭据库尚未接入。
-- 启动游戏尚未消费 Minecraft token/certificates。
-- `launch.prepare`/`launch.start` 已预留 `mode=online`，当前返回 `ONLINE_LAUNCH_NOT_READY`，不会把在线账户降级成离线启动。
+- 真实登录/在线启动仍受 Minecraft Services client ID 审核阻塞。
+- 证书保存在保险库，但当前没有注入 JVM 参数；如果后续版本需要安全聊天/证书消费，需单独接线。
+- 在线启动会把 access token 放入 JVM 参数；这与官方启动器一样会出现在进程列表中，日志不记录 token。
