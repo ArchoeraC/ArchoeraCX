@@ -180,7 +180,7 @@ class _LaunchHero extends StatelessWidget {
                           l10n.quickLaunch,
                           style: textTheme.labelLarge?.copyWith(
                             color: tokens.accent,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -193,7 +193,7 @@ class _LaunchHero extends StatelessWidget {
                       style: textTheme.displaySmall?.copyWith(
                         fontSize: showArt ? 42 : 32,
                         height: 1.12,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -501,7 +501,7 @@ class _Metric extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
             letterSpacing: 0,
           ),
         ),
@@ -607,7 +607,7 @@ class _AccountColumn extends StatelessWidget {
                   account.displayName.characters.first.toUpperCase(),
                   style: textTheme.titleMedium?.copyWith(
                     color: tokens.accent,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),

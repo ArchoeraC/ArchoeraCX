@@ -53,6 +53,27 @@
   "instanceLocationLabel": "实例目录",
   "instanceChooseLocation": "选择目录",
   "instanceLocationHint": "留空则使用全局实例目录",
+  "instanceRootLabel": "存储位置",
+  "instanceCustomRoot": "自定义目录",
+  "instanceMissing": "目录缺失",
+  "instanceCustom": "自定义",
+  "instanceSyncDone": "实例目录已同步。",
+  "instanceSyncAdopted": "{count, plural, other{已加入 {count} 个实例}}",
+  "instanceSyncMissing": "{count, plural, other{{count} 个实例目录缺失}}",
+  "@instanceSyncAdopted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@instanceSyncMissing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "instanceLoaderLabel": "加载器",
   "instanceMods": "{count, plural, =0{无 Mod} other{{count} 个 Mod}}",
   "@instanceMods": {
@@ -69,6 +90,28 @@
   "instanceNoMatches": "没有匹配的实例。",
   "instanceDelete": "删除实例",
   "instanceDeleteConfirm": "删除“{name}”？",
+  "instanceCheckQuick": "快速检查",
+  "instanceCheckFull": "完整检查",
+  "instanceCheckTitle": "依赖检查",
+  "instanceCheckOk": "依赖完整。",
+  "instanceCheckMissing": "缺失：{count}",
+  "instanceCheckMismatched": "校验失败：{count}",
+  "instanceCheckFailed": "依赖检查失败。",
+  "instanceManifestMissing": "实例中未找到加载器安装包。",
+  "@instanceCheckMissing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@instanceCheckMismatched": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@instanceDeleteConfirm": {
     "description": "删除实例前的确认提示。",
     "placeholders": {
@@ -86,6 +129,13 @@
   "downloadSubtitle": "游戏版本、加载器、Mod、整合包、资源包与光影。",
   "sourceLabel": "内容来源",
   "tabVersions": "游戏版本",
+  "versionListTitle": "Minecraft 版本",
+  "versionSearchHint": "搜索版本",
+  "versionIncludeSnapshots": "包含快照",
+  "versionUse": "使用此版本",
+  "versionLoadFailed": "版本列表加载失败。",
+  "versionLoading": "正在加载版本…",
+  "versionEmpty": "没有匹配的版本。",
   "tabLoaders": "加载器",
   "tabMods": "Mod",
   "tabPacks": "整合包",
@@ -95,6 +145,20 @@
   "sourceCurseForge": "CurseForge",
   "sourceCurseForgeKeyHint": "请在设置中配置 CurseForge API Key 后再使用该源。",
   "providerNotWired": "下载源接线是下一步；当前为 UI 结构。",
+  "loaderInstallTitle": "安装 Forge / NeoForge",
+  "loaderKindLabel": "加载器",
+  "loaderGameVersionLabel": "游戏版本",
+  "loaderVersionLabel": "加载器版本",
+  "loaderInstallerLabel": "安装包 jar",
+  "loaderChooseInstaller": "选择安装包",
+  "loaderInstallAction": "下载并写入版本",
+  "loaderInstalling": "下载并写入中…",
+  "loaderInstallDone": "加载器文件已下载，版本 JSON 已写入。",
+  "loaderInstallRequiresJava": "Forge/NeoForge 的 processors 仍需要 JVM；本步骤不会调用 Java。",
+  "loaderInstallNoInstance": "请先选择实例。",
+  "loaderInstallPickInstaller": "请先选择 Forge/NeoForge 安装包。",
+  "loaderInstallFailed": "加载器安装失败。",
+  "loaderInstallNoJavaTitle": "本步骤不调用 Java",
   "searchDownload": "搜索资源",
   "downloadSearchAction": "搜索",
   "downloadSearchEmpty": "没有找到兼容的项目。",
@@ -133,6 +197,12 @@
   "settingsAppearance": "外观",
   "settingsStorage": "存储",
   "settingsInstancesRoot": "实例目录",
+  "settingsInstanceRoots": "实例存储位置",
+  "settingsAddRoot": "添加目录",
+  "settingsDefaultRoot": "默认",
+  "settingsMakeDefault": "设为默认",
+  "settingsRemoveRoot": "移除目录",
+  "settingsRootsUpdated": "实例目录已更新。",
   "settingsDataRoot": "应用数据目录",
   "settingsChooseFolder": "选择目录",
   "settingsSaved": "已保存",

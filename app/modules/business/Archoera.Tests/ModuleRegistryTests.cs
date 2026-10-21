@@ -16,9 +16,14 @@ public sealed class ModuleRegistryTests
             Assert.Contains("java.scan", registry.Methods);
             Assert.Contains("loader.verify", registry.Methods);
             Assert.Contains("loader.repair", registry.Methods);
+            Assert.Contains("loader.check", registry.Methods);
+            Assert.Contains("loader.plan", registry.Methods);
+            Assert.Contains("loader.commit", registry.Methods);
+            Assert.Contains("version.list", registry.Methods);
             Assert.Contains("resource.search", registry.Methods);
             Assert.Contains("settings.get", registry.Methods);
             Assert.Contains("instance.list", registry.Methods);
+            Assert.Contains("instance.sync", registry.Methods);
             Assert.Contains("account.login.microsoft.start", registry.Methods);
             Assert.Contains("account.login.microsoft.poll", registry.Methods);
             Assert.Contains("account.list", registry.Methods);

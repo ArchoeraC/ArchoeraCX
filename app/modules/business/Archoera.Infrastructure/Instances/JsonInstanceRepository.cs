@@ -139,6 +139,92 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         return true;
     }
 
+    public async Task<InstanceSyncReport> SyncAsync(
+        IReadOnlyList<string>? roots,
+        bool dryRun,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var configured = (roots is { Count: > 0 } ? roots : settings.Roots)
+            .Where(root => !string.IsNullOrWhiteSpace(root) && Path.IsPathFullyQualified(root))
+            .Select(Path.GetFullPath)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var registry = await ReadRegistryAsync(cancellationToken).ConfigureAwait(false);
+        var byId = registry.ToDictionary(record => record.Id, StringComparer.Ordinal);
+        var found = new Dictionary<string, GameInstanceRecord>(StringComparer.Ordinal);
+        var rootCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var root in configured)
+        {
+            var count = 0;
+            if (Directory.Exists(root))
+            {
+                IEnumerable<string> directories;
+                try
+                {
+                    directories = Directory.GetDirectories(root);
+                }
+                catch
+                {
+                    directories = [];
+                }
+
+                foreach (var directory in directories)
+                {
+                    var record = await ReadInstanceFileAsync(directory, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (record is null || found.ContainsKey(record.Id)) continue;
+                    found[record.Id] = record;
+                    count++;
+                }
+            }
+
+            rootCounts[root] = count;
+        }
+
+        var adopted = new List<string>();
+        var updated = new List<string>();
+        foreach (var record in found.Values)
+        {
+            if (!byId.TryGetValue(record.Id, out var current))
+            {
+                registry.Add(record);
+                adopted.Add(record.Id);
+                continue;
+            }
+
+            var index = registry.FindIndex(item => item.Id == record.Id);
+            if (index >= 0)
+            {
+                registry[index] = record;
+                updated.Add(record.Id);
+            }
+        }
+
+        var missing = registry
+            .Where(record => !found.ContainsKey(record.Id) && !Directory.Exists(record.RootPath))
+            .Select(record => new InstanceSyncMissing(record.Id, record.RootPath))
+            .ToArray();
+
+        if (!dryRun && (adopted.Count > 0 || updated.Count > 0))
+        {
+            await WriteRegistryAsync(registry, cancellationToken).ConfigureAwait(false);
+        }
+
+        return new InstanceSyncReport(
+            registry,
+            adopted,
+            updated,
+            missing,
+            configured
+                .Select(root => new InstanceSyncRoot(
+                    root,
+                    Directory.Exists(root),
+                    rootCounts.GetValueOrDefault(root)))
+                .ToArray());
+    }
+
     private async Task<string> ResolveRootAsync(
         string name,
         string? rootPath,
@@ -156,7 +242,7 @@ public sealed class JsonInstanceRepository : IInstanceRepository
 
         var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
         var slug = Slug(name);
-        return Path.Combine(settings.InstancesRoot, slug);
+        return Path.Combine(settings.Roots[0], slug);
     }
 
     private static string CreateId(DateTimeOffset now)
@@ -327,7 +413,10 @@ public sealed class JsonInstanceRepository : IInstanceRepository
             using var document = await JsonDocument
                 .ParseAsync(stream, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-            return ParseRecord(document.RootElement);
+            var record = ParseRecord(document.RootElement);
+            return record is null
+                ? null
+                : record with { RootPath = Path.GetFullPath(rootPath) };
         }
         catch (Exception exception) when (
             exception is IOException or JsonException or UnauthorizedAccessException)

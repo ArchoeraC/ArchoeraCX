@@ -26,6 +26,28 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
     }
   }
 
+  Future<InstanceSyncResult?> sync() async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      await reload();
+      return null;
+    }
+
+    final result = await client.syncInstances();
+    state = AsyncData(result.items);
+    final selected = ref.read(selectedInstanceIdProvider);
+    if (selected != null && !result.items.any((item) => item.id == selected)) {
+      ref
+          .read(selectedInstanceIdProvider.notifier)
+          .select(result.items.isEmpty ? null : result.items.first.id);
+    }
+    return result;
+  }
+
+  Future<void> reload() async {
+    state = AsyncData(await build());
+  }
+
   Future<GameInstance> create({
     required String name,
     required String gameVersion,
@@ -52,7 +74,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
       final settings = ref.read(appSettingsProvider).value;
       final root = rootPath.isEmpty
           ? joinPath(
-              settings?.instancesRoot ?? fallbackInstancesRoot(),
+              settings?.roots.first ?? fallbackInstancesRoot(),
               slugForInstance(name),
             )
           : rootPath;

@@ -100,9 +100,13 @@ flutter build linux --release
 - ✅ Microsoft Device Code 登录：Microsoft token → XBL → XSTS → Minecraft login → profile/certificates；账户页可登录/切换/刷新/移除，离线账户可用
 - ✅ 实例 UI：创建/选择/删除/搜索、可选实例目录；C# SQLite 索引 + `instance.json` 权威源
 - ✅ 下载页 UI：6 个分栏；Modrinth 搜索/版本/安装已接线，CurseForge 源待 key
-- ✅ C# `settings.get/set`：实例根目录选择/持久化；Flutter 设置页与创建实例对话框已接入
+- ✅ C# `settings.get/set`：多实例根目录（`instancesRoots`，首项默认）；`instance.sync` 采纳/刷新/标记缺失；Flutter 设置页与创建实例对话框已接入
 - ✅ C# SQLite 实例索引 + `instance.json` 权威源；Flutter 通过 `instance.*` 模块方法读写
 - ✅ Modrinth 端到端：Flutter 搜索/版本/安装 → C# 计划 → Rust `archoera-dl` 下载并校验（Sodium 1.21.1 Fabric 实测）
+- ✅ Noto Sans SC Medium 打包为默认 UI 字体
+- ✅ Java 扫描按 `java.home` 归并 symlink/JRE 别名，扩展用户目录，UI 显示前 5 + 查看全部
+- ✅ `version.list` / `loader.check` / `loader.plan` / `loader.commit`；下载页版本列表、Forge/NeoForge 本地 installer 下载/版本写入、quick/full 依赖检查
+- ⚠️ Forge/NeoForge processors 仍需要 JVM；当前安装步骤不调用 Java，只完成下载/版本写入并提示；Fabric/Quilt 无 Java 安装待接
 - ⬜ 真实 Entra client_id + Minecraft Services client_id 审核；构建期注入 `-p:MicrosoftClientId`，调试期用 `ARCHOERACX_MICROSOFT_CLIENT_ID`
 - ⬜ 凭据库迁移：当前 refresh token 在 `accounts.credentials.json`（0600），后续接 Windows DPAPI/macOS Keychain/libsecret
 - ⬜ CurseForge provider（鉴权后置）

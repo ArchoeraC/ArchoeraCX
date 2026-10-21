@@ -35,6 +35,64 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public async Task Store_persists_an_ordered_root_list_and_legacy_alias()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var first = Path.Combine(directory, "first");
+            var second = Path.Combine(directory, "second");
+            var store = new JsonAppSettingsStore(dataRoot);
+
+            var saved = await store.SaveInstancesRootsAsync([first, second]);
+            Assert.Equal([Path.GetFullPath(first), Path.GetFullPath(second)], saved.Roots);
+            Assert.Equal(saved.Roots[0], saved.InstancesRoot);
+            Assert.True(Directory.Exists(first));
+            Assert.True(Directory.Exists(second));
+
+            var reloaded = await store.LoadAsync();
+            Assert.Equal(saved.Roots, reloaded.Roots);
+            Assert.Equal(saved.Roots[0], reloaded.InstancesRoot);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Settings_module_returns_and_updates_multiple_roots()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var service = new SettingsModuleService(
+                new JsonAppSettingsStore(Path.Combine(directory, "data")));
+            var first = Path.Combine(directory, "first");
+            var second = Path.Combine(directory, "second");
+
+            var payload = $$"""{"instancesRoots":["{{first}}","{{second}}"]}""";
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync("settings.set", payload, CancellationToken.None));
+            var settings = document.RootElement
+                .GetProperty("data")
+                .GetProperty("settings");
+            var roots = settings.GetProperty("instancesRoots")
+                .EnumerateArray()
+                .Select(item => item.GetString() ?? string.Empty)
+                .ToArray();
+
+            Assert.Equal([Path.GetFullPath(first), Path.GetFullPath(second)], roots);
+            Assert.Equal(roots[0], settings.GetProperty("instancesRoot").GetString());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Store_rejects_a_relative_instances_root()
     {
         var directory = TempDirectory();

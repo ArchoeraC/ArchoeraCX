@@ -416,6 +416,48 @@ abstract class AppLocalizations {
   /// **'Leave blank to use the global instances folder'**
   String get instanceLocationHint;
 
+  /// No description provided for @instanceRootLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage location'**
+  String get instanceRootLabel;
+
+  /// No description provided for @instanceCustomRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom folder'**
+  String get instanceCustomRoot;
+
+  /// No description provided for @instanceMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder missing'**
+  String get instanceMissing;
+
+  /// No description provided for @instanceCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get instanceCustom;
+
+  /// No description provided for @instanceSyncDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance folders synced.'**
+  String get instanceSyncDone;
+
+  /// No description provided for @instanceSyncAdopted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 instance indexed} other{{count} instances indexed}}'**
+  String instanceSyncAdopted(int count);
+
+  /// No description provided for @instanceSyncMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 instance folder missing} other{{count} instance folders missing}}'**
+  String instanceSyncMissing(int count);
+
   /// No description provided for @instanceLoaderLabel.
   ///
   /// In en, this message translates to:
@@ -463,6 +505,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete “{name}”?'**
   String instanceDeleteConfirm(String name);
+
+  /// No description provided for @instanceCheckQuick.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick check'**
+  String get instanceCheckQuick;
+
+  /// No description provided for @instanceCheckFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full check'**
+  String get instanceCheckFull;
+
+  /// No description provided for @instanceCheckTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency check'**
+  String get instanceCheckTitle;
+
+  /// No description provided for @instanceCheckOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Dependencies are complete.'**
+  String get instanceCheckOk;
+
+  /// No description provided for @instanceCheckMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing: {count}'**
+  String instanceCheckMissing(int count);
+
+  /// No description provided for @instanceCheckMismatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Mismatched: {count}'**
+  String instanceCheckMismatched(int count);
+
+  /// No description provided for @instanceCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency check failed.'**
+  String get instanceCheckFailed;
+
+  /// No description provided for @instanceManifestMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Loader installer not found in this instance.'**
+  String get instanceManifestMissing;
 
   /// No description provided for @instanceLaunchNotReady.
   ///
@@ -518,6 +608,48 @@ abstract class AppLocalizations {
   /// **'Game versions'**
   String get tabVersions;
 
+  /// No description provided for @versionListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft versions'**
+  String get versionListTitle;
+
+  /// No description provided for @versionSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search versions'**
+  String get versionSearchHint;
+
+  /// No description provided for @versionIncludeSnapshots.
+  ///
+  /// In en, this message translates to:
+  /// **'Include snapshots'**
+  String get versionIncludeSnapshots;
+
+  /// No description provided for @versionUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this version'**
+  String get versionUse;
+
+  /// No description provided for @versionLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load versions.'**
+  String get versionLoadFailed;
+
+  /// No description provided for @versionLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading versions…'**
+  String get versionLoading;
+
+  /// No description provided for @versionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No versions match.'**
+  String get versionEmpty;
+
   /// No description provided for @tabLoaders.
   ///
   /// In en, this message translates to:
@@ -571,6 +703,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Provider wiring is next; this is the UI shell.'**
   String get providerNotWired;
+
+  /// No description provided for @loaderInstallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Forge / NeoForge'**
+  String get loaderInstallTitle;
+
+  /// No description provided for @loaderKindLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Loader'**
+  String get loaderKindLabel;
+
+  /// No description provided for @loaderGameVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Game version'**
+  String get loaderGameVersionLabel;
+
+  /// No description provided for @loaderVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Loader version'**
+  String get loaderVersionLabel;
+
+  /// No description provided for @loaderInstallerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Installer jar'**
+  String get loaderInstallerLabel;
+
+  /// No description provided for @loaderChooseInstaller.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose installer'**
+  String get loaderChooseInstaller;
+
+  /// No description provided for @loaderInstallAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and commit'**
+  String get loaderInstallAction;
+
+  /// No description provided for @loaderInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading and committing…'**
+  String get loaderInstalling;
+
+  /// No description provided for @loaderInstallDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Loader files downloaded and version JSON written.'**
+  String get loaderInstallDone;
+
+  /// No description provided for @loaderInstallRequiresJava.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge/NeoForge processors still need a JVM; this step never invokes Java.'**
+  String get loaderInstallRequiresJava;
+
+  /// No description provided for @loaderInstallNoInstance.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an instance first.'**
+  String get loaderInstallNoInstance;
+
+  /// No description provided for @loaderInstallPickInstaller.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Forge/NeoForge installer jar first.'**
+  String get loaderInstallPickInstaller;
+
+  /// No description provided for @loaderInstallFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Loader install failed.'**
+  String get loaderInstallFailed;
+
+  /// No description provided for @loaderInstallNoJavaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No Java was invoked'**
+  String get loaderInstallNoJavaTitle;
 
   /// No description provided for @searchDownload.
   ///
@@ -751,6 +967,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Instances folder'**
   String get settingsInstancesRoot;
+
+  /// No description provided for @settingsInstanceRoots.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance storage'**
+  String get settingsInstanceRoots;
+
+  /// No description provided for @settingsAddRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Add folder'**
+  String get settingsAddRoot;
+
+  /// No description provided for @settingsDefaultRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get settingsDefaultRoot;
+
+  /// No description provided for @settingsMakeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default'**
+  String get settingsMakeDefault;
+
+  /// No description provided for @settingsRemoveRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove folder'**
+  String get settingsRemoveRoot;
+
+  /// No description provided for @settingsRootsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance folders updated.'**
+  String get settingsRootsUpdated;
 
   /// No description provided for @settingsDataRoot.
   ///

@@ -15,7 +15,8 @@ public static class LoaderManifestJson
     public static byte[] BuildEnvelope(
         LoaderArtifactManifest manifest,
         LoaderVerification verification,
-        LoaderRepairResult? repair = null)
+        LoaderRepairResult? repair = null,
+        LoaderVerifyMode? mode = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(verification);
@@ -26,6 +27,10 @@ public static class LoaderManifestJson
             writer.WriteStartObject();
             writer.WriteBoolean("ok", verification.Ok && (repair?.Ok ?? true));
             writer.WriteStartObject("data");
+            if (mode is not null)
+            {
+                writer.WriteString("mode", mode.Value.ToWire());
+            }
             writer.WritePropertyName("manifest");
             WriteManifest(writer, manifest);
             writer.WritePropertyName("verification");

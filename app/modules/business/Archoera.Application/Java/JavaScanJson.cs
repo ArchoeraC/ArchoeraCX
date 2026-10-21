@@ -10,7 +10,7 @@ namespace Archoera.Application.Java;
 /// </summary>
 public static class JavaScanJson
 {
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
 
     public static byte[] BuildEnvelope(IReadOnlyList<JavaRuntimeInfo> items)
     {
@@ -32,6 +32,10 @@ public static class JavaScanJson
                 writer.WriteString("vendor", item.Vendor);
                 writer.WriteString("arch", item.Arch);
                 writer.WriteString("source", item.Source);
+                if (!string.IsNullOrWhiteSpace(item.Home))
+                {
+                    writer.WriteString("home", item.Home);
+                }
                 writer.WriteEndObject();
             }
 

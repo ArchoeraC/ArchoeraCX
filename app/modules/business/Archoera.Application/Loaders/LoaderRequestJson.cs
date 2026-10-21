@@ -9,7 +9,8 @@ public sealed record LoaderRequest(
     string Root,
     string LibrariesPath,
     LoaderKind Kind,
-    string? JavaPath);
+    string? JavaPath,
+    LoaderVerifyMode Mode = LoaderVerifyMode.Full);
 
 /// <summary>
 /// AOT-safe request parser for the loader diagnostics methods. Paths must be
@@ -78,12 +79,21 @@ public static class LoaderRequestJson
                 return false;
             }
 
+            var modeText = ReadOptionalString(root, "mode");
+            if (modeText is not null && !LoaderVerifyModeExtensions.TryParse(modeText, out _))
+            {
+                errorMessage = "mode must be 'quick' or 'full'";
+                return false;
+            }
+            LoaderVerifyModeExtensions.TryParse(modeText, out var mode);
+
             request = new LoaderRequest(
                 Path.GetFullPath(installerPath),
                 Path.GetFullPath(instanceRoot),
                 librariesPath.Replace('\\', '/'),
                 kind,
-                javaPath is null ? null : Path.GetFullPath(javaPath));
+                javaPath is null ? null : Path.GetFullPath(javaPath),
+                mode);
             errorCode = string.Empty;
             return true;
         }

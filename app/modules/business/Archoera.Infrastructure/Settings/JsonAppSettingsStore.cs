@@ -49,14 +49,36 @@ public sealed class JsonAppSettingsStore
             }
 
             var root = document.RootElement;
-            var instancesRoot = ReadString(root, "instancesRoot");
-            if (string.IsNullOrWhiteSpace(instancesRoot) ||
-                !Path.IsPathFullyQualified(instancesRoot))
+            var roots = ReadRoots(root);
+            if (roots.Count == 0)
             {
-                instancesRoot = fallback.InstancesRoot;
+                var legacy = ReadString(root, "instancesRoot");
+                if (!string.IsNullOrWhiteSpace(legacy) && Path.IsPathFullyQualified(legacy))
+                {
+                    roots.Add(legacy);
+                }
             }
 
-            return fallback with { InstancesRoot = AppDataPaths.Normalize(instancesRoot) };
+            if (roots.Count == 0)
+            {
+                roots.Add(fallback.InstancesRoot);
+            }
+
+            IReadOnlyList<string> normalized;
+            try
+            {
+                normalized = NormalizeRoots(roots);
+            }
+            catch (ArgumentException)
+            {
+                normalized = [fallback.InstancesRoot];
+            }
+
+            return fallback with
+            {
+                InstancesRoot = normalized[0],
+                InstancesRoots = normalized,
+            };
         }
         catch (Exception exception) when (
             exception is IOException or JsonException or UnauthorizedAccessException)
@@ -65,18 +87,42 @@ public sealed class JsonAppSettingsStore
         }
     }
 
-    public async Task<AppSettings> SaveInstancesRootAsync(
+    public Task<AppSettings> SaveInstancesRootAsync(
         string instancesRoot,
         CancellationToken cancellationToken = default)
+        => SaveInstancesRootsAsync([instancesRoot], cancellationToken);
+
+    public async Task<AppSettings> SaveInstancesRootsAsync(
+        IReadOnlyList<string> instancesRoots,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(instancesRoot) ||
-            !Path.IsPathFullyQualified(instancesRoot))
+        if (instancesRoots is null || instancesRoots.Count == 0)
         {
-            throw new ArgumentException("instancesRoot must be absolute", nameof(instancesRoot));
+            throw new ArgumentException("at least one instances root is required", nameof(instancesRoots));
         }
 
-        var normalized = AppDataPaths.Normalize(instancesRoot);
-        Directory.CreateDirectory(normalized);
+        foreach (var root in instancesRoots)
+        {
+            if (string.IsNullOrWhiteSpace(root) || !Path.IsPathFullyQualified(root))
+            {
+                throw new ArgumentException("instances roots must be absolute", nameof(instancesRoots));
+            }
+        }
+
+        var normalized = NormalizeRoots(instancesRoots);
+        foreach (var root in normalized)
+        {
+            try
+            {
+                Directory.CreateDirectory(root);
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException)
+            {
+                // A drive may be offline now; keep the configured path and let
+                // instance.sync report it as unavailable.
+            }
+        }
         Directory.CreateDirectory(_dataRoot);
 
         var temporary = _settingsPath + ".tmp";
@@ -94,7 +140,14 @@ public sealed class JsonAppSettingsStore
             });
             writer.WriteStartObject();
             writer.WriteNumber("schemaVersion", AppSettings.CurrentSchemaVersion);
-            writer.WriteString("instancesRoot", normalized);
+            writer.WriteString("instancesRoot", normalized[0]);
+            writer.WriteStartArray("instancesRoots");
+            foreach (var root in normalized)
+            {
+                writer.WriteStringValue(root);
+            }
+
+            writer.WriteEndArray();
             writer.WriteString("updatedAt", DateTimeOffset.UtcNow.ToString("O"));
             writer.WriteEndObject();
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -102,14 +155,65 @@ public sealed class JsonAppSettingsStore
         }
 
         File.Move(temporary, _settingsPath, overwrite: true);
-        return new AppSettings(normalized, _dataRoot, _settingsPath);
+        return new AppSettings(normalized[0], _dataRoot, _settingsPath, normalized);
     }
 
     private AppSettings Defaults()
-        => new(
-            AppDataPaths.DefaultInstancesRoot(_dataRoot),
+    {
+        var instancesRoot = AppDataPaths.DefaultInstancesRoot(_dataRoot);
+        return new AppSettings(
+            instancesRoot,
             _dataRoot,
-            _settingsPath);
+            _settingsPath,
+            [instancesRoot]);
+    }
+
+    private static List<string> ReadRoots(JsonElement root)
+    {
+        var result = new List<string>();
+        if (!root.TryGetProperty("instancesRoots", out var element) ||
+            element.ValueKind != JsonValueKind.Array)
+        {
+            return result;
+        }
+
+        foreach (var item in element.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(item.GetString()))
+            {
+                result.Add(item.GetString()!);
+            }
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<string> NormalizeRoots(IEnumerable<string> roots)
+    {
+        var seen = new HashSet<string>(
+            OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+                ? StringComparer.OrdinalIgnoreCase
+                : StringComparer.Ordinal);
+        var result = new List<string>();
+        foreach (var root in roots)
+        {
+            if (string.IsNullOrWhiteSpace(root) || !Path.IsPathFullyQualified(root))
+            {
+                continue;
+            }
+
+            var normalized = AppDataPaths.Normalize(root);
+            if (seen.Add(normalized))
+            {
+                result.Add(normalized);
+            }
+        }
+
+        return result.Count > 0
+            ? result
+            : throw new ArgumentException("at least one valid instances root is required", nameof(roots));
+    }
 
     private static string? ReadString(JsonElement root, string name)
         => root.TryGetProperty(name, out var element) &&

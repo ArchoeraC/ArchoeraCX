@@ -10,6 +10,8 @@ import '../../models/account.dart';
 import '../../models/game_instance.dart';
 import 'app_settings.dart';
 import 'java_scan.dart';
+import 'loader_plan.dart';
+import 'version_models.dart';
 import 'resource_models.dart';
 
 /// The error structure returned by the native core ABI.
@@ -354,6 +356,7 @@ final class CoreClient {
     required String installerPath,
     required String root,
     required String kind,
+    String mode = 'full',
     String librariesPath = 'libraries',
     void Function(int done, int total)? onProgress,
   }) async {
@@ -363,10 +366,108 @@ final class CoreClient {
       'root': root,
       'librariesPath': librariesPath,
       'kind': kind,
+      'mode': mode,
     });
     final jsonText = await _runAsync(
       methodName,
       paramsJson: paramsJson,
+      onProgress: onProgress,
+    );
+    return _decodeRawEnvelope(jsonText, fallbackMethod: methodName);
+  }
+
+  /// Build a Forge/NeoForge install plan from a local installer.
+  ///
+  /// The plan covers vanilla + loader libraries + the installer. Downloading
+  /// and committing do not invoke Java; processors still require a JVM.
+  Future<LoaderPlanResult> planLoaderInstall({
+    required String root,
+    required String installerPath,
+    required String kind,
+    required String gameVersion,
+    required String loaderVersion,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'loader.plan';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'root': root,
+        'installerPath': installerPath,
+        'kind': kind,
+        'gameVersion': gameVersion,
+        'loaderVersion': loaderVersion,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final plan = _asMap(data['plan'], methodName);
+    final versionId = _asString(data['versionId']);
+    final versionJson = _asString(data['versionJson']);
+    if (versionId == null || versionJson == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned no version payload.',
+      );
+    }
+    return LoaderPlanResult(
+      plan: plan,
+      versionId: versionId,
+      versionJson: versionJson,
+      requiresJava: data['requiresJava'] == true,
+    );
+  }
+
+  /// Write the merged version JSON into `<root>/versions/<id>/<id>.json`.
+  Future<LoaderCommitResult> commitLoaderVersion({
+    required String root,
+    required String versionId,
+    required String versionJson,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'loader.commit';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'root': root,
+        'versionId': versionId,
+        'versionJson': versionJson,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return LoaderCommitResult(
+      versionId: _asString(data['versionId']) ?? versionId,
+      versionPath: _asString(data['versionPath']) ?? '',
+    );
+  }
+
+  /// Locate the instance's installer and verify generated artifacts.
+  ///
+  /// [mode] is `quick` (existence/size plus hashes for generated launch files)
+  /// or `full` (hash every artifact). Missing installers return a normal
+  /// `ok:false` envelope with `MANIFEST_MISSING`, not a transport exception.
+  Future<Map<String, Object?>> checkLoader({
+    required String root,
+    required String kind,
+    required String gameVersion,
+    required String loaderVersion,
+    String mode = 'quick',
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'loader.check';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'root': root,
+        'kind': kind,
+        'gameVersion': gameVersion,
+        'loaderVersion': loaderVersion,
+        'mode': mode,
+      }),
       onProgress: onProgress,
     );
     return _decodeRawEnvelope(jsonText, fallbackMethod: methodName);
@@ -399,6 +500,32 @@ final class CoreClient {
       onProgress: onProgress,
     );
     return _decodeRawEnvelope(jsonText, fallbackMethod: methodName);
+  }
+
+  /// Read Mojang's version manifest through the C# module.
+  Future<MojangVersionList> listGameVersions({
+    bool includeSnapshots = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'version.list';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'includeSnapshots': includeSnapshots,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return MojangVersionList(
+      latestRelease: _asString(data['latestRelease']),
+      latestSnapshot: _asString(data['latestSnapshot']),
+      items: List<MojangGameVersion>.unmodifiable(
+        _asList(data['items'])
+            .map(MojangGameVersion.tryParse)
+            .whereType<MojangGameVersion>(),
+      ),
+    );
   }
 
   /// Search Modrinth through the C# module.
@@ -544,19 +671,27 @@ final class CoreClient {
     return _parseSettings(jsonText, methodName);
   }
 
-  /// Update the global instances directory and persist it atomically.
-  Future<AppSettings> setInstancesRoot(
-    String instancesRoot, {
+  /// Update all configured instance roots and persist them atomically.
+  Future<AppSettings> setInstanceRoots(
+    List<String> instancesRoots, {
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'settings.set';
     final jsonText = await _runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{'instancesRoot': instancesRoot}),
+      paramsJson: jsonEncode(<String, Object?>{
+        'instancesRoots': instancesRoots,
+      }),
       onProgress: onProgress,
     );
     return _parseSettings(jsonText, methodName);
   }
+
+  /// Backward-compatible single-root update.
+  Future<AppSettings> setInstancesRoot(
+    String instancesRoot, {
+    void Function(int done, int total)? onProgress,
+  }) => setInstanceRoots([instancesRoot], onProgress: onProgress);
 
   AppSettings _parseSettings(String jsonText, String methodName) {
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
@@ -584,6 +719,55 @@ final class CoreClient {
       _asList(data['items'])
           .map(GameInstance.fromNative)
           .whereType<GameInstance>(),
+    );
+  }
+
+  /// Reconcile configured roots with the C# instance index.
+  Future<InstanceSyncResult> syncInstances({
+    List<String> roots = const <String>[],
+    bool dryRun = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'instance.sync';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        if (roots.isNotEmpty) 'roots': roots,
+        'dryRun': dryRun,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final items = _asList(data['items'])
+        .map(GameInstance.fromNative)
+        .whereType<GameInstance>()
+        .toList(growable: false);
+    final rootsStatus = <InstanceRootStatus>[];
+    for (final value in _asList(data['roots'])) {
+      if (value is! Map) continue;
+      rootsStatus.add(
+        InstanceRootStatus(
+          path: value['path']?.toString() ?? '',
+          exists: value['exists'] == true,
+          instanceCount: _asInt(value['instanceCount']) ?? 0,
+        ),
+      );
+    }
+    return InstanceSyncResult(
+      items: List<GameInstance>.unmodifiable(items),
+      adopted: _asList(data['adopted'])
+          .map((value) => value.toString())
+          .toList(),
+      updated: _asList(data['updated'])
+          .map((value) => value.toString())
+          .toList(),
+      missing: _asList(data['missing'])
+          .whereType<Map<Object?, Object?>>()
+          .map((value) => value['id']?.toString() ?? '')
+          .where((value) => value.isNotEmpty)
+          .toList(),
+      roots: List<InstanceRootStatus>.unmodifiable(rootsStatus),
     );
   }
 

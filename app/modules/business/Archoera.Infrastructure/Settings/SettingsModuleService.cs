@@ -56,7 +56,8 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             return Error("E_INVALID", "settings.set requires a JSON object");
         }
 
-        string? instancesRoot;
+        IReadOnlyList<string>? instancesRoots = null;
+        string? legacyRoot = null;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -65,28 +66,50 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 return Error("E_INVALID", "settings.set requires a JSON object");
             }
 
-            instancesRoot = document.RootElement.TryGetProperty(
-                    "instancesRoot",
-                    out var element) &&
-                element.ValueKind == JsonValueKind.String
-                ? element.GetString()
-                : null;
+            if (document.RootElement.TryGetProperty("instancesRoots", out var rootsElement) &&
+                rootsElement.ValueKind == JsonValueKind.Array)
+            {
+                var roots = new List<string>();
+                foreach (var item in rootsElement.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String &&
+                        !string.IsNullOrWhiteSpace(item.GetString()))
+                    {
+                        roots.Add(item.GetString()!);
+                    }
+                }
+
+                instancesRoots = roots;
+            }
+
+            if (document.RootElement.TryGetProperty("instancesRoot", out var rootElement) &&
+                rootElement.ValueKind == JsonValueKind.String)
+            {
+                legacyRoot = rootElement.GetString();
+            }
         }
         catch (JsonException exception)
         {
             return Error("E_INVALID", exception.Message);
         }
 
-        if (string.IsNullOrWhiteSpace(instancesRoot) ||
-            !Path.IsPathFullyQualified(instancesRoot))
+        if (instancesRoots is { Count: > 0 })
         {
-            return Error("E_INVALID", "instancesRoot must be an absolute directory");
+            var settings = await _store
+                .SaveInstancesRootsAsync(instancesRoots, cancellationToken)
+                .ConfigureAwait(false);
+            return Build(settings);
         }
 
-        var settings = await _store
-            .SaveInstancesRootAsync(instancesRoot, cancellationToken)
-            .ConfigureAwait(false);
-        return Build(settings);
+        if (string.IsNullOrWhiteSpace(legacyRoot) ||
+            !Path.IsPathFullyQualified(legacyRoot))
+        {
+            return Error("E_INVALID", "instancesRoots must contain absolute directories");
+        }
+
+        return Build(await _store
+            .SaveInstancesRootAsync(legacyRoot, cancellationToken)
+            .ConfigureAwait(false));
     }
 
     private static byte[] Build(AppSettings settings)
@@ -99,6 +122,12 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             writer.WriteStartObject("data");
             writer.WriteStartObject("settings");
             writer.WriteString("instancesRoot", settings.InstancesRoot);
+            writer.WriteStartArray("instancesRoots");
+            foreach (var root in settings.Roots)
+            {
+                writer.WriteStringValue(root);
+            }
+            writer.WriteEndArray();
             writer.WriteString("dataRoot", settings.DataRoot);
             writer.WriteString("settingsPath", settings.SettingsPath);
             writer.WriteEndObject();

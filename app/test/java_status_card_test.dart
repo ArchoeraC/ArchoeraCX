@@ -166,12 +166,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shows at most three runtimes', (tester) async {
+  testWidgets('shows at most five runtimes', (tester) async {
     final items = [
       runtime('/java/one', '21.0.4', 'amd64'),
       runtime('/java/two', '17.0.12', 'amd64'),
       runtime('/java/three', '11.0.24', 'amd64'),
       runtime('/java/four', '8.0.442', 'amd64'),
+      runtime('/java/five', '8.0.402', 'amd64'),
+      runtime('/java/six', '7.0.352', 'amd64'),
     ];
 
     await tester.pumpWidget(
@@ -189,17 +191,19 @@ void main() {
     await tester.tap(find.text('Scan Java'));
     await tester.pumpAndSettle();
 
-    expect(find.text('4 Java runtimes found'), findsOneWidget);
+    expect(find.text('6 Java runtimes found'), findsOneWidget);
     expect(find.text('/java/one'), findsOneWidget);
     expect(find.text('/java/two'), findsOneWidget);
     expect(find.text('/java/three'), findsOneWidget);
-    expect(find.text('/java/four'), findsNothing);
-    expect(find.text('View all 4'), findsOneWidget);
-
-    await tester.tap(find.text('View all 4'));
-    await tester.pumpAndSettle();
-    expect(find.text('Java runtimes (4)'), findsOneWidget);
     expect(find.text('/java/four'), findsOneWidget);
+    expect(find.text('/java/five'), findsOneWidget);
+    expect(find.text('/java/six'), findsNothing);
+    expect(find.text('View all 6'), findsOneWidget);
+
+    await tester.tap(find.text('View all 6'));
+    await tester.pumpAndSettle();
+    expect(find.text('Java runtimes (6)'), findsOneWidget);
+    expect(find.text('/java/six'), findsOneWidget);
 
     expect(tester.takeException(), isNull);
   });

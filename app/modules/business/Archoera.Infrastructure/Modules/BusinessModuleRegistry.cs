@@ -3,6 +3,7 @@ using Archoera.Infrastructure.Accounts;
 using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Loaders;
+using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Resources;
 using Archoera.Infrastructure.Settings;
 
@@ -19,6 +20,7 @@ public static class BusinessModuleRegistry
         => new(
         [
             new JavaModuleService(),
+            new VersionModuleService(),
             new LoaderModuleService(),
             new ResourceModuleService(),
             new AccountModuleService(dataRoot: dataRoot),
@@ -29,6 +31,7 @@ public static class BusinessModuleRegistry
                     ? null
                     : new SqliteInstanceRepository(
                         dataRoot,
-                        new JsonAppSettingsStore(dataRoot))),
+                        new JsonAppSettingsStore(dataRoot)),
+                dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
         ]);
 }

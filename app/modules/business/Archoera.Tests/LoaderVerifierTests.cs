@@ -1,3 +1,4 @@
+using Archoera.Application.Loaders;
 using Archoera.Domain.Loaders;
 using Archoera.Infrastructure.Loaders;
 
@@ -54,6 +55,27 @@ public sealed class LoaderVerifierTests
         Assert.Contains(
             verification.Details,
             detail => detail.StartsWith("sha1 mismatch:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Quick_mode_skips_hash_for_extracted_artifacts_but_full_does_not()
+    {
+        using var temp = new TempFixture("verify-quick");
+        var fixture = temp.Loader;
+        var manifest = await fixture.PlanAsync();
+        fixture.WriteAllValid(manifest);
+        var artifact = manifest.Artifacts.First(
+            candidate => candidate.Kind == LoaderArtifactKind.Extracted &&
+                         candidate.HasSha1 &&
+                         candidate.Size is > 0);
+        var path = fixture.Resolve(artifact);
+        var bytes = await File.ReadAllBytesAsync(path);
+        bytes[0] ^= 0xFF;
+        await File.WriteAllBytesAsync(path, bytes);
+
+        var verifier = new LoaderArtifactVerifier();
+        Assert.True(verifier.Verify(manifest, fixture.Root, LoaderVerifyMode.Quick).Ok);
+        Assert.False(verifier.Verify(manifest, fixture.Root, LoaderVerifyMode.Full).Ok);
     }
 
     [Fact]

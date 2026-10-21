@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../models/game_instance.dart';
 import '../stores/instances.dart';
+import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_page_header.dart';
@@ -94,7 +95,12 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
               children: [
                 _EmptyInstancesPanel(l10n: l10n),
                 _InstanceRootCard(
-                  root: ref.watch(appSettingsProvider).value?.instancesRoot,
+                  roots:
+                      ref.watch(appSettingsProvider).value?.roots ?? const [],
+                  defaultRoot: ref
+                      .watch(appSettingsProvider)
+                      .value
+                      ?.instancesRoot,
                   onOpenSettings: () => context.go('/settings'),
                 ),
               ],
@@ -120,6 +126,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                         .read(selectedInstanceIdProvider.notifier)
                         .select(filtered[i].id),
                     onLaunch: () => _launch(filtered[i]),
+                    onCheck: (mode) => _check(filtered[i], mode, l10n),
                     onDelete: () => _delete(filtered[i], l10n),
                   ),
                   if (i < filtered.length - 1)
@@ -159,6 +166,36 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
 
     if (confirmed == true && mounted) {
       await ref.read(instancesProvider.notifier).delete(instance.id);
+    }
+  }
+
+  Future<void> _check(
+    GameInstance instance,
+    String mode,
+    AppLocalizations l10n,
+  ) async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      _notify(context, l10n.commonCoreNotConnected);
+      return;
+    }
+
+    try {
+      final envelope = await client.checkLoader(
+        root: instance.rootPath,
+        kind: instance.loader.name,
+        gameVersion: instance.gameVersion,
+        loaderVersion: instance.loaderVersion,
+        mode: mode,
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) =>
+            _DependencyCheckDialog(l10n: l10n, mode: mode, envelope: envelope),
+      );
+    } catch (error) {
+      if (mounted) _notify(context, error.toString());
     }
   }
 
@@ -208,9 +245,8 @@ class _InstancesToolbar extends StatelessWidget {
         const SizedBox(width: AppSpacing.xxs),
         Text(
           query.isEmpty ? '$total ${l10n.statInstances}' : '$count / $total',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: tokens.textSecondary,
-          ),
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(color: tokens.textSecondary),
         ),
       ],
     );
@@ -267,9 +303,7 @@ class _EmptyInstancesPanel extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 520),
           child: Text(
             l10n.instanceEmptyMessage,
-            style: textTheme.bodyMedium?.copyWith(
-              color: tokens.textSecondary,
-            ),
+            style: textTheme.bodyMedium?.copyWith(color: tokens.textSecondary),
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -423,9 +457,14 @@ class _GuideRow extends StatelessWidget {
 }
 
 class _InstanceRootCard extends StatelessWidget {
-  const _InstanceRootCard({required this.root, required this.onOpenSettings});
+  const _InstanceRootCard({
+    required this.roots,
+    required this.defaultRoot,
+    required this.onOpenSettings,
+  });
 
-  final String? root;
+  final List<String> roots;
+  final String? defaultRoot;
   final VoidCallback onOpenSettings;
 
   @override
@@ -445,14 +484,18 @@ class _InstanceRootCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  l10n.settingsInstancesRoot,
+                  l10n.settingsInstanceRoots,
                   style: textTheme.labelMedium?.copyWith(
                     color: tokens.textTertiary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  root ?? '—',
+                  roots.isEmpty
+                      ? '—'
+                      : roots.length == 1
+                      ? roots.first
+                      : '${defaultRoot ?? roots.first}  +${roots.length - 1}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.bodySmall?.copyWith(
@@ -498,13 +541,83 @@ class _InlineNotice extends StatelessWidget {
           Flexible(
             child: Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: tokens.textSecondary,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: tokens.textSecondary),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DependencyCheckDialog extends StatelessWidget {
+  const _DependencyCheckDialog({
+    required this.l10n,
+    required this.mode,
+    required this.envelope,
+  });
+
+  final AppLocalizations l10n;
+  final String mode;
+  final Map<String, Object?> envelope;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final data = envelope['data'] is Map
+        ? envelope['data'] as Map<Object?, Object?>
+        : const <Object?, Object?>{};
+    final verification = data['verification'] is Map
+        ? data['verification'] as Map<Object?, Object?>
+        : const <Object?, Object?>{};
+    final missing = verification['missing'] is List
+        ? (verification['missing'] as List).length
+        : 0;
+    final mismatched = verification['mismatched'] is List
+        ? (verification['mismatched'] as List).length
+        : 0;
+    final ok = envelope['ok'] == true && verification['ok'] == true;
+    final error = envelope['error'] is Map
+        ? envelope['error'] as Map<Object?, Object?>
+        : null;
+    final errorCode = error?['code']?.toString();
+    final errorMessage = errorCode == 'MANIFEST_MISSING'
+        ? l10n.instanceManifestMissing
+        : error?['message']?.toString() ?? l10n.instanceCheckFailed;
+
+    return AlertDialog(
+      title: Text(l10n.instanceCheckTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            mode == 'full' ? l10n.instanceCheckFull : l10n.instanceCheckQuick,
+            style: Theme.of(context).textTheme.labelLarge
+                ?.copyWith(color: tokens.accent),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (ok)
+            Text(l10n.instanceCheckOk, style: TextStyle(color: tokens.success))
+          else if (error != null)
+            Text(errorMessage, style: TextStyle(color: tokens.danger))
+          else ...[
+            Text(
+              l10n.instanceCheckFailed,
+              style: TextStyle(color: tokens.danger),
+            ),
+            if (missing > 0) Text(l10n.instanceCheckMissing(missing)),
+            if (mismatched > 0) Text(l10n.instanceCheckMismatched(mismatched)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonClose),
+        ),
+      ],
     );
   }
 }
@@ -515,6 +628,7 @@ class _InstanceRow extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onLaunch,
+    required this.onCheck,
     required this.onDelete,
   });
 
@@ -522,6 +636,7 @@ class _InstanceRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onSelect;
   final VoidCallback onLaunch;
+  final ValueChanged<String> onCheck;
   final VoidCallback onDelete;
 
   @override
@@ -568,12 +683,13 @@ class _InstanceRow extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${instance.gameVersion} · ${instance.loader.label} · '
-                          '${l10n.instanceMods(instance.modCount)}',
+                          _instanceMeta(instance, l10n),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: textTheme.bodySmall?.copyWith(
-                            color: tokens.textTertiary,
+                            color: instance.missing
+                                ? tokens.danger
+                                : tokens.textTertiary,
                           ),
                         ),
                       ],
@@ -590,7 +706,7 @@ class _InstanceRow extends StatelessWidget {
                   ],
                   const SizedBox(width: AppSpacing.xs),
                   TextButton.icon(
-                    onPressed: onLaunch,
+                    onPressed: instance.missing ? null : onLaunch,
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
                     label: Text(l10n.launch),
                   ),
@@ -602,8 +718,33 @@ class _InstanceRow extends StatelessWidget {
                     ),
                     onSelected: (value) {
                       if (value == 'delete') onDelete();
+                      if (value == 'checkQuick') onCheck('quick');
+                      if (value == 'checkFull') onCheck('full');
                     },
                     itemBuilder: (context) => [
+                      if (instance.loader == GameLoader.forge ||
+                          instance.loader == GameLoader.neoforge) ...[
+                        PopupMenuItem(
+                          value: 'checkQuick',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.bolt_rounded, size: 20),
+                              const SizedBox(width: AppSpacing.xs),
+                              Text(l10n.instanceCheckQuick),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'checkFull',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.fact_check_outlined, size: 20),
+                              const SizedBox(width: AppSpacing.xs),
+                              Text(l10n.instanceCheckFull),
+                            ],
+                          ),
+                        ),
+                      ],
                       PopupMenuItem(
                         value: 'delete',
                         child: Row(
@@ -627,6 +768,17 @@ class _InstanceRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _instanceMeta(GameInstance instance, AppLocalizations l10n) {
+  final parts = <String>[
+    instance.gameVersion,
+    instance.loader.label,
+    l10n.instanceMods(instance.modCount),
+  ];
+  if (instance.missing) parts.insert(0, l10n.instanceMissing);
+  if (instance.custom) parts.insert(0, l10n.instanceCustom);
+  return parts.join(' · ');
 }
 
 IconData _iconFor(GameLoader loader) => switch (loader) {

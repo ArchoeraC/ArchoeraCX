@@ -9,7 +9,10 @@ namespace Archoera.Infrastructure.Loaders;
 /// </summary>
 public sealed class LoaderArtifactVerifier : ILoaderArtifactVerifier
 {
-    public LoaderVerification Verify(LoaderArtifactManifest manifest, string root)
+    public LoaderVerification Verify(
+        LoaderArtifactManifest manifest,
+        string root,
+        LoaderVerifyMode mode = LoaderVerifyMode.Full)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
@@ -82,7 +85,11 @@ public sealed class LoaderArtifactVerifier : ILoaderArtifactVerifier
             var hashMismatch = false;
             string? actualSha1 = null;
 
-            if (artifact.HasSha1)
+            var shouldHash = artifact.HasSha1 &&
+                             (mode == LoaderVerifyMode.Full ||
+                              (artifact.Kind == LoaderArtifactKind.Generated &&
+                               artifact.RequiredForLaunch));
+            if (shouldHash)
             {
                 try
                 {
