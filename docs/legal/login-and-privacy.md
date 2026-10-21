@@ -87,6 +87,34 @@ ArchoeraCX 当前采用本地处理、无自有后端、令牌加密存储、日
 “已符合某部法律”。发行前应把构建通道、默认等级和实际能力做成可审计的一致
 状态，并由律师复核。
 
+
+### 3.5 其它启动器的隐私处理参考
+
+以下只比较公开可见的做法，不复制其文本或代码：
+
+| 项目 | 公开做法 | 本项目取舍 |
+|---|---|---|
+| Prism Launcher | 数据保存在本机；不向自有服务器上传；关闭更新检查后不主动联网 | 采用“本地优先”，不新增遥测/云同步；下载和登录仍按用户操作直连第三方 |
+| Modrinth App | 明确列出收集类别、第三方处理者、用户权利和跨境；账号与内容服务有完整隐私文档 | 采用分类、第三方清单、权利与删除章节；不引入其账号/云功能 |
+| Dawn Launcher | 将启动结果、系统信息和可选的 support bundle 分类说明，区分自动遥测与显式上传 | 当前不自动上传；本地日志与后续可选诊断必须明确区分 |
+| HMCL / PCL2 | 账户凭据本地加密；不提供云端账户同步；对敏感配置和日志较谨慎 | 继续本地加密保险库，不做云账户，不把日志上传作为默认行为 |
+
+共同点：**默认本地、默认不收集、第三方服务单独披露、用户可删除本地数据**。
+这与当前 PRIVACY.md 的方向一致。
+
+参考链接：Prism Launcher 隐私说明
+<https://github.com/PrismLauncher/prismlauncher.org/issues/110>；
+Modrinth 隐私政策 <https://modrinth.com/legal/privacy>；
+Dawn Launcher 隐私政策 <https://dawn.gg/privacy>。
+
+### 3.5.1 本项目明确不做
+
+- 不做广告 SDK、行为分析、设备指纹；
+- 不做云端账户同步或云端实例同步；
+- 不默认上传崩溃报告、日志或 Mod 列表；
+- 不把 Microsoft/Minecraft token 发送到自有服务器；
+- 不把第三方站点内容镜像后冒充官方。
+
 ## 4. 登录部分的产品决定
 
 ### 4.1 发布版
@@ -128,6 +156,19 @@ ArchoeraCX 当前采用本地处理、无自有后端、令牌加密存储、日
 `launch.start` 接受 `mode` 参数；在线模式当前返回明确的“未就绪”错误，而不是
 把在线账户当成离线启动。后续接入 `/entitlements/mcstore`、证书和令牌时，
 不改变现有 Dart/C++ 方法名。
+
+
+### 4.4 中国大陆构建的下载裁剪
+
+在完成律师复核前，中国大陆发行构建直接裁剪在线下载能力，而非仅灰置按钮：
+
+- 不显示 Download 导航和入口；
+- `resource.*`、`download.execute`、`version.plan/commit`、`loader.versions/plan/commit` 不在 C++ 路由表；
+- C# 不注册 ResourceModuleService/LoaderVersionService；Version/Loader 服务只保留本地元数据/校验方法；
+- Dart CoreClient 对下载方法返回 `DOWNLOAD_DISABLED`；
+- 登录、实例管理、本地启动、本地 Mod 管理保留。
+
+构建入口：`app/tool/build-cn.sh`。全球/开发构建仍保留下载能力，并按各自发行地区另行评估。
 
 ## 5. 尚未完成 / 需要律师确认
 

@@ -13,14 +13,17 @@ namespace Archoera.Infrastructure.Mojang;
 /// <summary>Registered handler for read-only Mojang version metadata.</summary>
 public sealed class VersionModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods =
-        ["version.list", "version.plan", "version.commit"];
-
+    private readonly string[] _supportedMethods;
     private readonly IMojangMetadataClient _client;
     private readonly MojangPlanService _planService;
 
-    public VersionModuleService(IMojangMetadataClient? client = null)
+    public VersionModuleService(
+        IMojangMetadataClient? client = null,
+        bool enableDownloads = true)
     {
+        _supportedMethods = enableDownloads
+            ? ["version.list", "version.plan", "version.commit"]
+            : ["version.list"];
         _client = client ?? new MojangClient(
             new HttpClient(),
             new MojangClientOptions
@@ -32,7 +35,7 @@ public sealed class VersionModuleService : IModuleMethodHandler
         _planService = new MojangPlanService(_client);
     }
 
-    public IReadOnlyCollection<string> Methods => SupportedMethods;
+    public IReadOnlyCollection<string> Methods => _supportedMethods;
 
     private async Task<byte[]> PlanAsync(
         string? paramsJson,

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../l10n/l10n_labels.dart';
 import '../models/game_instance.dart';
+import '../services/core/build_policy.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
@@ -22,6 +23,7 @@ class DashboardPage extends ConsumerWidget {
     final instancesAsync = ref.watch(instancesProvider);
     final instances = instancesAsync.value ?? const <GameInstance>[];
     final selected = ref.watch(selectedInstanceProvider);
+    final downloadsEnabled = ref.watch(downloadEnabledProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
@@ -44,7 +46,7 @@ class DashboardPage extends ConsumerWidget {
             l10n: l10n,
             instanceCount: instances.length,
             onInstances: () => context.go('/instances'),
-            onDownload: () => context.go('/download'),
+            onDownload: downloadsEnabled ? () => context.go('/download') : null,
           ),
           const SizedBox(height: AppSpacing.lg),
           _RecentInstancesSection(
@@ -294,7 +296,7 @@ class _ShortcutStrip extends StatelessWidget {
   final AppLocalizations l10n;
   final int instanceCount;
   final VoidCallback onInstances;
-  final VoidCallback onDownload;
+  final VoidCallback? onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -306,12 +308,13 @@ class _ShortcutStrip extends StatelessWidget {
         value: l10n.instancesCount(instanceCount),
         onTap: onInstances,
       ),
-      _ShortcutCell(
-        icon: Icons.download_rounded,
-        title: l10n.dashboardBrowseContent,
-        value: l10n.sourceModrinth,
-        onTap: onDownload,
-      ),
+      if (onDownload != null)
+        _ShortcutCell(
+          icon: Icons.download_rounded,
+          title: l10n.dashboardBrowseContent,
+          value: l10n.sourceModrinth,
+          onTap: onDownload!,
+        ),
     ];
 
     return AppPanel(

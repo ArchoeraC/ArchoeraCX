@@ -15,9 +15,7 @@ namespace Archoera.Infrastructure.Loaders;
 /// <summary>Registered handler for <c>loader.verify</c> / <c>loader.repair</c>.</summary>
 public sealed class LoaderModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods =
-        ["loader.verify", "loader.repair", "loader.check", "loader.plan", "loader.commit"];
-
+    private readonly string[] _supportedMethods;
     private readonly IForgeArtifactPlanner _planner;
     private readonly ILoaderArtifactVerifier _verifier;
     private readonly IForgeRepairService _repairService;
@@ -25,8 +23,12 @@ public sealed class LoaderModuleService : IModuleMethodHandler
     public LoaderModuleService(
         IForgeArtifactPlanner? planner = null,
         ILoaderArtifactVerifier? verifier = null,
-        IForgeRepairService? repairService = null)
+        IForgeRepairService? repairService = null,
+        bool enableDownloads = true)
     {
+        _supportedMethods = enableDownloads
+            ? ["loader.verify", "loader.repair", "loader.check", "loader.plan", "loader.commit"]
+            : ["loader.verify", "loader.repair", "loader.check"];
         _planner = planner ?? new ForgeArtifactPlanner();
         _verifier = verifier ?? new LoaderArtifactVerifier();
         _repairService = repairService ?? new ForgeRepairService(
@@ -34,7 +36,7 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             _verifier);
     }
 
-    public IReadOnlyCollection<string> Methods => SupportedMethods;
+    public IReadOnlyCollection<string> Methods => _supportedMethods;
 
     public async Task<byte[]> HandleAsync(
         string method,

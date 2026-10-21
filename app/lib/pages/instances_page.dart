@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../l10n/l10n_labels.dart';
 import '../models/game_instance.dart';
+import '../services/core/build_policy.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../stores/providers.dart';
@@ -71,6 +72,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final instancesAsync = ref.watch(instancesProvider);
+    final downloadsEnabled = ref.watch(downloadEnabledProvider);
     final instances = instancesAsync.value ?? const <GameInstance>[];
     final selectedId = ref.watch(selectedInstanceIdProvider);
     final query = _query.trim().toLowerCase();
@@ -181,6 +183,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                     onCheck: (mode) => _check(filtered[i], mode, l10n),
                     onManageLoader: () =>
                         showLoaderInstallDialog(context, filtered[i]),
+                    downloadsEnabled: downloadsEnabled,
                     onInstallGame: () =>
                         showVanillaInstallDialog(context, filtered[i]),
                     onManageMods: () =>
@@ -714,6 +717,7 @@ class _InstanceRow extends StatelessWidget {
     required this.onCheck,
     required this.onManageLoader,
     required this.onInstallGame,
+    required this.downloadsEnabled,
     required this.onManageMods,
     required this.onDelete,
   });
@@ -725,6 +729,7 @@ class _InstanceRow extends StatelessWidget {
   final ValueChanged<String> onCheck;
   final VoidCallback onManageLoader;
   final VoidCallback onInstallGame;
+  final bool downloadsEnabled;
   final VoidCallback onManageMods;
   final VoidCallback onDelete;
 
@@ -812,26 +817,28 @@ class _InstanceRow extends StatelessWidget {
                       if (value == 'checkFull') onCheck('full');
                     },
                     itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'manageLoader',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.build_circle_outlined, size: 20),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(l10n.instanceManageLoader),
-                          ],
+                      if (downloadsEnabled) ...[
+                        PopupMenuItem(
+                          value: 'manageLoader',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.build_circle_outlined, size: 20),
+                              const SizedBox(width: AppSpacing.xs),
+                              Text(l10n.instanceManageLoader),
+                            ],
+                          ),
                         ),
-                      ),
-                      PopupMenuItem(
-                        value: 'installGame',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.download_rounded, size: 20),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(l10n.instanceInstallGame),
-                          ],
+                        PopupMenuItem(
+                          value: 'installGame',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.download_rounded, size: 20),
+                              const SizedBox(width: AppSpacing.xs),
+                              Text(l10n.instanceInstallGame),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                       PopupMenuItem(
                         value: 'manageMods',
                         child: Row(

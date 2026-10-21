@@ -11,6 +11,7 @@ import '../models/account.dart';
 import '../models/game_instance.dart';
 import '../stores/accounts.dart';
 import '../services/launch/launch_action.dart';
+import '../services/core/build_policy.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/task_center_button.dart';
@@ -95,30 +96,36 @@ class _AppShellState extends ConsumerState<AppShell> {
     final destinations = <AppDestination>[
       AppDestination(
         path: '/',
+        branchIndex: 0,
         label: l10n.navDashboard,
         icon: Icons.space_dashboard_outlined,
         selectedIcon: Icons.space_dashboard_rounded,
       ),
       AppDestination(
         path: '/instances',
+        branchIndex: 1,
         label: l10n.navInstances,
         icon: Icons.grid_view_outlined,
         selectedIcon: Icons.grid_view_rounded,
       ),
-      AppDestination(
-        path: '/download',
-        label: l10n.navDownload,
-        icon: Icons.download_outlined,
-        selectedIcon: Icons.download_rounded,
-      ),
+      if (ref.watch(downloadEnabledProvider))
+        AppDestination(
+          path: '/download',
+          branchIndex: 2,
+          label: l10n.navDownload,
+          icon: Icons.download_outlined,
+          selectedIcon: Icons.download_rounded,
+        ),
       AppDestination(
         path: '/accounts',
+        branchIndex: 3,
         label: l10n.navAccounts,
         icon: Icons.person_outline_rounded,
         selectedIcon: Icons.person_rounded,
       ),
       AppDestination(
         path: '/settings',
+        branchIndex: 4,
         label: l10n.navSettings,
         icon: Icons.tune_outlined,
         selectedIcon: Icons.tune_rounded,
@@ -193,12 +200,14 @@ class _AppShellState extends ConsumerState<AppShell> {
 class AppDestination {
   const AppDestination({
     required this.path,
+    required this.branchIndex,
     required this.label,
     required this.icon,
     required this.selectedIcon,
   });
 
   final String path;
+  final int branchIndex;
   final String label;
   final IconData icon;
   final IconData selectedIcon;
@@ -463,16 +472,18 @@ class _CommandBar extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          for (var i = 0; i < destinations.length; i++)
+                          for (final destination in destinations)
                             Padding(
                               padding: const EdgeInsets.only(
                                 right: AppSpacing.xxs,
                               ),
                               child: _NavItem(
-                                destination: destinations[i],
-                                selected: i == currentIndex,
+                                destination: destination,
+                                selected:
+                                    destination.branchIndex == currentIndex,
                                 compact: compactNav,
-                                onTap: () => onSelected(i),
+                                onTap: () =>
+                                    onSelected(destination.branchIndex),
                               ),
                             ),
                         ],
