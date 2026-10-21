@@ -237,6 +237,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instanceNoMatches => 'No instances match your search.';
 
   @override
+  String get instanceScanAction => 'Scan instances';
+
+  @override
+  String get instanceScanning => 'Scanning instance folders…';
+
+  @override
   String get instanceDelete => 'Delete instance';
 
   @override

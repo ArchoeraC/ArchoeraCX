@@ -201,6 +201,68 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
+    public async Task Sqlite_sync_discovers_sjmcl_versions_layout()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "minecraft");
+            var instanceDir = Path.Combine(root, "versions", "Server Test");
+            Directory.CreateDirectory(Path.Combine(instanceDir, "mods"));
+            await File.WriteAllTextAsync(
+                Path.Combine(instanceDir, "mods", "example.jar"),
+                "not a real jar");
+            await File.WriteAllTextAsync(
+                Path.Combine(instanceDir, "sjmclcfg.json"),
+                """
+                {
+                  "name": "Server Test",
+                  "version": "1.21.8",
+                  "modLoader": {
+                    "loaderType": "Fabric",
+                    "version": "fabric-loader-0.18.4"
+                  }
+                }
+                """);
+            await File.WriteAllTextAsync(
+                Path.Combine(instanceDir, "Server Test.json"),
+                """{"id":"Server Test","mainClass":"net.fabricmc.loader.impl.launch.knot.KnotClient"}""");
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "lx_profiles.json"),
+                $$"""
+                {
+                  "profiles": {
+                    "p1": {
+                      "name": "Server Test",
+                      "gameDir": {{JsonSerializer.Serialize(instanceDir)}},
+                      "lastUsed": "2026-10-20T12:00:00+00:00"
+                    }
+                  }
+                }
+                """);
+
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootAsync(root);
+            var repository = new SqliteInstanceRepository(dataRoot, settings);
+            var report = await repository.SyncAsync(null, dryRun: false);
+
+            var item = Assert.Single(report.Items);
+            Assert.Equal("Server Test", item.Name);
+            Assert.Equal("1.21.8", item.GameVersion);
+            Assert.Equal("fabric", item.Loader);
+            Assert.Equal("0.18.4", item.LoaderVersion);
+            Assert.Equal(1, item.ModCount);
+            Assert.Equal("inst-", item.Id[..5]);
+            Assert.NotNull(item.LastPlayedAt);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Sqlite_sync_adopts_instances_from_configured_roots()
     {
         var directory = TempDirectory();

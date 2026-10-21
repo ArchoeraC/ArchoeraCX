@@ -94,6 +94,8 @@
   "instanceEmptyTitle": "No instances yet",
   "instanceEmptyMessage": "Create a vanilla or modded instance to get started.",
   "instanceNoMatches": "No instances match your search.",
+  "instanceScanAction": "Scan instances",
+  "instanceScanning": "Scanning instance folders…",
   "instanceDelete": "Delete instance",
   "instanceDeleteConfirm": "Delete “{name}”?",
   "instanceCheckQuick": "Quick check",

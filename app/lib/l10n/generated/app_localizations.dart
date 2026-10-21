@@ -494,6 +494,18 @@ abstract class AppLocalizations {
   /// **'No instances match your search.'**
   String get instanceNoMatches;
 
+  /// No description provided for @instanceScanAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan instances'**
+  String get instanceScanAction;
+
+  /// No description provided for @instanceScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning instance folders…'**
+  String get instanceScanning;
+
   /// No description provided for @instanceDelete.
   ///
   /// In en, this message translates to:

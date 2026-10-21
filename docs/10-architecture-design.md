@@ -2878,7 +2878,19 @@ ArchoeraCX/
 5. 接通“扫描 Java → 安装 1.21.4 → 启动（假 JVM/真实 JVM）”。
 6. 压测：取消/断网/磁盘满/崩溃注入。
 
-> ### 跨平台路径约束
+> ### 实例目录识别
+
+`instance.sync` 不要求实例必须带 `.archoera/instance.json`。它会识别：
+
+- ArchoeraCX 自有布局：`<instance>/.archoera/instance.json`
+- LauncherX / SJMCL：`versions/<name>/sjmclcfg.json` + `lx_profiles.json`
+- MultiMC / Prism：`mmc-pack.json`、`instance.cfg`
+- Modrinth 整合包：`modrinth.index.json`
+- 通用游戏目录：`versions/<name>/` 下的版本 JSON、`mods/`、`saves/`、`options.txt`、`config/`
+
+导入采用**只读发现 + SQLite 索引**：不会为导入实例写 `.archoera`，ID 由规范化路径的 SHA-256 稳定生成；`instance.list` 返回 `instanceRoot` / `custom` / `missing`。添加根目录后会自动同步，实例页也提供手动“扫描实例”。
+
+### 跨平台路径约束
 
 - 原生库、模块和 `archoera-dl` 的解析必须以**可执行文件目录**为基准（Windows runner、Linux bundle `lib/`、macOS `Contents/Frameworks`），不能依赖进程 CWD。
 - 进程 CWD 可能因为安装目录被替换/删除而失效；所有 `Directory.current`/`Environment.CurrentDirectory` 访问必须容错。
