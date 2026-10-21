@@ -34,12 +34,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get navSettings => '设置';
 
   @override
-  String get navTasks => '任务';
-
-  @override
-  String get navNotifications => '通知';
-
-  @override
   String get coreOffline => '核心未连接';
 
   @override
@@ -62,12 +56,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonCoreNotConnected => '原生核心尚未连接。';
-
-  @override
-  String get commonNoTasks => '暂无进行中的任务。';
-
-  @override
-  String get commonNoNotifications => '暂无通知。';
 
   @override
   String get dashboardTitle => '主页';
@@ -656,63 +644,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSource => '源代码';
-
-  @override
-  String get coreStatusTitle => '核心状态';
-
-  @override
-  String get coreStatusIdle => '空闲';
-
-  @override
-  String get coreStatusConnecting => '探测中';
-
-  @override
-  String get coreStatusConnected => '已连接';
-
-  @override
-  String get coreStatusUnavailable => '核心不可用';
-
-  @override
-  String get coreStatusIdleHint => '原生核心已加载，点击探测以验证 ABI。';
-
-  @override
-  String get coreStatusPingingHint => '正在调用 system.pingAsync…';
-
-  @override
-  String coreStatusProgress(int done, int total) {
-    return '进度：$done/$total';
-  }
-
-  @override
-  String get coreStatusUnavailableHint => '未找到原生核心库，或无法加载。';
-
-  @override
-  String get coreStatusPing => '探测核心';
-
-  @override
-  String coreStatusPong(String value) {
-    return 'pong：$value';
-  }
-
-  @override
-  String coreStatusMethod(String method) {
-    return '方法：$method';
-  }
-
-  @override
-  String coreStatusAbiVersion(int version) {
-    return 'ABI v$version';
-  }
-
-  @override
-  String coreStatusBuildInfo(String build) {
-    return '构建：$build';
-  }
-
-  @override
-  String coreStatusPingFailed(String message) {
-    return '探测失败：$message';
-  }
 
   @override
   String get javaStatusTitle => 'Java';

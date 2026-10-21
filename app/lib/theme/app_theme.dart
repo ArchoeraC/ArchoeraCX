@@ -43,6 +43,15 @@ abstract final class AppTheme {
       extensions: [tokens],
     );
 
+    final panelCut = BorderRadius.only(
+      topRight: Radius.circular(tokens.bevelL),
+      bottomLeft: Radius.circular(tokens.bevelS),
+    );
+    final dialogCut = BorderRadius.only(
+      topLeft: Radius.circular(tokens.bevelL),
+      bottomRight: Radius.circular(tokens.bevelS),
+    );
+
     return base.copyWith(
       textTheme: _textTheme(base.textTheme, tokens),
       appBarTheme: AppBarTheme(
@@ -60,6 +69,43 @@ abstract final class AppTheme {
           side: BorderSide(color: tokens.border),
         ),
         margin: EdgeInsets.zero,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: tokens.surface1,
+        surfaceTintColor: Colors.transparent,
+        shape: BeveledRectangleBorder(
+          side: BorderSide(color: tokens.border),
+          borderRadius: dialogCut,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: tokens.surface1,
+        modalBackgroundColor: tokens.surface1,
+        surfaceTintColor: Colors.transparent,
+        shape: BeveledRectangleBorder(
+          side: BorderSide(color: tokens.border),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(tokens.bevelL),
+            topRight: Radius.circular(tokens.bevelL),
+          ),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: tokens.surface1,
+        surfaceTintColor: Colors.transparent,
+        shape: BeveledRectangleBorder(
+          side: BorderSide(color: tokens.border),
+          borderRadius: panelCut,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: tokens.textPrimary,
+        contentTextStyle: TextStyle(color: tokens.bg),
+        shape: BeveledRectangleBorder(
+          side: BorderSide(color: tokens.border),
+          borderRadius: panelCut,
+        ),
       ),
       dividerTheme: DividerThemeData(
         color: tokens.border,

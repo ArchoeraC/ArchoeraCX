@@ -34,12 +34,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSettings => 'Settings';
 
   @override
-  String get navTasks => 'Tasks';
-
-  @override
-  String get navNotifications => 'Notifications';
-
-  @override
   String get coreOffline => 'Core offline';
 
   @override
@@ -62,12 +56,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonCoreNotConnected => 'The native core is not connected yet.';
-
-  @override
-  String get commonNoTasks => 'No active tasks.';
-
-  @override
-  String get commonNoNotifications => 'No notifications.';
 
   @override
   String get dashboardTitle => 'Dashboard';
@@ -676,65 +664,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSource => 'Source code';
-
-  @override
-  String get coreStatusTitle => 'Core status';
-
-  @override
-  String get coreStatusIdle => 'Idle';
-
-  @override
-  String get coreStatusConnecting => 'Pinging';
-
-  @override
-  String get coreStatusConnected => 'Connected';
-
-  @override
-  String get coreStatusUnavailable => 'Core unavailable';
-
-  @override
-  String get coreStatusIdleHint =>
-      'The native core is loaded. Ping it to verify the ABI.';
-
-  @override
-  String get coreStatusPingingHint => 'Calling system.pingAsync…';
-
-  @override
-  String coreStatusProgress(int done, int total) {
-    return 'Progress: $done/$total';
-  }
-
-  @override
-  String get coreStatusUnavailableHint =>
-      'The native core library was not found or could not be loaded.';
-
-  @override
-  String get coreStatusPing => 'Ping core';
-
-  @override
-  String coreStatusPong(String value) {
-    return 'pong: $value';
-  }
-
-  @override
-  String coreStatusMethod(String method) {
-    return 'Method: $method';
-  }
-
-  @override
-  String coreStatusAbiVersion(int version) {
-    return 'ABI v$version';
-  }
-
-  @override
-  String coreStatusBuildInfo(String build) {
-    return 'Build: $build';
-  }
-
-  @override
-  String coreStatusPingFailed(String message) {
-    return 'Ping failed: $message';
-  }
 
   @override
   String get javaStatusTitle => 'Java';
