@@ -349,6 +349,35 @@ final class CoreClient {
     return _parseJavaScan(jsonText, fallbackMethod: methodName);
   }
 
+  /// Ask C# to select a Java runtime for a game version. The settings decide
+  /// whether the manual path or automatic scan is used.
+  Future<JavaRuntime> selectJava({
+    String? gameVersion,
+    int? requiredMajor,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'java.select';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'gameVersion': ?gameVersion,
+        'requiredMajor': ?requiredMajor,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final runtime = JavaRuntime.tryParse(data);
+    if (runtime == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned no Java runtime.',
+      );
+    }
+    return runtime;
+  }
+
   /// Verify every generated/extracted artifact of a Forge/NeoForge install.
   ///
   /// The result is the raw `loader.verify` envelope. Unlike [scanJava], an
@@ -450,6 +479,7 @@ final class CoreClient {
       versionId: versionId,
       versionJson: versionJson,
       requiresJava: data['requiresJava'] == true,
+      installerPath: _asString(data['installerPath']),
     );
   }
 
