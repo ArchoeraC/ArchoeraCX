@@ -64,10 +64,9 @@ flutter gen-l10n
 dart analyze            # 中文路径下不要用 flutter analyze
 flutter test
 flutter build linux --release
-
-# 中国大陆默认禁用下载构建（需手动配置 compliance.json 解锁）
-./tool/build-cn.sh
 ```
+
+当前为单一发行版：启动时按粗粒度 IP/系统地区判断是否处于中国大陆网络。中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；其他地区默认启用下载。
 
 启动 release bundle：
 

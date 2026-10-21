@@ -1171,11 +1171,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'A verified Microsoft account is required before adding or selecting other accounts.';
 
   @override
-  String get downloadUnavailableTitle => 'Downloads are disabled';
+  String get downloadUnavailableTitle =>
+      'Downloads are disabled in this region';
 
   @override
   String get downloadUnavailableMessage =>
-      'Downloads are disabled by local policy. Add the required fields to the configuration file, then re-check. Your existing local instances and launch features remain available.';
+      'Downloads are disabled by the local region policy for the detected mainland-China network. Add the required fields to the configuration file, then re-check. Existing local instances and launch features remain available.';
 
   @override
   String downloadConfigPath(Object path) {

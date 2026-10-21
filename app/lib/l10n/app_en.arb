@@ -906,13 +906,13 @@
   "@accountPremiumRequiredHint": {
     "description": "Subtitle shown when offline accounts are gated."
   },
-  "downloadUnavailableTitle": "Downloads are disabled",
+  "downloadUnavailableTitle": "Downloads are disabled in this region",
   "@downloadUnavailableTitle": {
-    "description": "China build download block title."
+    "description": "Runtime regional download gate title."
   },
-  "downloadUnavailableMessage": "Downloads are disabled by local policy. Add the required fields to the configuration file, then re-check. Your existing local instances and launch features remain available.",
+  "downloadUnavailableMessage": "Downloads are disabled by the local region policy for the detected mainland-China network. Add the required fields to the configuration file, then re-check. Existing local instances and launch features remain available.",
   "@downloadUnavailableMessage": {
-    "description": "China build download block explanation."
+    "description": "Runtime regional download gate explanation."
   },
   "downloadConfigPath": "Configuration file: {path}",
   "@downloadConfigPath": {

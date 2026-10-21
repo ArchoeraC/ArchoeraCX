@@ -2114,16 +2114,16 @@ abstract class AppLocalizations {
   /// **'A verified Microsoft account is required before adding or selecting other accounts.'**
   String get accountPremiumRequiredHint;
 
-  /// China build download block title.
+  /// Runtime regional download gate title.
   ///
   /// In en, this message translates to:
-  /// **'Downloads are disabled'**
+  /// **'Downloads are disabled in this region'**
   String get downloadUnavailableTitle;
 
-  /// China build download block explanation.
+  /// Runtime regional download gate explanation.
   ///
   /// In en, this message translates to:
-  /// **'Downloads are disabled by local policy. Add the required fields to the configuration file, then re-check. Your existing local instances and launch features remain available.'**
+  /// **'Downloads are disabled by the local region policy for the detected mainland-China network. Add the required fields to the configuration file, then re-check. Existing local instances and launch features remain available.'**
   String get downloadUnavailableMessage;
 
   /// Download gate config path.

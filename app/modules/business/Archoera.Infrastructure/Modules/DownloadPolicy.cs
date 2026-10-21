@@ -19,9 +19,10 @@ public sealed class DownloadPolicyException(string code, string message) : Excep
 }
 
 /// <summary>
-/// Mainland-China builds keep download code available for local builds, but
-/// require a user-authored compliance.json with explicit risk acceptance.
-/// Global/dev builds are enabled by default and do not require the file.
+/// Runtime download-risk gate. The single distribution keeps download code
+/// available, but a mainland-China network defaults to disabled and requires a
+/// user-authored compliance.json with explicit risk acceptance. Other regions
+/// are enabled without the file.
 /// </summary>
 public sealed class DownloadPolicy
 {
@@ -29,20 +30,22 @@ public sealed class DownloadPolicy
     public const string Acknowledgement = "ENABLE-DOWNLOADS 1";
 
     private readonly string _configPath;
-    private readonly bool _chinaBuild;
+    private readonly RegionPolicy _regionPolicy;
 
-    public DownloadPolicy(string? dataRoot = null, bool? chinaBuild = null)
+    public DownloadPolicy(string? dataRoot = null, RegionPolicy? regionPolicy = null)
     {
         var root = AppDataPaths.Normalize(dataRoot ?? AppDataPaths.ResolveDataRoot());
         _configPath = Path.Combine(root, "compliance.json");
-        _chinaBuild = chinaBuild ?? IsChinaBuild();
+        _regionPolicy = regionPolicy ?? new RegionPolicy();
     }
 
     public string ConfigPath => _configPath;
 
-    public DownloadPolicyState Read()
+    public async Task<DownloadPolicyState> ReadAsync(
+        CancellationToken cancellationToken = default)
     {
-        if (!_chinaBuild)
+        var region = await _regionPolicy.ReadAsync(cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(region.Region, RegionPolicy.China, StringComparison.Ordinal))
         {
             return new DownloadPolicyState(
                 true,
@@ -105,9 +108,9 @@ public sealed class DownloadPolicy
         }
     }
 
-    public void EnsureEnabled()
+    public async Task EnsureEnabledAsync(CancellationToken cancellationToken = default)
     {
-        var state = Read();
+        var state = await ReadAsync(cancellationToken).ConfigureAwait(false);
         if (state.Enabled) return;
         throw new DownloadPolicyException(
             "DOWNLOAD_DISABLED",
@@ -131,13 +134,4 @@ public sealed class DownloadPolicy
            value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
-
-    private static bool IsChinaBuild()
-    {
-#if ARCHOERACX_CHINA_BUILD
-        return true;
-#else
-        return false;
-#endif
-    }
 }

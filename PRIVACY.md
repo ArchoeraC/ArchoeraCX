@@ -23,11 +23,12 @@ account, profile, instance and download features. It does not apply to
 Microsoft, Xbox, Minecraft Services, Modrinth, BMCLAPI or any other third-party
 service. Those services have their own privacy policies and terms.
 
-Mainland-China distribution builds disable online game, loader and content
-downloads by default. A user may manually enable them by creating a local
-`compliance.json` with explicit developer/risk-acceptance fields; the launcher
-does not create or modify that file automatically. Local instances, local
-launch and Microsoft account sign-in remain available.
+ArchoeraCX ships as one distribution. On a mainland-China network, online game,
+loader and content downloads are disabled by default; other regions enable them
+by default. A user in mainland China may manually enable downloads by creating
+a local `compliance.json` with explicit developer/risk-acceptance fields; the
+launcher does not create or modify that file automatically. Local instances,
+local launch and Microsoft account sign-in remain available.
 
 ## 3. Data processed
 
@@ -64,13 +65,17 @@ download mirror, those providers receive the network information necessary to
 serve the request, such as the user's IP address and request headers. ArchoeraCX
 does not operate a server that receives or stores account tokens.
 
-To apply the regional account policy, the launcher may make a coarse region
-request to Cloudflare's `cdn-cgi/trace` endpoint and read only the two-letter
-country code, with the local system locale/timezone as a fallback. The IP
-address is necessarily transmitted for that request but is not stored by the
-launcher; only the coarse region result is cached in memory. A developer can
-override the result with `ARCHOERACX_REGION=CN|GLOBAL`. No precise location is
-collected or persisted.
+To apply the regional account and download policy, the launcher makes a coarse
+region request to Cloudflare's `cdn-cgi/trace` endpoint and reads only the
+two-letter country code. If that request fails, it falls back to the system
+region, locale and timezone (including the Windows country/region GeoID). The
+IP address is necessarily transmitted for the Cloudflare request but is not
+stored by the launcher; only the coarse region result is cached in memory. The
+result decides whether mainland-China download restrictions apply and whether
+offline accounts are disabled. A developer can override the result with
+`ARCHOERACX_REGION=CN|GLOBAL`. No precise location, GPS data or persistent IP
+address is collected. VPNs, proxies and inaccurate IP databases can make this
+coarse check wrong; it is not a security boundary.
 
 ### 3.5 Diagnostics, telemetry and updates
 
@@ -130,7 +135,7 @@ the feature the user requested, including:
 - Minecraft Services for profile, ownership-related responses and certificates;
 - Mojang CDN for game files and skin textures;
 - Modrinth and selected download mirrors for content selected by the user;
-- Cloudflare for the coarse country lookup used by the regional account policy;
+- Cloudflare for the coarse country lookup used by the regional account and download policy;
 - the operating system's credential store, when available.
 
 These third parties process data under their own terms and privacy policies.

@@ -13,10 +13,6 @@ target_include_directories(archoera_core
   PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../contracts/module"
 )
 target_compile_definitions(archoera_core PRIVATE ARCHOERA_CORE_EXPORTS)
-option(ARCHOERACX_CHINA_BUILD "Remove mainland-China download methods" OFF)
-if(ARCHOERACX_CHINA_BUILD)
-  target_compile_definitions(archoera_core PRIVATE ARCHOERACX_CHINA_BUILD=1)
-endif()
 target_link_libraries(archoera_core PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
 
 # Keep the shared library at the root of the build directory. With the
