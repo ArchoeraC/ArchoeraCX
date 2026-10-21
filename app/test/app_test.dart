@@ -99,6 +99,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('covers page switches and retracts back to home', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Download'));
+    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.space_dashboard_outlined));
+    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quick launch'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('navigates between shell pages', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;
