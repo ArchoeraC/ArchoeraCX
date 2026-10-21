@@ -80,6 +80,14 @@ CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注�
 本地构建未设置该变量时，生成的 client ID 为空，登录会返回
 `MICROSOFT_CLIENT_ID_MISSING`，而不是发出网络请求。
 
+Authorization Code + loopback 登录还需要在 Entra 中注册精确回调：
+
+```text
+http://localhost:53682/callback
+```
+
+端口可用 `ARCHOERACX_OAUTH_PORT` 覆盖，并同步更新 Entra 回调地址。
+
 
 启动 release bundle：
 

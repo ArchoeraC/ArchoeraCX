@@ -51,15 +51,16 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>" \
 
 1. C# 生成随机 `code_verifier`、`state`，计算
    `code_challenge = BASE64URL(SHA256(code_verifier))`；
-2. 在 `127.0.0.1` 的随机端口启动本地回调监听；
+2. 在 `127.0.0.1` 的固定端口（默认 53682）启动本地回调监听；
 3. Flutter 打开系统浏览器，授权 URL 使用：
-   `response_type=code`、`redirect_uri=http://localhost:<port>/callback`、
+   `response_type=code`、`redirect_uri=http://localhost:53682/callback`、
    `code_challenge_method=S256`、`state`、`scope`；
 4. 浏览器回调后校验 `state`，用 `code + code_verifier` 换取 token；
 5. 回调监听立即关闭，然后进入 XBL/XSTS/Minecraft 链路。
 
-Entra 应用需要在 **Mobile and desktop applications** 中添加
-`http://localhost`（或与实际回调完全一致的 loopback URI）。本地回调只绑定
+Entra 应用需要在 **Mobile and desktop applications** 中**精确添加**
+`http://localhost:53682/callback`。如果端口被占用，可设置
+`ARCHOERACX_OAUTH_PORT` 并在 Entra 中注册对应 URI。本地回调只绑定
 `127.0.0.1`，不要暴露到局域网。
 
 Device Code 仍可通过

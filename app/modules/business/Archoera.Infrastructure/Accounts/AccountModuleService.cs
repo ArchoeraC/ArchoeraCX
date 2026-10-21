@@ -30,6 +30,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
     ];
 
     private const int AuthorizationCodeExpiresIn = 300;
+    private const int DefaultOAuthPort = 53682;
 
     private static readonly HttpClient Http = new()
     {
@@ -233,7 +234,21 @@ public sealed class AccountModuleService : IModuleMethodHandler
     private async Task<byte[]> StartAuthorizationCodeFlowAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var listener = LoopbackOAuthListener.Start();
+        var oauthPort = ReadOAuthPort();
+        LoopbackOAuthListener listener;
+        try
+        {
+            listener = LoopbackOAuthListener.Start(oauthPort);
+        }
+        catch (System.Net.Sockets.SocketException exception)
+        {
+            throw new AccountAuthException(
+                "OAUTH_PORT_UNAVAILABLE",
+                $"The local OAuth callback port {oauthPort} is unavailable. " +
+                "Close the program using it or set ARCHOERACX_OAUTH_PORT and register the matching redirect URI.",
+                exception.Message);
+        }
+
         try
         {
             var challenge = _auth.CreateAuthorizationCodeChallenge(listener.RedirectUri);
@@ -482,6 +497,14 @@ public sealed class AccountModuleService : IModuleMethodHandler
         throw new AccountAuthException(
             "PREMIUM_ACCOUNT_REQUIRED",
             "Sign in with a Microsoft account that owns Minecraft before using another account.");
+    }
+
+    private static int ReadOAuthPort()
+    {
+        var raw = Environment.GetEnvironmentVariable("ARCHOERACX_OAUTH_PORT");
+        return int.TryParse(raw, out var port) && port is > 0 and <= 65535
+            ? port
+            : DefaultOAuthPort;
     }
 
     private static bool ReadBool(string? json, string name)
