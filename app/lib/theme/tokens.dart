@@ -29,6 +29,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required this.radiusM,
     required this.radiusL,
     required this.radiusXL,
+    required this.bevelS,
+    required this.bevelM,
+    required this.bevelL,
     required this.fast,
     required this.normal,
     required this.slow,
@@ -63,6 +66,11 @@ class AppTokens extends ThemeExtension<AppTokens> {
   final double radiusL;
   final double radiusXL;
 
+  /// Straight-cut corner sizes for the angular panel language.
+  final double bevelS;
+  final double bevelM;
+  final double bevelL;
+
   final Duration fast;
   final Duration normal;
   final Duration slow;
@@ -91,6 +99,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
     radiusM: 4,
     radiusL: 4,
     radiusXL: 6,
+    bevelS: 8,
+    bevelM: 14,
+    bevelL: 22,
     fast: Duration(milliseconds: 120),
     normal: Duration(milliseconds: 180),
     slow: Duration(milliseconds: 240),
@@ -120,6 +131,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
     radiusM: 4,
     radiusL: 4,
     radiusXL: 6,
+    bevelS: 8,
+    bevelM: 14,
+    bevelL: 22,
     fast: Duration(milliseconds: 120),
     normal: Duration(milliseconds: 180),
     slow: Duration(milliseconds: 240),
@@ -150,6 +164,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
     double? radiusM,
     double? radiusL,
     double? radiusXL,
+    double? bevelS,
+    double? bevelM,
+    double? bevelL,
     Duration? fast,
     Duration? normal,
     Duration? slow,
@@ -178,6 +195,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
       radiusM: radiusM ?? this.radiusM,
       radiusL: radiusL ?? this.radiusL,
       radiusXL: radiusXL ?? this.radiusXL,
+      bevelS: bevelS ?? this.bevelS,
+      bevelM: bevelM ?? this.bevelM,
+      bevelL: bevelL ?? this.bevelL,
       fast: fast ?? this.fast,
       normal: normal ?? this.normal,
       slow: slow ?? this.slow,
@@ -218,6 +238,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
       radiusM: radiusM + (other.radiusM - radiusM) * t,
       radiusL: radiusL + (other.radiusL - radiusL) * t,
       radiusXL: radiusXL + (other.radiusXL - radiusXL) * t,
+      bevelS: bevelS + (other.bevelS - bevelS) * t,
+      bevelM: bevelM + (other.bevelM - bevelM) * t,
+      bevelL: bevelL + (other.bevelL - bevelL) * t,
       fast: lerpDuration(fast, other.fast),
       normal: lerpDuration(normal, other.normal),
       slow: lerpDuration(slow, other.slow),

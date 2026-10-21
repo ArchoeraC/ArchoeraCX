@@ -146,18 +146,6 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get navSettings;
 
-  /// No description provided for @navTasks.
-  ///
-  /// In en, this message translates to:
-  /// **'Tasks'**
-  String get navTasks;
-
-  /// No description provided for @navNotifications.
-  ///
-  /// In en, this message translates to:
-  /// **'Notifications'**
-  String get navNotifications;
-
   /// No description provided for @coreOffline.
   ///
   /// In en, this message translates to:
@@ -205,18 +193,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The native core is not connected yet.'**
   String get commonCoreNotConnected;
-
-  /// No description provided for @commonNoTasks.
-  ///
-  /// In en, this message translates to:
-  /// **'No active tasks.'**
-  String get commonNoTasks;
-
-  /// No description provided for @commonNoNotifications.
-  ///
-  /// In en, this message translates to:
-  /// **'No notifications.'**
-  String get commonNoNotifications;
 
   /// No description provided for @dashboardTitle.
   ///
@@ -1321,96 +1297,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Source code'**
   String get settingsSource;
-
-  /// Title of the native core status card.
-  ///
-  /// In en, this message translates to:
-  /// **'Core status'**
-  String get coreStatusTitle;
-
-  /// Core status when the native library is loaded but not pinged yet.
-  ///
-  /// In en, this message translates to:
-  /// **'Idle'**
-  String get coreStatusIdle;
-
-  /// Core status while system.pingAsync is running.
-  ///
-  /// In en, this message translates to:
-  /// **'Pinging'**
-  String get coreStatusConnecting;
-
-  /// Core status after a successful system.pingAsync.
-  ///
-  /// In en, this message translates to:
-  /// **'Connected'**
-  String get coreStatusConnected;
-
-  /// Core status when the native library cannot be loaded.
-  ///
-  /// In en, this message translates to:
-  /// **'Core unavailable'**
-  String get coreStatusUnavailable;
-
-  /// Hint shown when the core is loaded but idle.
-  ///
-  /// In en, this message translates to:
-  /// **'The native core is loaded. Ping it to verify the ABI.'**
-  String get coreStatusIdleHint;
-
-  /// Hint shown while the async ping call is in flight.
-  ///
-  /// In en, this message translates to:
-  /// **'Calling system.pingAsync…'**
-  String get coreStatusPingingHint;
-
-  /// Progress line shown while the async ping task is running.
-  ///
-  /// In en, this message translates to:
-  /// **'Progress: {done}/{total}'**
-  String coreStatusProgress(int done, int total);
-
-  /// Generic explanation when the core is unavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'The native core library was not found or could not be loaded.'**
-  String get coreStatusUnavailableHint;
-
-  /// Button label that calls system.pingAsync.
-  ///
-  /// In en, this message translates to:
-  /// **'Ping core'**
-  String get coreStatusPing;
-
-  /// Result line showing the pong value returned by the core.
-  ///
-  /// In en, this message translates to:
-  /// **'pong: {value}'**
-  String coreStatusPong(String value);
-
-  /// Result line showing the method name returned by the core.
-  ///
-  /// In en, this message translates to:
-  /// **'Method: {method}'**
-  String coreStatusMethod(String method);
-
-  /// Result line showing the negotiated native ABI version.
-  ///
-  /// In en, this message translates to:
-  /// **'ABI v{version}'**
-  String coreStatusAbiVersion(int version);
-
-  /// Result line showing the native build information.
-  ///
-  /// In en, this message translates to:
-  /// **'Build: {build}'**
-  String coreStatusBuildInfo(String build);
-
-  /// Shown when a ping was attempted but failed.
-  ///
-  /// In en, this message translates to:
-  /// **'Ping failed: {message}'**
-  String coreStatusPingFailed(String message);
 
   /// Title of the Java runtime status card.
   ///

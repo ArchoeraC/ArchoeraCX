@@ -62,12 +62,7 @@ class AppShell extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         body: Column(
           children: [
-            _TopBar(
-              l10n: l10n,
-              onTasks: () => _notify(context, l10n.commonNoTasks),
-              onNotifications: () =>
-                  _notify(context, l10n.commonNoNotifications),
-            ),
+            _TopBar(l10n: l10n),
             Expanded(
               child: Align(
                 alignment: Alignment.topCenter,
@@ -117,20 +112,6 @@ class AppShell extends ConsumerWidget {
       ),
     );
   }
-
-  void _notify(BuildContext context, String message) {
-    final tokens = context.tokens;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: tokens.textPrimary,
-          content: Text(message, style: TextStyle(color: tokens.bg)),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-  }
 }
 
 class AppDestination {
@@ -148,15 +129,9 @@ class AppDestination {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.l10n,
-    required this.onTasks,
-    required this.onNotifications,
-  });
+  const _TopBar({required this.l10n});
 
   final AppLocalizations l10n;
-  final VoidCallback onTasks;
-  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -195,50 +170,7 @@ class _TopBar extends StatelessWidget {
             style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
           ),
           const Spacer(),
-          _TopAction(
-            icon: Icons.checklist_rounded,
-            tooltip: l10n.navTasks,
-            onTap: onTasks,
-          ),
-          const SizedBox(width: AppSpacing.xxs),
-          _TopAction(
-            icon: Icons.notifications_none_rounded,
-            tooltip: l10n.navNotifications,
-            onTap: onNotifications,
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _TopAction extends StatelessWidget {
-  const _TopAction({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, size: 19),
-        color: tokens.textSecondary,
-        visualDensity: VisualDensity.compact,
-        style: IconButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tokens.radiusS),
-          ),
-        ),
       ),
     );
   }

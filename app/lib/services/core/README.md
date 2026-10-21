@@ -4,7 +4,7 @@
 
 - `core_client.dart`：加载 `archoera_core`、`archoera_init/shutdown`、`system.ping`、两段式 `archoera_result`
 - `CoreUnavailableException` / `CoreException` / `PingResult`
-- 首页 `CoreStatusCard` 通过它探测原生核心
+- `core_client_integration_test.dart` 通过 `system.pingAsync` 探测原生核心；首页不再暴露调试卡片
 
 下一步：
 

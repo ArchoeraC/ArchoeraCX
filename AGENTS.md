@@ -84,8 +84,8 @@ flutter build linux --release
 
 ## 当前进度
 
-- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n；全局文案走 ARB，支持跟随系统/English/简体中文切换
-- ✅ `system.ping` / `system.pingAsync`：C++ ABI / C harness / Dart `CoreClient` / 首页 Core status 卡
+- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n；全局文案走 ARB，支持跟随系统/English/简体中文切换；首页改为 Hero + 单行快捷条 + 最近实例网格，使用斜切角/直线面板
+- ✅ `system.ping` / `system.pingAsync`：C++ ABI / C harness / Dart `CoreClient` / integration test；首页不再暴露调试卡片
 - ✅ 事件泵：wake + `NativeCallable.listener` + 批量 drain；无定时器/轮询
 - ✅ C# `java.scan`：C++ ModuleRegistry + NativeAOT `archoera_cs` + Java status 卡；支持手动目录/可执行文件回退与持久化
 - ✅ Forge/NeoForge 生成物清单 + 校验 + 修复；`loader.verify`/`loader.repair` 已接 ModuleRegistry/CoreClient（待接 launch preflight/UI）
