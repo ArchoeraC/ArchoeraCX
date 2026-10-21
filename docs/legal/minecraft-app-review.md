@@ -15,8 +15,8 @@ Minecraft Services authentication and profile endpoints.
 **Authentication.** Users sign in through Microsoft OAuth 2.0 Authorization
 Code Flow with PKCE and a native public-client loopback redirect. The launcher
 opens the system browser to the Microsoft authorization page; the redirect URI
-is `http://localhost:<ephemeral-port>/callback`, bound only to the local
-loopback interface. After the user signs in, the launcher validates the state,
+is `http://localhost:53682/callback`, bound only to the local loopback
+interface. After the user signs in, the launcher validates the state,
 exchanges the authorization code plus PKCE verifier for tokens, and closes the
 local listener. We never ask for or store Microsoft passwords, and the public
 client uses no client secret. After Microsoft authorization, the launcher

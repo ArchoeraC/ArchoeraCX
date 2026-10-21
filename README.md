@@ -80,6 +80,14 @@ CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注�
 本地构建未设置该变量时，生成的 client ID 为空，登录会返回
 `MICROSOFT_CLIENT_ID_MISSING`，而不是发出网络请求。
 
+Authorization Code + loopback 登录还需要在 Entra 中注册精确回调：
+
+```text
+http://localhost:53682/callback
+```
+
+端口可用 `ARCHOERACX_OAUTH_PORT` 覆盖，并同步更新 Entra 回调地址。
+
 当前为单一发行版：启动时按粗粒度 IP/系统地区判断是否处于中国大陆网络。中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；其他地区默认启用下载。发布包计划只从 GitHub CI 构建；当前新仓库暂未启用 Actions，Workflow 草稿位于 `docs/ci-drafts/`。Microsoft client ID 与未来的 CurseForge key 仅通过 CI secrets 在编译期注入，不进入仓库。
 
 启动 release bundle：

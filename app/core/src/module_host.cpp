@@ -324,11 +324,20 @@ int32_t ModuleHost::call(uint64_t task_id,
                          archoera_module_progress_fn progress,
                          void* user) noexcept {
   try {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (closed_ || entry_ == nullptr || self_ == nullptr) {
-      return ARCHOERA_E_UNSUPPORTED;
+    // A module call is allowed to run for a long time (for example an OAuth
+    // browser flow). Do not hold the host mutex across the call, otherwise a
+    // concurrent cancel cannot reach the module and the UI appears hung.
+    const archoera_module_v1* entry = nullptr;
+    void* self = nullptr;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (closed_ || entry_ == nullptr || self_ == nullptr) {
+        return ARCHOERA_E_UNSUPPORTED;
+      }
+      entry = entry_;
+      self = self_;
     }
-    return entry_->call(self_, task_id, method, params_json, done, progress, user);
+    return entry->call(self, task_id, method, params_json, done, progress, user);
   } catch (...) {
     return ARCHOERA_E_INTERNAL;
   }
@@ -336,11 +345,19 @@ int32_t ModuleHost::call(uint64_t task_id,
 
 int32_t ModuleHost::cancel(uint64_t task_id) noexcept {
   try {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (closed_ || entry_ == nullptr || self_ == nullptr) {
-      return ARCHOERA_E_UNSUPPORTED;
+    // Do not wait for an in-flight module call; cancel must be able to break
+    // that call's long-running wait.
+    const archoera_module_v1* entry = nullptr;
+    void* self = nullptr;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (closed_ || entry_ == nullptr || self_ == nullptr) {
+        return ARCHOERA_E_UNSUPPORTED;
+      }
+      entry = entry_;
+      self = self_;
     }
-    return entry_->cancel(self_, task_id);
+    return entry->cancel(self, task_id);
   } catch (...) {
     return ARCHOERA_E_INTERNAL;
   }
