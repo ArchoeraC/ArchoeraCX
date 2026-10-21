@@ -185,11 +185,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onTap: () => _editRuntimeOptions(context, l10n, settings),
               ),
               _SettingRow(
+                icon: Icons.recycling_rounded,
+                title: l10n.settingsGc,
+                value: _gcLabel(l10n, settings?.gcMode ?? 'auto'),
+                onTap: () => _editRuntimeOptions(context, l10n, settings),
+              ),
+              _SettingRow(
                 icon: Icons.terminal_rounded,
                 title: l10n.settingsJvmArgs,
                 value: (settings?.jvmArgs?.trim().isNotEmpty ?? false)
                     ? settings!.jvmArgs!
                     : l10n.settingsJvmArgsValue,
+                onTap: () => _editRuntimeOptions(context, l10n, settings),
+              ),
+              _SettingRow(
+                icon: Icons.sports_esports_rounded,
+                title: l10n.settingsGameArgs,
+                value: (settings?.gameArgs?.trim().isNotEmpty ?? false)
+                    ? settings!.gameArgs!
+                    : l10n.settingsGameArgsValue,
                 onTap: () => _editRuntimeOptions(context, l10n, settings),
               ),
             ],
@@ -272,6 +286,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final min = TextEditingController(text: '${settings?.memoryMinMb ?? 512}');
     final max = TextEditingController(text: '${settings?.memoryMaxMb ?? 2048}');
     final args = TextEditingController(text: settings?.jvmArgs ?? '');
+    final gameArgs = TextEditingController(text: settings?.gameArgs ?? '');
+    var gcMode = settings?.gcMode ?? 'auto';
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -307,6 +323,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   hintText: l10n.settingsJvmArgsHint,
                 ),
               ),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                initialValue: gcMode,
+                decoration: InputDecoration(labelText: l10n.settingsGc),
+                items: [
+                  for (final item in _gcOptions(l10n))
+                    DropdownMenuItem(value: item.$1, child: Text(item.$2)),
+                ],
+                onChanged: (value) {
+                  if (value != null) gcMode = value;
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: gameArgs,
+                decoration: InputDecoration(
+                  labelText: l10n.settingsGameArgs,
+                  hintText: l10n.settingsGameArgsHint,
+                ),
+              ),
             ],
           ),
         ),
@@ -325,9 +361,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final minValue = int.tryParse(min.text.trim());
     final maxValue = int.tryParse(max.text.trim());
     final jvmArgsText = args.text.trim();
+    final gameArgsText = gameArgs.text.trim();
     min.dispose();
     max.dispose();
     args.dispose();
+    gameArgs.dispose();
     if (saved != true || !context.mounted) return;
     if (minValue == null ||
         maxValue == null ||
@@ -345,12 +383,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             memoryMinMb: minValue,
             memoryMaxMb: maxValue,
             jvmArgs: jvmArgsText,
+            gcMode: gcMode,
+            gameArgs: gameArgsText,
           );
       if (context.mounted) _notify(context, l10n.settingsRuntimeSaved);
     } catch (error) {
       if (context.mounted) _notify(context, error.toString());
     }
   }
+
+  String _gcLabel(AppLocalizations l10n, String mode) => switch (mode) {
+    'g1gc' => l10n.settingsGcG1,
+    'zgc' => l10n.settingsGcZgc,
+    'parallel' => l10n.settingsGcParallel,
+    'serial' => l10n.settingsGcSerial,
+    'shenandoah' => l10n.settingsGcShenandoah,
+    'epsilon' => l10n.settingsGcEpsilon,
+    _ => l10n.settingsGcAuto,
+  };
+
+  List<(String, String)> _gcOptions(AppLocalizations l10n) => [
+    ('auto', l10n.settingsGcAuto),
+    ('g1gc', l10n.settingsGcG1),
+    ('zgc', l10n.settingsGcZgc),
+    ('parallel', l10n.settingsGcParallel),
+    ('serial', l10n.settingsGcSerial),
+    ('shenandoah', l10n.settingsGcShenandoah),
+    ('epsilon', l10n.settingsGcEpsilon),
+  ];
 
   Future<void> _setJavaAuto(
     BuildContext context,

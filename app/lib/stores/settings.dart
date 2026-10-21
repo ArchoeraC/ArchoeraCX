@@ -90,6 +90,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     int? memoryMinMb,
     int? memoryMaxMb,
     String? jvmArgs,
+    String? gcMode,
+    String? gameArgs,
   }) async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
@@ -105,6 +107,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           memoryMinMb: memoryMinMb ?? current.memoryMinMb,
           memoryMaxMb: memoryMaxMb ?? current.memoryMaxMb,
           jvmArgs: jvmArgs ?? current.jvmArgs,
+          gcMode: gcMode ?? current.gcMode,
+          gameArgs: gameArgs ?? current.gameArgs,
         ),
       );
       return;
@@ -115,6 +119,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         memoryMinMb: memoryMinMb,
         memoryMaxMb: memoryMaxMb,
         jvmArgs: jvmArgs,
+        gcMode: gcMode,
+        gameArgs: gameArgs,
       ),
     );
   }

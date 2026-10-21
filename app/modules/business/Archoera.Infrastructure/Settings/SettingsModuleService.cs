@@ -69,6 +69,9 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         int? memoryMax = null;
         string? jvmArgs = null;
         var jvmArgsPresent = false;
+        string? gcMode = null;
+        string? gameArgs = null;
+        var gameArgsPresent = false;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -142,6 +145,26 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                         ? jvmElement.GetString()
                         : throw new ArgumentException("jvmArgs must be a string or null");
             }
+
+            if (root.TryGetProperty("gcMode", out var gcElement) &&
+                gcElement.ValueKind == JsonValueKind.String)
+            {
+                gcMode = gcElement.GetString();
+                if (gcMode is not ("auto" or "g1gc" or "zgc" or "parallel" or "serial" or "shenandoah" or "epsilon"))
+                {
+                    return Error("E_INVALID", "unsupported gcMode");
+                }
+            }
+
+            if (root.TryGetProperty("gameArgs", out var gameElement))
+            {
+                gameArgsPresent = true;
+                gameArgs = gameElement.ValueKind == JsonValueKind.Null
+                    ? null
+                    : gameElement.ValueKind == JsonValueKind.String
+                        ? gameElement.GetString()
+                        : throw new ArgumentException("gameArgs must be a string or null");
+            }
         }
         catch (JsonException exception)
         {
@@ -203,13 +226,28 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             };
         }
 
+        if (gcMode is not null)
+        {
+            current = current with { GcMode = gcMode };
+        }
+
+        if (gameArgsPresent)
+        {
+            current = current with
+            {
+                GameArgs = string.IsNullOrWhiteSpace(gameArgs) ? null : gameArgs,
+            };
+        }
+
         if (instancesRoots is not { Count: > 0 } &&
             string.IsNullOrWhiteSpace(legacyRoot) &&
             !javaPathPresent &&
             javaAuto is null &&
             memoryMin is null &&
             memoryMax is null &&
-            !jvmArgsPresent)
+            !jvmArgsPresent &&
+            gcMode is null &&
+            !gameArgsPresent)
         {
             return Error("E_INVALID", "settings.set requires at least one field");
         }
@@ -258,6 +296,15 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             else
             {
                 writer.WriteString("jvmArgs", settings.JvmArgs);
+            }
+            writer.WriteString("gcMode", settings.GcMode);
+            if (string.IsNullOrWhiteSpace(settings.GameArgs))
+            {
+                writer.WriteNull("gameArgs");
+            }
+            else
+            {
+                writer.WriteString("gameArgs", settings.GameArgs);
             }
             writer.WriteString("dataRoot", settings.DataRoot);
             writer.WriteString("settingsPath", settings.SettingsPath);

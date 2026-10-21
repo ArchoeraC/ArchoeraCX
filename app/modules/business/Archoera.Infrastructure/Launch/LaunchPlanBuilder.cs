@@ -73,12 +73,29 @@ internal static class LaunchPlanBuilder
             "-Dminecraft.launcher.version=0.1.0",
             "-Djava.library.path=" + paths.NativesRoot,
         };
-        if (!string.IsNullOrWhiteSpace(settings.JvmArgs))
+        var gcFlag = settings.GcMode switch
         {
-            jvm.AddRange(settings.JvmArgs.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            "g1gc" => "-XX:+UseG1GC",
+            "zgc" => "-XX:+UseZGC",
+            "parallel" => "-XX:+UseParallelGC",
+            "serial" => "-XX:+UseSerialGC",
+            "shenandoah" => "-XX:+UseShenandoahGC",
+            "epsilon" => "-XX:+UseEpsilonGC",
+            _ => null,
+        };
+        var customJvm = string.IsNullOrWhiteSpace(settings.JvmArgs)
+            ? []
+            : settings.JvmArgs
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+        var customSelectsGc = customJvm.Any(argument =>
+            argument.StartsWith("-XX:+Use", StringComparison.Ordinal) &&
+            argument.EndsWith("GC", StringComparison.Ordinal));
+        if (gcFlag is not null && !customSelectsGc)
+        {
+            jvm.Add(gcFlag);
         }
+        jvm.AddRange(customJvm);
 
         if (version.Arguments is { Jvm.Count: > 0 })
         {
@@ -109,6 +126,13 @@ internal static class LaunchPlanBuilder
                     game.Add(Substitute(value, substitutions));
                 }
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.GameArgs))
+        {
+            game.AddRange(settings.GameArgs.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         }
 
         if (game.Count == 0)

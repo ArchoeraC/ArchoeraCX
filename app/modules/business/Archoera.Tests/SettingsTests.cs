@@ -140,16 +140,22 @@ public sealed class SettingsTests
                     MemoryMinMb = 1024,
                     MemoryMaxMb = 4096,
                     JvmArgs = "-XX:+UseG1GC",
+                    GcMode = "zgc",
+                    GameArgs = "--demo",
                 });
 
             Assert.Equal(1024, saved.MemoryMinMb);
             Assert.Equal(4096, saved.MemoryMaxMb);
             Assert.Equal("-XX:+UseG1GC", saved.JvmArgs);
+            Assert.Equal("zgc", saved.GcMode);
+            Assert.Equal("--demo", saved.GameArgs);
 
             var reloaded = await store.LoadAsync();
             Assert.Equal(1024, reloaded.MemoryMinMb);
             Assert.Equal(4096, reloaded.MemoryMaxMb);
             Assert.Equal("-XX:+UseG1GC", reloaded.JvmArgs);
+            Assert.Equal("zgc", reloaded.GcMode);
+            Assert.Equal("--demo", reloaded.GameArgs);
         }
         finally
         {
@@ -168,12 +174,14 @@ public sealed class SettingsTests
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
                     "settings.set",
-                    """{"memoryMinMb":1024,"memoryMaxMb":4096,"jvmArgs":"-XX:+UseG1GC"}""",
+                    """{"memoryMinMb":1024,"memoryMaxMb":4096,"jvmArgs":"-XX:+UseG1GC","gcMode":"zgc","gameArgs":"--demo"}""",
                     CancellationToken.None));
             var settings = document.RootElement.GetProperty("data").GetProperty("settings");
             Assert.Equal(1024, settings.GetProperty("memoryMinMb").GetInt32());
             Assert.Equal(4096, settings.GetProperty("memoryMaxMb").GetInt32());
             Assert.Equal("-XX:+UseG1GC", settings.GetProperty("jvmArgs").GetString());
+            Assert.Equal("zgc", settings.GetProperty("gcMode").GetString());
+            Assert.Equal("--demo", settings.GetProperty("gameArgs").GetString());
         }
         finally
         {

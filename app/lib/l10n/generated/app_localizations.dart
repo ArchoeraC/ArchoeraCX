@@ -1178,6 +1178,72 @@ abstract class AppLocalizations {
   /// **'Optional, space-separated'**
   String get settingsJvmArgsHint;
 
+  /// No description provided for @settingsGc.
+  ///
+  /// In en, this message translates to:
+  /// **'Garbage collector'**
+  String get settingsGc;
+
+  /// No description provided for @settingsGcAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get settingsGcAuto;
+
+  /// No description provided for @settingsGcG1.
+  ///
+  /// In en, this message translates to:
+  /// **'G1GC'**
+  String get settingsGcG1;
+
+  /// No description provided for @settingsGcZgc.
+  ///
+  /// In en, this message translates to:
+  /// **'ZGC (Java 21+)'**
+  String get settingsGcZgc;
+
+  /// No description provided for @settingsGcParallel.
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel'**
+  String get settingsGcParallel;
+
+  /// No description provided for @settingsGcSerial.
+  ///
+  /// In en, this message translates to:
+  /// **'Serial'**
+  String get settingsGcSerial;
+
+  /// No description provided for @settingsGcShenandoah.
+  ///
+  /// In en, this message translates to:
+  /// **'Shenandoah'**
+  String get settingsGcShenandoah;
+
+  /// No description provided for @settingsGcEpsilon.
+  ///
+  /// In en, this message translates to:
+  /// **'Epsilon (testing)'**
+  String get settingsGcEpsilon;
+
+  /// No description provided for @settingsGameArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional game arguments'**
+  String get settingsGameArgs;
+
+  /// No description provided for @settingsGameArgsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get settingsGameArgsValue;
+
+  /// No description provided for @settingsGameArgsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional, appended after the version arguments'**
+  String get settingsGameArgsHint;
+
   /// No description provided for @settingsRuntimeSaved.
   ///
   /// In en, this message translates to:
