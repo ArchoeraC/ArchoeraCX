@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../models/account.dart';
@@ -366,8 +367,10 @@ class AccountsPage extends ConsumerWidget {
   }
 }
 
-/// Device-code dialog. It starts the flow, displays the user code, and waits
-/// for the C# module to complete the token chain. Closing it cancels the flow.
+/// Microsoft sign-in dialog. It starts the authorization-code flow, opens the
+/// system browser, and waits for the C# module to complete the token chain.
+/// When the backend falls back to device code, the code UI is shown instead.
+/// Closing it cancels the flow.
 class DeviceLoginDialog extends StatefulWidget {
   const DeviceLoginDialog({super.key, required this.client});
 
@@ -383,6 +386,7 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
   String? _flowId;
   bool _busy = true;
   bool _completed = false;
+  bool _browserLaunchFailed = false;
 
   @override
   void initState() {
@@ -392,7 +396,9 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
 
   Future<void> _begin() async {
     try {
-      final start = await widget.client.startMicrosoftLogin();
+      final start = await widget.client.startMicrosoftLogin(
+        flow: 'authorization_code',
+      );
       if (!mounted) {
         await _cancelFlow(start.flowId);
         return;
@@ -402,6 +408,9 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
         _flowId = start.flowId;
         _busy = false;
       });
+      if (start.isAuthorizationCode) {
+        await _openAuthorizationUrl(start);
+      }
       final account = await widget.client.pollMicrosoftLogin(start.flowId);
       if (!mounted) return;
       _completed = true;
@@ -417,6 +426,24 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
         _error = _formatError(error);
       });
     }
+  }
+
+  /// Opens the authorization URL in the system browser. Failures are shown in
+  /// the dialog instead of thrown, and the URL stays visible for manual use.
+  Future<void> _openAuthorizationUrl(MicrosoftDeviceCodeStart start) async {
+    final authorizationUrl = start.authorizationUrl;
+    if (authorizationUrl == null || authorizationUrl.isEmpty) return;
+    var opened = false;
+    try {
+      final uri = Uri.tryParse(authorizationUrl);
+      if (uri != null) {
+        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      opened = false;
+    }
+    if (!mounted) return;
+    setState(() => _browserLaunchFailed = !opened);
   }
 
   Future<void> _cancelFlow(String flowId) async {
@@ -470,7 +497,51 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
                   Expanded(child: Text(l10n.accountDeviceCodeWaiting)),
                 ],
               )
-            else if (start != null) ...[
+            else if (start != null && start.isAuthorizationCode) ...[
+              Text(
+                l10n.accountBrowserSignInHint,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface2,
+                  borderRadius: BorderRadius.circular(tokens.radiusM),
+                ),
+                child: SelectableText(
+                  start.authorizationUrl ?? '',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.accent),
+                ),
+              ),
+              if (_browserLaunchFailed) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  l10n.accountBrowserOpenFailed,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.danger),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.accountBrowserWaitingCallback,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (start != null) ...[
               Text(
                 l10n.accountDeviceCodeHint(start.verificationUri),
                 style: Theme.of(context).textTheme.bodyMedium,
@@ -532,7 +603,13 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
         ),
       ),
       actions: [
-        if (start != null)
+        if (start != null && start.isAuthorizationCode)
+          TextButton.icon(
+            onPressed: () => _openAuthorizationUrl(start),
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            label: Text(l10n.accountOpenBrowser),
+          ),
+        if (start != null && !start.isAuthorizationCode)
           TextButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: start.userCode));

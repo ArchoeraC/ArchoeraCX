@@ -38,7 +38,7 @@ public sealed class AccountAuthTests
                 "{}",
                 CancellationToken.None);
             var startText = System.Text.Encoding.UTF8.GetString(start);
-            Assert.DoesNotContain("device_code", startText, StringComparison.Ordinal);
+            Assert.DoesNotContain("device-secret", startText, StringComparison.Ordinal);
             using (var startDocument = JsonDocument.Parse(start))
             {
                 var data = startDocument.RootElement.GetProperty("data");

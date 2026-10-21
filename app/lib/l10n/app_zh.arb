@@ -202,7 +202,7 @@
   "accountsSubtitle": "微软、离线与第三方 authlib 账户。",
   "currentAccount": "当前账户",
   "addAccount": "添加账户",
-  "accountMicrosoftDesc": "使用微软设备码登录。",
+  "accountMicrosoftDesc": "使用浏览器登录微软账户。",
   "accountOfflineDesc": "用于单人和局域网的本地档案。",
   "accountThirdPartyDesc": "通过 authlib-injector 接入 Yggdrasil。",
   "refresh": "刷新",
@@ -327,6 +327,10 @@
   "accountDeviceCodeWaiting": "等待微软授权…",
   "accountDeviceCodeCopied": "代码已复制。",
   "accountDeviceCodeExpires": "代码约 {minutes} 分钟后过期。",
+  "accountBrowserSignInHint": "已在浏览器中打开登录页，请使用微软账户完成登录。",
+  "accountBrowserWaitingCallback": "等待浏览器回调…",
+  "accountOpenBrowser": "打开浏览器",
+  "accountBrowserOpenFailed": "无法自动打开浏览器，请手动打开下方链接。",
   "accountAddOffline": "添加离线账户",
   "accountOfflineNameLabel": "玩家名",
   "accountOfflineNameHint": "3–16 个字符",
@@ -358,6 +362,18 @@
         "type": "int"
       }
     }
+  },
+  "@accountBrowserSignInHint": {
+    "description": "授权码流程中打开浏览器后的提示。"
+  },
+  "@accountBrowserWaitingCallback": {
+    "description": "等待本地浏览器回调时的状态。"
+  },
+  "@accountOpenBrowser": {
+    "description": "重新打开微软授权页面的按钮。"
+  },
+  "@accountBrowserOpenFailed": {
+    "description": "url_launcher 无法打开授权链接时显示。"
   },
   "@accountRemoveConfirm": {
     "description": "移除账户确认。",

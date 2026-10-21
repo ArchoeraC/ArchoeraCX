@@ -13,7 +13,7 @@ The application icon, the default offline skin, and ArchoeraCX-owned source code
 
 | Component | Version/source | License | Notes |
 |---|---|---|---|
-| ArchoeraCX application icon | `app/assets/branding/archoera_icon.svg` | AGPL-3.0-only | Original abstract four-blade core mark; no Mojang/Microsoft/Windows elements |
+| ArchoeraCX application icon | `app/assets/branding/archoera_icon.svg` | AGPL-3.0-only | Original beveled “A”/gateway mark; no Mojang/Microsoft/Windows elements |
 | Default offline skin | `app/assets/skins/default-offline.png` | AGPL-3.0-only | Original neutral local character; not a Mojang asset |
 | Noto Sans SC Medium | `app/assets/fonts/NotoSansSC-Medium.otf` | OFL-1.1 | License text: `app/assets/fonts/OFL.txt` |
 | Fabric loader icon | `app/assets/icons/loaders/fabric.png` | Apache-2.0 | Source/attribution: `app/assets/icons/loaders/SOURCES.md` |
@@ -100,6 +100,14 @@ Versions are locked by `app/pubspec.lock`. The Flutter SDK and Dart SDK are BSD-
 | `term_glyph` | 1.2.2 | transitive | BSD-3-Clause | https://pub.dev/packages/term_glyph/versions/1.2.2 |
 | `test_api` | 0.7.12 | transitive | BSD-3-Clause | https://pub.dev/packages/test_api/versions/0.7.12 |
 | `typed_data` | 1.4.0 | transitive | BSD-3-Clause | https://pub.dev/packages/typed_data/versions/1.4.0 |
+| `url_launcher` | 6.3.3 | runtime | BSD-3-Clause | https://pub.dev/packages/url_launcher/versions/6.3.3 |
+| `url_launcher_android` | 6.3.33 | transitive | BSD-3-Clause | https://pub.dev/packages/url_launcher_android/versions/6.3.33 |
+| `url_launcher_ios` | 6.4.2 | transitive | BSD-3-Clause | https://pub.dev/packages/url_launcher_ios/versions/6.4.2 |
+| `url_launcher_linux` | 3.2.3 | transitive | BSD-3-Clause | https://pub.dev/packages/url_launcher_linux/versions/3.2.3 |
+| `url_launcher_macos` | 3.2.6 | transitive | BSD-3-Clause | https://pub.dev/packages/url_launcher_macos/versions/3.2.6 |
+| `url_launcher_platform_interface` | 2.3.2 | transitive | BSD-3-Clause | https://pub.dev/packages/url_launcher_platform_interface/versions/2.3.2 |
+| `url_launcher_web` | 2.4.3 | transitive | BSD-3-Clause | https://pub.dev/packages/url_launcher_web/versions/2.4.3 |
+| `url_launcher_windows` | 3.1.6 | transitive | BSD-3-Clause | https://pub.dev/packages/url_launcher_windows/versions/3.1.6 |
 | `uuid` | 4.6.0 | transitive | MIT | https://pub.dev/packages/uuid/versions/4.6.0 |
 | `vector_math` | 2.4.3 | transitive | BSD-3-Clause | https://pub.dev/packages/vector_math/versions/2.4.3 |
 | `vm_service` | 15.4.0 | transitive | BSD-3-Clause | https://pub.dev/packages/vm_service/versions/15.4.0 |
@@ -108,7 +116,6 @@ Versions are locked by `app/pubspec.lock`. The Flutter SDK and Dart SDK are BSD-
 | `yaml` | 3.1.4 | transitive | MIT | https://pub.dev/packages/yaml/versions/3.1.4 |
 | Flutter SDK | 3.47.7 | runtime | BSD-3-Clause | https://github.com/flutter/flutter |
 | Dart SDK | 3.13.5 | runtime | BSD-3-Clause | https://github.com/dart-lang/sdk |
-| Flutter engine and Material Icons | 3.47.7 | runtime | BSD-3-Clause / Apache-2.0 | https://github.com/flutter/engine |
 
 ## 3. .NET / native runtime components
 
@@ -120,9 +127,6 @@ Versions are locked by `app/pubspec.lock`. The Flutter SDK and Dart SDK are BSD-
 | SQLitePCLRaw.provider.sqlite3 | 2.1.12 | Apache-2.0 | Linux/macOS system SQLite provider |
 | SQLite (e_sqlite3) | system/bundled | Public domain | https://www.sqlite.org/copyright.html |
 | .NET runtime and NativeAOT | 10.0.x | MIT | https://github.com/dotnet/runtime |
-| Microsoft.DotNet.ILCompiler | 10.0.13 | MIT | https://www.nuget.org/packages/Microsoft.DotNet.ILCompiler |
-| Microsoft.NET.ILLink.Tasks | 10.0.13 | MIT | https://www.nuget.org/packages/Microsoft.NET.ILLink.Tasks |
-| Rust standard library | 1.85+ | MIT OR Apache-2.0 | https://github.com/rust-lang/rust |
 
 ## 4. Rust crates (runtime closure)
 
@@ -328,10 +332,7 @@ Generated from `app/modules/downloader/Cargo.lock` and `cargo metadata`; dev-onl
 - Linux kernel, glibc and distribution-provided libraries are used under the host system licenses and are not redistributed by ArchoeraCX.
 
 
-## 6. Release key handling
-
-
-## 7. Updating this inventory
+## 6. Updating this inventory
 
 Run the release build from the tagged source, regenerate this file from `pubspec.lock`, `Cargo.lock`, and the project files, then attach it to the GitHub Release together with the source tag. Do not add private API keys, client IDs, tokens, or CI secrets to this file.
 

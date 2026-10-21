@@ -1194,13 +1194,21 @@ final class CoreClient {
     return instance;
   }
 
-  /// Begin Microsoft device-code sign-in. The returned object never contains
-  /// the device code or tokens; call [pollMicrosoftLogin] with [flowId].
+  /// Begin Microsoft sign-in. The returned object never contains codes or
+  /// tokens; call [pollMicrosoftLogin] with [flowId].
+  ///
+  /// [flow] selects the backend flow: `authorization_code` (default, opens the
+  /// system browser and waits for the loopback callback) or `device_code`.
   Future<MicrosoftDeviceCodeStart> startMicrosoftLogin({
+    String flow = 'authorization_code',
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'account.login.microsoft.start';
-    final jsonText = await _runAsync(methodName, onProgress: onProgress);
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'flow': flow}),
+      onProgress: onProgress,
+    );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
     final start = MicrosoftDeviceCodeStart.fromNative(data);
@@ -1208,7 +1216,7 @@ final class CoreClient {
       throw CoreException(
         status: _ok,
         code: 'E_INVALID',
-        message: '$methodName returned no usable device-code challenge.',
+        message: '$methodName returned no usable sign-in challenge.',
       );
     }
     return start;

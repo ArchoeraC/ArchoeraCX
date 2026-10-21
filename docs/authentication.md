@@ -1,11 +1,13 @@
 # 认证：Microsoft → Minecraft Services
 
-本文是账户登录的当前实现与上线门槛。默认方案为 **OAuth 2.0 Device Code Flow**，不使用 redirect URI，也不使用自定义协议。
+本文是账户登录的当前实现与上线门槛。默认方案为 **OAuth 2.0 Authorization Code Flow + PKCE + loopback**；Device Code Flow 保留为 fallback。
 
 ## 1. 结论
 
 ```text
-Microsoft Device Code
+Microsoft Authorization Code + PKCE
+  → 系统浏览器登录
+  → loopback callback (127.0.0.1)
   → Microsoft access/refresh token
   → Xbox Live user.authenticate
   → XSTS authorize
@@ -43,9 +45,30 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>" \
 
 构建脚本会把值生成到 `obj/.../MicrosoftBuildConfig.g.cs`；该文件被 `.gitignore` 忽略，不进入仓库。
 
-## 3. Device Code 流程
+## 3. Authorization Code + PKCE（默认）
 
-### 3.1 申请设备码
+当前 UI 默认使用该流程：
+
+1. C# 生成随机 `code_verifier`、`state`，计算
+   `code_challenge = BASE64URL(SHA256(code_verifier))`；
+2. 在 `127.0.0.1` 的随机端口启动本地回调监听；
+3. Flutter 打开系统浏览器，授权 URL 使用：
+   `response_type=code`、`redirect_uri=http://localhost:<port>/callback`、
+   `code_challenge_method=S256`、`state`、`scope`；
+4. 浏览器回调后校验 `state`，用 `code + code_verifier` 换取 token；
+5. 回调监听立即关闭，然后进入 XBL/XSTS/Minecraft 链路。
+
+Entra 应用需要在 **Mobile and desktop applications** 中添加
+`http://localhost`（或与实际回调完全一致的 loopback URI）。本地回调只绑定
+`127.0.0.1`，不要暴露到局域网。
+
+Device Code 仍可通过
+`account.login.microsoft.start` 的 `{"flow":"device_code"}` 使用，作为无法绑定
+loopback 时的 fallback。
+
+## 3A. Device Code 流程（fallback）
+
+### 3A.1 申请设备码
 
 ```http
 POST https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode
@@ -63,7 +86,7 @@ device_code, user_code, verification_uri, expires_in, interval
 
 UI 只展示 `user_code` 和 `verification_uri`；`device_code` 保留在 C# 内存中。
 
-### 3.2 轮询 token
+### 3A.2 轮询 token
 
 ```http
 POST https://login.microsoftonline.com/consumers/oauth2/v2.0/token

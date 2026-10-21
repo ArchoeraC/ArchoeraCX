@@ -73,47 +73,83 @@ final class Account {
   }
 }
 
-/// The display-only part of a Microsoft device-code challenge. The device code
-/// itself remains inside C# and is never returned to Dart.
+/// The flow used to sign a Microsoft account in.
+enum MicrosoftLoginFlow {
+  /// Browser-based authorization code flow with a loopback redirect.
+  authorizationCode,
+
+  /// Legacy device-code flow; the user enters a short code in the browser.
+  deviceCode,
+}
+
+/// The display-only part of a Microsoft sign-in challenge. Device codes,
+/// authorization codes and tokens remain inside C# and never cross the ABI.
+///
+/// Depending on [mode] either the device-code fields ([userCode],
+/// [verificationUri]) or the authorization-code fields ([authorizationUrl],
+/// [redirectUri]) are populated.
 final class MicrosoftDeviceCodeStart {
   const MicrosoftDeviceCodeStart({
     required this.flowId,
-    required this.userCode,
-    required this.verificationUri,
+    this.mode = MicrosoftLoginFlow.deviceCode,
+    this.userCode = '',
+    this.verificationUri = '',
     required this.expiresIn,
     required this.interval,
     required this.message,
+    this.authorizationUrl,
+    this.redirectUri,
     this.expiresAt,
   });
 
   final String flowId;
+  final MicrosoftLoginFlow mode;
   final String userCode;
   final String verificationUri;
   final int expiresIn;
   final int interval;
   final String message;
+  final String? authorizationUrl;
+  final String? redirectUri;
   final DateTime? expiresAt;
+
+  /// Whether the browser must be opened at [authorizationUrl].
+  bool get isAuthorizationCode => mode == MicrosoftLoginFlow.authorizationCode;
 
   static MicrosoftDeviceCodeStart? fromNative(Object? value) {
     if (value is! Map) return null;
     final flowId = value['flowId']?.toString();
-    final userCode = value['userCode']?.toString();
-    final verificationUri = value['verificationUri']?.toString();
-    if (flowId == null ||
-        flowId.isEmpty ||
-        userCode == null ||
-        userCode.isEmpty ||
-        verificationUri == null ||
-        verificationUri.isEmpty) {
+    if (flowId == null || flowId.isEmpty) return null;
+
+    final userCode = value['userCode']?.toString().trim() ?? '';
+    final verificationUri = value['verificationUri']?.toString().trim() ?? '';
+    final authorizationUrl = value['authorizationUrl']?.toString().trim() ?? '';
+    final redirectUri = value['redirectUri']?.toString().trim() ?? '';
+    final modeText = value['mode']?.toString().trim() ?? '';
+
+    final isAuthorizationCode =
+        modeText == 'authorization_code' ||
+        (modeText.isEmpty && authorizationUrl.isNotEmpty && userCode.isEmpty);
+
+    if (isAuthorizationCode) {
+      if (authorizationUrl.isEmpty) return null;
+    } else if (userCode.isEmpty || verificationUri.isEmpty) {
       return null;
     }
+
     return MicrosoftDeviceCodeStart(
       flowId: flowId,
+      mode: isAuthorizationCode
+          ? MicrosoftLoginFlow.authorizationCode
+          : MicrosoftLoginFlow.deviceCode,
       userCode: userCode,
       verificationUri: verificationUri,
-      expiresIn: _asInt(value['expiresIn']) ?? 900,
+      expiresIn:
+          _asInt(value['expiresIn']) ?? (isAuthorizationCode ? 300 : 900),
       interval: _asInt(value['interval']) ?? 5,
       message: value['message']?.toString() ?? '',
+      authorizationUrl: authorizationUrl.isEmpty ? null : authorizationUrl,
+      redirectUri: redirectUri.isEmpty ? null : redirectUri,
       expiresAt: DateTime.tryParse(value['expiresAt']?.toString() ?? ''),
     );
   }

@@ -9,9 +9,10 @@ using Archoera.Infrastructure.Modules;
 namespace Archoera.Infrastructure.Accounts;
 
 /// <summary>
-/// Registered <c>account.*</c> handler. It owns pending device-code flows and
-/// performs the Microsoft → XBL → XSTS → Minecraft chain. Tokens stay in C#;
-/// the JSON envelope only exposes account/profile metadata.
+/// Registered <c>account.*</c> handler. It owns pending device-code and
+/// authorization-code + PKCE flows and performs the Microsoft → XBL → XSTS →
+/// Minecraft chain. Tokens, verifiers and state stay in C#; the JSON envelope
+/// only exposes account/profile metadata and public challenge details.
 /// </summary>
 public sealed class AccountModuleService : IModuleMethodHandler
 {
@@ -27,6 +28,8 @@ public sealed class AccountModuleService : IModuleMethodHandler
         "account.refresh",
         "account.remove",
     ];
+
+    private const int AuthorizationCodeExpiresIn = 300;
 
     private static readonly HttpClient Http = new()
     {
@@ -84,7 +87,9 @@ public sealed class AccountModuleService : IModuleMethodHandler
                 "account.current" => await CurrentAsync(cancellationToken).ConfigureAwait(false),
                 "account.select" => await SelectAsync(paramsJson, cancellationToken)
                     .ConfigureAwait(false),
-                "account.login.microsoft.start" => await StartMicrosoftAsync(cancellationToken)
+                "account.login.microsoft.start" => await StartMicrosoftAsync(
+                        paramsJson,
+                        cancellationToken)
                     .ConfigureAwait(false),
                 "account.login.microsoft.poll" => await PollMicrosoftAsync(paramsJson, cancellationToken)
                     .ConfigureAwait(false),
@@ -186,26 +191,29 @@ public sealed class AccountModuleService : IModuleMethodHandler
         });
     }
 
-    private async Task<byte[]> StartMicrosoftAsync(CancellationToken cancellationToken)
+    private async Task<byte[]> StartMicrosoftAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        var flow = ReadOptionalString(paramsJson, "flow") ?? "device_code";
+        return flow.Trim().ToLowerInvariant() switch
+        {
+            "device_code" => await StartDeviceCodeFlowAsync(cancellationToken)
+                .ConfigureAwait(false),
+            "authorization_code" => await StartAuthorizationCodeFlowAsync(cancellationToken)
+                .ConfigureAwait(false),
+            _ => throw new ArgumentException(
+                $"unsupported sign-in flow '{flow}'; use device_code or authorization_code"),
+        };
+    }
+
+    private async Task<byte[]> StartDeviceCodeFlowAsync(CancellationToken cancellationToken)
     {
         var challenge = await _auth.StartDeviceCodeAsync(cancellationToken).ConfigureAwait(false);
-        var pending = new PendingFlow(challenge);
-        lock (_flowGate)
-        {
-            // Starting a new flow invalidates any abandoned flow from this
-            // process. The device code is never persisted.
-            foreach (var old in _flows.Values)
-            {
-                old.Cancellation.Cancel();
-            }
-
-            _flows.Clear();
-            _flows[challenge.FlowId] = pending;
-        }
-
-        return ModuleJson.Envelope(writer =>
+        var response = ModuleJson.Envelope(writer =>
         {
             writer.WriteString("flowId", challenge.FlowId);
+            writer.WriteString("mode", "device_code");
             writer.WriteString("userCode", challenge.UserCode);
             writer.WriteString("verificationUri", challenge.VerificationUri);
             writer.WriteNumber("expiresIn", challenge.ExpiresIn);
@@ -215,6 +223,40 @@ public sealed class AccountModuleService : IModuleMethodHandler
                 "message",
                 $"Open {challenge.VerificationUri} and enter {challenge.UserCode}.");
         });
+
+        // Starting a new flow invalidates any abandoned flow from this process.
+        // The device code is never persisted.
+        ReplaceFlow(PendingFlow.ForDeviceCode(challenge));
+        return response;
+    }
+
+    private async Task<byte[]> StartAuthorizationCodeFlowAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var listener = LoopbackOAuthListener.Start();
+        try
+        {
+            var challenge = _auth.CreateAuthorizationCodeChallenge(listener.RedirectUri);
+            cancellationToken.ThrowIfCancellationRequested();
+            var response = ModuleJson.Envelope(writer =>
+            {
+                writer.WriteString("flowId", challenge.FlowId);
+                writer.WriteString("mode", "authorization_code");
+                writer.WriteString("authorizationUrl", challenge.AuthorizationUrl);
+                writer.WriteString("redirectUri", challenge.RedirectUri);
+                writer.WriteNumber("expiresIn", AuthorizationCodeExpiresIn);
+                writer.WriteString("expiresAt", challenge.ExpiresAt.ToString("O"));
+            });
+
+            ReplaceFlow(PendingFlow.ForAuthorizationCode(challenge, listener));
+            return response;
+        }
+        catch
+        {
+            // The listener is not registered on failure; nothing else owns it.
+            listener.Dispose();
+            throw;
+        }
     }
 
     private async Task<byte[]> PollMicrosoftAsync(
@@ -222,12 +264,17 @@ public sealed class AccountModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         var flowId = RequireString(paramsJson, "flowId");
-        PendingFlow? pending;
+        PendingFlow pending;
         lock (_flowGate)
         {
-            if (!_flows.TryGetValue(flowId, out pending))
+            if (!_flows.TryGetValue(flowId, out pending!))
             {
                 throw new ArgumentException("unknown or already completed sign-in flow");
+            }
+
+            if (!pending.TryBeginPoll())
+            {
+                throw new ArgumentException("sign-in flow is already being polled");
             }
         }
 
@@ -236,45 +283,139 @@ public sealed class AccountModuleService : IModuleMethodHandler
             pending.Cancellation.Token);
         try
         {
-            var microsoftToken = await _auth
-                .WaitForDeviceTokenAsync(pending.Challenge, linked.Token)
-                .ConfigureAwait(false);
-            Log("account.login.microsoft.poll", "MICROSOFT_TOKEN_OK", "device authorization completed");
-
-            var session = await _auth
-                .CompleteMinecraftLoginAsync(microsoftToken, linked.Token)
-                .ConfigureAwait(false);
-            Log("account.login.microsoft.poll", "MINECRAFT_CHAIN_OK", "profile resolved");
-
-            var account = await UpsertMicrosoftAccountAsync(
-                    session,
-                    microsoftToken.RefreshToken!,
-                    linked.Token)
-                .ConfigureAwait(false);
-
-            return ModuleJson.Envelope(writer =>
-            {
-                writer.WritePropertyName("account");
-                WriteAccount(writer, account);
-            });
+            return pending.AuthorizationCodeChallenge is { } challenge
+                ? await PollAuthorizationCodeAsync(challenge, pending, linked.Token)
+                    .ConfigureAwait(false)
+                : await PollDeviceCodeAsync(pending, linked.Token).ConfigureAwait(false);
         }
         finally
         {
-            RemoveFlow(flowId);
+            FinishPoll(flowId, pending);
         }
+    }
+
+    private async Task<byte[]> PollDeviceCodeAsync(
+        PendingFlow pending,
+        CancellationToken cancellationToken)
+    {
+        var challenge = pending.DeviceCodeChallenge
+                        ?? throw new AccountAuthException(
+                            "AUTH_FLOW_INVALID",
+                            "The sign-in flow has no device code challenge.");
+        var microsoftToken = await _auth
+            .WaitForDeviceTokenAsync(challenge, cancellationToken)
+            .ConfigureAwait(false);
+        Log("account.login.microsoft.poll", "MICROSOFT_TOKEN_OK", "device authorization completed");
+        return await CompleteSignInAsync(microsoftToken, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<byte[]> PollAuthorizationCodeAsync(
+        MicrosoftAuthorizationCodeChallenge challenge,
+        PendingFlow pending,
+        CancellationToken cancellationToken)
+    {
+        var listener = pending.Listener
+                       ?? throw new AccountAuthException(
+                           "AUTH_FLOW_INVALID",
+                           "The sign-in flow has no loopback listener.");
+
+        var remaining = challenge.ExpiresAt - DateTimeOffset.UtcNow;
+        if (remaining <= TimeSpan.Zero)
+        {
+            throw new AccountAuthException(
+                "AUTH_CODE_EXPIRED",
+                "The Microsoft sign-in request expired. Start again.");
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(remaining);
+
+        LoopbackOAuthCallback callback;
+        try
+        {
+            callback = await listener.WaitForCallbackAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new AccountAuthException(
+                "AUTH_CODE_EXPIRED",
+                "The Microsoft sign-in request expired. Start again.");
+        }
+        catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+
+        // Validate state before acting on the callback, including error
+        // callbacks: an unrelated local request must not finish the flow.
+        if (!string.Equals(callback.State, challenge.State, StringComparison.Ordinal))
+        {
+            throw new AccountAuthException(
+                "AUTH_STATE_MISMATCH",
+                "The Microsoft sign-in response did not match this request. Start again.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(callback.Error))
+        {
+            throw MapLoopbackError(callback.Error, callback.ErrorDescription);
+        }
+
+        if (string.IsNullOrWhiteSpace(callback.Code))
+        {
+            throw new AccountAuthException(
+                "AUTH_CALLBACK_INVALID",
+                "Microsoft sign-in returned no authorization code. Start again.");
+        }
+
+        var microsoftToken = await _auth
+            .CompleteAuthorizationCodeAsync(challenge, callback.Code, cancellationToken)
+            .ConfigureAwait(false);
+        Log(
+            "account.login.microsoft.poll",
+            "MICROSOFT_TOKEN_OK",
+            "authorization code exchanged");
+
+        return await CompleteSignInAsync(microsoftToken, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<byte[]> CompleteSignInAsync(
+        MicrosoftTokenSet microsoftToken,
+        CancellationToken cancellationToken)
+    {
+        var session = await _auth
+            .CompleteMinecraftLoginAsync(microsoftToken, cancellationToken)
+            .ConfigureAwait(false);
+        Log("account.login.microsoft.poll", "MINECRAFT_CHAIN_OK", "profile resolved");
+
+        var refreshToken = microsoftToken.RefreshToken
+                           ?? throw new AccountAuthException(
+                               "TOKEN_RESPONSE_INVALID",
+                               "Microsoft returned no reusable token. Sign in again.");
+        var account = await UpsertMicrosoftAccountAsync(
+                session,
+                refreshToken,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return ModuleJson.Envelope(writer =>
+        {
+            writer.WritePropertyName("account");
+            WriteAccount(writer, account);
+        });
     }
 
     private byte[] CancelMicrosoft(string? paramsJson)
     {
         var flowId = RequireString(paramsJson, "flowId");
+        PendingFlow? pending;
         lock (_flowGate)
         {
-            if (_flows.TryGetValue(flowId, out var pending))
-            {
-                pending.Cancellation.Cancel();
-                _flows.Remove(flowId);
-            }
+            _flows.Remove(flowId, out pending);
         }
+
+        // A running poll owns disposal and finishes on cancellation; an idle
+        // flow is disposed here so its loopback listener cannot leak.
+        pending?.CancelOrDispose();
 
         return ModuleJson.Envelope(writer => writer.WriteBoolean("cancelled", true));
     }
@@ -509,18 +650,65 @@ public sealed class AccountModuleService : IModuleMethodHandler
         }
     }
 
-    private void RemoveFlow(string flowId)
+    private void ReplaceFlow(PendingFlow pending)
     {
-        PendingFlow? pending = null;
+        List<PendingFlow> replaced;
         lock (_flowGate)
         {
-            if (_flows.Remove(flowId, out pending))
-            {
-                // Nothing else to do; the CTS is disposed after the poll ends.
-            }
+            replaced = _flows.Values.ToList();
+            _flows.Clear();
+            _flows[pending.FlowId] = pending;
         }
 
-        pending?.Cancellation.Dispose();
+        foreach (var old in replaced)
+        {
+            old.CancelOrDispose();
+        }
+    }
+
+    private void FinishPoll(string flowId, PendingFlow pending)
+    {
+        lock (_flowGate)
+        {
+            _flows.Remove(flowId);
+        }
+
+        // This poll owns disposal for a flow that is still marked active.
+        pending.EndPollAndDispose();
+    }
+
+    private static AccountAuthException MapLoopbackError(
+        string error,
+        string? description)
+    {
+        var message = string.IsNullOrWhiteSpace(description)
+            ? "Microsoft sign-in failed."
+            : description;
+        return error switch
+        {
+            "access_denied" or "authorization_declined" => new AccountAuthException(
+                "AUTH_DECLINED",
+                "Microsoft sign-in was declined.",
+                error),
+            "expired_token" or "invalid_grant" => new AccountAuthException(
+                "AUTH_CODE_EXPIRED",
+                "The Microsoft sign-in request expired. Start again.",
+                error),
+            "invalid_client" => new AccountAuthException(
+                "AUTH_CLIENT_INVALID",
+                message,
+                error),
+            "invalid_request" or "invalid_scope" or "unsupported_response_type" =>
+                new AccountAuthException(
+                    "AUTH_CALLBACK_INVALID",
+                    message,
+                    error),
+            "server_error" or "temporarily_unavailable" => new AccountAuthException(
+                "AUTH_UNAVAILABLE",
+                message,
+                error),
+            _ => new AccountAuthException("AUTH_CALLBACK_FAILED", message, error),
+        };
     }
 
     private static string RequireString(string? json, string name)
@@ -571,14 +759,91 @@ public sealed class AccountModuleService : IModuleMethodHandler
         return $"{hex[..8]}-{hex[8..12]}-{hex[12..16]}-{hex[16..20]}-{hex[20..]}";
     }
 
-    private sealed class PendingFlow
+    private sealed class PendingFlow : IDisposable
     {
-        public PendingFlow(MicrosoftDeviceCodeChallenge challenge)
+        private int _polling;
+        private int _disposed;
+
+        private PendingFlow(
+            MicrosoftDeviceCodeChallenge? deviceCodeChallenge,
+            MicrosoftAuthorizationCodeChallenge? authorizationCodeChallenge,
+            LoopbackOAuthListener? listener)
         {
-            Challenge = challenge;
+            DeviceCodeChallenge = deviceCodeChallenge;
+            AuthorizationCodeChallenge = authorizationCodeChallenge;
+            Listener = listener;
         }
 
-        public MicrosoftDeviceCodeChallenge Challenge { get; }
+        public static PendingFlow ForDeviceCode(MicrosoftDeviceCodeChallenge challenge)
+            => new(challenge, null, null);
+
+        public static PendingFlow ForAuthorizationCode(
+            MicrosoftAuthorizationCodeChallenge challenge,
+            LoopbackOAuthListener listener)
+            => new(null, challenge, listener);
+
+        public MicrosoftDeviceCodeChallenge? DeviceCodeChallenge { get; }
+        public MicrosoftAuthorizationCodeChallenge? AuthorizationCodeChallenge { get; }
+        public LoopbackOAuthListener? Listener { get; }
         public CancellationTokenSource Cancellation { get; } = new();
+
+        public string FlowId =>
+            DeviceCodeChallenge?.FlowId ??
+            AuthorizationCodeChallenge?.FlowId ??
+            string.Empty;
+
+        private bool IsPolling => Volatile.Read(ref _polling) != 0;
+
+        /// <summary>
+        /// Called under the flow lock so cleanup cannot dispose the token source
+        /// between the dictionary lookup and the poll starting.
+        /// </summary>
+        public bool TryBeginPoll() => Interlocked.CompareExchange(ref _polling, 1, 0) == 0;
+
+        /// <summary>
+        /// Stops an abandoned flow immediately, or signals an in-flight poll.
+        /// The running poll disposes after it observes cancellation, which keeps
+        /// its linked token source valid.
+        /// </summary>
+        public void CancelOrDispose()
+        {
+            if (IsPolling)
+            {
+                TryCancel();
+                return;
+            }
+
+            Dispose();
+        }
+
+        public void EndPollAndDispose()
+        {
+            Volatile.Write(ref _polling, 0);
+            Dispose();
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            TryCancel();
+            Cancellation.Dispose();
+            Listener?.Dispose();
+        }
+
+        private void TryCancel()
+        {
+            try
+            {
+                Cancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already torn down.
+            }
+            catch (AggregateException)
+            {
+                // A listener callback failed; cleanup still proceeds.
+            }
+        }
     }
 }

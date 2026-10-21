@@ -16,11 +16,11 @@
 - 实例：创建/选择/删除/搜索、自定义目录、SQLite 索引 + `instance.json` 权威元数据
 - 设置：实例根目录持久化（C# 持有）
 - Modrinth：搜索、版本选择、`DownloadPlan`、Rust 下载与 hash 校验
-- 账户：Microsoft Device Code → XBL → XSTS → Minecraft → entitlement/profile/certificates；离线/在线启动
+- 账户：Microsoft Authorization Code + PKCE（loopback）→ XBL → XSTS → Minecraft → entitlement/profile/certificates；离线/在线启动
 - Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（HTTP、hash、原子落盘、取消）
 - Linux release bundle 自带 `libarchoera_core.so`、`archoera_cs.so` 和 `archoera-dl`
 
-当前基线：287 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+当前基线：295 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
 
 ## 架构
 

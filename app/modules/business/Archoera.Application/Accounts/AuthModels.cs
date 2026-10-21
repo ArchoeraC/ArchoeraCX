@@ -13,6 +13,28 @@ public sealed record MicrosoftDeviceCodeChallenge(
     public DateTimeOffset ExpiresAt => CreatedAt.AddSeconds(ExpiresIn);
 }
 
+/// <summary>
+/// Authorization Code + PKCE challenge. CodeVerifier and State are secrets and
+/// stay in C#; the UI only receives the authorization URL and flow id.
+/// </summary>
+public sealed record MicrosoftAuthorizationCodeChallenge(
+    string FlowId,
+    string AuthorizationUrl,
+    string RedirectUri,
+    string CodeVerifier,
+    string State,
+    DateTimeOffset ExpiresAt);
+
+/// <summary>
+/// Raw loopback callback payload. Code and State are secrets and are never
+/// logged; the caller validates State against the active challenge.
+/// </summary>
+public sealed record LoopbackOAuthCallback(
+    string? Code,
+    string? State,
+    string? Error,
+    string? ErrorDescription);
+
 /// <summary>Microsoft identity token (not a Minecraft token).</summary>
 public sealed record MicrosoftTokenSet(
     string AccessToken,

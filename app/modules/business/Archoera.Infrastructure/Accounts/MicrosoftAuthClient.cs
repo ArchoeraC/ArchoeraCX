@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Archoera.Application.Accounts;
@@ -80,6 +81,98 @@ public sealed class MicrosoftAuthClient
             Math.Max(60, Int(root, "expires_in") ?? 900),
             Math.Clamp(Int(root, "interval") ?? 5, 1, 60),
             DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Builds an Authorization Code + PKCE challenge for the loopback redirect.
+    /// The verifier and state stay inside C# and are never logged.
+    /// </summary>
+    public MicrosoftAuthorizationCodeChallenge CreateAuthorizationCodeChallenge(
+        string redirectUri)
+    {
+        EnsureClientId();
+        if (string.IsNullOrWhiteSpace(redirectUri) ||
+            !Uri.TryCreate(redirectUri, UriKind.Absolute, out var parsedRedirect) ||
+            (parsedRedirect.Scheme != Uri.UriSchemeHttp &&
+             parsedRedirect.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new AccountAuthException(
+                "OAUTH_REDIRECT_INVALID",
+                "The loopback redirect URI is missing or invalid.");
+        }
+
+        var normalizedRedirect = parsedRedirect.AbsoluteUri;
+        var codeVerifier = RandomUrlSafeToken(32);
+        var codeChallenge = Base64UrlEncode(
+            SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)));
+        var state = RandomUrlSafeToken(32);
+
+        var query = new StringBuilder();
+        AppendQuery(query, "client_id", _options.ClientId);
+        AppendQuery(query, "response_type", "code");
+        AppendQuery(query, "redirect_uri", normalizedRedirect);
+        AppendQuery(query, "response_mode", "query");
+        AppendQuery(query, "scope", _options.Scope);
+        AppendQuery(query, "state", state);
+        AppendQuery(query, "code_challenge", codeChallenge);
+        AppendQuery(query, "code_challenge_method", "S256");
+        AppendQuery(query, "prompt", "select_account");
+
+        var authorizationUrl = new UriBuilder(_options.AuthorizationEndpoint)
+        {
+            Query = query.ToString(),
+        }.Uri.AbsoluteUri;
+
+        return new MicrosoftAuthorizationCodeChallenge(
+            Guid.NewGuid().ToString("N"),
+            authorizationUrl,
+            normalizedRedirect,
+            codeVerifier,
+            state,
+            DateTimeOffset.UtcNow.AddMinutes(5));
+    }
+
+    /// <summary>
+    /// Exchanges an authorization code for Microsoft tokens using the original
+    /// PKCE verifier. Tokens and codes are never logged.
+    /// </summary>
+    public async Task<MicrosoftTokenSet> CompleteAuthorizationCodeAsync(
+        MicrosoftAuthorizationCodeChallenge challenge,
+        string code,
+        CancellationToken cancellationToken)
+    {
+        EnsureClientId();
+        ArgumentNullException.ThrowIfNull(challenge);
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new AccountAuthException(
+                "OAUTH_CODE_MISSING",
+                "Microsoft returned no authorization code. Sign in again.");
+        }
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            _options.TokenEndpoint);
+        request.Headers.Accept.Add(AcceptJson);
+        request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "authorization_code",
+            ["client_id"] = _options.ClientId,
+            ["code"] = code,
+            ["redirect_uri"] = challenge.RedirectUri,
+            ["code_verifier"] = challenge.CodeVerifier,
+        });
+
+        using var response = await _http
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw MapMicrosoftError(body, response.StatusCode, "AUTHORIZATION_CODE_FAILED");
+        }
+
+        return ParseMicrosoftTokens(body, previousRefreshToken: null);
     }
 
     /// <summary>
@@ -697,6 +790,27 @@ public sealed class MicrosoftAuthClient
         }
     }
 
+    private static string RandomUrlSafeToken(int byteCount)
+        => Base64UrlEncode(RandomNumberGenerator.GetBytes(byteCount));
+
+    private static string Base64UrlEncode(ReadOnlySpan<byte> bytes)
+        => Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+
+    private static void AppendQuery(StringBuilder builder, string name, string value)
+    {
+        if (builder.Length > 0)
+        {
+            builder.Append('&');
+        }
+
+        builder.Append(Uri.EscapeDataString(name));
+        builder.Append('=');
+        builder.Append(Uri.EscapeDataString(value));
+    }
+
     private static StringContent JsonBody(Action<Utf8JsonWriter> write)
     {
         using var memory = new MemoryStream();
@@ -749,6 +863,9 @@ public sealed record MicrosoftAuthOptions
 
     public Uri DeviceCodeEndpoint =>
         LoginEndpoint("devicecode");
+
+    public Uri AuthorizationEndpoint =>
+        LoginEndpoint("authorize");
 
     public Uri TokenEndpoint => LoginEndpoint("token");
 
