@@ -114,7 +114,7 @@ settings.json                 实例根目录等设置
 archoera.db                   C# SQLite 实例索引
 <instance>/.archoera/instance.json
 accounts.json                 账户元数据
-accounts.credentials.json     refresh/Minecraft token（Unix 0600）
+archoera-vault                凭证保险库（crypto/file 免密模式）
 logs/account.log              脱敏的账户诊断日志
 ```
 

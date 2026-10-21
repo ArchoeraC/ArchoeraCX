@@ -2011,6 +2011,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Description'**
   String get downloadDescription;
+
+  /// Instance menu action that installs vanilla game files.
+  ///
+  /// In en, this message translates to:
+  /// **'Download game files'**
+  String get instanceInstallGame;
+
+  /// Dialog title for vanilla installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Install game files'**
+  String get instanceInstallGameTitle;
+
+  /// Explanation for vanilla installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads the vanilla client, libraries and assets, then writes the version JSON used by launch.'**
+  String get instanceInstallGameHint;
+
+  /// Installation progress status.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading game files…'**
+  String get instanceInstallGameRunning;
+
+  /// Installation completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Game files are ready.'**
+  String get instanceInstallGameDone;
+
+  /// Installation failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Game file installation failed.'**
+  String get instanceInstallGameFailed;
+
+  /// Retry a failed operation.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get commonRetry;
+
+  /// Task center title.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get taskCenterTitle;
+
+  /// Empty task center.
+  ///
+  /// In en, this message translates to:
+  /// **'No active tasks.'**
+  String get taskCenterEmpty;
+
+  /// Active task count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} active'**
+  String taskCenterActive(Object count);
+
+  /// Completed task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get taskCenterCompleted;
+
+  /// Failed task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get taskCenterFailed;
+
+  /// Cancelled task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get taskCenterCancelled;
+
+  /// Cancel task action.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get taskCenterCancel;
+
+  /// Clear completed tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear completed'**
+  String get taskCenterClear;
+
+  /// Download task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get taskCenterDownload;
+
+  /// Loader task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Loader'**
+  String get taskCenterLoader;
+
+  /// Vanilla install task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Game files'**
+  String get taskCenterGameFiles;
+
+  /// Java scan task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Java scan'**
+  String get taskCenterJavaScan;
+
+  /// Generic task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get taskCenterTask;
+
+  /// Transfer rate label.
+  ///
+  /// In en, this message translates to:
+  /// **'{rate}/s'**
+  String taskCenterSpeed(Object rate);
+
+  /// Task running without known total.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get taskCenterWorking;
+
+  /// Mod install requires a mod-loader instance.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a Fabric/Forge/NeoForge/Quilt instance before installing mods.'**
+  String get resourceNeedsLoader;
+
+  /// Create instance under versions/ with shared libraries/assets.
+  ///
+  /// In en, this message translates to:
+  /// **'Version isolation'**
+  String get instanceVersionIsolation;
+
+  /// Version isolation explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The game data lives in versions/<name>; libraries and assets are shared with the parent game folder.'**
+  String get instanceVersionIsolationHint;
+
+  /// Modpack placeholder message.
+  ///
+  /// In en, this message translates to:
+  /// **'Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.'**
+  String get downloadModpackPending;
 }
 
 class _AppLocalizationsDelegate

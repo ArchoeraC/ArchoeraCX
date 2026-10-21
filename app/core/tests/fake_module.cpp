@@ -81,7 +81,9 @@ int32_t fake_call(void* self,
                   const char* method,
                   const char* params_json,
                   archoera_module_done_fn done,
+                  archoera_module_progress_fn progress,
                   void* user) {
+  (void)progress;
   auto* state = static_cast<FakeSelf*>(self);
   if (state == nullptr || method == nullptr || done == nullptr) {
     return ARCHOERA_E_INVALID;

@@ -1079,4 +1079,89 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadDescription => '描述';
+
+  @override
+  String get instanceInstallGame => '下载游戏本体';
+
+  @override
+  String get instanceInstallGameTitle => '安装游戏本体';
+
+  @override
+  String get instanceInstallGameHint => '下载原版客户端、库与资源文件，并写入启动所需的版本 JSON。';
+
+  @override
+  String get instanceInstallGameRunning => '正在下载游戏文件…';
+
+  @override
+  String get instanceInstallGameDone => '游戏文件已就绪。';
+
+  @override
+  String get instanceInstallGameFailed => '游戏本体安装失败。';
+
+  @override
+  String get commonRetry => '重试';
+
+  @override
+  String get taskCenterTitle => '任务';
+
+  @override
+  String get taskCenterEmpty => '暂无进行中的任务。';
+
+  @override
+  String taskCenterActive(Object count) {
+    return '$count 个进行中';
+  }
+
+  @override
+  String get taskCenterCompleted => '已完成';
+
+  @override
+  String get taskCenterFailed => '失败';
+
+  @override
+  String get taskCenterCancelled => '已取消';
+
+  @override
+  String get taskCenterCancel => '取消';
+
+  @override
+  String get taskCenterClear => '清除已完成';
+
+  @override
+  String get taskCenterDownload => '下载';
+
+  @override
+  String get taskCenterLoader => '加载器';
+
+  @override
+  String get taskCenterGameFiles => '游戏文件';
+
+  @override
+  String get taskCenterJavaScan => 'Java 扫描';
+
+  @override
+  String get taskCenterTask => '任务';
+
+  @override
+  String taskCenterSpeed(Object rate) {
+    return '$rate/s';
+  }
+
+  @override
+  String get taskCenterWorking => '处理中';
+
+  @override
+  String get resourceNeedsLoader =>
+      '请先选择一个 Fabric/Forge/NeoForge/Quilt 实例，再安装 Mod。';
+
+  @override
+  String get instanceVersionIsolation => '版本隔离';
+
+  @override
+  String get instanceVersionIsolationHint =>
+      '游戏数据放在 versions/<name>，库和资源文件与父级游戏目录共享。';
+
+  @override
+  String get downloadModpackPending =>
+      'Modrinth 整合包安装尚未启用，需要先接入 .mrpack 暂存、overrides 与加载器流水线。';
 }

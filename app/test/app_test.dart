@@ -211,4 +211,25 @@ void main() {
     expect(find.text('Mods'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('opens the task center', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.task_alt_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tasks'), findsOneWidget);
+    expect(find.text('No active tasks.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

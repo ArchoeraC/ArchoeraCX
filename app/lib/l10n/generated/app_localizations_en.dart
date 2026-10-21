@@ -1117,4 +1117,90 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadDescription => 'Description';
+
+  @override
+  String get instanceInstallGame => 'Download game files';
+
+  @override
+  String get instanceInstallGameTitle => 'Install game files';
+
+  @override
+  String get instanceInstallGameHint =>
+      'Downloads the vanilla client, libraries and assets, then writes the version JSON used by launch.';
+
+  @override
+  String get instanceInstallGameRunning => 'Downloading game files…';
+
+  @override
+  String get instanceInstallGameDone => 'Game files are ready.';
+
+  @override
+  String get instanceInstallGameFailed => 'Game file installation failed.';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get taskCenterTitle => 'Tasks';
+
+  @override
+  String get taskCenterEmpty => 'No active tasks.';
+
+  @override
+  String taskCenterActive(Object count) {
+    return '$count active';
+  }
+
+  @override
+  String get taskCenterCompleted => 'Done';
+
+  @override
+  String get taskCenterFailed => 'Failed';
+
+  @override
+  String get taskCenterCancelled => 'Cancelled';
+
+  @override
+  String get taskCenterCancel => 'Cancel';
+
+  @override
+  String get taskCenterClear => 'Clear completed';
+
+  @override
+  String get taskCenterDownload => 'Download';
+
+  @override
+  String get taskCenterLoader => 'Loader';
+
+  @override
+  String get taskCenterGameFiles => 'Game files';
+
+  @override
+  String get taskCenterJavaScan => 'Java scan';
+
+  @override
+  String get taskCenterTask => 'Task';
+
+  @override
+  String taskCenterSpeed(Object rate) {
+    return '$rate/s';
+  }
+
+  @override
+  String get taskCenterWorking => 'Working';
+
+  @override
+  String get resourceNeedsLoader =>
+      'Select a Fabric/Forge/NeoForge/Quilt instance before installing mods.';
+
+  @override
+  String get instanceVersionIsolation => 'Version isolation';
+
+  @override
+  String get instanceVersionIsolationHint =>
+      'The game data lives in versions/<name>; libraries and assets are shared with the parent game folder.';
+
+  @override
+  String get downloadModpackPending =>
+      'Modrinth modpack installation is not enabled yet; it needs the .mrpack staging, overrides and loader pipeline.';
 }

@@ -15,11 +15,11 @@ import 'loader_version_picker.dart';
 import '../common/toast.dart';
 import '../../utils/app_paths.dart';
 
-Future<void> showCreateInstanceDialog(
+Future<GameInstance?> showCreateInstanceDialog(
   BuildContext context, {
   String? initialVersion,
 }) {
-  return showDialog<void>(
+  return showDialog<GameInstance>(
     context: context,
     builder: (context) => CreateInstanceDialog(initialVersion: initialVersion),
   );
@@ -55,6 +55,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
   String? _versionError;
   int _versionRequest = 0;
   String? _selectedRoot;
+  bool _versionIsolation = false;
   bool _creating = false;
 
   @override
@@ -140,8 +141,9 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                     controller: _rootController,
                     decoration: InputDecoration(
                       labelText: l10n.instanceLocationLabel,
-                      hintText:
-                          '$selectedRoot/${slugForInstance(_nameController.text)}',
+                      hintText: _versionIsolation
+                          ? '$selectedRoot/versions/${slugForInstance(_nameController.text)}'
+                          : '$selectedRoot/${slugForInstance(_nameController.text)}',
                       helperText: l10n.instanceLocationHint,
                     ),
                   ),
@@ -154,7 +156,17 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.xs),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _versionIsolation,
+              onChanged: (value) =>
+                  setState(() => _versionIsolation = value ?? false),
+              title: Text(l10n.instanceVersionIsolation),
+              subtitle: Text(l10n.instanceVersionIsolationHint),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const SizedBox(height: AppSpacing.sm),
             DropdownButtonFormField<String>(
               initialValue: _gameVersion,
               decoration: InputDecoration(
@@ -389,13 +401,14 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         ? _selectedRoot!
         : roots.first;
     final explicitRoot = _rootController.text.trim();
-    final rootPath = explicitRoot.isEmpty
-        ? joinPath(selectedRoot, slugForInstance(name))
-        : explicitRoot;
+    final slug = slugForInstance(name);
+    final rootPath = _versionIsolation
+        ? joinPath(joinPath(selectedRoot, 'versions'), slug)
+        : (explicitRoot.isEmpty ? joinPath(selectedRoot, slug) : explicitRoot);
 
     setState(() => _creating = true);
     try {
-      await ref
+      final created = await ref
           .read(instancesProvider.notifier)
           .create(
             name: name,
@@ -405,7 +418,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
             rootPath: rootPath,
           );
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(created);
       toast(l10n.instanceCreated, type: ToastType.success);
     } catch (error) {
       if (mounted) {

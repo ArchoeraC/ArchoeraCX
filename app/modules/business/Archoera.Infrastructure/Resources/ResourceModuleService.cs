@@ -181,16 +181,17 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         {
             ResourceDownloadPlanBuilder.Build(rootPath, kind, target, version),
         };
+        var warnings = new List<string>();
         if (includeDependencies && version.DependencyList.Count > 0)
         {
             var dependencies = await ResourceDependencyResolver
                 .ResolveAsync(client, kind, target, version, cancellationToken)
                 .ConfigureAwait(false);
-            if (dependencies.Incompatible.Count > 0)
+            warnings.AddRange(dependencies.Warnings);
+            foreach (var dependency in dependencies.Incompatible)
             {
-                throw new ResourceProviderException(
-                    ResourceErrorCode.DependencyConflict,
-                    $"version {version.Id} declares {dependencies.Incompatible.Count} incompatible dependencies");
+                warnings.Add(
+                    $"incompatible dependency ignored: {dependency.ProjectId ?? dependency.FileName ?? "unknown"}");
             }
 
             foreach (var dependency in dependencies.Required)
@@ -198,14 +199,14 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                 plans.Add(
                     ResourceDownloadPlanBuilder.Build(
                         rootPath,
-                        kind,
-                        target,
-                        dependency));
+                        dependency.Kind,
+                        dependency.Target,
+                        dependency.Version));
             }
         }
 
         var plan = plans.Count == 1 ? plans[0] : DownloadPlanCombiner.Combine(plans);
-        return BuildPlan(plan);
+        return BuildPlan(plan, warnings);
     }
 
     private async Task<byte[]> ExecuteAsync(
@@ -265,14 +266,40 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             return Error("DOWNLOADER_FAILED", "archoera-dl did not start");
         }
 
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-        var stderrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
+        var startedAt = Stopwatch.GetTimestamp();
+        var lastProgressAt = startedAt;
+        long lastDone = 0;
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+
+        var stdoutTask = PumpLinesAsync(
+            process.StandardOutput,
+            line =>
+            {
+                if (stdout.Length < 256 * 1024) stdout.AppendLine(line);
+            });
+        var stderrTask = PumpLinesAsync(
+            process.StandardError,
+            line =>
+            {
+                if (stderr.Length < 64 * 1024) stderr.AppendLine(line);
+                if (!TryParseProgress(line, out var done, out var total)) return;
+                var now = Stopwatch.GetTimestamp();
+                var elapsed = Stopwatch.GetElapsedTime(lastProgressAt, now).TotalSeconds;
+                var rate = elapsed > 0
+                    ? Math.Max(0, (long)((done - lastDone) / elapsed))
+                    : 0;
+                lastDone = Math.Max(lastDone, done);
+                lastProgressAt = now;
+                ModuleProgress.Report(done, total, rate, line);
+            });
 
         using var waitSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         waitSource.CancelAfter(TimeSpan.FromMinutes(30));
         try
         {
             await process.WaitForExitAsync(waitSource.Token).ConfigureAwait(false);
+            await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -289,14 +316,14 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             return Error("DOWNLOAD_TIMEOUT", "download timed out");
         }
 
-        var stdout = await stdoutTask.ConfigureAwait(false);
-        var stderr = await stderrTask.ConfigureAwait(false);
-        var resultText = LastJsonLine(stdout);
+        var stdoutText = stdout.ToString();
+        var stderrText = stderr.ToString();
+        var resultText = LastJsonLine(stdoutText);
         if (resultText is null)
         {
             return Error(
                 "DOWNLOADER_FAILED",
-                $"archoera-dl returned no result: {Tail(stderr, 500)}");
+                $"archoera-dl returned no result: {Tail(stderrText, 500)}");
         }
 
         using var resultDocument = JsonDocument.Parse(resultText);
@@ -312,8 +339,8 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             writer.WriteString("status", status ?? "failed");
             writer.WriteBoolean("downloadOk", ok);
             writer.WriteString("planPath", planPath);
-            writer.WriteString("stdout", Tail(stdout, 4000));
-            writer.WriteString("stderr", Tail(stderr, 4000));
+            writer.WriteString("stdout", Tail(stdoutText, 4000));
+            writer.WriteString("stderr", Tail(stderrText, 4000));
             writer.WriteEndObject();
             writer.WriteBoolean("ok", ok);
         });
@@ -369,8 +396,8 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         return kind switch
         {
             ResourceKind.Mod => ResourceTarget.ForMod(game, loader ?? "fabric"),
-            ResourceKind.Shader => ResourceTarget.ForShader(game, shader ?? "iris"),
-            ResourceKind.ResourcePack => ResourceTarget.ForResourcePack(game),
+            ResourceKind.Shader => new ResourceTarget(game, loader, shader ?? "iris"),
+            ResourceKind.ResourcePack => new ResourceTarget(game, loader),
             _ => throw new ResourceProviderException(
                 ResourceErrorCode.InvalidRequest,
                 "unsupported resource kind"),
@@ -479,7 +506,9 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             writer.WriteBoolean("ok", true);
         });
 
-    private static byte[] BuildPlan(DownloadPlan plan)
+    private static byte[] BuildPlan(
+        DownloadPlan plan,
+        IReadOnlyList<string>? warnings = null)
     {
         var planBytes = DownloadPlanJson.Build(plan);
         using var planDocument = JsonDocument.Parse(planBytes);
@@ -488,6 +517,17 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             writer.WriteStartObject("data");
             writer.WritePropertyName("plan");
             planDocument.RootElement.WriteTo(writer);
+            if (warnings is { Count: > 0 })
+            {
+                writer.WriteStartArray("warnings");
+                foreach (var warning in warnings)
+                {
+                    writer.WriteStringValue(warning);
+                }
+
+                writer.WriteEndArray();
+            }
+
             writer.WriteEndObject();
             writer.WriteBoolean("ok", true);
         });
@@ -655,6 +695,54 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         }
 
         return value;
+    }
+
+    private static async Task PumpLinesAsync(
+        StreamReader reader,
+        Action<string> onLine)
+    {
+        while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
+        {
+            onLine(line);
+        }
+    }
+
+    private static bool TryParseProgress(
+        string line,
+        out long done,
+        out long total)
+    {
+        done = 0;
+        total = 0;
+        if (line.Length == 0 || line[0] != '{') return false;
+        try
+        {
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("event", out var eventElement) ||
+                eventElement.ValueKind != JsonValueKind.String ||
+                !string.Equals(
+                    eventElement.GetString(),
+                    "progress",
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!root.TryGetProperty("doneBytes", out var doneElement) ||
+                !doneElement.TryGetInt64(out done) ||
+                !root.TryGetProperty("totalBytes", out var totalElement) ||
+                !totalElement.TryGetInt64(out total))
+            {
+                return false;
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private static string? LastJsonLine(string text)

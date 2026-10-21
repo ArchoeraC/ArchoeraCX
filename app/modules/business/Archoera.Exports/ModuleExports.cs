@@ -8,7 +8,7 @@ using Archoera.Infrastructure.Modules;
 namespace Archoera.Exports;
 
 /// <summary>
-/// NativeAOT module ABI v1 adapter. The table layout mirrors
+/// NativeAOT module ABI v2 adapter. The table layout mirrors
 /// <c>app/contracts/module/archoera_module_abi.h</c> exactly.
 ///
 /// This layer only performs ABI marshalling, cancellation bookkeeping and
@@ -18,7 +18,7 @@ namespace Archoera.Exports;
 /// </summary>
 public static unsafe class ModuleExports
 {
-    private const int AbiVersion = 1;
+    private const int AbiVersion = 2;
     private const int Ok = 0;
     private const int Invalid = 1;
     private const int Cancelled = 6;
@@ -85,6 +85,7 @@ public static unsafe class ModuleExports
         IntPtr methodPtr,
         IntPtr paramsPtr,
         IntPtr donePtr,
+        IntPtr progressPtr,
         IntPtr user)
     {
         if (self == IntPtr.Zero || methodPtr == IntPtr.Zero || donePtr == IntPtr.Zero)
@@ -129,7 +130,11 @@ public static unsafe class ModuleExports
             entered = true;
 
             var done = (delegate* unmanaged[Cdecl]<IntPtr, int, IntPtr, void>)donePtr;
+            var progress =
+                (delegate* unmanaged[Cdecl]<IntPtr, long, long, long, IntPtr, void>)progressPtr;
             var cancellationToken = state.Register(taskId);
+            using var progressScope = ModuleProgress.Begin((doneBytes, totalBytes, bytesPerSecond, message) =>
+                InvokeProgress(progress, user, doneBytes, totalBytes, bytesPerSecond, message));
 
             try
             {
@@ -277,6 +282,39 @@ public static unsafe class ModuleExports
         }
     }
 
+    private static void InvokeProgress(
+        delegate* unmanaged[Cdecl]<IntPtr, long, long, long, IntPtr, void> progress,
+        IntPtr user,
+        long done,
+        long total,
+        long bytesPerSecond,
+        string? message)
+    {
+        if (progress == null)
+        {
+            return;
+        }
+
+        if (message is null)
+        {
+            progress(user, done, total, bytesPerSecond, IntPtr.Zero);
+            return;
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(message);
+        var buffer = (byte*)NativeMemory.Alloc((nuint)(bytes.Length + 1));
+        try
+        {
+            bytes.AsSpan().CopyTo(new Span<byte>(buffer, bytes.Length));
+            buffer[bytes.Length] = 0;
+            progress(user, done, total, bytesPerSecond, (IntPtr)buffer);
+        }
+        finally
+        {
+            NativeMemory.Free(buffer);
+        }
+    }
+
     private static IntPtr CreateModuleTable()
     {
         var table = (ModuleV1*)NativeMemory.AllocZeroed((nuint)sizeof(ModuleV1));
@@ -285,7 +323,7 @@ public static unsafe class ModuleExports
         table->Name = Marshal.StringToCoTaskMemUTF8("archoera_cs");
         table->Version = Marshal.StringToCoTaskMemUTF8("0.1.0");
         table->Init = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr*, IntPtr, int>)&ModuleInit;
-        table->Call = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, ulong, IntPtr, IntPtr, IntPtr, IntPtr, int>)&ModuleCall;
+        table->Call = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, ulong, IntPtr, IntPtr, IntPtr, IntPtr, IntPtr, int>)&ModuleCall;
         table->Cancel = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, ulong, int>)&ModuleCancel;
         table->Shutdown = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, void>)&ModuleShutdown;
 

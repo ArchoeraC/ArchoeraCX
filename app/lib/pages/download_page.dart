@@ -8,6 +8,7 @@ import '../widgets/common/app_empty_state.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/download/resource_search_panel.dart';
 import '../widgets/instances/create_instance_dialog.dart';
+import '../widgets/instances/vanilla_install_dialog.dart';
 import '../services/core/version_models.dart';
 
 /// Download hub.
@@ -60,7 +61,11 @@ class _DownloadPageState extends State<DownloadPage> {
                   icon: Icons.extension_rounded,
                   global: true,
                 ),
-                _ComingSoonTab(l10n: l10n, icon: Icons.inventory_2_rounded),
+                _ComingSoonTab(
+                  l10n: l10n,
+                  icon: Icons.inventory_2_rounded,
+                  message: l10n.downloadModpackPending,
+                ),
                 ResourceSearchPanel(
                   kind: 'resourcepack',
                   title: l10n.tabResourcePacks,
@@ -248,10 +253,11 @@ class _CategoryTabs extends StatelessWidget {
 
 /// Honest placeholder for categories whose native flow is not wired yet.
 class _ComingSoonTab extends StatelessWidget {
-  const _ComingSoonTab({required this.l10n, required this.icon});
+  const _ComingSoonTab({required this.l10n, required this.icon, this.message});
 
   final AppLocalizations l10n;
   final IconData icon;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +267,7 @@ class _ComingSoonTab extends StatelessWidget {
         AppEmptyState(
           icon: icon,
           title: l10n.comingSoon,
-          message: l10n.providerNotWired,
+          message: message ?? l10n.providerNotWired,
         ),
       ],
     );
@@ -429,10 +435,15 @@ class _VersionsPanelState extends ConsumerState<_VersionsPanel> {
                     ].join(' · '),
                   ),
                   trailing: TextButton(
-                    onPressed: () => showCreateInstanceDialog(
-                      context,
-                      initialVersion: item.id,
-                    ),
+                    onPressed: () async {
+                      final created = await showCreateInstanceDialog(
+                        context,
+                        initialVersion: item.id,
+                      );
+                      if (created != null && context.mounted) {
+                        await showVanillaInstallDialog(context, created);
+                      }
+                    },
                     child: Text(l10n.versionUse),
                   ),
                 );

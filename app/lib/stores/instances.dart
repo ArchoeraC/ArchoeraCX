@@ -94,6 +94,41 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
     return created;
   }
 
+  /// Download and commit the vanilla game files for [instance].
+  Future<void> installVanilla(
+    GameInstance instance, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      throw StateError('The native core is not connected.');
+    }
+
+    final plan = await client.planVanillaInstall(
+      root: instance.rootPath,
+      versionId: instance.gameVersion,
+    );
+    final result = await client.executeDownload(
+      plan.plan,
+      onProgress: onProgress,
+    );
+    if (!result.ok) {
+      final detail = result.stderr?.trim();
+      throw StateError(
+        detail == null || detail.isEmpty
+            ? 'Game download failed (${result.status}).'
+            : detail,
+      );
+    }
+
+    await client.commitVanillaVersion(
+      root: instance.rootPath,
+      versionId: plan.versionId,
+      versionJson: plan.versionJson,
+    );
+    await reload();
+  }
+
   Future<void> delete(String id) async {
     final client = ref.read(coreClientProvider);
     if (client != null) {

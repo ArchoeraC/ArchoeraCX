@@ -272,7 +272,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         query: _queryController.text.trim(),
         kind: widget.kind,
         gameVersion: game,
-        loader: !widget.global && widget.kind == 'mod' ? loader : null,
+        loader: widget.global ? null : loader,
         shaderLoader: !widget.global && widget.kind == 'shader' ? 'iris' : null,
         sort: _sort,
         page: page,
@@ -338,13 +338,21 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
       return;
     }
 
+    if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
+      _notify(
+        AppLocalizations.of(context).resourceNeedsLoader,
+        type: ToastType.warning,
+      );
+      return;
+    }
+
     setState(() => _installing = true);
     try {
       final versions = await client.modrinthVersions(
         projectId: project.id,
         kind: widget.kind,
         gameVersion: instance.gameVersion,
-        loader: widget.kind == 'mod' ? _loaderFor(instance) : null,
+        loader: _loaderFor(instance),
         shaderLoader: widget.kind == 'shader' ? 'iris' : null,
       );
       if (!mounted) return;
@@ -390,6 +398,15 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
       );
       return;
     }
+
+    if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
+      _notify(
+        AppLocalizations.of(context).resourceNeedsLoader,
+        type: ToastType.warning,
+      );
+      return;
+    }
+
     final downloadRoot = instance.rootPath;
     if (downloadRoot.isEmpty) {
       _notify(
@@ -406,7 +423,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         versionId: version.id,
         kind: widget.kind,
         gameVersion: instance.gameVersion,
-        loader: widget.kind == 'mod' ? _loaderFor(instance) : null,
+        loader: _loaderFor(instance),
         shaderLoader: widget.kind == 'shader' ? 'iris' : null,
         includeDependencies: true,
         root: downloadRoot,

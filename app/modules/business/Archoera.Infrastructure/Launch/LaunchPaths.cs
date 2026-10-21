@@ -7,6 +7,29 @@ internal sealed record LaunchPaths(
     string AssetsRoot,
     string NativesRoot)
 {
+    /// <summary>
+    /// Root that owns <c>versions/</c>, <c>libraries/</c> and <c>assets/</c>
+    /// before those directories exist. Instance directories placed under a
+    /// <c>versions</c> parent (classic version isolation) share the parent game
+    /// root; other instances own their files.
+    /// </summary>
+    public static string ResolveInstallRoot(string instanceRoot)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instanceRoot));
+        var parent = Directory.GetParent(root);
+        if (parent is not null &&
+            string.Equals(
+                Path.GetFileName(parent.FullName),
+                "versions",
+                StringComparison.OrdinalIgnoreCase) &&
+            parent.Parent is not null)
+        {
+            return parent.Parent.FullName;
+        }
+
+        return root;
+    }
+
     public static LaunchPaths Resolve(string instanceRoot)
     {
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instanceRoot));

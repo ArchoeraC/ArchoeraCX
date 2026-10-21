@@ -321,13 +321,14 @@ int32_t ModuleHost::call(uint64_t task_id,
                          const char* method,
                          const char* params_json,
                          archoera_module_done_fn done,
+                         archoera_module_progress_fn progress,
                          void* user) noexcept {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
     if (closed_ || entry_ == nullptr || self_ == nullptr) {
       return ARCHOERA_E_UNSUPPORTED;
     }
-    return entry_->call(self_, task_id, method, params_json, done, user);
+    return entry_->call(self_, task_id, method, params_json, done, progress, user);
   } catch (...) {
     return ARCHOERA_E_INTERNAL;
   }

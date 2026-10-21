@@ -138,7 +138,7 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<your-public-client-id>" \
 ./tool/build-cs.sh -p:MicrosoftClientId="<your-public-client-id>"
 ```
 
-（`build-cs.sh` 会把 `ARCHOERACX_MICROSOFT_CLIENT_ID` 传给原生构建。）device code 流程不需要 redirect URI。即使 OAuth/XBL/XSTS 成功，`login_with_xbox` 仍需 Minecraft Services 对该 client_id 的审核；未审核时 UI 会显示 `MINECRAFT_APP_NOT_APPROVED`。refresh token 当前存 `<dataRoot>/accounts.credentials.json`（Unix 0600），后续迁移 OS 凭据库。
+（`build-cs.sh` 会把 `ARCHOERACX_MICROSOFT_CLIENT_ID` 传给原生构建。）device code 流程不需要 redirect URI。即使 OAuth/XBL/XSTS 成功，`login_with_xbox` 仍需 Minecraft Services 对该 client_id 的审核；未审核时 UI 会显示 `MINECRAFT_APP_NOT_APPROVED`。refresh token 存 `<dataRoot>` 下的 `archoera-vault` 凭证保险库（crypto/file 免密模式）；旧 `accounts.credentials.json` 首次使用时迁移并删除。
 
 ## 下一步
 
