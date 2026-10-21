@@ -10,6 +10,7 @@ import '../../stores/providers.dart';
 import '../../theme/tokens.dart';
 import '../common/app_section.dart';
 import '../common/app_empty_state.dart';
+import '../common/toast.dart';
 
 /// Real Modrinth search + install surface for one content tab.
 ///
@@ -174,13 +175,19 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   Future<void> _openVersions(ResourceProject project) async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
-      _notify(AppLocalizations.of(context).commonCoreNotConnected);
+      _notify(
+        AppLocalizations.of(context).commonCoreNotConnected,
+        type: ToastType.error,
+      );
       return;
     }
 
     final instance = ref.read(selectedInstanceProvider);
     if (instance == null) {
-      _notify(AppLocalizations.of(context).selectInstance);
+      _notify(
+        AppLocalizations.of(context).selectInstance,
+        type: ToastType.warning,
+      );
       return;
     }
     final game = instance.gameVersion;
@@ -203,7 +210,10 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
       );
       if (!mounted) return;
       if (versions.isEmpty) {
-        _notify(AppLocalizations.of(context).downloadNoVersions);
+        _notify(
+          AppLocalizations.of(context).downloadNoVersions,
+          type: ToastType.warning,
+        );
         return;
       }
 
@@ -217,7 +227,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         await _install(project, selected);
       }
     } catch (error) {
-      if (mounted) _notify(error.toString());
+      if (mounted) _notify(error.toString(), type: ToastType.error);
     } finally {
       if (mounted) setState(() => _installing = false);
     }
@@ -231,7 +241,10 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     if (client == null) return;
     final instance = ref.read(selectedInstanceProvider);
     if (instance == null) {
-      _notify(AppLocalizations.of(context).selectInstance);
+      _notify(
+        AppLocalizations.of(context).selectInstance,
+        type: ToastType.warning,
+      );
       return;
     }
     final game = instance.gameVersion;
@@ -245,7 +258,10 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
 
     final downloadRoot = instance.rootPath;
     if (downloadRoot.isEmpty) {
-      _notify(AppLocalizations.of(context).selectInstance);
+      _notify(
+        AppLocalizations.of(context).selectInstance,
+        type: ToastType.warning,
+      );
       return;
     }
 
@@ -266,22 +282,14 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
       if (!mounted) return;
       _notify(AppLocalizations.of(context).downloadResult(result.status));
     } catch (error) {
-      if (mounted) _notify(error.toString());
+      if (mounted) _notify(error.toString(), type: ToastType.error);
     } finally {
       if (mounted) setState(() => _installing = false);
     }
   }
 
-  void _notify(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(message),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+  void _notify(String message, {ToastType type = ToastType.info}) {
+    toast(message, type: type);
   }
 }
 

@@ -9,6 +9,7 @@ import '../../stores/instances.dart';
 import '../../stores/settings.dart';
 import '../../theme/tokens.dart';
 import '../common/loader_mark.dart';
+import '../common/toast.dart';
 import '../../utils/app_paths.dart';
 
 Future<void> showCreateInstanceDialog(
@@ -243,7 +244,6 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         : explicitRoot;
 
     setState(() => _creating = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await ref
           .read(instancesProvider.notifier)
@@ -255,27 +255,11 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
           );
       if (!mounted) return;
       Navigator.of(context).pop();
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            content: Text(l10n.instanceCreated),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+      toast(l10n.instanceCreated, type: ToastType.success);
     } catch (error) {
       if (mounted) {
         setState(() => _creating = false);
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              content: Text(error.toString()),
-              duration: const Duration(seconds: 3),
-            ),
-          );
+        toast(error.toString(), type: ToastType.error);
       }
     }
   }

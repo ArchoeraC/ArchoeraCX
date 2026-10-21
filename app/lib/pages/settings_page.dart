@@ -11,6 +11,7 @@ import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../utils/app_info.dart';
 import '../widgets/common/app_section.dart';
+import '../widgets/common/toast.dart';
 import '../widgets/common/java_status_card.dart';
 import '../widgets/common/app_page_header.dart';
 
@@ -138,7 +139,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             subtitle: l10n.settingsMotionDesc,
             trailing: Switch(
               value: false,
-              onChanged: (_) => _notify(context, l10n.commonCoreNotConnected),
+              onChanged: (_) => _notify(
+                context,
+                l10n.commonCoreNotConnected,
+                type: ToastType.error,
+              ),
             ),
           ),
         ],
@@ -333,7 +338,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         .read(localeProvider.notifier)
         .setLocale(choice == 'system' ? null : Locale(choice));
     if (context.mounted) {
-      _notify(context, AppLocalizations.of(context).settingsLanguageChanged);
+      _notify(
+        context,
+        AppLocalizations.of(context).settingsLanguageChanged,
+        type: ToastType.success,
+      );
     }
   }
 
@@ -431,7 +440,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         minValue < 128 ||
         maxValue > 65536 ||
         minValue > maxValue) {
-      _notify(context, l10n.settingsMemoryInvalid);
+      _notify(context, l10n.settingsMemoryInvalid, type: ToastType.error);
       return;
     }
 
@@ -445,9 +454,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             gcMode: gcMode,
             gameArgs: gameArgsText,
           );
-      if (context.mounted) _notify(context, l10n.settingsRuntimeSaved);
+      if (context.mounted) {
+        _notify(context, l10n.settingsRuntimeSaved, type: ToastType.success);
+      }
     } catch (error) {
-      if (context.mounted) _notify(context, error.toString());
+      if (context.mounted) {
+        _notify(context, error.toString(), type: ToastType.error);
+      }
     }
   }
 
@@ -485,9 +498,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 : (ref.read(appSettingsProvider).value?.javaPath),
             javaAuto: auto,
           );
-      if (context.mounted) _notify(context, l10n.settingsSaved);
+      if (context.mounted) {
+        _notify(context, l10n.settingsSaved, type: ToastType.success);
+      }
     } catch (error) {
-      if (context.mounted) _notify(context, error.toString());
+      if (context.mounted) {
+        _notify(context, error.toString(), type: ToastType.error);
+      }
     }
   }
 
@@ -500,9 +517,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await ref
           .read(appSettingsProvider.notifier)
           .setJavaSelection(javaPath: runtime.path, javaAuto: false);
-      if (context.mounted) _notify(context, l10n.settingsJavaSelected);
+      if (context.mounted) {
+        _notify(context, l10n.settingsJavaSelected, type: ToastType.success);
+      }
     } catch (error) {
-      if (context.mounted) _notify(context, error.toString());
+      if (context.mounted) {
+        _notify(context, error.toString(), type: ToastType.error);
+      }
     }
   }
 
@@ -520,7 +541,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (!context.mounted) return;
       await _syncInstances(context, l10n);
     } catch (error) {
-      if (context.mounted) _notify(context, error.toString());
+      if (context.mounted) {
+        _notify(context, error.toString(), type: ToastType.error);
+      }
     }
   }
 
@@ -534,7 +557,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (!context.mounted) return;
       await _syncInstances(context, l10n);
     } catch (error) {
-      if (context.mounted) _notify(context, error.toString());
+      if (context.mounted) {
+        _notify(context, error.toString(), type: ToastType.error);
+      }
     }
   }
 
@@ -548,7 +573,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (!context.mounted) return;
       await _syncInstances(context, l10n);
     } catch (error) {
-      if (context.mounted) _notify(context, error.toString());
+      if (context.mounted) {
+        _notify(context, error.toString(), type: ToastType.error);
+      }
     }
   }
 
@@ -565,19 +592,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (result != null && result.missing.isNotEmpty) {
       message.write(' ${l10n.instanceSyncMissing(result.missing.length)}');
     }
-    _notify(context, message.toString());
+    _notify(context, message.toString(), type: ToastType.success);
   }
 
-  void _notify(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(message),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+  void _notify(
+    BuildContext context,
+    String message, {
+    ToastType type = ToastType.info,
+  }) {
+    toast(message, type: type);
   }
 }
 

@@ -5,6 +5,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
 import '../../stores/providers.dart';
 import '../core/core_client.dart';
+import '../../widgets/common/toast.dart';
 
 /// Build and start a basic offline launch. UI code only calls this helper;
 /// business decisions remain in the C# launch module.
@@ -15,41 +16,17 @@ Future<void> launchInstance(
 ) async {
   final l10n = AppLocalizations.of(context);
   final client = ref.read(coreClientProvider);
-  final messenger = ScaffoldMessenger.of(context);
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        content: Text(l10n.launchStarting),
-        duration: const Duration(seconds: 30),
-      ),
-    );
+  toast(l10n.launchStarting, duration: const Duration(seconds: 4));
 
   if (client == null) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(l10n.commonCoreNotConnected),
-        ),
-      );
+    toast(l10n.commonCoreNotConnected, type: ToastType.error);
     return;
   }
 
   try {
     final result = await client.launchInstance(instance.id);
     if (!context.mounted) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(l10n.launchStarted(result.pid)),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+    toast(l10n.launchStarted(result.pid), type: ToastType.success);
   } catch (error) {
     if (!context.mounted) return;
     final message = switch (error) {
@@ -59,14 +36,6 @@ Future<void> launchInstance(
         l10n.launchJavaMissing,
       _ => error.toString(),
     };
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(message),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+    toast(message, type: ToastType.error, duration: const Duration(seconds: 4));
   }
 }
