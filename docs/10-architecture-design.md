@@ -1232,7 +1232,7 @@ JavaLocator
 - 探测：`java -XshowSettings:properties -version`，解析 `java.version`/`java.home`/`java.vendor`/`os.arch`；超时 5s。
 - 候选：`JAVA_HOME`、PATH、`/usr/lib/jvm`、`/opt/java`（含 `vendor/jdk` 嵌套）、`/opt`、Windows 注册表、macOS `java_home`；详见 `08/08-java-scan.md`。
 - 缓存：按路径 + mtime + size 缓存版本；PATH 变化时失效。
-- 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；UI 默认显示前 3 个，支持“查看全部”。
+- 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；UI 默认显示前 5 个，支持“查看全部”。
 - 手动路径：`java.scan {roots, executables, includeDefaults}`；默认扫描为空时 UI 提示“选择目录搜索”，仍为空再提示“选择 JDK 目录 / java 可执行文件”；用户选择后用 `includeDefaults:false` 验证，路径持久化并随扫描带上。
 - 安装：Mojang runtime 优先；Adoptium 作为可选源；校验 SHA-256/签名；不打包 Oracle JDK。
 - 选择：`majorVersion` 必须匹配；Forge/NeoForge processors 用同一 JRE；不匹配时预检失败，不进入 processor。
@@ -2258,6 +2258,7 @@ public interface IDownloadProvider {
 | `instance.create` | C# | 创建空实例/从版本创建 |
 | `instance.update` | C# | 名称/内存/Java/参数 |
 | `instance.delete` | C# | 移入 trash |
+| `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |
 | `instance.duplicate` | C# | 复制（可选链接） |
 | `instance.import` | C# | 导入现有目录/压缩包 |
 | `instance.export` | C# | 导出整合包/目录 |
@@ -2270,15 +2271,18 @@ public interface IDownloadProvider {
 | `java.remove` | C# | 删除托管 runtime |
 | `version.manifest` | C# | 版本清单（缓存） |
 | `version.refresh` | C# | 强制刷新 |
-| `version.list` | C# | 按类型/搜索过滤 |
+| `version.list` | C# | Mojang 版本清单；正式版/快照过滤（已接） |
 | `version.get` | C# | 单个版本 JSON |
 | `version.effective` | C# | 合并后的有效版本 |
 | `version.install` | C# | 安装原版/创建实例 |
 | `version.repair` | C# | 修复文件/重建 |
 | `loader.catalog` | C# | 加载器版本/兼容矩阵 |
 | `loader.install` | C# | 安装/切换加载器 |
-| `loader.verify` | C# | 生成 manifest 并校验生成物/空 URL 库（不写文件） |
-| `loader.repair` | C# | 从最早缺失 processor 重跑；写回校验结果 |
+| `loader.verify` | C# | `quick`/`full` 两种深度校验生成物与空 URL 库（不写文件） |
+| `loader.check` | C# | 从实例安装目录定位 installer 后执行 quick/full 校验 |
+| `loader.plan` | C# | 从本地 installer 生成原版 + 加载器依赖 + installer 组合计划 |
+| `loader.commit` | C# | 原子写入合并后的 `versions/<id>/<id>.json` |
+| `loader.repair` | C# | 从最早缺失 processor 重跑；写回校验结果（processors 需要 JVM） |
 | `account.list` | C# | 账户列表 |
 | `account.current` | C# | 当前账户（无则 null） |
 | `account.select` | C# | 设为默认 |
@@ -2868,7 +2872,7 @@ ArchoeraCX/
 5. 接通“扫描 Java → 安装 1.21.4 → 启动（假 JVM/真实 JVM）”。
 6. 压测：取消/断网/磁盘满/崩溃注入。
 
-> **当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、Forge/NeoForge `loader.verify`/`loader.repair` 均已在 Linux x64 跑通。Rust `DownloadPlan` 执行器、Modrinth provider、Mojang 原版/Java runtime、Forge/NeoForge installer/依赖计划、版本合并和组合安装计划均已落地。Flutter 实例 UI 支持创建/选择/删除/搜索和可选实例目录；目录设置由 C# `settings.get/set` 持久化，实例元数据由 C# SQLite 索引 + `instance.json` 权威文件管理；下载页已有 6 个分栏，Modrinth 已接通真实搜索/版本/安装（Sodium 1.21.1 Fabric 实测），当前 `download.execute` 是 C# 调 `archoera-dl` 的临时桥。Microsoft Device Code 登录链（Microsoft → XBL → XSTS → Minecraft → profile/certificates）、账户页、离线账户、刷新和凭据文件已接入；真实 Entra client_id 与 Minecraft Services 审核仍待完成。243 个 C# 测试、26 个 Flutter 测试通过；正式 C++ DownloadManager/Rust module、`launch.prepare`、OS 凭据库与 CurseForge 尚待接入。
+> **当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair` 均已在 Linux x64 跑通。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；下载页游戏版本列表、Forge/NeoForge 本地 installer 计划/下载/版本写入与 quick/full 依赖检查已接线。Forge/NeoForge processors 仍需 JVM，当前安装步骤不调用 Java，只完成下载/版本写入并显式提示。Microsoft Device Code 登录链、账户页、离线账户、刷新和凭据文件已接入；真实 Entra client_id 与 Minecraft Services 审核仍待完成。248 个 C# 测试、27 个 Flutter 测试通过；Fabric/Quilt 无 Java 安装、正式 C++ DownloadManager/Rust module、`launch.prepare`、OS 凭据库与 CurseForge 尚待接入。
 
 **P1 完成定义**
 

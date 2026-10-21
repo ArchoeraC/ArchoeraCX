@@ -59,6 +59,27 @@
   "instanceLocationLabel": "Instance folder",
   "instanceChooseLocation": "Choose folder",
   "instanceLocationHint": "Leave blank to use the global instances folder",
+  "instanceRootLabel": "Storage location",
+  "instanceCustomRoot": "Custom folder",
+  "instanceMissing": "Folder missing",
+  "instanceCustom": "Custom",
+  "instanceSyncDone": "Instance folders synced.",
+  "instanceSyncAdopted": "{count, plural, =1{1 instance indexed} other{{count} instances indexed}}",
+  "instanceSyncMissing": "{count, plural, =1{1 instance folder missing} other{{count} instance folders missing}}",
+  "@instanceSyncAdopted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@instanceSyncMissing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "instanceLoaderLabel": "Loader",
   "instanceMods": "{count, plural, =0{No mods} =1{1 mod} other{{count} mods}}",
   "@instanceMods": {
@@ -75,6 +96,28 @@
   "instanceNoMatches": "No instances match your search.",
   "instanceDelete": "Delete instance",
   "instanceDeleteConfirm": "Delete “{name}”?",
+  "instanceCheckQuick": "Quick check",
+  "instanceCheckFull": "Full check",
+  "instanceCheckTitle": "Dependency check",
+  "instanceCheckOk": "Dependencies are complete.",
+  "instanceCheckMissing": "Missing: {count}",
+  "instanceCheckMismatched": "Mismatched: {count}",
+  "instanceCheckFailed": "Dependency check failed.",
+  "instanceManifestMissing": "Loader installer not found in this instance.",
+  "@instanceCheckMissing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@instanceCheckMismatched": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@instanceDeleteConfirm": {
     "description": "Confirmation before removing an instance.",
     "placeholders": {
@@ -92,6 +135,13 @@
   "downloadSubtitle": "Versions, loaders, mods, packs, resource packs, and shaders.",
   "sourceLabel": "Source",
   "tabVersions": "Game versions",
+  "versionListTitle": "Minecraft versions",
+  "versionSearchHint": "Search versions",
+  "versionIncludeSnapshots": "Include snapshots",
+  "versionUse": "Use this version",
+  "versionLoadFailed": "Could not load versions.",
+  "versionLoading": "Loading versions…",
+  "versionEmpty": "No versions match.",
   "tabLoaders": "Loaders",
   "tabMods": "Mods",
   "tabPacks": "Modpacks",
@@ -101,6 +151,20 @@
   "sourceCurseForge": "CurseForge",
   "sourceCurseForgeKeyHint": "Add a CurseForge API key in Settings to use this source.",
   "providerNotWired": "Provider wiring is next; this is the UI shell.",
+  "loaderInstallTitle": "Install Forge / NeoForge",
+  "loaderKindLabel": "Loader",
+  "loaderGameVersionLabel": "Game version",
+  "loaderVersionLabel": "Loader version",
+  "loaderInstallerLabel": "Installer jar",
+  "loaderChooseInstaller": "Choose installer",
+  "loaderInstallAction": "Download and commit",
+  "loaderInstalling": "Downloading and committing…",
+  "loaderInstallDone": "Loader files downloaded and version JSON written.",
+  "loaderInstallRequiresJava": "Forge/NeoForge processors still need a JVM; this step never invokes Java.",
+  "loaderInstallNoInstance": "Select an instance first.",
+  "loaderInstallPickInstaller": "Choose a Forge/NeoForge installer jar first.",
+  "loaderInstallFailed": "Loader install failed.",
+  "loaderInstallNoJavaTitle": "No Java was invoked",
   "searchDownload": "Search resources",
   "downloadSearchAction": "Search",
   "downloadSearchEmpty": "No compatible projects found.",
@@ -139,6 +203,12 @@
   "settingsAppearance": "Appearance",
   "settingsStorage": "Storage",
   "settingsInstancesRoot": "Instances folder",
+  "settingsInstanceRoots": "Instance storage",
+  "settingsAddRoot": "Add folder",
+  "settingsDefaultRoot": "Default",
+  "settingsMakeDefault": "Set as default",
+  "settingsRemoveRoot": "Remove folder",
+  "settingsRootsUpdated": "Instance folders updated.",
   "settingsDataRoot": "Application data",
   "settingsChooseFolder": "Choose folder",
   "settingsSaved": "Saved",

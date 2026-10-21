@@ -172,6 +172,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Leave blank to use the global instances folder';
 
   @override
+  String get instanceRootLabel => 'Storage location';
+
+  @override
+  String get instanceCustomRoot => 'Custom folder';
+
+  @override
+  String get instanceMissing => 'Folder missing';
+
+  @override
+  String get instanceCustom => 'Custom';
+
+  @override
+  String get instanceSyncDone => 'Instance folders synced.';
+
+  @override
+  String instanceSyncAdopted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count instances indexed',
+      one: '1 instance indexed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String instanceSyncMissing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count instance folders missing',
+      one: '1 instance folder missing',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get instanceLoaderLabel => 'Loader';
 
   @override
@@ -208,6 +245,35 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get instanceCheckQuick => 'Quick check';
+
+  @override
+  String get instanceCheckFull => 'Full check';
+
+  @override
+  String get instanceCheckTitle => 'Dependency check';
+
+  @override
+  String get instanceCheckOk => 'Dependencies are complete.';
+
+  @override
+  String instanceCheckMissing(int count) {
+    return 'Missing: $count';
+  }
+
+  @override
+  String instanceCheckMismatched(int count) {
+    return 'Mismatched: $count';
+  }
+
+  @override
+  String get instanceCheckFailed => 'Dependency check failed.';
+
+  @override
+  String get instanceManifestMissing =>
+      'Loader installer not found in this instance.';
+
+  @override
   String get instanceLaunchNotReady => 'Launch flow is not wired yet.';
 
   @override
@@ -234,6 +300,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tabVersions => 'Game versions';
+
+  @override
+  String get versionListTitle => 'Minecraft versions';
+
+  @override
+  String get versionSearchHint => 'Search versions';
+
+  @override
+  String get versionIncludeSnapshots => 'Include snapshots';
+
+  @override
+  String get versionUse => 'Use this version';
+
+  @override
+  String get versionLoadFailed => 'Could not load versions.';
+
+  @override
+  String get versionLoading => 'Loading versions…';
+
+  @override
+  String get versionEmpty => 'No versions match.';
 
   @override
   String get tabLoaders => 'Loaders';
@@ -263,6 +350,51 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get providerNotWired =>
       'Provider wiring is next; this is the UI shell.';
+
+  @override
+  String get loaderInstallTitle => 'Install Forge / NeoForge';
+
+  @override
+  String get loaderKindLabel => 'Loader';
+
+  @override
+  String get loaderGameVersionLabel => 'Game version';
+
+  @override
+  String get loaderVersionLabel => 'Loader version';
+
+  @override
+  String get loaderInstallerLabel => 'Installer jar';
+
+  @override
+  String get loaderChooseInstaller => 'Choose installer';
+
+  @override
+  String get loaderInstallAction => 'Download and commit';
+
+  @override
+  String get loaderInstalling => 'Downloading and committing…';
+
+  @override
+  String get loaderInstallDone =>
+      'Loader files downloaded and version JSON written.';
+
+  @override
+  String get loaderInstallRequiresJava =>
+      'Forge/NeoForge processors still need a JVM; this step never invokes Java.';
+
+  @override
+  String get loaderInstallNoInstance => 'Select an instance first.';
+
+  @override
+  String get loaderInstallPickInstaller =>
+      'Choose a Forge/NeoForge installer jar first.';
+
+  @override
+  String get loaderInstallFailed => 'Loader install failed.';
+
+  @override
+  String get loaderInstallNoJavaTitle => 'No Java was invoked';
 
   @override
   String get searchDownload => 'Search resources';
@@ -357,6 +489,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsInstancesRoot => 'Instances folder';
+
+  @override
+  String get settingsInstanceRoots => 'Instance storage';
+
+  @override
+  String get settingsAddRoot => 'Add folder';
+
+  @override
+  String get settingsDefaultRoot => 'Default';
+
+  @override
+  String get settingsMakeDefault => 'Set as default';
+
+  @override
+  String get settingsRemoveRoot => 'Remove folder';
+
+  @override
+  String get settingsRootsUpdated => 'Instance folders updated.';
 
   @override
   String get settingsDataRoot => 'Application data';

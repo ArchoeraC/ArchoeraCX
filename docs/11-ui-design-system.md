@@ -86,8 +86,9 @@ LauncherX 的暖黄只作为“可选主题”存在，不作为默认品牌识�
 | `caption` | 12 / 18 | 辅助说明、元信息 |
 | `overline` | 11 / 16 · 600 · 0.6 | 分组标签、chip |
 
-- 拉丁字体：优先 **Inter**；未打包时使用系统无衬线。
-- 中文：Noto Sans SC / 系统字体回退。
+- 默认字体：**Noto Sans SC Medium**（OFL，随应用打包）。
+- 所有正文、标题、按钮默认使用 `FontWeight.w500`；层级靠字号、颜色和间距表达，不依赖粗体。
+- 拉丁与中文统一使用 Noto Sans SC，避免中英文回退字体不一致。
 - **不使用 DINPro**。
 - 数字/路径/哈希：等宽字体（`JetBrains Mono` 或系统 monospace）。
 
@@ -340,8 +341,8 @@ L4 浮层（对话框/任务中心/通知）
 
 | 类型 | 选择 | 备注 |
 |---|---|---|
-| 拉丁字体 | Inter | OFL；可后续打包 |
-| 中文字体 | Noto Sans SC / 系统回退 | 不打包商业字体 |
+| 默认字体 | Noto Sans SC Medium | OFL；已打包 `assets/fonts/NotoSansSC-Medium.otf` |
+| 许可正文 | `assets/fonts/OFL.txt` | 随字体一起分发 |
 | 等宽 | JetBrains Mono | 路径/哈希/日志 |
 | 图标 | Lucide / Tabler / 自绘 | 不使用 LauncherX 图标 |
 | 插画 | 自制/委托/CC0 | 不使用 LauncherX 插画 |

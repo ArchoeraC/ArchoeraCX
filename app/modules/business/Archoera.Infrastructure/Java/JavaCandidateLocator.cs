@@ -19,6 +19,13 @@ internal static class JavaCandidateLocator
             : StringComparer.Ordinal;
 
     private static readonly string[] LinuxRoots = ["/usr/lib/jvm", "/usr/java", "/opt/java", "/opt"];
+    private static readonly string[] LinuxUserRoots =
+    [
+        ".sdkman/candidates/java",
+        ".asdf/installs/java",
+        ".mise/installs/java",
+        ".jdks",
+    ];
 
     private static readonly string[] MacVmRoots =
     [
@@ -295,6 +302,25 @@ internal static class JavaCandidateLocator
                 }
             }
         }
+
+        var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrWhiteSpace(userHome))
+        {
+            return;
+        }
+
+        foreach (var relative in LinuxUserRoots)
+        {
+            var root = Path.Combine(userHome, relative);
+            foreach (var directory in SafeGetDirectories(root))
+            {
+                AddLinuxHome(directory, collector);
+                foreach (var nested in SafeGetDirectories(directory))
+                {
+                    AddLinuxHome(nested, collector);
+                }
+            }
+        }
     }
 
     private static void AddLinuxHome(string home, CandidateCollector collector)
@@ -439,7 +465,11 @@ internal static class JavaCandidateLocator
     {
         try
         {
-            return Directory.Exists(root) ? Directory.GetDirectories(root) : [];
+            return Directory.Exists(root)
+                ? Directory.GetDirectories(root)
+                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                    .ToArray()
+                : [];
         }
         catch
         {

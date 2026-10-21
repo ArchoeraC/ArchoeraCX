@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
+import '../stores/instances.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_section.dart';
+import '../widgets/common/java_status_card.dart';
 import '../widgets/common/app_page_header.dart';
 
 enum _SettingsSection { appearance, storage, java, network, compliance, about }
@@ -124,11 +126,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
       _SettingsSection.storage => _SettingsCard(
         children: [
-          _SettingRow(
-            icon: Icons.folder_outlined,
-            title: l10n.settingsInstancesRoot,
-            value: settings?.instancesRoot ?? '—',
-            onTap: () => _chooseInstancesRoot(context, l10n),
+          _InstanceRootsEditor(
+            l10n: l10n,
+            roots: settings?.roots ?? const <String>[],
+            defaultRoot: settings?.instancesRoot,
+            onAdd: () => _chooseInstancesRoot(context, l10n),
+            onRemove: (root) => _removeInstancesRoot(context, l10n, root),
+            onMakeDefault: (root) =>
+                _makeDefaultInstancesRoot(context, l10n, root),
           ),
           _SettingRow(
             icon: Icons.storage_outlined,
@@ -137,25 +142,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ],
       ),
-      _SettingsSection.java => _SettingsCard(
-        children: [
-          _SettingRow(
-            icon: Icons.coffee_rounded,
-            title: 'Java 21',
-            value: 'Auto-detect',
-          ),
-          _SettingRow(
-            icon: Icons.memory_rounded,
-            title: 'Memory',
-            value: '512 – 4096 MB',
-          ),
-          _SettingRow(
-            icon: Icons.developer_board_rounded,
-            title: 'JVM arguments',
-            value: 'Default',
-          ),
-        ],
-      ),
+      _SettingsSection.java => const JavaStatusCard(),
       _SettingsSection.network => _SettingsCard(
         children: [
           _SettingRow(
@@ -228,11 +215,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (selected == null || !context.mounted) return;
 
     try {
-      await ref.read(appSettingsProvider.notifier).setInstancesRoot(selected);
-      if (context.mounted) _notify(context, l10n.settingsSaved);
+      await ref.read(appSettingsProvider.notifier).addInstanceRoot(selected);
+      if (!context.mounted) return;
+      await _syncInstances(context, l10n);
     } catch (error) {
       if (context.mounted) _notify(context, error.toString());
     }
+  }
+
+  Future<void> _removeInstancesRoot(
+    BuildContext context,
+    AppLocalizations l10n,
+    String root,
+  ) async {
+    try {
+      await ref.read(appSettingsProvider.notifier).removeInstanceRoot(root);
+      if (!context.mounted) return;
+      await _syncInstances(context, l10n);
+    } catch (error) {
+      if (context.mounted) _notify(context, error.toString());
+    }
+  }
+
+  Future<void> _makeDefaultInstancesRoot(
+    BuildContext context,
+    AppLocalizations l10n,
+    String root,
+  ) async {
+    try {
+      await ref.read(appSettingsProvider.notifier).setDefaultInstanceRoot(root);
+      if (!context.mounted) return;
+      await _syncInstances(context, l10n);
+    } catch (error) {
+      if (context.mounted) _notify(context, error.toString());
+    }
+  }
+
+  Future<void> _syncInstances(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    final result = await ref.read(instancesProvider.notifier).sync();
+    if (!context.mounted) return;
+    final message = StringBuffer(l10n.settingsRootsUpdated);
+    if (result != null && result.adopted.isNotEmpty) {
+      message.write(' ${l10n.instanceSyncAdopted(result.adopted.length)}');
+    }
+    if (result != null && result.missing.isNotEmpty) {
+      message.write(' ${l10n.instanceSyncMissing(result.missing.length)}');
+    }
+    _notify(context, message.toString());
   }
 
   void _notify(BuildContext context, String message) {
@@ -245,6 +277,107 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           duration: const Duration(seconds: 2),
         ),
       );
+  }
+}
+
+class _InstanceRootsEditor extends StatelessWidget {
+  const _InstanceRootsEditor({
+    required this.l10n,
+    required this.roots,
+    required this.defaultRoot,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onMakeDefault,
+  });
+
+  final AppLocalizations l10n;
+  final List<String> roots;
+  final String? defaultRoot;
+  final VoidCallback onAdd;
+  final ValueChanged<String> onRemove;
+  final ValueChanged<String> onMakeDefault;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.folder_outlined,
+                size: 20,
+                color: tokens.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  l10n.settingsInstanceRoots,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_rounded, size: 17),
+                label: Text(l10n.settingsAddRoot),
+              ),
+            ],
+          ),
+        ),
+        for (final root in roots)
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+            ),
+            leading: Icon(
+              Icons.folder_open_rounded,
+              size: 20,
+              color: root == defaultRoot ? tokens.accent : tokens.textSecondary,
+            ),
+            title: Text(
+              root,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            subtitle: root == defaultRoot
+                ? Text(
+                    l10n.settingsDefaultRoot,
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: tokens.accent),
+                  )
+                : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (root != defaultRoot)
+                  IconButton(
+                    onPressed: () => onMakeDefault(root),
+                    tooltip: l10n.settingsMakeDefault,
+                    icon: const Icon(Icons.star_outline_rounded, size: 19),
+                  ),
+                if (roots.length > 1)
+                  IconButton(
+                    onPressed: () => onRemove(root),
+                    tooltip: l10n.settingsRemoveRoot,
+                    icon: Icon(
+                      Icons.remove_circle_outline_rounded,
+                      size: 19,
+                      color: tokens.danger,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -295,8 +428,8 @@ class _SettingsNav extends StatelessWidget {
                         ? tokens.accent
                         : tokens.textPrimary,
                     fontWeight: item.section == selected
-                        ? FontWeight.w600
-                        : FontWeight.w400,
+                        ? FontWeight.w500
+                        : FontWeight.w500,
                   ),
                 ),
                 onTap: () => onSelected(item.section),
@@ -443,7 +576,6 @@ class _SettingRow extends StatelessWidget {
     this.value,
     this.trailing,
     this.color,
-    this.onTap,
   });
 
   final IconData icon;
@@ -452,7 +584,6 @@ class _SettingRow extends StatelessWidget {
   final String? value;
   final Widget? trailing;
   final Color? color;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -460,7 +591,6 @@ class _SettingRow extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-      onTap: onTap,
       leading: Icon(icon, size: 20, color: color ?? tokens.textSecondary),
       title: Text(title, style: Theme.of(context).textTheme.bodyMedium),
       subtitle: subtitle == null

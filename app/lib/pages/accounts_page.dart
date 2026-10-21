@@ -341,7 +341,7 @@ class _AccountAvatar extends StatelessWidget {
                 style: TextStyle(
                   color: tokens.accent,
                   fontSize: size * 0.4,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               )
             : Icon(fallbackIcon, color: tokens.accent, size: size * 0.5),
@@ -989,7 +989,7 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
                   start.userCode,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 4),
+                      ?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 4),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),

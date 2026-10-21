@@ -19,6 +19,7 @@ final class JavaRuntime {
     this.vendor,
     this.arch,
     this.source,
+    this.home,
   });
 
   /// Absolute executable path, for example `/usr/bin/java`.
@@ -38,6 +39,9 @@ final class JavaRuntime {
 
   /// Discovery source, for example `PATH` or `JAVA_HOME`.
   final String? source;
+
+  /// Value of `java.home`; used to collapse symlink/JRE aliases.
+  final String? home;
 
   /// Locale-independent version label used by the UI.
   ///
@@ -64,6 +68,7 @@ final class JavaRuntime {
       vendor: _asString(value['vendor']),
       arch: _asString(value['arch']),
       source: _asString(value['source']),
+      home: _asString(value['home']),
     );
   }
 

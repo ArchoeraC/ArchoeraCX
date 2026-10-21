@@ -9,15 +9,20 @@ import '../../stores/settings.dart';
 import '../../theme/tokens.dart';
 import '../../utils/app_paths.dart';
 
-Future<void> showCreateInstanceDialog(BuildContext context) {
+Future<void> showCreateInstanceDialog(
+  BuildContext context, {
+  String? initialVersion,
+}) {
   return showDialog<void>(
     context: context,
-    builder: (context) => const CreateInstanceDialog(),
+    builder: (context) => CreateInstanceDialog(initialVersion: initialVersion),
   );
 }
 
 class CreateInstanceDialog extends ConsumerStatefulWidget {
-  const CreateInstanceDialog({super.key});
+  const CreateInstanceDialog({super.key, this.initialVersion});
+
+  final String? initialVersion;
 
   @override
   ConsumerState<CreateInstanceDialog> createState() =>
@@ -25,7 +30,7 @@ class CreateInstanceDialog extends ConsumerStatefulWidget {
 }
 
 class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
-  static const _gameVersions = ['1.21.4', '1.21.1', '1.20.1', '1.19.4'];
+  static const _baseGameVersions = ['1.21.4', '1.21.1', '1.20.1', '1.19.4'];
   static const _loaders = [
     GameLoader.vanilla,
     GameLoader.fabric,
@@ -36,13 +41,18 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
 
   final _nameController = TextEditingController();
   final _rootController = TextEditingController();
-  String _gameVersion = _gameVersions.first;
+  late String _gameVersion;
   GameLoader _loader = GameLoader.fabric;
+  String? _selectedRoot;
   bool _creating = false;
 
   @override
   void initState() {
     super.initState();
+    final requested = widget.initialVersion;
+    _gameVersion = requested == null || requested.isEmpty
+        ? _baseGameVersions.first
+        : requested;
     _nameController.addListener(_onNameChanged);
   }
 
@@ -62,7 +72,10 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final settings = ref.watch(appSettingsProvider).value;
-    final instancesRoot = settings?.instancesRoot ?? fallbackInstancesRoot();
+    final roots = settings?.roots ?? <String>[fallbackInstancesRoot()];
+    final selectedRoot = _selectedRoot != null && roots.contains(_selectedRoot)
+        ? _selectedRoot!
+        : roots.first;
     final canCreate = _nameController.text.trim().isNotEmpty;
 
     return AlertDialog(
@@ -84,6 +97,26 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<String>(
+              initialValue: selectedRoot,
+              isExpanded: true,
+              decoration: InputDecoration(labelText: l10n.instanceRootLabel),
+              items: [
+                for (final root in roots)
+                  DropdownMenuItem(
+                    value: root,
+                    child: Text(
+                      root,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => _selectedRoot = value);
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -93,7 +126,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                     decoration: InputDecoration(
                       labelText: l10n.instanceLocationLabel,
                       hintText:
-                          '$instancesRoot/${slugForInstance(_nameController.text)}',
+                          '$selectedRoot/${slugForInstance(_nameController.text)}',
                       helperText: l10n.instanceLocationHint,
                     ),
                   ),
@@ -113,7 +146,10 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                 labelText: l10n.instanceGameVersionLabel,
               ),
               items: [
-                for (final version in _gameVersions)
+                for (final version in [
+                  if (!_baseGameVersions.contains(_gameVersion)) _gameVersion,
+                  ..._baseGameVersions,
+                ])
                   DropdownMenuItem(value: version, child: Text(version)),
               ],
               onChanged: (value) {
@@ -182,10 +218,13 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
     if (name.isEmpty || _creating) return;
 
     final settings = ref.read(appSettingsProvider).value;
-    final instancesRoot = settings?.instancesRoot ?? fallbackInstancesRoot();
+    final roots = settings?.roots ?? <String>[fallbackInstancesRoot()];
+    final selectedRoot = _selectedRoot != null && roots.contains(_selectedRoot)
+        ? _selectedRoot!
+        : roots.first;
     final explicitRoot = _rootController.text.trim();
     final rootPath = explicitRoot.isEmpty
-        ? joinPath(instancesRoot, slugForInstance(name))
+        ? joinPath(selectedRoot, slugForInstance(name))
         : explicitRoot;
 
     setState(() => _creating = true);

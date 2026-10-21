@@ -81,6 +81,11 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             : ValidateSegment(loaderVersion, "loaderVersion");
         var root = await ResolveRootAsync(cleanName, rootPath, cancellationToken)
             .ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(rootPath) &&
+            await RootExistsAsync(root, cancellationToken).ConfigureAwait(false))
+        {
+            throw new ArgumentException("rootPath is already used by another instance");
+        }
 
         var now = DateTimeOffset.UtcNow;
         var record = new GameInstanceRecord(
@@ -166,6 +171,190 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         command.Parameters.AddWithValue("$id", cleanId);
         return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
     }
+
+    public async Task<InstanceSyncReport> SyncAsync(
+        IReadOnlyList<string>? roots,
+        bool dryRun,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+        var configured = await ResolveConfiguredRootsAsync(roots, cancellationToken)
+            .ConfigureAwait(false);
+        var existing = await ListAsync(cancellationToken).ConfigureAwait(false);
+        var byId = existing.ToDictionary(record => record.Id, StringComparer.Ordinal);
+
+        var found = new Dictionary<string, GameInstanceRecord>(StringComparer.Ordinal);
+        var rootCounts = new Dictionary<string, int>(PathComparer);
+        foreach (var root in configured)
+        {
+            var exists = Directory.Exists(root);
+            var count = 0;
+            if (exists)
+            {
+                foreach (var directory in SafeGetDirectories(root))
+                {
+                    var record = await ReadInstanceFileAsync(directory, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (record is null) continue;
+                    if (!found.ContainsKey(record.Id))
+                    {
+                        found[record.Id] = record;
+                        count++;
+                    }
+                }
+            }
+
+            rootCounts[root] = count;
+        }
+
+        var adopted = new List<string>();
+        var updated = new List<string>();
+        foreach (var record in found.Values)
+        {
+            if (!byId.TryGetValue(record.Id, out var current))
+            {
+                if (!dryRun)
+                {
+                    await UpsertRecordAsync(record, cancellationToken).ConfigureAwait(false);
+                }
+                adopted.Add(record.Id);
+                continue;
+            }
+
+            if (PathsEqual(current.RootPath, record.RootPath))
+            {
+                if (!SameMetadata(current, record))
+                {
+                    if (!dryRun)
+                    {
+                        await UpsertRecordAsync(record, cancellationToken).ConfigureAwait(false);
+                    }
+                    updated.Add(record.Id);
+                }
+                continue;
+            }
+
+            // A moved folder is safe to re-point only when the old directory is gone.
+            if (Directory.Exists(current.RootPath)) continue;
+            if (!dryRun)
+            {
+                await UpsertRecordAsync(record, cancellationToken).ConfigureAwait(false);
+            }
+            updated.Add(record.Id);
+        }
+
+        var missing = existing
+            .Where(record => !found.ContainsKey(record.Id) && !Directory.Exists(record.RootPath))
+            .Select(record => new InstanceSyncMissing(record.Id, record.RootPath))
+            .ToArray();
+
+        IReadOnlyList<GameInstanceRecord> items;
+        if (dryRun)
+        {
+            var merged = new List<GameInstanceRecord>(existing);
+            foreach (var record in found.Values)
+            {
+                var index = merged.FindIndex(item => item.Id == record.Id);
+                if (index >= 0) merged[index] = record;
+                else merged.Add(record);
+            }
+            items = merged;
+        }
+        else
+        {
+            items = await ListAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return new InstanceSyncReport(
+            items,
+            adopted,
+            updated,
+            missing,
+            configured
+                .Select(root => new InstanceSyncRoot(
+                    root,
+                    Directory.Exists(root),
+                    rootCounts.GetValueOrDefault(root)))
+                .ToArray());
+    }
+
+    private async Task<IReadOnlyList<string>> ResolveConfiguredRootsAsync(
+        IReadOnlyList<string>? roots,
+        CancellationToken cancellationToken)
+    {
+        if (roots is { Count: > 0 })
+        {
+            return roots
+                .Where(root => !string.IsNullOrWhiteSpace(root) && Path.IsPathFullyQualified(root))
+                .Select(AppDataPaths.Normalize)
+                .Distinct(PathComparer)
+                .ToArray();
+        }
+
+        var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+        return settings.Roots;
+    }
+
+    private async Task UpsertRecordAsync(
+        GameInstanceRecord record,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO instances
+              (id, name, game_version, loader_kind, loader_version, root_path,
+               mod_count, pinned, created_at, updated_at, last_played_at)
+            VALUES
+              ($id, $name, $game, $loader, $loaderVersion, $root,
+               $mods, $pinned, $created, $updated, $played)
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              game_version = excluded.game_version,
+              loader_kind = excluded.loader_kind,
+              loader_version = excluded.loader_version,
+              root_path = excluded.root_path,
+              mod_count = excluded.mod_count,
+              pinned = excluded.pinned,
+              updated_at = excluded.updated_at,
+              last_played_at = excluded.last_played_at
+            """;
+        AddParameters(command, record);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool SameMetadata(GameInstanceRecord left, GameInstanceRecord right)
+        => string.Equals(left.Name, right.Name, StringComparison.Ordinal) &&
+           string.Equals(left.GameVersion, right.GameVersion, StringComparison.Ordinal) &&
+           string.Equals(left.Loader, right.Loader, StringComparison.Ordinal) &&
+           string.Equals(left.LoaderVersion, right.LoaderVersion, StringComparison.Ordinal) &&
+           left.ModCount == right.ModCount &&
+           left.Favorite == right.Favorite;
+
+    private static bool PathsEqual(string left, string right)
+        => PathComparer.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)));
+
+    private static IEnumerable<string> SafeGetDirectories(string root)
+    {
+        try
+        {
+            return Directory.Exists(root)
+                ? Directory.GetDirectories(root)
+                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                : [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static readonly StringComparer PathComparer =
+        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
 
     private async Task EnsureInitializedAsync(CancellationToken cancellationToken)
     {
@@ -351,12 +540,12 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
 
         var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
         var slug = Slug(name);
-        var candidate = Path.Combine(settings.InstancesRoot, slug);
+        var candidate = Path.Combine(settings.Roots[0], slug);
         var suffix = 2;
         while (Directory.Exists(candidate) || await RootExistsAsync(candidate, cancellationToken)
                    .ConfigureAwait(false))
         {
-            candidate = Path.Combine(settings.InstancesRoot, $"{slug}-{suffix++}");
+            candidate = Path.Combine(settings.Roots[0], $"{slug}-{suffix++}");
         }
 
         return candidate;
@@ -497,15 +686,15 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             var id = String(rootElement, "id");
             var name = String(rootElement, "name");
             var game = String(rootElement, "gameVersion");
-            var rootPath = String(rootElement, "rootPath");
-            if (id is null || name is null || game is null || rootPath is null) return null;
+            if (id is null || name is null || game is null) return null;
+            var actualRoot = AppDataPaths.Normalize(root);
             return new GameInstanceRecord(
                 id,
                 name,
                 game,
                 String(rootElement, "loader") ?? "vanilla",
                 String(rootElement, "loaderVersion") ?? string.Empty,
-                rootPath,
+                actualRoot,
                 Int(rootElement, "modCount") ?? 0,
                 rootElement.TryGetProperty("favorite", out var favorite) &&
                 favorite.ValueKind == JsonValueKind.True,

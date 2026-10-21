@@ -200,6 +200,54 @@ public sealed class InstanceRepositoryTests
         }
     }
 
+    [Fact]
+    public async Task Sqlite_sync_adopts_instances_from_configured_roots()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var rootA = Path.Combine(directory, "root-a");
+            var rootB = Path.Combine(directory, "root-b");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootsAsync([rootA, rootB]);
+            var seededRoot = Path.Combine(rootB, "seeded");
+            var metadataDirectory = Path.Combine(seededRoot, ".archoera");
+            Directory.CreateDirectory(metadataDirectory);
+            await File.WriteAllTextAsync(
+                Path.Combine(metadataDirectory, "instance.json"),
+                """
+                {
+                  "schemaVersion": 1,
+                  "id": "inst-seeded",
+                  "name": "Seeded",
+                  "gameVersion": "1.21.1",
+                  "loader": "fabric",
+                  "loaderVersion": "0.16.10",
+                  "rootPath": "/stale/path",
+                  "modCount": 0,
+                  "favorite": false,
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "updatedAt": "2026-01-01T00:00:00Z"
+                }
+                """);
+
+            var repository = new SqliteInstanceRepository(dataRoot, settings);
+            var report = await repository.SyncAsync(null, dryRun: false);
+
+            Assert.Contains("inst-seeded", report.Adopted);
+            var item = Assert.Single(report.Items);
+            Assert.Equal(Path.GetFullPath(seededRoot), item.RootPath);
+            Assert.Equal(2, report.Roots.Count);
+            Assert.Equal(0, report.Roots[0].InstanceCount);
+            Assert.Equal(1, report.Roots[1].InstanceCount);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
     private static string TempDirectory()
     {
         var path = Path.Combine(

@@ -20,4 +20,8 @@ public interface IInstanceRepository
         DateTimeOffset? lastPlayedAt,
         CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
+    Task<InstanceSyncReport> SyncAsync(
+        IReadOnlyList<string>? roots,
+        bool dryRun,
+        CancellationToken cancellationToken = default);
 }

@@ -190,7 +190,7 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: AppSpacing.xs),
           Text(
             'ArchoeraCX',
-            style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
           ),
           const Spacer(),
           _TopAction(
@@ -445,7 +445,7 @@ class _NavItem extends StatelessWidget {
                   maxLines: 1,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: foreground,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
                     letterSpacing: 0,
                   ),
                 ),
@@ -499,7 +499,7 @@ class _AccountButton extends StatelessWidget {
                   style: TextStyle(
                     color: tokens.accent,
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),

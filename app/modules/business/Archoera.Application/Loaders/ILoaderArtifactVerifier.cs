@@ -12,5 +12,8 @@ public interface ILoaderArtifactVerifier
     /// every artifact. Paths escaping the root/libraries base are reported in
     /// <see cref="LoaderVerification.Unsafe"/> and never opened.
     /// </summary>
-    LoaderVerification Verify(LoaderArtifactManifest manifest, string root);
+    LoaderVerification Verify(
+        LoaderArtifactManifest manifest,
+        string root,
+        LoaderVerifyMode mode = LoaderVerifyMode.Full);
 }

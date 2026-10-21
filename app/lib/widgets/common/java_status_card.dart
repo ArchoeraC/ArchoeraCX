@@ -252,7 +252,7 @@ class _JavaStatusCardState extends State<JavaStatusCard> {
     await _runScan(
       origin: _ScanOrigin.executable,
       executablePath: normalized,
-      includeDefaults: false,
+      includeDefaults: true,
     );
   }
 
@@ -494,12 +494,12 @@ class _JavaStatusCardState extends State<JavaStatusCard> {
             ],
             if (hasRuntimes) ...[
               const SizedBox(height: AppSpacing.xs),
-              for (final runtime in result.items.take(3))
+              for (final runtime in result.items.take(5))
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
                   child: _JavaRuntimeTile(runtime: runtime, l10n: l10n),
                 ),
-              if (result.items.length > 3)
+              if (result.items.length > 5)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton(
@@ -650,26 +650,21 @@ class _JavaRuntimeTile extends StatelessWidget {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: tokens.surface2,
-        borderRadius: BorderRadius.circular(tokens.radiusM),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Tooltip(
             message: runtime.path,
             child: Text(
-              runtime.path,
+              runtime.home ?? runtime.path,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: textTheme.labelLarge,
             ),
           ),
-          const SizedBox(height: AppSpacing.xxs),
+          const SizedBox(height: 1),
           Text(
             l10n.javaStatusMeta(runtime.displayVersion, runtime.arch ?? '—'),
             maxLines: 1,
@@ -705,7 +700,7 @@ class _JavaStatusPill extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(tokens.radiusS),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

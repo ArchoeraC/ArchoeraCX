@@ -31,6 +31,9 @@ class GameInstance {
     this.lastPlayed,
     this.favorite = false,
     this.rootPath = '',
+    this.instanceRoot,
+    this.custom = false,
+    this.missing = false,
   });
 
   final String id;
@@ -45,6 +48,15 @@ class GameInstance {
   /// Absolute instance directory. Empty means "derive from the global
   /// instances root and id" in the UI.
   final String rootPath;
+
+  /// Configured root containing [rootPath], or null for a custom folder.
+  final String? instanceRoot;
+
+  /// True when the instance lives outside every configured instance root.
+  final bool custom;
+
+  /// True when [rootPath] no longer exists on disk.
+  final bool missing;
 
   static GameLoader loaderFromWire(String? value) => switch (value) {
     'fabric' => GameLoader.fabric,
@@ -71,6 +83,9 @@ class GameInstance {
       lastPlayed: _date(value['lastPlayedAt']),
       favorite: value['favorite'] == true,
       rootPath: value['rootPath']?.toString() ?? '',
+      instanceRoot: value['instanceRoot']?.toString(),
+      custom: value['custom'] == true,
+      missing: value['missing'] == true,
     );
   }
 
@@ -100,6 +115,9 @@ class GameInstance {
     DateTime? lastPlayed,
     bool? favorite,
     String? rootPath,
+    String? instanceRoot,
+    bool? custom,
+    bool? missing,
   }) {
     return GameInstance(
       id: id,
@@ -111,6 +129,40 @@ class GameInstance {
       lastPlayed: lastPlayed ?? this.lastPlayed,
       favorite: favorite ?? this.favorite,
       rootPath: rootPath ?? this.rootPath,
+      instanceRoot: instanceRoot ?? this.instanceRoot,
+      custom: custom ?? this.custom,
+      missing: missing ?? this.missing,
     );
   }
+}
+
+/// Result of `instance.sync`.
+@immutable
+class InstanceSyncResult {
+  const InstanceSyncResult({
+    required this.items,
+    this.adopted = const <String>[],
+    this.updated = const <String>[],
+    this.missing = const <String>[],
+    this.roots = const <InstanceRootStatus>[],
+  });
+
+  final List<GameInstance> items;
+  final List<String> adopted;
+  final List<String> updated;
+  final List<String> missing;
+  final List<InstanceRootStatus> roots;
+}
+
+@immutable
+class InstanceRootStatus {
+  const InstanceRootStatus({
+    required this.path,
+    required this.exists,
+    required this.instanceCount,
+  });
+
+  final String path;
+  final bool exists;
+  final int instanceCount;
 }

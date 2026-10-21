@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Archoera.Application.Instances;
 using Archoera.Application.Modules;
+using Archoera.Infrastructure.Settings;
 using Archoera.Domain.Instances;
 
 namespace Archoera.Infrastructure.Instances;
@@ -9,13 +10,17 @@ namespace Archoera.Infrastructure.Instances;
 public sealed class InstanceModuleService : IModuleMethodHandler
 {
     private static readonly string[] SupportedMethods =
-        ["instance.list", "instance.create", "instance.update", "instance.delete"];
+        ["instance.list", "instance.create", "instance.update", "instance.delete", "instance.sync"];
 
     private readonly IInstanceRepository _repository;
+    private readonly JsonAppSettingsStore _settings;
 
-    public InstanceModuleService(IInstanceRepository? repository = null)
+    public InstanceModuleService(
+        IInstanceRepository? repository = null,
+        JsonAppSettingsStore? settings = null)
     {
-        _repository = repository ?? new SqliteInstanceRepository();
+        _settings = settings ?? new JsonAppSettingsStore();
+        _repository = repository ?? new SqliteInstanceRepository(settings: _settings);
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -35,6 +40,8 @@ public sealed class InstanceModuleService : IModuleMethodHandler
                 "instance.update" => await UpdateAsync(paramsJson, cancellationToken)
                     .ConfigureAwait(false),
                 "instance.delete" => await DeleteAsync(paramsJson, cancellationToken)
+                    .ConfigureAwait(false),
+                "instance.sync" => await SyncAsync(paramsJson, cancellationToken)
                     .ConfigureAwait(false),
                 _ => Error("E_UNSUPPORTED", $"unsupported instance method '{method}'"),
             };
@@ -56,10 +63,71 @@ public sealed class InstanceModuleService : IModuleMethodHandler
     private async Task<byte[]> ListAsync(CancellationToken cancellationToken)
     {
         var items = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
+        var roots = (await _settings.LoadAsync(cancellationToken).ConfigureAwait(false)).Roots;
         return BuildEnvelope(writer =>
         {
             writer.WriteStartArray("items");
-            foreach (var item in items) WriteRecord(writer, item);
+            foreach (var item in items) WriteRecord(writer, item, roots);
+            writer.WriteEndArray();
+        });
+    }
+
+    private async Task<byte[]> SyncAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        using var document = Parse(paramsJson);
+        var rootElement = document.RootElement;
+        var roots = new List<string>();
+        if (rootElement.TryGetProperty("roots", out var rootsElement) &&
+            rootsElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in rootsElement.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrWhiteSpace(item.GetString()))
+                {
+                    roots.Add(item.GetString()!);
+                }
+            }
+        }
+
+        var dryRun = rootElement.TryGetProperty("dryRun", out var dryRunElement) &&
+                     dryRunElement.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                     dryRunElement.GetBoolean();
+        var report = await _repository
+            .SyncAsync(roots.Count > 0 ? roots : null, dryRun, cancellationToken)
+            .ConfigureAwait(false);
+        var configured = (await _settings.LoadAsync(cancellationToken).ConfigureAwait(false)).Roots;
+        return BuildEnvelope(writer =>
+        {
+            writer.WriteStartArray("items");
+            foreach (var item in report.Items) WriteRecord(writer, item, configured);
+            writer.WriteEndArray();
+            writer.WriteStartArray("adopted");
+            foreach (var id in report.Adopted) writer.WriteStringValue(id);
+            writer.WriteEndArray();
+            writer.WriteStartArray("updated");
+            foreach (var id in report.Updated) writer.WriteStringValue(id);
+            writer.WriteEndArray();
+            writer.WriteStartArray("missing");
+            foreach (var item in report.Missing)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("id", item.Id);
+                writer.WriteString("rootPath", item.RootPath);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+            writer.WriteStartArray("roots");
+            foreach (var root in report.Roots)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("path", root.Path);
+                writer.WriteBoolean("exists", root.Exists);
+                writer.WriteNumber("instanceCount", root.InstanceCount);
+                writer.WriteEndObject();
+            }
             writer.WriteEndArray();
         });
     }
@@ -78,10 +146,11 @@ public sealed class InstanceModuleService : IModuleMethodHandler
                 ReadString(root, "rootPath"),
                 cancellationToken)
             .ConfigureAwait(false);
+        var roots = (await _settings.LoadAsync(cancellationToken).ConfigureAwait(false)).Roots;
         return BuildEnvelope(writer =>
         {
             writer.WritePropertyName("instance");
-            WriteRecord(writer, record);
+            WriteRecord(writer, record, roots);
         });
     }
 
@@ -112,10 +181,11 @@ public sealed class InstanceModuleService : IModuleMethodHandler
             .UpdateAsync(id, name, favorite, lastPlayed, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new ArgumentException("instance not found");
+        var roots = (await _settings.LoadAsync(cancellationToken).ConfigureAwait(false)).Roots;
         return BuildEnvelope(writer =>
         {
             writer.WritePropertyName("instance");
-            WriteRecord(writer, record);
+            WriteRecord(writer, record, roots);
         });
     }
 
@@ -147,8 +217,12 @@ public sealed class InstanceModuleService : IModuleMethodHandler
             ? element.GetString()
             : null;
 
-    private static void WriteRecord(Utf8JsonWriter writer, GameInstanceRecord record)
+    private static void WriteRecord(
+        Utf8JsonWriter writer,
+        GameInstanceRecord record,
+        IReadOnlyList<string> roots)
     {
+        var instanceRoot = roots.FirstOrDefault(root => IsWithin(record.RootPath, root));
         writer.WriteStartObject();
         writer.WriteString("id", record.Id);
         writer.WriteString("name", record.Name);
@@ -156,12 +230,33 @@ public sealed class InstanceModuleService : IModuleMethodHandler
         writer.WriteString("loader", record.Loader);
         writer.WriteString("loaderVersion", record.LoaderVersion);
         writer.WriteString("rootPath", record.RootPath);
+        if (instanceRoot is not null) writer.WriteString("instanceRoot", instanceRoot);
+        writer.WriteBoolean("custom", instanceRoot is null);
+        writer.WriteBoolean("missing", !Directory.Exists(record.RootPath));
         writer.WriteNumber("modCount", record.ModCount);
         writer.WriteBoolean("favorite", record.Favorite);
         writer.WriteString("createdAt", record.CreatedAt.ToString("O"));
         writer.WriteString("updatedAt", record.UpdatedAt.ToString("O"));
         writer.WriteString("lastPlayedAt", record.LastPlayedAt?.ToString("O"));
         writer.WriteEndObject();
+    }
+
+    private static bool IsWithin(string path, string root)
+    {
+        try
+        {
+            var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            var fullRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+            var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            return fullPath.Equals(fullRoot, comparison) ||
+                   fullPath.StartsWith(fullRoot + Path.DirectorySeparatorChar, comparison);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static byte[] BuildEnvelope(Action<Utf8JsonWriter> data)

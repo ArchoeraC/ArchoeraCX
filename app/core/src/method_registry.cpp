@@ -17,15 +17,19 @@ constexpr std::string_view kCsModule = "archoera_cs";
  * to a named module. The module still validates parameters and owns all
  * business semantics.
  */
-constexpr std::array<MethodRoute, 26> kRoutes = {{
+constexpr std::array<MethodRoute, 31> kRoutes = {{
     {"system.ping", MethodRouteKind::kCorePing, {}},
     {"system.pingAsync", MethodRouteKind::kCorePingAsync, {}},
     {"system.info", MethodRouteKind::kCoreInfo, {}},
     {"system.modules", MethodRouteKind::kCoreModules, {}},
 
     {"java.scan", MethodRouteKind::kModule, kCsModule},
+    {"version.list", MethodRouteKind::kModule, kCsModule},
     {"loader.verify", MethodRouteKind::kModule, kCsModule},
     {"loader.repair", MethodRouteKind::kModule, kCsModule},
+    {"loader.check", MethodRouteKind::kModule, kCsModule},
+    {"loader.plan", MethodRouteKind::kModule, kCsModule},
+    {"loader.commit", MethodRouteKind::kModule, kCsModule},
 
     {"resource.search", MethodRouteKind::kModule, kCsModule},
     {"resource.versions", MethodRouteKind::kModule, kCsModule},
@@ -39,6 +43,7 @@ constexpr std::array<MethodRoute, 26> kRoutes = {{
     {"instance.create", MethodRouteKind::kModule, kCsModule},
     {"instance.update", MethodRouteKind::kModule, kCsModule},
     {"instance.delete", MethodRouteKind::kModule, kCsModule},
+    {"instance.sync", MethodRouteKind::kModule, kCsModule},
 
     {"account.list", MethodRouteKind::kModule, kCsModule},
     {"account.current", MethodRouteKind::kModule, kCsModule},

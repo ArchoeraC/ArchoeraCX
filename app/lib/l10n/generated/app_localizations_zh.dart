@@ -169,6 +169,41 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceLocationHint => '留空则使用全局实例目录';
 
   @override
+  String get instanceRootLabel => '存储位置';
+
+  @override
+  String get instanceCustomRoot => '自定义目录';
+
+  @override
+  String get instanceMissing => '目录缺失';
+
+  @override
+  String get instanceCustom => '自定义';
+
+  @override
+  String get instanceSyncDone => '实例目录已同步。';
+
+  @override
+  String instanceSyncAdopted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已加入 $count 个实例',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String instanceSyncMissing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个实例目录缺失',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get instanceLoaderLabel => '加载器';
 
   @override
@@ -203,6 +238,34 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get instanceCheckQuick => '快速检查';
+
+  @override
+  String get instanceCheckFull => '完整检查';
+
+  @override
+  String get instanceCheckTitle => '依赖检查';
+
+  @override
+  String get instanceCheckOk => '依赖完整。';
+
+  @override
+  String instanceCheckMissing(int count) {
+    return '缺失：$count';
+  }
+
+  @override
+  String instanceCheckMismatched(int count) {
+    return '校验失败：$count';
+  }
+
+  @override
+  String get instanceCheckFailed => '依赖检查失败。';
+
+  @override
+  String get instanceManifestMissing => '实例中未找到加载器安装包。';
+
+  @override
   String get instanceLaunchNotReady => '启动流程尚未接线。';
 
   @override
@@ -230,6 +293,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tabVersions => '游戏版本';
 
   @override
+  String get versionListTitle => 'Minecraft 版本';
+
+  @override
+  String get versionSearchHint => '搜索版本';
+
+  @override
+  String get versionIncludeSnapshots => '包含快照';
+
+  @override
+  String get versionUse => '使用此版本';
+
+  @override
+  String get versionLoadFailed => '版本列表加载失败。';
+
+  @override
+  String get versionLoading => '正在加载版本…';
+
+  @override
+  String get versionEmpty => '没有匹配的版本。';
+
+  @override
   String get tabLoaders => '加载器';
 
   @override
@@ -255,6 +339,49 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get providerNotWired => '下载源接线是下一步；当前为 UI 结构。';
+
+  @override
+  String get loaderInstallTitle => '安装 Forge / NeoForge';
+
+  @override
+  String get loaderKindLabel => '加载器';
+
+  @override
+  String get loaderGameVersionLabel => '游戏版本';
+
+  @override
+  String get loaderVersionLabel => '加载器版本';
+
+  @override
+  String get loaderInstallerLabel => '安装包 jar';
+
+  @override
+  String get loaderChooseInstaller => '选择安装包';
+
+  @override
+  String get loaderInstallAction => '下载并写入版本';
+
+  @override
+  String get loaderInstalling => '下载并写入中…';
+
+  @override
+  String get loaderInstallDone => '加载器文件已下载，版本 JSON 已写入。';
+
+  @override
+  String get loaderInstallRequiresJava =>
+      'Forge/NeoForge 的 processors 仍需要 JVM；本步骤不会调用 Java。';
+
+  @override
+  String get loaderInstallNoInstance => '请先选择实例。';
+
+  @override
+  String get loaderInstallPickInstaller => '请先选择 Forge/NeoForge 安装包。';
+
+  @override
+  String get loaderInstallFailed => '加载器安装失败。';
+
+  @override
+  String get loaderInstallNoJavaTitle => '本步骤不调用 Java';
 
   @override
   String get searchDownload => '搜索资源';
@@ -347,6 +474,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsInstancesRoot => '实例目录';
+
+  @override
+  String get settingsInstanceRoots => '实例存储位置';
+
+  @override
+  String get settingsAddRoot => '添加目录';
+
+  @override
+  String get settingsDefaultRoot => '默认';
+
+  @override
+  String get settingsMakeDefault => '设为默认';
+
+  @override
+  String get settingsRemoveRoot => '移除目录';
+
+  @override
+  String get settingsRootsUpdated => '实例目录已更新。';
 
   @override
   String get settingsDataRoot => '应用数据目录';

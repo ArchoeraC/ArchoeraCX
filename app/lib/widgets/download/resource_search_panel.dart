@@ -6,9 +6,7 @@ import '../../models/game_instance.dart';
 import '../../services/core/resource_models.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
-import '../../stores/settings.dart';
 import '../../theme/tokens.dart';
-import '../../utils/app_paths.dart';
 import '../common/app_section.dart';
 import '../common/app_empty_state.dart';
 
@@ -236,12 +234,11 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
 
     setState(() => _installing = true);
     try {
-      final settings = ref.read(appSettingsProvider).value;
-      final downloadRoot = instanceRoot(
-        explicitRoot: instance?.rootPath,
-        instancesRoot: settings?.instancesRoot ?? fallbackInstancesRoot(),
-        id: instance?.id ?? 'default',
-      );
+      final downloadRoot = instance?.rootPath;
+      if (downloadRoot == null || downloadRoot.isEmpty) {
+        _notify(AppLocalizations.of(context).selectInstance);
+        return;
+      }
       final plan = await client.planModrinthDownload(
         projectId: project.id,
         versionId: version.id,
