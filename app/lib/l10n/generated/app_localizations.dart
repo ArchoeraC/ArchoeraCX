@@ -2227,6 +2227,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Online launch is not configured in this build.'**
   String get launchOnlineNotConfigured;
+
+  /// Prominent release policy notice on the accounts page.
+  ///
+  /// In en, this message translates to:
+  /// **'This launcher requires a verified Microsoft account to start a game. You can still download content and manage instance files, but offline/local accounts stay locked until a verified Minecraft account is present.'**
+  String get accountVerifiedRequiredNotice;
 }
 
 class _AppLocalizationsDelegate

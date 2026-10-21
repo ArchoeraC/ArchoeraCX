@@ -1244,4 +1244,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get launchOnlineNotConfigured =>
       'Online launch is not configured in this build.';
+
+  @override
+  String get accountVerifiedRequiredNotice =>
+      'This launcher requires a verified Microsoft account to start a game. You can still download content and manage instance files, but offline/local accounts stay locked until a verified Minecraft account is present.';
 }

@@ -33,6 +33,9 @@ class AccountsPage extends ConsumerWidget {
     final blockedHint = policy.microsoftOnly
         ? l10n.accountMicrosoftOnlyHint
         : l10n.accountPremiumRequiredHint;
+    final releaseNotice = policy.microsoftOnly
+        ? l10n.accountMicrosoftOnlyHint
+        : l10n.accountVerifiedRequiredNotice;
     final loadFailed = accountsAsync.hasError && accounts.isEmpty;
     final empty =
         accounts.isEmpty &&
@@ -130,7 +133,7 @@ class AccountsPage extends ConsumerWidget {
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
-                      blockedHint,
+                      releaseNotice,
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: context.tokens.warning),
                     ),

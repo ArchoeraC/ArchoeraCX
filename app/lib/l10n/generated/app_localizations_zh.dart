@@ -1196,4 +1196,8 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get launchOnlineNotConfigured => '当前构建未配置在线启动。';
+
+  @override
+  String get accountVerifiedRequiredNotice =>
+      '当前启动器需要已验证的 Microsoft 账户才能启动游戏。你仍然可以下载和管理实例文件；但离线/本地账户不会在未验证正版账户时解锁。';
 }

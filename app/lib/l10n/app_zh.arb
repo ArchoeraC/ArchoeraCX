@@ -498,5 +498,6 @@
   "developmentBuildWarning": "开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。",
   "launchOnlineSessionExpired": "Minecraft 会话已过期，请重新登录。",
   "launchMicrosoftAccountRequired": "请选择微软账户进行在线启动。",
-  "launchOnlineNotConfigured": "当前构建未配置在线启动。"
+  "launchOnlineNotConfigured": "当前构建未配置在线启动。",
+  "accountVerifiedRequiredNotice": "当前启动器需要已验证的 Microsoft 账户才能启动游戏。你仍然可以下载和管理实例文件；但离线/本地账户不会在未验证正版账户时解锁。"
 }
