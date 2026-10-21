@@ -28,6 +28,10 @@
   "commonNoNotifications": "No notifications.",
   "dashboardTitle": "Dashboard",
   "dashboardSubtitle": "A calm place to launch, install, and manage your worlds.",
+  "dashboardWorkspace": "Workspace",
+  "dashboardQuickActions": "Quick actions",
+  "dashboardBrowseContent": "Browse content",
+  "dashboardEnvironment": "Environment",
   "quickLaunch": "Quick launch",
   "quickLaunchSubtitle": "Your most recent instance is ready.",
   "recentInstances": "Recent instances",
@@ -86,6 +90,7 @@
   "commonDelete": "Delete",
   "downloadTitle": "Download",
   "downloadSubtitle": "Versions, loaders, mods, packs, resource packs, and shaders.",
+  "sourceLabel": "Source",
   "tabVersions": "Game versions",
   "tabLoaders": "Loaders",
   "tabMods": "Mods",
@@ -455,5 +460,6 @@
         "type": "String"
       }
     }
-  }
+  },
+  "instanceSelected": "Selected"
 }

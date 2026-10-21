@@ -2,7 +2,7 @@
 
 ArchoeraCX 的 Flutter 桌面外壳 + 原生切片。当前包含 UI 基础设施、`system.ping`、C++/C# 模块注册表、`java.scan`、Forge/NeoForge 生成物校验/修复库、Microsoft Device Code 登录，以及 Rust `DownloadPlan` 执行器 MVP；启动/正式 DownloadManager 尚未端到端接线。
 
-设计规范见 [`docs/11-ui-design-system.md`](../docs/11-ui-design-system.md)。当前已实现：设计令牌、AppShell、5 个页面骨架、明暗主题、中英文、渐变背景与基础组件；以及：
+设计规范见 [`docs/11-ui-design-system.md`](../docs/11-ui-design-system.md)。当前已实现：设计令牌、底部 CommandBar 导航的 AppShell、5 个页面、明暗主题、中英文、渐变背景与基础组件；以及：
 
 - `system.ping` / `system.pingAsync`：C++ ABI + wake 驱动 `EventPump` + 首页 Core status 卡
 - `system.modules`：C++ `ModuleRegistry` 返回已加载模块；C++ `MethodRegistry` 与 C# `BusinessModuleRegistry` 显式登记方法

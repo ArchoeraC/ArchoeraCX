@@ -230,6 +230,30 @@ abstract class AppLocalizations {
   /// **'A calm place to launch, install, and manage your worlds.'**
   String get dashboardSubtitle;
 
+  /// No description provided for @dashboardWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get dashboardWorkspace;
+
+  /// No description provided for @dashboardQuickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick actions'**
+  String get dashboardQuickActions;
+
+  /// No description provided for @dashboardBrowseContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse content'**
+  String get dashboardBrowseContent;
+
+  /// No description provided for @dashboardEnvironment.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment'**
+  String get dashboardEnvironment;
+
   /// No description provided for @quickLaunch.
   ///
   /// In en, this message translates to:
@@ -481,6 +505,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Versions, loaders, mods, packs, resource packs, and shaders.'**
   String get downloadSubtitle;
+
+  /// No description provided for @sourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get sourceLabel;
 
   /// No description provided for @tabVersions.
   ///
@@ -1225,6 +1255,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add'**
   String get commonAdd;
+
+  /// No description provided for @instanceSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get instanceSelected;
 }
 
 class _AppLocalizationsDelegate

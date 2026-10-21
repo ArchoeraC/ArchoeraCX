@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../models/game_instance.dart';
 import '../stores/instances.dart';
+import '../stores/settings.dart';
 import '../theme/tokens.dart';
-import '../widgets/common/app_card.dart';
-import '../widgets/common/app_empty_state.dart';
 import '../widgets/common/app_page_header.dart';
+import '../widgets/common/app_section.dart';
 import '../widgets/instances/create_instance_dialog.dart';
 
 class InstancesPage extends ConsumerStatefulWidget {
@@ -39,116 +40,96 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
               )
               .toList(growable: false);
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppPageHeader(
-            title: l10n.instancesTitle,
-            subtitle: l10n.instancesSubtitle,
-            actions: [
-              OutlinedButton.icon(
-                onPressed: () => _notify(context, l10n.commonCoreNotConnected),
-                icon: const Icon(Icons.file_download_outlined, size: 18),
-                label: Text(l10n.importPack),
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppPageHeader(
+                title: l10n.instancesTitle,
+                subtitle: l10n.instancesSubtitle,
+                actions: [
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        _notify(context, l10n.commonCoreNotConnected),
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    label: Text(l10n.importPack),
+                  ),
+                  FilledButton.icon(
+                    onPressed: () => showCreateInstanceDialog(context),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(l10n.createInstance),
+                  ),
+                ],
               ),
-              FilledButton.icon(
-                onPressed: () => showCreateInstanceDialog(context),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(l10n.createInstance),
+              const SizedBox(height: AppSpacing.md),
+              _InstancesToolbar(
+                query: _query,
+                count: filtered.length,
+                total: instances.length,
+                onChanged: (value) => setState(() => _query = value),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-          AppCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
+        ),
+        if (instancesAsync.isLoading && instances.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(top: AppSpacing.xl),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          )
+        else if (instancesAsync.hasError && instances.isEmpty)
+          SliverToBoxAdapter(
+            child: _InlineNotice(
+              icon: Icons.error_outline_rounded,
+              message: '${instancesAsync.error}',
+              color: tokens.danger,
+            ),
+          )
+        else if (instances.isEmpty)
+          SliverToBoxAdapter(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        onChanged: (value) => setState(() => _query = value),
-                        decoration: InputDecoration(
-                          hintText: l10n.searchInstances,
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    _FilterChip(label: l10n.filterAll, selected: true),
-                  ],
+                _EmptyInstancesPanel(l10n: l10n),
+                _InstanceRootCard(
+                  root: ref.watch(appSettingsProvider).value?.instancesRoot,
+                  onOpenSettings: () => context.go('/settings'),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                if (instancesAsync.isLoading && instances.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(AppSpacing.xl),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (instancesAsync.hasError && instances.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Text(
-                      '${instancesAsync.error}',
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: tokens.danger),
-                    ),
-                  )
-                else if (instances.isEmpty)
-                  AppEmptyState(
-                    icon: Icons.grid_view_rounded,
-                    title: l10n.instanceEmptyTitle,
-                    message: l10n.instanceEmptyMessage,
-                    primaryAction: FilledButton.icon(
-                      onPressed: () => showCreateInstanceDialog(context),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: Text(l10n.createInstance),
-                    ),
-                  )
-                else if (filtered.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Center(
-                      child: Text(
-                        l10n.instanceNoMatches,
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: tokens.textSecondary),
-                      ),
-                    ),
-                  )
-                else
-                  Column(
-                    children: [
-                      for (final instance in filtered)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                          child: _InstanceTile(
-                            instance: instance,
-                            selected: instance.id == selectedId,
-                            onSelect: () => ref
-                                .read(selectedInstanceIdProvider.notifier)
-                                .select(instance.id),
-                            onLaunch: () => _launch(instance),
-                            onDelete: () => _delete(instance, l10n),
-                          ),
-                        ),
-                    ],
+              ],
+            ),
+          )
+        else if (filtered.isEmpty)
+          SliverToBoxAdapter(
+            child: _InlineNotice(
+              icon: Icons.search_off_rounded,
+              message: l10n.instanceNoMatches,
+              color: tokens.textSecondary,
+            ),
+          )
+        else
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                for (var i = 0; i < filtered.length; i++) ...[
+                  _InstanceRow(
+                    instance: filtered[i],
+                    selected: filtered[i].id == selectedId,
+                    onSelect: () => ref
+                        .read(selectedInstanceIdProvider.notifier)
+                        .select(filtered[i].id),
+                    onLaunch: () => _launch(filtered[i]),
+                    onDelete: () => _delete(filtered[i], l10n),
                   ),
+                  if (i < filtered.length - 1)
+                    Divider(height: 1, color: tokens.border),
+                ],
+                const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            l10n.commonMockData,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: tokens.textTertiary),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -194,37 +175,245 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, this.selected = false});
+class _InstancesToolbar extends StatelessWidget {
+  const _InstancesToolbar({
+    required this.query,
+    required this.count,
+    required this.total,
+    required this.onChanged,
+  });
 
-  final String label;
-  final bool selected;
+  final String query;
+  final int count;
+  final int total;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+
+    final field = TextField(
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: l10n.searchInstances,
+        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+        isDense: true,
+      ),
+    );
+    final countLabel = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.grid_view_rounded, size: 16, color: tokens.textTertiary),
+        const SizedBox(width: AppSpacing.xxs),
+        Text(
+          query.isEmpty ? '$total ${l10n.statInstances}' : '$count / $total',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: tokens.textSecondary,
+          ),
+        ),
+      ],
+    );
+
+    return AppSection(
+      showTop: true,
+      showBottom: true,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 720) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                field,
+                const SizedBox(height: AppSpacing.xs),
+                Align(alignment: Alignment.centerRight, child: countLabel),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              SizedBox(width: 380, child: field),
+              const Spacer(),
+              countLabel,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _EmptyInstancesPanel extends StatelessWidget {
+  const _EmptyInstancesPanel({required this.l10n});
+
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: selected ? tokens.accentSoft : tokens.surface2,
-        borderRadius: BorderRadius.circular(tokens.radiusM),
-        border: Border.all(color: selected ? tokens.accent : tokens.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.filter_list_rounded,
-            size: 16,
-            color: selected ? tokens.accent : tokens.textSecondary,
+    final intro = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.grid_view_rounded, size: 30, color: tokens.accent),
+        const SizedBox(height: AppSpacing.sm),
+        Text(l10n.instanceEmptyTitle, style: textTheme.titleLarge),
+        const SizedBox(height: AppSpacing.xs),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Text(
+            l10n.instanceEmptyMessage,
+            style: textTheme.bodyMedium?.copyWith(
+              color: tokens.textSecondary,
+            ),
           ),
-          const SizedBox(width: AppSpacing.xxs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: selected ? tokens.accent : tokens.textSecondary,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            FilledButton.icon(
+              onPressed: () => showCreateInstanceDialog(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(l10n.createInstance),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _showUnavailable(context, l10n),
+              icon: const Icon(Icons.file_download_outlined, size: 18),
+              label: Text(l10n.importPack),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final guide = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _GuideRow(
+          index: 1,
+          title: l10n.instanceNameLabel,
+          subtitle: l10n.instanceNameHint,
+        ),
+        _GuideRow(
+          index: 2,
+          title: l10n.instanceGameVersionLabel,
+          subtitle: l10n.instanceLoaderLabel,
+        ),
+        _GuideRow(
+          index: 3,
+          title: l10n.instanceLocationLabel,
+          subtitle: l10n.instanceLocationHint,
+          last: true,
+        ),
+      ],
+    );
+
+    return AppSection(
+      showBottom: true,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 760) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                intro,
+                const SizedBox(height: AppSpacing.lg),
+                Divider(height: 1, color: tokens.border),
+                const SizedBox(height: AppSpacing.md),
+                guide,
+              ],
+            );
+          }
+
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: intro),
+                const SizedBox(width: AppSpacing.xl),
+                VerticalDivider(width: 1, color: tokens.border),
+                const SizedBox(width: AppSpacing.xl),
+                SizedBox(width: 320, child: guide),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showUnavailable(BuildContext context, AppLocalizations l10n) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(l10n.commonCoreNotConnected),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+}
+
+class _GuideRow extends StatelessWidget {
+  const _GuideRow({
+    required this.index,
+    required this.title,
+    required this.subtitle,
+    this.last = false,
+  });
+
+  final int index;
+  final String title;
+  final String subtitle;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: last ? 0 : AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 20,
+            child: Text(
+              '$index',
+              style: textTheme.labelLarge?.copyWith(color: tokens.accent),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelLarge,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: tokens.textTertiary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -233,8 +422,95 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _InstanceTile extends StatelessWidget {
-  const _InstanceTile({
+class _InstanceRootCard extends StatelessWidget {
+  const _InstanceRootCard({required this.root, required this.onOpenSettings});
+
+  final String? root;
+  final VoidCallback onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return AppSection(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(Icons.folder_outlined, size: 18, color: tokens.textSecondary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.settingsInstancesRoot,
+                  style: textTheme.labelMedium?.copyWith(
+                    color: tokens.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  root ?? '—',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: tokens.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          TextButton(
+            onPressed: onOpenSettings,
+            child: Text(l10n.settingsStorage),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineNotice extends StatelessWidget {
+  const _InlineNotice({
+    required this.icon,
+    required this.message,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xl),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: AppSpacing.xs),
+          Flexible(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: tokens.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstanceRow extends StatelessWidget {
+  const _InstanceRow({
     required this.instance,
     required this.selected,
     required this.onSelect,
@@ -253,150 +529,136 @@ class _InstanceTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    final color = _colorFor(tokens);
+    final color = _colorFor(instance.loader, tokens);
 
-    return AppCard(
-      compact: true,
-      selected: selected,
-      onTap: onSelect,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(tokens.radiusM),
+    return Material(
+      color: selected ? tokens.accentSoft : Colors.transparent,
+      child: InkWell(
+        onTap: onSelect,
+        hoverColor: tokens.surface2,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: selected ? tokens.accent : Colors.transparent,
+                width: 2,
+              ),
             ),
-            child: Icon(_iconFor(instance.loader), color: color, size: 22),
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        instance.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleSmall,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.sm,
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 720;
+              return Row(
+                children: [
+                  Icon(_iconFor(instance.loader), size: 24, color: color),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          instance.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${instance.gameVersion} · ${instance.loader.label} · '
+                          '${l10n.instanceMods(instance.modCount)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: tokens.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (wide) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    Text(
+                      _lastPlayedLabel(context, l10n, instance.lastPlayed),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: tokens.textTertiary,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
-                    _Tag(label: instance.loader.label),
                   ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${instance.loaderLabel} · '
-                  '${l10n.instanceMods(instance.modCount)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: tokens.textTertiary,
+                  const SizedBox(width: AppSpacing.xs),
+                  TextButton.icon(
+                    onPressed: onLaunch,
+                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    label: Text(l10n.launch),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            _lastPlayedLabel(context, l10n, instance.lastPlayed),
-            style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          IconButton(
-            onPressed: onLaunch,
-            tooltip: l10n.launch,
-            icon: const Icon(Icons.play_arrow_rounded),
-            color: tokens.accent,
-          ),
-          PopupMenuButton<String>(
-            tooltip: l10n.settingsGeneral,
-            icon: Icon(Icons.more_horiz_rounded, color: tokens.textSecondary),
-            onSelected: (value) {
-              if (value == 'delete') onDelete();
+                  PopupMenuButton<String>(
+                    tooltip: l10n.settingsGeneral,
+                    icon: Icon(
+                      Icons.more_horiz_rounded,
+                      color: tokens.textSecondary,
+                    ),
+                    onSelected: (value) {
+                      if (value == 'delete') onDelete();
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              color: tokens.danger,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(l10n.instanceDelete),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
             },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline_rounded, color: tokens.danger),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(l10n.instanceDelete),
-                  ],
-                ),
-              ),
-            ],
           ),
-        ],
+        ),
       ),
     );
-  }
-
-  IconData _iconFor(GameLoader loader) => switch (loader) {
-    GameLoader.vanilla => Icons.landscape_rounded,
-    GameLoader.fabric => Icons.auto_awesome_rounded,
-    GameLoader.quilt => Icons.layers_rounded,
-    GameLoader.forge => Icons.handyman_rounded,
-    GameLoader.neoforge => Icons.extension_rounded,
-  };
-
-  Color _colorFor(AppTokens tokens) => switch (instance.loader) {
-    GameLoader.vanilla => tokens.accent,
-    GameLoader.fabric => tokens.success,
-    GameLoader.quilt => tokens.accent,
-    GameLoader.forge => tokens.warning,
-    GameLoader.neoforge => tokens.warning,
-  };
-
-  String _lastPlayedLabel(
-    BuildContext context,
-    AppLocalizations l10n,
-    DateTime? lastPlayed,
-  ) {
-    if (lastPlayed == null) return l10n.instanceLastPlayedNever;
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final date = DateTime(lastPlayed.year, lastPlayed.month, lastPlayed.day);
-    if (!date.isBefore(today)) return l10n.lastPlayedToday;
-    if (!date.isBefore(today.subtract(const Duration(days: 1)))) {
-      return l10n.lastPlayedYesterday;
-    }
-
-    return MaterialLocalizations.of(context).formatShortDate(lastPlayed);
   }
 }
 
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
+IconData _iconFor(GameLoader loader) => switch (loader) {
+  GameLoader.vanilla => Icons.landscape_rounded,
+  GameLoader.fabric => Icons.auto_awesome_rounded,
+  GameLoader.quilt => Icons.layers_rounded,
+  GameLoader.forge => Icons.handyman_rounded,
+  GameLoader.neoforge => Icons.extension_rounded,
+};
 
-  final String label;
+Color _colorFor(GameLoader loader, AppTokens tokens) => switch (loader) {
+  GameLoader.vanilla => tokens.accent,
+  GameLoader.fabric => tokens.success,
+  GameLoader.quilt => tokens.accent,
+  GameLoader.forge => tokens.warning,
+  GameLoader.neoforge => tokens.warning,
+};
 
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
+String _lastPlayedLabel(
+  BuildContext context,
+  AppLocalizations l10n,
+  DateTime? lastPlayed,
+) {
+  if (lastPlayed == null) return l10n.instanceLastPlayedNever;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: tokens.surface3,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: tokens.textSecondary, letterSpacing: 0),
-      ),
-    );
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final date = DateTime(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+  if (!date.isBefore(today)) return l10n.lastPlayedToday;
+  if (!date.isBefore(today.subtract(const Duration(days: 1)))) {
+    return l10n.lastPlayedYesterday;
   }
+
+  return MaterialLocalizations.of(context).formatShortDate(lastPlayed);
 }

@@ -10,8 +10,7 @@ import '../services/core/core_client.dart';
 import '../stores/accounts.dart';
 import '../stores/providers.dart';
 import '../theme/tokens.dart';
-import '../widgets/common/app_card.dart';
-import '../widgets/common/app_empty_state.dart';
+import '../widgets/common/app_section.dart';
 import '../widgets/common/app_page_header.dart';
 
 class AccountsPage extends ConsumerWidget {
@@ -41,90 +40,76 @@ class AccountsPage extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          if (current != null)
-            _CurrentAccountCard(account: current)
-          else
-            AppCard(
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.person_off_outlined,
-                    color: tokens.textTertiary,
-                    size: 28,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      l10n.accountNoAccounts,
-                      style: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(color: tokens.textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.accountsTitle,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              if (accountsAsync.isLoading)
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (accountsAsync.hasError && accounts.isEmpty)
-            AppCard(
-              child: Text(
-                '${accountsAsync.error}',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: tokens.danger),
-              ),
-            )
-          else if (accounts.isEmpty && !accountsAsync.isLoading)
-            AppEmptyState(
-              icon: Icons.person_add_alt_1_rounded,
-              title: l10n.addAccount,
-              message: l10n.accountNoAccounts,
-              primaryAction: FilledButton.icon(
-                onPressed: () => _addAccount(context, ref),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(l10n.addAccount),
-              ),
-            )
-          else
-            Column(
-              children: [
-                for (final account in accounts)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                    child: _AccountTile(
-                      account: account,
-                      onSelect: () => _select(context, ref, account),
-                      onRefresh: account.kind == AccountKind.microsoft
-                          ? () => _refresh(context, ref, account)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final empty =
+                  accounts.isEmpty &&
+                  current == null &&
+                  !accountsAsync.isLoading &&
+                  !accountsAsync.hasError;
+              if (empty) {
+                return _EmptyAccountsPanel(
+                  onMicrosoft: () => _addAccount(context, ref, 'microsoft'),
+                  onOffline: () => _addAccount(context, ref, 'offline'),
+                );
+              }
+
+              final wide = constraints.maxWidth >= 920;
+              final summary = current != null
+                  ? _CurrentAccountCard(
+                      account: current,
+                      onAdd: () => _addAccount(context, ref),
+                      onRefresh: current.kind == AccountKind.microsoft
+                          ? () => _refresh(context, ref, current)
                           : null,
-                      onRemove: () => _remove(context, ref, account),
-                    ),
+                    )
+                  : const _NoAccountPanel();
+              final list = _AccountsListPanel(
+                accounts: accounts,
+                loading: accountsAsync.isLoading,
+                error: accountsAsync.hasError && accounts.isEmpty
+                    ? '${accountsAsync.error}'
+                    : null,
+                onSelect: (account) => _select(context, ref, account),
+                onRefresh: (account) => _refresh(context, ref, account),
+                onRemove: (account) => _remove(context, ref, account),
+              );
+
+              if (wide) {
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(width: 360, child: summary),
+                      VerticalDivider(width: 1, color: tokens.border),
+                      Expanded(child: list),
+                    ],
                   ),
-              ],
-            ),
+                );
+              }
+
+              return Column(
+                children: [
+                  summary,
+                  const SizedBox(height: AppSpacing.md),
+                  list,
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Future<void> _addAccount(BuildContext context, WidgetRef ref) async {
+  Future<void> _addAccount(
+    BuildContext context,
+    WidgetRef ref, [
+    String? preferred,
+  ]) async {
     final l10n = AppLocalizations.of(context);
-    final choice = await showModalBottomSheet<String>(
+    var choice = preferred;
+    choice ??= await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
@@ -379,54 +364,380 @@ class _AccountAvatar extends StatelessWidget {
 }
 
 class _CurrentAccountCard extends StatelessWidget {
-  const _CurrentAccountCard({required this.account});
+  const _CurrentAccountCard({
+    required this.account,
+    required this.onAdd,
+    this.onRefresh,
+  });
 
   final Account account;
+  final VoidCallback onAdd;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
-    return AppCard(
-      child: Row(
+    return AppSection(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _AccountAvatar(account: account, size: 56),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            children: [
+              _AccountAvatar(account: account, size: 56),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.currentAccount,
+                      style: Theme.of(context).textTheme.labelMedium
+                          ?.copyWith(color: tokens.textTertiary),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      account.displayName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      account.kindLabel,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: tokens.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: tokens.border),
+                bottom: BorderSide(color: tokens.border),
+              ),
+            ),
+            child: Row(
               children: [
-                Text(
-                  l10n.currentAccount,
-                  style: Theme.of(context).textTheme.labelMedium
-                      ?.copyWith(color: tokens.textTertiary),
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  account.displayName,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  account.kindLabel,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: tokens.textSecondary),
+                Icon(Icons.shield_outlined, size: 18, color: tokens.success),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    account.uuid ?? account.kindLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: tokens.textSecondary),
+                  ),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: tokens.success.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              l10n.currentAccount,
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(color: tokens.success, letterSpacing: 0),
-            ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              if (onRefresh != null)
+                OutlinedButton.icon(
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded, size: 17),
+                  label: Text(l10n.accountRefresh),
+                ),
+              if (onRefresh != null) const SizedBox(width: AppSpacing.xs),
+              FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(l10n.addAccount),
+              ),
+            ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyAccountsPanel extends StatelessWidget {
+  const _EmptyAccountsPanel({
+    required this.onMicrosoft,
+    required this.onOffline,
+  });
+
+  final VoidCallback onMicrosoft;
+  final VoidCallback onOffline;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    final intro = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.person_rounded, size: 30, color: tokens.accent),
+        const SizedBox(height: AppSpacing.sm),
+        Text(l10n.addAccount, style: textTheme.titleLarge),
+        const SizedBox(height: AppSpacing.xs),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Text(
+            l10n.accountsSubtitle,
+            style: textTheme.bodyMedium?.copyWith(color: tokens.textSecondary),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          l10n.accountNoAccounts,
+          style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
+        ),
+      ],
+    );
+
+    final types = Column(
+      children: [
+        _AccountTypeTile(
+          icon: Icons.window_rounded,
+          title: l10n.accountMicrosoftTitle,
+          subtitle: l10n.accountMicrosoftDesc,
+          color: tokens.success,
+          onTap: onMicrosoft,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _AccountTypeTile(
+          icon: Icons.person_rounded,
+          title: l10n.accountAddOffline,
+          subtitle: l10n.accountOfflineDesc,
+          color: tokens.accent,
+          onTap: onOffline,
+        ),
+      ],
+    );
+
+    return AppSection(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 760) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                intro,
+                const SizedBox(height: AppSpacing.lg),
+                Divider(height: 1, color: tokens.border),
+                const SizedBox(height: AppSpacing.md),
+                types,
+              ],
+            );
+          }
+
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: intro),
+                const SizedBox(width: AppSpacing.xl),
+                VerticalDivider(width: 1, color: tokens.border),
+                const SizedBox(width: AppSpacing.xl),
+                SizedBox(width: 360, child: types),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AccountTypeTile extends StatelessWidget {
+  const _AccountTypeTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        hoverColor: tokens.surface2,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: tokens.border)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall,
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: tokens.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: tokens.textTertiary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NoAccountPanel extends StatelessWidget {
+  const _NoAccountPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+
+    return AppSection(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.person_rounded, size: 26, color: tokens.accent),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            l10n.currentAccount,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l10n.accountNoAccounts,
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: tokens.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountsListPanel extends StatelessWidget {
+  const _AccountsListPanel({
+    required this.accounts,
+    required this.loading,
+    required this.error,
+    required this.onSelect,
+    required this.onRefresh,
+    required this.onRemove,
+  });
+
+  final List<Account> accounts;
+  final bool loading;
+  final String? error;
+  final ValueChanged<Account> onSelect;
+  final ValueChanged<Account> onRefresh;
+  final ValueChanged<Account> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+
+    return AppSection(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.accountsTitle,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              if (loading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Text(
+                  '${accounts.length}',
+                  style: Theme.of(context).textTheme.labelMedium
+                      ?.copyWith(color: tokens.textTertiary),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Text(
+                error!,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.danger),
+              ),
+            )
+          else if (accounts.isEmpty && !loading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: Column(
+                children: [
+                  Text(
+                    l10n.accountNoAccounts,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: tokens.textSecondary),
+                  ),
+                ],
+              ),
+            )
+          else
+            for (var i = 0; i < accounts.length; i++) ...[
+              _AccountTile(
+                account: accounts[i],
+                onSelect: () => onSelect(accounts[i]),
+                onRefresh: accounts[i].kind == AccountKind.microsoft
+                    ? () => onRefresh(accounts[i])
+                    : null,
+                onRemove: () => onRemove(accounts[i]),
+              ),
+              if (i < accounts.length - 1)
+                Divider(height: 1, color: tokens.border),
+            ],
         ],
       ),
     );
@@ -461,87 +772,97 @@ class _AccountTile extends StatelessWidget {
       AccountKind.authlib => Icons.hub_rounded,
     };
 
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      onTap: onSelect,
-      child: Row(
-        children: [
-          _AccountAvatar(
-            account: account,
-            size: 40,
-            fallbackColor: color.withValues(alpha: 0.14),
-            fallbackIcon: icon,
+    return Material(
+      color: account.active ? tokens.accentSoft : Colors.transparent,
+      child: InkWell(
+        onTap: onSelect,
+        hoverColor: tokens.surface2,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xs,
+            vertical: AppSpacing.sm,
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  account.displayName,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                Text(
-                  account.uuid ?? account.kindLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: tokens.textTertiary),
-                ),
-              ],
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: account.active ? tokens.accent : Colors.transparent,
+                width: 2,
+              ),
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
-              if (account.active)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tokens.accentSoft,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    l10n.currentAccount,
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: tokens.accent, letterSpacing: 0),
-                  ),
+              _AccountAvatar(
+                account: account,
+                size: 40,
+                fallbackColor: color.withValues(alpha: 0.14),
+                fallbackIcon: icon,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      account.displayName,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      account.uuid ?? account.kindLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: tokens.textTertiary),
+                    ),
+                  ],
                 ),
-              PopupMenuButton<String>(
-                tooltip: l10n.accountsTitle,
-                onSelected: (value) {
-                  if (value == 'refresh') onRefresh?.call();
-                  if (value == 'remove') onRemove();
-                },
-                itemBuilder: (context) => [
-                  if (onRefresh != null)
-                    PopupMenuItem(
-                      value: 'refresh',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.refresh_rounded, size: 20),
-                        title: Text(l10n.accountRefresh),
-                      ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (account.active)
+                    Text(
+                      l10n.currentAccount,
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(color: tokens.accent, letterSpacing: 0),
                     ),
-                  PopupMenuItem(
-                    value: 'remove',
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(
-                        Icons.delete_outline_rounded,
-                        size: 20,
+                  PopupMenuButton<String>(
+                    tooltip: l10n.accountsTitle,
+                    onSelected: (value) {
+                      if (value == 'refresh') onRefresh?.call();
+                      if (value == 'remove') onRemove();
+                    },
+                    itemBuilder: (context) => [
+                      if (onRefresh != null)
+                        PopupMenuItem(
+                          value: 'refresh',
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(
+                              Icons.refresh_rounded,
+                              size: 20,
+                            ),
+                            title: Text(l10n.accountRefresh),
+                          ),
+                        ),
+                      PopupMenuItem(
+                        value: 'remove',
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 20,
+                          ),
+                          title: Text(l10n.accountRemove),
+                        ),
                       ),
-                      title: Text(l10n.accountRemove),
-                    ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

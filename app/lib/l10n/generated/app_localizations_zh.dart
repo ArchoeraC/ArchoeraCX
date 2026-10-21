@@ -76,6 +76,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dashboardSubtitle => '启动、安装和管理你的世界。';
 
   @override
+  String get dashboardWorkspace => '工作区';
+
+  @override
+  String get dashboardQuickActions => '快捷操作';
+
+  @override
+  String get dashboardBrowseContent => '浏览内容';
+
+  @override
+  String get dashboardEnvironment => '运行环境';
+
+  @override
   String get quickLaunch => '快速启动';
 
   @override
@@ -210,6 +222,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadSubtitle => '游戏版本、加载器、Mod、整合包、资源包与光影。';
+
+  @override
+  String get sourceLabel => '内容来源';
 
   @override
   String get tabVersions => '游戏版本';
@@ -628,4 +643,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonAdd => '添加';
+
+  @override
+  String get instanceSelected => '当前';
 }

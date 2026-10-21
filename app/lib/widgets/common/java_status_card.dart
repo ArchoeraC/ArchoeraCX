@@ -6,7 +6,7 @@ import '../../services/core/core_client.dart';
 import '../../services/core/java_scan.dart';
 import '../../services/java/java_path_store.dart';
 import '../../theme/tokens.dart';
-import 'app_card.dart';
+import 'app_section.dart';
 
 /// Signature of a Java scan call, matching [CoreClient.scanJava].
 typedef JavaScanCallback = Future<JavaScanResult> Function({
@@ -392,8 +392,10 @@ class _JavaStatusCardState extends State<JavaStatusCard> {
         showNoResults || showInvalidExecutable || hasRuntimes;
     final hasCustomPaths = _roots.isNotEmpty || _executables.isNotEmpty;
 
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return AppSection(
+      showTop: true,
+      showBottom: false,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -422,7 +424,7 @@ class _JavaStatusCardState extends State<JavaStatusCard> {
             ),
             const SizedBox(height: AppSpacing.xs),
             ClipRRect(
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(tokens.radiusS),
               child: LinearProgressIndicator(
                 value: _progressTotal > 0
                     ? (_progressDone / _progressTotal).clamp(0.0, 1.0)

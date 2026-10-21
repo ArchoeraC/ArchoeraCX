@@ -28,7 +28,7 @@ void main() {
     expect(find.text('Settings'), findsWidgets);
   });
 
-  testWidgets('collapses the sidebar on narrow windows', (tester) async {
+  testWidgets('fits the shell on narrow windows', (tester) async {
     tester.view.physicalSize = const Size(800, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -43,6 +43,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppShell), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('Game versions'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('fits the shell at 700px', (tester) async {
+    tester.view.physicalSize = const Size(700, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppShell), findsOneWidget);
+    expect(tester.takeException(), isNull);
 
     await tester.tap(find.byIcon(Icons.download_outlined));
     await tester.pumpAndSettle();

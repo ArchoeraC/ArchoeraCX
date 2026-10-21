@@ -22,6 +22,10 @@
   "commonNoNotifications": "暂无通知。",
   "dashboardTitle": "主页",
   "dashboardSubtitle": "启动、安装和管理你的世界。",
+  "dashboardWorkspace": "工作区",
+  "dashboardQuickActions": "快捷操作",
+  "dashboardBrowseContent": "浏览内容",
+  "dashboardEnvironment": "运行环境",
   "quickLaunch": "快速启动",
   "quickLaunchSubtitle": "最近的实例已经准备好。",
   "recentInstances": "最近实例",
@@ -80,6 +84,7 @@
   "commonDelete": "删除",
   "downloadTitle": "下载",
   "downloadSubtitle": "游戏版本、加载器、Mod、整合包、资源包与光影。",
+  "sourceLabel": "内容来源",
   "tabVersions": "游戏版本",
   "tabLoaders": "加载器",
   "tabMods": "Mod",
@@ -277,5 +282,6 @@
         "type": "String"
       }
     }
-  }
+  },
+  "instanceSelected": "当前"
 }
