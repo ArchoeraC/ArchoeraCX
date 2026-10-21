@@ -1082,34 +1082,16 @@ abstract class AppLocalizations {
   /// **'Memory'**
   String get settingsMemory;
 
-  /// No description provided for @settingsMemoryValue.
-  ///
-  /// In en, this message translates to:
-  /// **'{min} – {max} MB'**
-  String settingsMemoryValue(int min, int max);
-
   /// No description provided for @settingsJvmArgs.
   ///
   /// In en, this message translates to:
   /// **'JVM arguments'**
   String get settingsJvmArgs;
 
-  /// No description provided for @settingsJvmArgsValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Default'**
-  String get settingsJvmArgsValue;
-
-  /// No description provided for @settingsRuntimeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Java and memory'**
-  String get settingsRuntimeTitle;
-
   /// No description provided for @settingsRuntimeHint.
   ///
   /// In en, this message translates to:
-  /// **'Memory is applied to the next launch.'**
+  /// **'Runtime options apply to the next launch and save automatically.'**
   String get settingsRuntimeHint;
 
   /// No description provided for @settingsMemoryMin.
@@ -1184,23 +1166,11 @@ abstract class AppLocalizations {
   /// **'Additional game arguments'**
   String get settingsGameArgs;
 
-  /// No description provided for @settingsGameArgsValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Default'**
-  String get settingsGameArgsValue;
-
   /// No description provided for @settingsGameArgsHint.
   ///
   /// In en, this message translates to:
   /// **'Optional, appended after the version arguments'**
   String get settingsGameArgsHint;
-
-  /// No description provided for @settingsRuntimeSaved.
-  ///
-  /// In en, this message translates to:
-  /// **'Runtime settings saved.'**
-  String get settingsRuntimeSaved;
 
   /// No description provided for @settingsMemoryInvalid.
   ///
@@ -1885,6 +1855,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Default appearance'**
   String get accountDefaultSkin;
+
+  /// Memory summary heading.
+  ///
+  /// In en, this message translates to:
+  /// **'System memory'**
+  String get settingsMemorySystem;
+
+  /// Total physical memory label.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get settingsMemoryTotal;
+
+  /// Available physical memory label.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get settingsMemoryAvailable;
+
+  /// Estimated memory use after launching the game.
+  ///
+  /// In en, this message translates to:
+  /// **'After launch'**
+  String get settingsMemoryEstimated;
+
+  /// Memory information is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get settingsMemoryUnavailable;
+
+  /// Memory warning.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated usage exceeds available memory.'**
+  String get settingsMemoryOverAvailable;
 }
 
 class _AppLocalizationsDelegate

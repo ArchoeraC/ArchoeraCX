@@ -536,21 +536,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsMemory => '内存';
 
   @override
-  String settingsMemoryValue(int min, int max) {
-    return '$min – $max MB';
-  }
-
-  @override
   String get settingsJvmArgs => 'JVM 参数';
 
   @override
-  String get settingsJvmArgsValue => '默认';
-
-  @override
-  String get settingsRuntimeTitle => 'Java 与内存';
-
-  @override
-  String get settingsRuntimeHint => '内存设置将在下次启动时生效。';
+  String get settingsRuntimeHint => '运行参数将在下次启动时生效，修改会自动保存。';
 
   @override
   String get settingsMemoryMin => '最小内存（MB）';
@@ -589,13 +578,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsGameArgs => '附加游戏参数';
 
   @override
-  String get settingsGameArgsValue => '默认';
-
-  @override
   String get settingsGameArgsHint => '可选，追加在版本参数之后';
-
-  @override
-  String get settingsRuntimeSaved => '运行参数已保存。';
 
   @override
   String get settingsMemoryInvalid => '内存需在 128–65536 MB 之间，且最小值不能大于最大值。';
@@ -998,4 +981,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get accountDefaultSkin => '默认外观';
+
+  @override
+  String get settingsMemorySystem => '系统内存';
+
+  @override
+  String get settingsMemoryTotal => '总内存';
+
+  @override
+  String get settingsMemoryAvailable => '可用';
+
+  @override
+  String get settingsMemoryEstimated => '启动后预计';
+
+  @override
+  String get settingsMemoryUnavailable => '暂不可用';
+
+  @override
+  String get settingsMemoryOverAvailable => '预计占用超过当前可用内存。';
 }

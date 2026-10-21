@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,8 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
 import '../services/core/java_scan.dart';
+import '../services/core/system_memory.dart';
 import '../stores/instances.dart';
 import '../stores/locale.dart';
+import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../utils/app_info.dart';
@@ -44,22 +48,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 820;
-              final content = AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.015),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                ),
-                child: KeyedSubtree(
-                  key: ValueKey(_section),
-                  child: _sectionContent(context, l10n, settings),
-                ),
+              final content = KeyedSubtree(
+                key: ValueKey(_section),
+                child: _sectionContent(context, l10n, settings),
               );
 
               if (wide) {
@@ -196,41 +187,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          _SettingsCard(
-            children: [
-              _SettingRow(
-                icon: Icons.memory_rounded,
-                title: l10n.settingsMemory,
-                value: l10n.settingsMemoryValue(
-                  settings?.memoryMinMb ?? 512,
-                  settings?.memoryMaxMb ?? 2048,
-                ),
-                onTap: () => _editRuntimeOptions(context, l10n, settings),
-              ),
-              _SettingRow(
-                icon: Icons.recycling_rounded,
-                title: l10n.settingsGc,
-                value: _gcLabel(l10n, settings?.gcMode ?? 'auto'),
-                onTap: () => _editRuntimeOptions(context, l10n, settings),
-              ),
-              _SettingRow(
-                icon: Icons.terminal_rounded,
-                title: l10n.settingsJvmArgs,
-                value: (settings?.jvmArgs?.trim().isNotEmpty ?? false)
-                    ? settings!.jvmArgs!
-                    : l10n.settingsJvmArgsValue,
-                onTap: () => _editRuntimeOptions(context, l10n, settings),
-              ),
-              _SettingRow(
-                icon: Icons.sports_esports_rounded,
-                title: l10n.settingsGameArgs,
-                value: (settings?.gameArgs?.trim().isNotEmpty ?? false)
-                    ? settings!.gameArgs!
-                    : l10n.settingsGameArgsValue,
-                onTap: () => _editRuntimeOptions(context, l10n, settings),
-              ),
-            ],
-          ),
+          _RuntimeSettingsPanel(settings: settings),
           const SizedBox(height: AppSpacing.md),
           JavaStatusCard(
             autoScan: true,
@@ -345,144 +302,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       );
     }
   }
-
-  Future<void> _editRuntimeOptions(
-    BuildContext context,
-    AppLocalizations l10n,
-    AppSettings? settings,
-  ) async {
-    final min = TextEditingController(text: '${settings?.memoryMinMb ?? 512}');
-    final max = TextEditingController(text: '${settings?.memoryMaxMb ?? 2048}');
-    final args = TextEditingController(text: settings?.jvmArgs ?? '');
-    final gameArgs = TextEditingController(text: settings?.gameArgs ?? '');
-    var gcMode = settings?.gcMode ?? 'auto';
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.settingsRuntimeTitle),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.settingsRuntimeHint,
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: context.tokens.textSecondary),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: min,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: l10n.settingsMemoryMin),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: max,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: l10n.settingsMemoryMax),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: args,
-                decoration: InputDecoration(
-                  labelText: l10n.settingsJvmArgs,
-                  hintText: l10n.settingsJvmArgsHint,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              DropdownButtonFormField<String>(
-                initialValue: gcMode,
-                decoration: InputDecoration(labelText: l10n.settingsGc),
-                items: [
-                  for (final item in _gcOptions(l10n))
-                    DropdownMenuItem(value: item.$1, child: Text(item.$2)),
-                ],
-                onChanged: (value) {
-                  if (value != null) gcMode = value;
-                },
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: gameArgs,
-                decoration: InputDecoration(
-                  labelText: l10n.settingsGameArgs,
-                  hintText: l10n.settingsGameArgsHint,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.commonSave),
-          ),
-        ],
-      ),
-    );
-    final minValue = int.tryParse(min.text.trim());
-    final maxValue = int.tryParse(max.text.trim());
-    final jvmArgsText = args.text.trim();
-    final gameArgsText = gameArgs.text.trim();
-    min.dispose();
-    max.dispose();
-    args.dispose();
-    gameArgs.dispose();
-    if (saved != true || !context.mounted) return;
-    if (minValue == null ||
-        maxValue == null ||
-        minValue < 128 ||
-        maxValue > 65536 ||
-        minValue > maxValue) {
-      _notify(context, l10n.settingsMemoryInvalid, type: ToastType.error);
-      return;
-    }
-
-    try {
-      await ref
-          .read(appSettingsProvider.notifier)
-          .setRuntimeOptions(
-            memoryMinMb: minValue,
-            memoryMaxMb: maxValue,
-            jvmArgs: jvmArgsText,
-            gcMode: gcMode,
-            gameArgs: gameArgsText,
-          );
-      if (context.mounted) {
-        _notify(context, l10n.settingsRuntimeSaved, type: ToastType.success);
-      }
-    } catch (error) {
-      if (context.mounted) {
-        _notify(context, error.toString(), type: ToastType.error);
-      }
-    }
-  }
-
-  String _gcLabel(AppLocalizations l10n, String mode) => switch (mode) {
-    'g1gc' => l10n.settingsGcG1,
-    'zgc' => l10n.settingsGcZgc,
-    'parallel' => l10n.settingsGcParallel,
-    'serial' => l10n.settingsGcSerial,
-    'shenandoah' => l10n.settingsGcShenandoah,
-    'epsilon' => l10n.settingsGcEpsilon,
-    _ => l10n.settingsGcAuto,
-  };
-
-  List<(String, String)> _gcOptions(AppLocalizations l10n) => [
-    ('auto', l10n.settingsGcAuto),
-    ('g1gc', l10n.settingsGcG1),
-    ('zgc', l10n.settingsGcZgc),
-    ('parallel', l10n.settingsGcParallel),
-    ('serial', l10n.settingsGcSerial),
-    ('shenandoah', l10n.settingsGcShenandoah),
-    ('epsilon', l10n.settingsGcEpsilon),
-  ];
 
   Future<void> _setJavaAuto(
     BuildContext context,
@@ -864,6 +683,407 @@ List<_SettingsItem> _settingsItems(AppLocalizations l10n) => [
   ),
 ];
 
+class _RuntimeSettingsPanel extends ConsumerStatefulWidget {
+  const _RuntimeSettingsPanel({this.settings});
+
+  final AppSettings? settings;
+
+  @override
+  ConsumerState<_RuntimeSettingsPanel> createState() =>
+      _RuntimeSettingsPanelState();
+}
+
+class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
+  final _min = TextEditingController();
+  final _max = TextEditingController();
+  final _jvm = TextEditingController();
+  final _game = TextEditingController();
+  final _minFocus = FocusNode();
+  final _maxFocus = FocusNode();
+  final _jvmFocus = FocusNode();
+  final _gameFocus = FocusNode();
+
+  Timer? _debounce;
+  String _gcMode = 'auto';
+  String? _error;
+  bool _saving = false;
+  bool _saveInFlight = false;
+  bool _saveRequested = false;
+  SystemMemoryInfo? _memory;
+  bool _memoryLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncControllers();
+    _loadMemory();
+    for (final focus in [_minFocus, _maxFocus, _jvmFocus, _gameFocus]) {
+      focus.addListener(() {
+        if (!focus.hasFocus) _saveNow();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _RuntimeSettingsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.settings != widget.settings) _syncControllers();
+  }
+
+  void _syncControllers() {
+    final settings = widget.settings;
+    if (!_minFocus.hasFocus) _min.text = '${settings?.memoryMinMb ?? 512}';
+    if (!_maxFocus.hasFocus) _max.text = '${settings?.memoryMaxMb ?? 2048}';
+    if (!_jvmFocus.hasFocus) _jvm.text = settings?.jvmArgs ?? '';
+    if (!_gameFocus.hasFocus) _game.text = settings?.gameArgs ?? '';
+    _gcMode = settings?.gcMode ?? 'auto';
+  }
+
+  Future<void> _loadMemory() async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      if (mounted) setState(() => _memoryLoading = false);
+      return;
+    }
+    if (mounted && !_memoryLoading) setState(() => _memoryLoading = true);
+    try {
+      final memory = await client.getSystemMemory();
+      if (mounted) {
+        setState(() {
+          _memory = memory;
+          _memoryLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _memoryLoading = false);
+    }
+  }
+
+  void _scheduleSave() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), _saveNow);
+  }
+
+  Future<void> _saveNow() async {
+    if (!mounted) return;
+    if (_saveInFlight) {
+      _saveRequested = true;
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context);
+    final min = int.tryParse(_min.text.trim());
+    final max = int.tryParse(_max.text.trim());
+    if (min == null || max == null || min < 128 || max > 65536 || min > max) {
+      setState(() => _error = l10n.settingsMemoryInvalid);
+      return;
+    }
+
+    _saveInFlight = true;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(
+            memoryMinMb: min,
+            memoryMaxMb: max,
+            jvmArgs: _jvm.text.trim(),
+            gcMode: _gcMode,
+            gameArgs: _game.text.trim(),
+          );
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      _saveInFlight = false;
+      if (mounted) {
+        setState(() => _saving = false);
+        if (_saveRequested) {
+          _saveRequested = false;
+          unawaited(_saveNow());
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _min.dispose();
+    _max.dispose();
+    _jvm.dispose();
+    _game.dispose();
+    _minFocus.dispose();
+    _maxFocus.dispose();
+    _jvmFocus.dispose();
+    _gameFocus.dispose();
+    super.dispose();
+  }
+
+  String _formatMb(int mb) =>
+      mb >= 1024 ? '${(mb / 1024).toStringAsFixed(1)} GB' : '$mb MB';
+
+  List<(String, String)> _gcOptions(AppLocalizations l10n) => [
+    ('auto', l10n.settingsGcAuto),
+    ('g1gc', l10n.settingsGcG1),
+    ('zgc', l10n.settingsGcZgc),
+    ('parallel', l10n.settingsGcParallel),
+    ('serial', l10n.settingsGcSerial),
+    ('shenandoah', l10n.settingsGcShenandoah),
+    ('epsilon', l10n.settingsGcEpsilon),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final memory = _memory;
+    final total = memory?.totalMb ?? 0;
+    final available = memory?.availableMb ?? 0;
+    final maxMb = int.tryParse(_max.text.trim()) ?? 2048;
+    final estimated = maxMb + 512;
+    final overAvailable = memory?.isKnown == true && estimated > available;
+    final ratio = total > 0 ? (estimated / total).clamp(0.0, 1.0) : 0.0;
+
+    return _SettingsCard(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.sm,
+            AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.memory_rounded,
+                    size: 19,
+                    color: tokens.textSecondary,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    l10n.settingsMemorySystem,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  if (_memoryLoading)
+                    const SizedBox(
+                      width: 15,
+                      height: 15,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    IconButton(
+                      onPressed: _loadMemory,
+                      tooltip: l10n.refresh,
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.lg,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  _MemoryMetric(
+                    label: l10n.settingsMemoryTotal,
+                    value: memory?.isKnown == true
+                        ? _formatMb(total)
+                        : l10n.settingsMemoryUnavailable,
+                  ),
+                  _MemoryMetric(
+                    label: l10n.settingsMemoryAvailable,
+                    value: memory?.isKnown == true
+                        ? _formatMb(available)
+                        : l10n.settingsMemoryUnavailable,
+                  ),
+                  _MemoryMetric(
+                    label: l10n.settingsMemoryEstimated,
+                    value: _formatMb(estimated),
+                    color: overAvailable ? tokens.warning : null,
+                  ),
+                ],
+              ),
+              if (memory?.isKnown == true) ...[
+                const SizedBox(height: AppSpacing.sm),
+                ClipRect(
+                  child: LinearProgressIndicator(
+                    value: ratio,
+                    minHeight: 4,
+                    backgroundColor: tokens.surface3,
+                    color: overAvailable ? tokens.warning : tokens.accent,
+                  ),
+                ),
+              ],
+              if (overAvailable) ...[
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  l10n.settingsMemoryOverAvailable,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.warning),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                l10n.settingsRuntimeHint,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  SizedBox(
+                    width: 150,
+                    child: TextField(
+                      controller: _min,
+                      focusNode: _minFocus,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) {
+                        setState(() {});
+                        _scheduleSave();
+                      },
+                      onSubmitted: (_) => _saveNow(),
+                      decoration: InputDecoration(
+                        labelText: l10n.settingsMemoryMin,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 150,
+                    child: TextField(
+                      controller: _max,
+                      focusNode: _maxFocus,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) {
+                        setState(() {});
+                        _scheduleSave();
+                      },
+                      onSubmitted: (_) => _saveNow(),
+                      decoration: InputDecoration(
+                        labelText: l10n.settingsMemoryMax,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 240,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey('gc-$_gcMode'),
+                      initialValue: _gcMode,
+                      isExpanded: true,
+                      decoration: InputDecoration(labelText: l10n.settingsGc),
+                      items: [
+                        for (final item in _gcOptions(l10n))
+                          DropdownMenuItem(
+                            value: item.$1,
+                            child: Text(item.$2),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _gcMode = value);
+                        _saveNow();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _jvm,
+                focusNode: _jvmFocus,
+                onChanged: (_) => _scheduleSave(),
+                onSubmitted: (_) => _saveNow(),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsJvmArgs,
+                  hintText: l10n.settingsJvmArgsHint,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _game,
+                focusNode: _gameFocus,
+                onChanged: (_) => _scheduleSave(),
+                onSubmitted: (_) => _saveNow(),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsGameArgs,
+                  hintText: l10n.settingsGameArgsHint,
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  _error!,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.danger),
+                ),
+              ],
+              if (_saving)
+                const Padding(
+                  padding: EdgeInsets.only(top: AppSpacing.xs),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MemoryMetric extends StatelessWidget {
+  const _MemoryMetric({required this.label, required this.value, this.color});
+
+  final String label;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: tokens.textTertiary),
+        ),
+        const SizedBox(height: 1),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleSmall
+              ?.copyWith(color: color ?? tokens.textPrimary),
+        ),
+      ],
+    );
+  }
+}
+
 class _SettingsCard extends StatelessWidget {
   const _SettingsCard({required this.children});
 
@@ -932,12 +1152,15 @@ class _SettingRow extends StatelessWidget {
           trailing ??
           (value == null
               ? null
-              : Text(
-                  value!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: color ?? tokens.textTertiary),
+              : ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 380),
+                  child: Text(
+                    value!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: color ?? tokens.textTertiary),
+                  ),
                 )),
     );
   }
