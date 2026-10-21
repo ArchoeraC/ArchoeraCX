@@ -20,6 +20,12 @@ case "$(uname -s)" in
     ;;
 esac
 
+# Public OAuth client ID. Never commit a real value; CI injects it from
+# repository secrets and local builds pass it through the environment.
+if [[ -z "${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" ]]; then
+  echo "warning: ARCHOERACX_MICROSOFT_CLIENT_ID is empty; Microsoft sign-in will return MICROSOFT_CLIENT_ID_MISSING." >&2
+fi
+
 OUT_DIR="$(pwd)/build/native/cs"
 FINAL_PATH="$(pwd)/build/native/${OUTPUT_NAME}"
 PROJECT="modules/business/Archoera.Exports/Archoera.Exports.csproj"

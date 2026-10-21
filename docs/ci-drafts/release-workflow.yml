@@ -74,7 +74,12 @@ jobs:
           ARCHOERACX_MICROSOFT_CLIENT_ID: ${{ secrets.ARCHOERACX_MICROSOFT_CLIENT_ID }}
           # Future CurseForge support will use the same CI-only pattern:
           # ARCHOERACX_CURSEFORGE_API_KEY: ${{ secrets.ARCHOERACX_CURSEFORGE_API_KEY }}
-        run: ./tool/build-cs.sh
+        run: |
+          if [[ -z "${ARCHOERACX_MICROSOFT_CLIENT_ID}" ]]; then
+            echo "::error::ARCHOERACX_MICROSOFT_CLIENT_ID is not configured"
+            exit 1
+          fi
+          ./tool/build-cs.sh
 
       - name: Build Rust downloader
         working-directory: app
