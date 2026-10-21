@@ -6,7 +6,7 @@ platform icon variants are generated from it.
 - Project: ArchoeraCX
 - Author: ArchoeraCX project
 - License: AGPL-3.0-only, distributed with the project
-- Design: an angular gateway/portal with cyan-to-violet planes, a four-point spark and a warm threshold; no letterform is required
+- Design: an abstract four-blade core with cyan-to-violet faceted planes and a warm center; no letterform, portal or Mojang/Microsoft/Windows motif
 - No Mojang, Microsoft, Microsoft Windows, Minecraft or other third-party logo,
   block, character, font or UI asset is used in this mark
 - This mark is not an official Minecraft asset and does not imply endorsement
