@@ -1,3 +1,6 @@
+# DRAFT ONLY — intentionally kept outside .github/workflows.
+# The new GitHub repository is not running Actions until the maintainer enables it.
+
 name: CI
 
 on:
