@@ -12,6 +12,7 @@ import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/loader_mark.dart';
+import '../widgets/instances/instance_mods_dialog.dart';
 import '../widgets/instances/loader_install_dialog.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/instances/create_instance_dialog.dart';
@@ -173,6 +174,8 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                     onCheck: (mode) => _check(filtered[i], mode, l10n),
                     onManageLoader: () =>
                         showLoaderInstallDialog(context, filtered[i]),
+                    onManageMods: () =>
+                        showInstanceModsDialog(context, filtered[i]),
                     onDelete: () => _delete(filtered[i], l10n),
                   ),
                   if (i < filtered.length - 1)
@@ -713,6 +716,7 @@ class _InstanceRow extends StatelessWidget {
     required this.onLaunch,
     required this.onCheck,
     required this.onManageLoader,
+    required this.onManageMods,
     required this.onDelete,
   });
 
@@ -722,6 +726,7 @@ class _InstanceRow extends StatelessWidget {
   final VoidCallback onLaunch;
   final ValueChanged<String> onCheck;
   final VoidCallback onManageLoader;
+  final VoidCallback onManageMods;
   final VoidCallback onDelete;
 
   @override
@@ -802,6 +807,7 @@ class _InstanceRow extends StatelessWidget {
                     onSelected: (value) {
                       if (value == 'delete') onDelete();
                       if (value == 'manageLoader') onManageLoader();
+                      if (value == 'manageMods') onManageMods();
                       if (value == 'checkQuick') onCheck('quick');
                       if (value == 'checkFull') onCheck('full');
                     },
@@ -813,6 +819,16 @@ class _InstanceRow extends StatelessWidget {
                             const Icon(Icons.build_circle_outlined, size: 20),
                             const SizedBox(width: AppSpacing.xs),
                             Text(l10n.instanceManageLoader),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'manageMods',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.extension_rounded, size: 20),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(l10n.instanceManageMods),
                           ],
                         ),
                       ),

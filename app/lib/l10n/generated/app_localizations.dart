@@ -1825,6 +1825,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install / update loader'**
   String get instanceManageLoader;
+
+  /// Instance overflow action that opens the mod manager.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage mods'**
+  String get instanceManageMods;
+
+  /// Title of the instance mod manager.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed mods'**
+  String get instanceModsTitle;
+
+  /// Empty mod manager message.
+  ///
+  /// In en, this message translates to:
+  /// **'No mods in this instance.'**
+  String get instanceModsEmpty;
+
+  /// Mod list load failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load mods: {message}'**
+  String instanceModsLoadFailed(String message);
+
+  /// Delete a mod file.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete mod'**
+  String get instanceModDelete;
+
+  /// Confirm deleting one mod file.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”? This removes the mod file.'**
+  String instanceModDeleteConfirm(String name);
+
+  /// Mod is disabled and renamed with a .disabled suffix.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get instanceModDisabled;
+
+  /// Enable/disable failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update the mod.'**
+  String get instanceModsToggleFailed;
+
+  /// Delete failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove the mod.'**
+  String get instanceModsRemoveFailed;
 }
 
 class _AppLocalizationsDelegate

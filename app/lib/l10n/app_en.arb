@@ -697,5 +697,51 @@
   },
   "@downloadSubtitle": {
     "description": "Download hub subtitle."
+  },
+  "instanceManageMods": "Manage mods",
+  "@instanceManageMods": {
+    "description": "Instance overflow action that opens the mod manager."
+  },
+  "instanceModsTitle": "Installed mods",
+  "@instanceModsTitle": {
+    "description": "Title of the instance mod manager."
+  },
+  "instanceModsEmpty": "No mods in this instance.",
+  "@instanceModsEmpty": {
+    "description": "Empty mod manager message."
+  },
+  "instanceModsLoadFailed": "Could not load mods: {message}",
+  "@instanceModsLoadFailed": {
+    "description": "Mod list load failure.",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "instanceModDelete": "Delete mod",
+  "@instanceModDelete": {
+    "description": "Delete a mod file."
+  },
+  "instanceModDeleteConfirm": "Delete “{name}”? This removes the mod file.",
+  "@instanceModDeleteConfirm": {
+    "description": "Confirm deleting one mod file.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "instanceModDisabled": "Disabled",
+  "@instanceModDisabled": {
+    "description": "Mod is disabled and renamed with a .disabled suffix."
+  },
+  "instanceModsToggleFailed": "Could not update the mod.",
+  "@instanceModsToggleFailed": {
+    "description": "Enable/disable failure."
+  },
+  "instanceModsRemoveFailed": "Could not remove the mod.",
+  "@instanceModsRemoveFailed": {
+    "description": "Delete failure."
   }
 }

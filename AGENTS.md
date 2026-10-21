@@ -84,7 +84,7 @@ flutter build linux --release
 
 ## 当前进度
 
-- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n；全局文案走 ARB，支持跟随系统/English/简体中文切换；首页改为 Hero + 单行快捷条 + 最近实例网格，使用斜切角/直线面板；加载器图标全部使用素材资产（原版为 Wikimedia 草方块，Fabric/Quilt/Forge/NeoForge 为官方图标），来源/许可证见 `assets/icons/loaders/SOURCES.md`
+- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n；全局文案走 ARB，支持跟随系统/English/简体中文切换；首页改为 Hero + 单行快捷条 + 最近实例网格，使用斜切角/直线面板；账户页改为当前账户 Hero + 单列表，设置页改为分区导航 + 单面板；加载器图标全部使用素材资产（原版为 Wikimedia 草方块，Fabric/Quilt/Forge/NeoForge 为官方图标），来源/许可证见 `assets/icons/loaders/SOURCES.md`
 - ✅ `system.ping` / `system.pingAsync`：C++ ABI / C harness / Dart `CoreClient` / integration test；首页不再暴露调试卡片
 - ✅ 事件泵：wake + `NativeCallable.listener` + 批量 drain；无定时器/轮询
 - ✅ C# `java.scan`：C++ ModuleRegistry + NativeAOT `archoera_cs` + Java status 卡；支持手动目录/可执行文件回退与持久化
@@ -104,7 +104,7 @@ flutter build linux --release
 - ✅ Modrinth 端到端：Flutter 搜索/版本/安装 → C# 计划 → Rust `archoera-dl` 下载并校验（Sodium 1.21.1 Fabric 实测）
 - ✅ Noto Sans SC Medium 打包为默认 UI 字体
 - ✅ Java 扫描按 `java.home` 归并 symlink/JRE 别名，扩展用户目录，UI 显示前 5 + 查看全部
-- ✅ `version.list` / `loader.check` / `loader.plan` / `loader.commit`；下载页版本列表与全局 Mod 搜索；实例“更多”中安装/更新 Forge/NeoForge 加载器，支持 quick/full 依赖检查
+- ✅ `version.list` / `loader.check` / `loader.plan` / `loader.commit`；下载页版本列表与全局 Mod 搜索；实例“更多”中安装/更新 Forge/NeoForge 加载器、管理已安装 Mod（启停/删除），支持 quick/full 依赖检查
 - ✅ `settings.get/set` 持久化 `javaPath` / `javaAuto` / `memoryMinMb` / `memoryMaxMb` / `jvmArgs` / `gcMode` / `gameArgs`；设置页支持自动/手动 Java、内存、GC、JVM 参数与附加游戏参数；`launch.start` 支持基础离线账户启动（自动选择匹配游戏版本的 Java，持久化日志）
 - ✅ Modrinth 模组安装支持递归安装 required 依赖（深度 8、环检测），optional/incompatible 只报告不自动安装
 - ✅ Forge/NeoForge 安装前通过 `java.select` 选择 Java，下载后调用 `loader.repair` 执行 processors；仍需 JVM（自动选择或手动指定）
