@@ -13,7 +13,7 @@ The application icon, the default offline skin, and ArchoeraCX-owned source code
 
 | Component | Version/source | License | Notes |
 |---|---|---|---|
-| ArchoeraCX application icon | `app/assets/branding/archoera_icon.svg` | AGPL-3.0-only | Original angular gateway/portal mark; no Mojang/Microsoft/Windows elements |
+| ArchoeraCX application icon | `app/assets/branding/archoera_icon.svg` | AGPL-3.0-only | Original abstract four-blade core mark; no Mojang/Microsoft/Windows elements |
 | Default offline skin | `app/assets/skins/default-offline.png` | AGPL-3.0-only | Original neutral local character; not a Mojang asset |
 | Noto Sans SC Medium | `app/assets/fonts/NotoSansSC-Medium.otf` | OFL-1.1 | License text: `app/assets/fonts/OFL.txt` |
 | Fabric loader icon | `app/assets/icons/loaders/fabric.png` | Apache-2.0 | Source/attribution: `app/assets/icons/loaders/SOURCES.md` |
