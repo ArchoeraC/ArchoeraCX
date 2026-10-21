@@ -587,6 +587,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsJvmArgsHint => '可选，空格分隔';
 
   @override
+  String get settingsGc => '垃圾回收器';
+
+  @override
+  String get settingsGcAuto => '自动';
+
+  @override
+  String get settingsGcG1 => 'G1GC';
+
+  @override
+  String get settingsGcZgc => 'ZGC（Java 21+）';
+
+  @override
+  String get settingsGcParallel => 'Parallel';
+
+  @override
+  String get settingsGcSerial => 'Serial';
+
+  @override
+  String get settingsGcShenandoah => 'Shenandoah';
+
+  @override
+  String get settingsGcEpsilon => 'Epsilon（测试）';
+
+  @override
+  String get settingsGameArgs => '附加游戏参数';
+
+  @override
+  String get settingsGameArgsValue => '默认';
+
+  @override
+  String get settingsGameArgsHint => '可选，追加在版本参数之后';
+
+  @override
   String get settingsRuntimeSaved => '运行参数已保存。';
 
   @override

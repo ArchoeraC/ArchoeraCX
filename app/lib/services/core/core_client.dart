@@ -775,6 +775,8 @@ final class CoreClient {
     int? memoryMinMb,
     int? memoryMaxMb,
     String? jvmArgs,
+    String? gcMode,
+    String? gameArgs,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'settings.set';
@@ -784,6 +786,8 @@ final class CoreClient {
         'memoryMinMb': ?memoryMinMb,
         'memoryMaxMb': ?memoryMaxMb,
         'jvmArgs': ?jvmArgs,
+        'gcMode': ?gcMode,
+        'gameArgs': ?gameArgs,
       }),
       onProgress: onProgress,
     );

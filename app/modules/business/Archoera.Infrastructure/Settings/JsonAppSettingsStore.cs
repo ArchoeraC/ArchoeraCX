@@ -89,6 +89,10 @@ public sealed class JsonAppSettingsStore
             if (memoryMin < 128) memoryMin = fallback.MemoryMinMb;
             if (memoryMax < memoryMin) memoryMax = Math.Max(memoryMin, fallback.MemoryMaxMb);
             var jvmArgs = ReadString(root, "jvmArgs");
+            var gcMode = ReadString(root, "gcMode") is { } gc && IsGcMode(gc)
+                ? gc
+                : fallback.GcMode;
+            var gameArgs = ReadString(root, "gameArgs");
 
             return fallback with
             {
@@ -99,6 +103,8 @@ public sealed class JsonAppSettingsStore
                 MemoryMinMb = memoryMin,
                 MemoryMaxMb = memoryMax,
                 JvmArgs = string.IsNullOrWhiteSpace(jvmArgs) ? null : jvmArgs,
+                GcMode = gcMode,
+                GameArgs = string.IsNullOrWhiteSpace(gameArgs) ? null : gameArgs,
             };
         }
         catch (Exception exception) when (
@@ -218,6 +224,11 @@ public sealed class JsonAppSettingsStore
             {
                 writer.WriteString("jvmArgs", settings.JvmArgs);
             }
+            writer.WriteString("gcMode", settings.GcMode);
+            if (!string.IsNullOrWhiteSpace(settings.GameArgs))
+            {
+                writer.WriteString("gameArgs", settings.GameArgs);
+            }
             writer.WriteString("updatedAt", DateTimeOffset.UtcNow.ToString("O"));
             writer.WriteEndObject();
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -288,6 +299,9 @@ public sealed class JsonAppSettingsStore
             ? result
             : throw new ArgumentException("at least one valid instances root is required", nameof(roots));
     }
+
+    private static bool IsGcMode(string value)
+        => value is "auto" or "g1gc" or "zgc" or "parallel" or "serial" or "shenandoah" or "epsilon";
 
     private static int? ReadInt(JsonElement root, string name)
         => root.TryGetProperty(name, out var element) &&

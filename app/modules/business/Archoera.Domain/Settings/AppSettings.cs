@@ -19,10 +19,12 @@ public sealed record AppSettings(
     bool JavaAuto = true,
     int MemoryMinMb = 512,
     int MemoryMaxMb = 2048,
-    string? JvmArgs = null)
+    string? JvmArgs = null,
+    string GcMode = "auto",
+    string? GameArgs = null)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     /// <summary>Configured roots, falling back to the legacy primary root.</summary>
     public IReadOnlyList<string> Roots =>

@@ -106,7 +106,7 @@ flutter build linux --release
 - ✅ Noto Sans SC Medium 打包为默认 UI 字体
 - ✅ Java 扫描按 `java.home` 归并 symlink/JRE 别名，扩展用户目录，UI 显示前 5 + 查看全部
 - ✅ `version.list` / `loader.check` / `loader.plan` / `loader.commit`；下载页版本列表、Forge/NeoForge 本地 installer 下载/版本写入、quick/full 依赖检查
-- ✅ `settings.get/set` 持久化 `javaPath` / `javaAuto` / `memoryMinMb` / `memoryMaxMb` / `jvmArgs`；设置页支持自动/手动 Java、内存与 JVM 参数；`launch.start` 支持基础离线账户启动（自动选择匹配游戏版本的 Java，持久化日志）
+- ✅ `settings.get/set` 持久化 `javaPath` / `javaAuto` / `memoryMinMb` / `memoryMaxMb` / `jvmArgs` / `gcMode` / `gameArgs`；设置页支持自动/手动 Java、内存、GC、JVM 参数与附加游戏参数；`launch.start` 支持基础离线账户启动（自动选择匹配游戏版本的 Java，持久化日志）
 - ✅ Modrinth 模组安装支持递归安装 required 依赖（深度 8、环检测），optional/incompatible 只报告不自动安装
 - ✅ Forge/NeoForge 安装前通过 `java.select` 选择 Java，下载后调用 `loader.repair` 执行 processors；仍需 JVM（自动选择或手动指定）
 - ⚠️ Fabric/Quilt 无 Java 安装待接

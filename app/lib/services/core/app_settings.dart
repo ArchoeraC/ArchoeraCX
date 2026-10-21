@@ -10,6 +10,8 @@ class AppSettings {
     this.memoryMinMb = 512,
     this.memoryMaxMb = 2048,
     this.jvmArgs,
+    this.gcMode = 'auto',
+    this.gameArgs,
   });
 
   /// Primary/legacy root. Always the first entry of [instancesRoots].
@@ -30,6 +32,8 @@ class AppSettings {
   final int memoryMinMb;
   final int memoryMaxMb;
   final String? jvmArgs;
+  final String gcMode;
+  final String? gameArgs;
 
   /// Normalized roots with a legacy fallback for older native modules.
   List<String> get roots =>
@@ -62,7 +66,23 @@ class AppSettings {
       memoryMinMb: _int(value['memoryMinMb']) ?? 512,
       memoryMaxMb: _int(value['memoryMaxMb']) ?? 2048,
       jvmArgs: _string(value['jvmArgs']),
+      gcMode: _gcMode(value['gcMode']),
+      gameArgs: _string(value['gameArgs']),
     );
+  }
+
+  static String _gcMode(Object? value) {
+    final mode = _string(value);
+    if (mode == null) return 'auto';
+    return switch (mode) {
+      'g1gc' ||
+      'zgc' ||
+      'parallel' ||
+      'serial' ||
+      'shenandoah' ||
+      'epsilon' => mode,
+      _ => 'auto',
+    };
   }
 
   static int? _int(Object? value) {

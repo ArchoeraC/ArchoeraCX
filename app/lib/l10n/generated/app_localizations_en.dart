@@ -604,6 +604,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsJvmArgsHint => 'Optional, space-separated';
 
   @override
+  String get settingsGc => 'Garbage collector';
+
+  @override
+  String get settingsGcAuto => 'Automatic';
+
+  @override
+  String get settingsGcG1 => 'G1GC';
+
+  @override
+  String get settingsGcZgc => 'ZGC (Java 21+)';
+
+  @override
+  String get settingsGcParallel => 'Parallel';
+
+  @override
+  String get settingsGcSerial => 'Serial';
+
+  @override
+  String get settingsGcShenandoah => 'Shenandoah';
+
+  @override
+  String get settingsGcEpsilon => 'Epsilon (testing)';
+
+  @override
+  String get settingsGameArgs => 'Additional game arguments';
+
+  @override
+  String get settingsGameArgsValue => 'Default';
+
+  @override
+  String get settingsGameArgsHint =>
+      'Optional, appended after the version arguments';
+
+  @override
   String get settingsRuntimeSaved => 'Runtime settings saved.';
 
   @override
