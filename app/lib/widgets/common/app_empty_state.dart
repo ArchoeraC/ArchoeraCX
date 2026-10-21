@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/tokens.dart';
-import 'app_card.dart';
 
 class AppEmptyState extends StatelessWidget {
   const AppEmptyState({
@@ -27,21 +26,13 @@ class AppEmptyState extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
-        child: AppCard(
+        child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: tokens.accentSoft,
-                  borderRadius: BorderRadius.circular(tokens.radiusL),
-                ),
-                child: Icon(icon, color: tokens.accent, size: 28),
-              ),
-              const SizedBox(height: AppSpacing.lg),
+              Icon(icon, color: tokens.accent, size: 30),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 title,
                 style: textTheme.titleLarge,

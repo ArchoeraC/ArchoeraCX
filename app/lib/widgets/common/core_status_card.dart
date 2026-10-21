@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/core/core_client.dart';
 import '../../theme/tokens.dart';
-import 'app_card.dart';
+import 'app_section.dart';
 
 /// A small, zero-business card that verifies the native core ABI.
 ///
@@ -138,8 +138,10 @@ class _CoreStatusCardState extends State<CoreStatusCard> {
     final textTheme = Theme.of(context).textTheme;
     final ping = _ping;
 
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return AppSection(
+      showTop: true,
+      showBottom: false,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -168,7 +170,7 @@ class _CoreStatusCardState extends State<CoreStatusCard> {
             ),
             const SizedBox(height: AppSpacing.xs),
             ClipRRect(
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(tokens.radiusS),
               child: LinearProgressIndicator(
                 value: _progressTotal > 0
                     ? (_progressDone / _progressTotal).clamp(0.0, 1.0)

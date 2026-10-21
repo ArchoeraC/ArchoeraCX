@@ -36,7 +36,7 @@ class AppPageHeader extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 640 && actions.isNotEmpty) {
+        if (constraints.maxWidth < 600 && actions.isNotEmpty) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:go_router/go_router.dart';
 
 import '../pages/accounts_page.dart';
@@ -8,8 +10,13 @@ import '../pages/settings_page.dart';
 import 'shell.dart';
 
 GoRouter buildAppRouter() {
+  final configured = Platform.environment['ARCHOERACX_INITIAL_ROUTE']?.trim();
+  final initialLocation = configured != null && configured.startsWith('/')
+      ? configured
+      : '/';
+
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: initialLocation,
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

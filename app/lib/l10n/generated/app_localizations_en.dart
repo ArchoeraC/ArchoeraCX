@@ -77,6 +77,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'A calm place to launch, install, and manage your worlds.';
 
   @override
+  String get dashboardWorkspace => 'Workspace';
+
+  @override
+  String get dashboardQuickActions => 'Quick actions';
+
+  @override
+  String get dashboardBrowseContent => 'Browse content';
+
+  @override
+  String get dashboardEnvironment => 'Environment';
+
+  @override
   String get quickLaunch => 'Quick launch';
 
   @override
@@ -216,6 +228,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get downloadSubtitle =>
       'Versions, loaders, mods, packs, resource packs, and shaders.';
+
+  @override
+  String get sourceLabel => 'Source';
 
   @override
   String get tabVersions => 'Game versions';
@@ -648,4 +663,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonAdd => 'Add';
+
+  @override
+  String get instanceSelected => 'Selected';
 }

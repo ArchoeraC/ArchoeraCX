@@ -87,10 +87,10 @@ class AppTokens extends ThemeExtension<AppTokens> {
     border: Color(0xFFE3E7EF),
     borderStrong: Color(0xFFCFD6E4),
     overlay: Color(0x66000000),
-    radiusS: 8,
-    radiusM: 12,
-    radiusL: 16,
-    radiusXL: 24,
+    radiusS: 2,
+    radiusM: 4,
+    radiusL: 4,
+    radiusXL: 6,
     fast: Duration(milliseconds: 120),
     normal: Duration(milliseconds: 180),
     slow: Duration(milliseconds: 240),
@@ -103,23 +103,23 @@ class AppTokens extends ThemeExtension<AppTokens> {
     accentPressed: Color(0xFF5F82E6),
     accentSoft: Color(0x267A9BFF),
     onAccent: Color(0xFF0B1020),
-    bg: Color(0xFF0E1116),
-    surface1: Color(0xFF151A22),
-    surface2: Color(0xFF1B222C),
-    surface3: Color(0xFF232C38),
+    bg: Color(0xFF10141B),
+    surface1: Color(0xFF171D26),
+    surface2: Color(0xFF1E2632),
+    surface3: Color(0xFF27313F),
     textPrimary: Color(0xFFF2F5FA),
-    textSecondary: Color(0xFFA7B1C2),
-    textTertiary: Color(0xFF6F7B8F),
+    textSecondary: Color(0xFFAAB5C6),
+    textTertiary: Color(0xFF738094),
     danger: Color(0xFFFF7A7A),
     success: Color(0xFF54D39A),
     warning: Color(0xFFF0B45A),
-    border: Color(0xFF26303D),
-    borderStrong: Color(0xFF344153),
+    border: Color(0xFF2A3442),
+    borderStrong: Color(0xFF3A4759),
     overlay: Color(0xA6000000),
-    radiusS: 8,
-    radiusM: 12,
-    radiusL: 16,
-    radiusXL: 24,
+    radiusS: 2,
+    radiusM: 4,
+    radiusL: 4,
+    radiusXL: 6,
     fast: Duration(milliseconds: 120),
     normal: Duration(milliseconds: 180),
     slow: Duration(milliseconds: 240),
@@ -244,11 +244,7 @@ abstract final class AppSpacing {
 
 /// Shell dimensions.
 abstract final class AppLayout {
-  static const titleBarHeight = 48.0;
-  static const sidebarWidth = 232.0;
-  static const sidebarCollapsedWidth = 72.0;
-  static const bottomBarHeight = 64.0;
-  static const contentMaxWidth = 1180.0;
-  static const collapseBreakpoint = 980.0;
-  static const iconRailBreakpoint = 760.0;
+  static const titleBarHeight = 56.0;
+  static const bottomBarHeight = 72.0;
+  static const contentMaxWidth = 1400.0;
 }

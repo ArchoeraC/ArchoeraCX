@@ -9,10 +9,13 @@ import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/tokens.dart';
 import '../../utils/app_paths.dart';
-import '../common/app_card.dart';
+import '../common/app_section.dart';
 import '../common/app_empty_state.dart';
 
 /// Real Modrinth search + install surface for one content tab.
+///
+/// Layout is a fixed header (query + target) over an independently scrolling
+/// result list, so the search stays reachable while browsing.
 class ResourceSearchPanel extends ConsumerStatefulWidget {
   const ResourceSearchPanel({
     super.key,
@@ -47,123 +50,68 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final tokens = context.tokens;
     final instance = ref.watch(selectedInstanceProvider);
     final target = _targetFor(instance);
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _queryController,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _search(),
-                decoration: InputDecoration(
-                  hintText: l10n.searchDownload,
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            FilledButton(
-              onPressed: _loading ? null : _search,
-              child: Text(l10n.downloadSearchAction),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          target,
-          style: Theme.of(context).textTheme.bodySmall
-              ?.copyWith(color: tokens.textTertiary),
+        _SearchHeader(
+          l10n: l10n,
+          controller: _queryController,
+          target: target,
+          busy: _loading,
+          installing: _installing,
+          onSearch: _search,
         ),
         const SizedBox(height: AppSpacing.sm),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.all(AppSpacing.xl),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_error != null)
+        Expanded(child: _buildResults(l10n)),
+      ],
+    );
+  }
+
+  Widget _buildResults(AppLocalizations l10n) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return ListView(
+        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+        children: [
           AppEmptyState(
             icon: Icons.cloud_off_rounded,
             title: l10n.downloadSearchError,
             message: _error!,
-          )
-        else if (_items.isEmpty)
+          ),
+        ],
+      );
+    }
+
+    if (_items.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+        children: [
           AppEmptyState(
             icon: widget.icon,
             title: widget.title,
             message: l10n.downloadSearchEmpty,
-          )
-        else
-          for (final project in _items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: AppCard(
-                compact: true,
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                onTap: _installing ? null : () => _openVersions(project),
-                child: Row(
-                  children: [
-                    _ProjectIcon(url: project.iconUrl),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  project.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                              ),
-                              if (project.author != null) ...[
-                                const SizedBox(width: AppSpacing.xs),
-                                Text(
-                                  project.author!,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: tokens.textTertiary),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            project.summary,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: tokens.textSecondary),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${_formatCount(project.downloads)} downloads',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: tokens.textTertiary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_installing)
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    else
-                      Icon(Icons.download_rounded, color: tokens.textTertiary),
-                  ],
-                ),
-              ),
-            ),
-      ],
+          ),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      itemCount: _items.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, index) {
+        final project = _items[index];
+        return _ResourceRow(
+          project: project,
+          onTap: _installing ? null : () => _openVersions(project),
+        );
+      },
     );
   }
 
@@ -327,6 +275,214 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   }
 }
 
+/// Search field + install target. The target line explains which instance the
+/// query is scoped to without adding another card.
+class _SearchHeader extends StatelessWidget {
+  const _SearchHeader({
+    required this.l10n,
+    required this.controller,
+    required this.target,
+    required this.busy,
+    required this.installing,
+    required this.onSearch,
+  });
+
+  final AppLocalizations l10n;
+  final TextEditingController controller;
+  final String target;
+  final bool busy;
+  final bool installing;
+  final VoidCallback onSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return AppSection(
+      showTop: true,
+      showBottom: true,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final field = TextField(
+                controller: controller,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => onSearch(),
+                decoration: InputDecoration(
+                  hintText: l10n.searchDownload,
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  isDense: true,
+                ),
+              );
+              final button = FilledButton(
+                onPressed: busy ? null : onSearch,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                ),
+                child: Text(l10n.downloadSearchAction),
+              );
+
+              if (constraints.maxWidth < 420) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    field,
+                    const SizedBox(height: AppSpacing.xs),
+                    button,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: field),
+                  const SizedBox(width: AppSpacing.xs),
+                  button,
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+            child: Row(
+              children: [
+                Icon(Icons.tune_rounded, size: 14, color: tokens.textTertiary),
+                const SizedBox(width: AppSpacing.xxs),
+                Expanded(
+                  child: Text(
+                    target,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: tokens.textTertiary,
+                    ),
+                  ),
+                ),
+                if (installing) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.6,
+                      color: tokens.accent,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
+                  Text(
+                    l10n.downloadInstalling,
+                    style: textTheme.labelSmall?.copyWith(color: tokens.accent),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResourceRow extends StatelessWidget {
+  const _ResourceRow({required this.project, this.onTap});
+
+  final ResourceProject project;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final author = project.author?.trim();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        hoverColor: tokens.surface2,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xs,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: tokens.border)),
+          ),
+          child: Row(
+            children: [
+              _ProjectIcon(url: project.iconUrl),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: project.name),
+                          if (author != null && author.isNotEmpty)
+                            TextSpan(
+                              text: '  $author',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: tokens.textTertiary,
+                              ),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall,
+                    ),
+                    if (project.summary.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        project.summary,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: tokens.textSecondary,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.xxs),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.file_download_outlined,
+                          size: 13,
+                          color: tokens.textTertiary,
+                        ),
+                        const SizedBox(width: AppSpacing.xxs),
+                        Text(
+                          _formatCount(project.downloads),
+                          style: textTheme.labelSmall?.copyWith(
+                            color: tokens.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(Icons.chevron_right_rounded, color: tokens.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _VersionSheet extends StatelessWidget {
   const _VersionSheet({required this.project, required this.versions});
 
@@ -336,11 +492,13 @@ class _VersionSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
 
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -349,19 +507,43 @@ class _VersionSheet extends StatelessWidget {
               AppSpacing.lg,
               AppSpacing.sm,
             ),
-            child: Text(
-              '${project.name} · ${l10n.downloadSelectVersion}',
-              style: Theme.of(context).textTheme.titleMedium,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  project.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.downloadSelectVersion,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: tokens.textTertiary,
+                  ),
+                ),
+              ],
             ),
           ),
           Flexible(
-            child: ListView.builder(
+            child: ListView.separated(
               shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               itemCount: versions.length,
+              separatorBuilder: (_, _) => Divider(
+                height: 1,
+                indent: AppSpacing.lg,
+                endIndent: AppSpacing.lg,
+                color: tokens.border,
+              ),
               itemBuilder: (context, index) {
                 final version = versions[index];
                 final file = version.primaryFile;
                 return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
                   title: Text(version.name),
                   subtitle: Text(
                     '${version.versionNumber} · ${version.versionType}'
