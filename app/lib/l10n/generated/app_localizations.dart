@@ -917,7 +917,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountMicrosoftDesc.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with Microsoft device code.'**
+  /// **'Sign in with your Microsoft account in the browser.'**
   String get accountMicrosoftDesc;
 
   /// No description provided for @accountOfflineDesc.
@@ -1459,6 +1459,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The code expires in about {minutes} minutes.'**
   String accountDeviceCodeExpires(int minutes);
+
+  /// Authorization code flow instruction after opening the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Your browser has been opened. Sign in with your Microsoft account to continue.'**
+  String get accountBrowserSignInHint;
+
+  /// Status while waiting for the loopback browser callback.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the browser callback…'**
+  String get accountBrowserWaitingCallback;
+
+  /// Button that reopens the Microsoft authorization page.
+  ///
+  /// In en, this message translates to:
+  /// **'Open browser'**
+  String get accountOpenBrowser;
+
+  /// Shown when url_launcher could not open the authorization URL.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the browser automatically. Open the link below manually.'**
+  String get accountBrowserOpenFailed;
 
   /// No description provided for @accountAddOffline.
   ///

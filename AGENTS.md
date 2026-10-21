@@ -98,7 +98,7 @@ flutter build linux --release
 - ✅ Forge/NeoForge 安装下载组合计划（原版 + 加载器依赖 + installer）
 - ✅ Mojang Java runtime 下载计划（all.json → platform manifest → raw/executable）
 - ✅ C++ `ModuleRegistry` + `MethodRegistry`；`system.modules` 可查询已加载模块；C# `BusinessModuleRegistry` 统一注册业务方法
-- ✅ Microsoft Device Code 登录：Microsoft token → XBL → XSTS → Minecraft login → entitlement/profile/certificates；账户页可登录/切换/刷新/移除，离线账户可用
+- ✅ Microsoft Authorization Code + PKCE（loopback）登录：Microsoft token → XBL → XSTS → Minecraft login → entitlement/profile/certificates；账户页可登录/切换/刷新/移除，离线账户可用
 - ✅ 实例 UI：创建/选择/删除/搜索、可选实例目录；C# SQLite 索引 + `instance.json` 权威源
 - ✅ 下载页 UI：6 个分栏；Modrinth 搜索/版本/安装已接线，CurseForge 源待 key
 - ✅ C# `settings.get/set`：多实例根目录（`instancesRoots`，首项默认）；`instance.sync` 采纳/刷新/标记缺失；Flutter 设置页与创建实例对话框已接入

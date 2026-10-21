@@ -1,9 +1,9 @@
 # Minecraft Services application review
 
-Status: submission draft for the **current Device Code implementation**. Online
-launch is now wired to the stored Minecraft session. Do not submit the older
-authorization-code/sessionserver wording unless those features are implemented
-first. The Client ID itself is stored as the GitHub Actions
+Status: submission draft for the **current Authorization Code + PKCE + loopback
+implementation**. Online launch is wired to the stored Minecraft session. The
+older sessionserver wording must not be submitted because that endpoint is not
+called. The Client ID itself is stored as the GitHub Actions
 secret `ARCHOERACX_MICROSOFT_CLIENT_ID` and must not be committed here.
 
 ## Submission text (English)
@@ -12,17 +12,17 @@ ArchoeraCX is a third-party Minecraft: Java Edition launcher. We are requesting
 review of our Azure Application (Client) ID so the launcher can use the
 Minecraft Services authentication and profile endpoints.
 
-**Authentication.** Users sign in through Microsoft OAuth 2.0 Device Code Flow
-using a native public client. The launcher requests a device code from
-`login.microsoftonline.com/consumers`, displays the one-time code and
-verification URL, and polls the token endpoint until the user completes
-sign-in. We never ask for or store Microsoft passwords, and the public client
-uses no client secret. The device code remains in memory inside the native
-module. After Microsoft authorization, the launcher authenticates with Xbox
-Live and XSTS, then calls
+**Authentication.** Users sign in through Microsoft OAuth 2.0 Authorization
+Code Flow with PKCE and a native public-client loopback redirect. The launcher
+opens the system browser to the Microsoft authorization page; the redirect URI
+is `http://localhost:<ephemeral-port>/callback`, bound only to the local
+loopback interface. After the user signs in, the launcher validates the state,
+exchanges the authorization code plus PKCE verifier for tokens, and closes the
+local listener. We never ask for or store Microsoft passwords, and the public
+client uses no client secret. After Microsoft authorization, the launcher
+authenticates with Xbox Live and XSTS, then calls
 `https://api.minecraftservices.com/authentication/login_with_xbox` to obtain a
-Minecraft access token. We do not use a redirect URI or a local callback
-listener.
+Minecraft access token.
 
 **Profile, ownership and skin data.** With that token, the launcher calls
 `https://api.minecraftservices.com/entitlements/mcstore` to check for a
@@ -54,11 +54,11 @@ more details or a test build if needed.
 
 | Earlier draft | Current implementation |
 |---|---|
-| Authorization code flow with a native public-client redirect URI | OAuth 2.0 Device Code Flow; no redirect URI or local callback listener |
+| Authorization code flow with a native public-client redirect URI | Implemented: Authorization Code + PKCE, loopback redirect, short-lived local listener |
 | `sessionserver.mojang.com` profile lookup | `api.minecraftservices.com/minecraft/profile`; sessionserver is not called |
 | Ownership implied by profile/login | `/entitlements/mcstore` is checked during sign-in |
 | “Before enabling launch” | Ownership is checked during sign-in; online launch now consumes the stored Minecraft session |
 
-If Minecraft review specifically requires the authorization-code flow, implement
-loopback redirect + PKCE and update this document before submitting. Do not
-describe an implementation that does not exist.
+Device Code Flow remains available as a fallback for environments where a
+loopback listener cannot be started. The submission describes the primary
+Authorization Code + PKCE flow. Do not claim `sessionserver.mojang.com` is used.

@@ -452,7 +452,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addAccount => '添加账户';
 
   @override
-  String get accountMicrosoftDesc => '使用微软设备码登录。';
+  String get accountMicrosoftDesc => '使用浏览器登录微软账户。';
 
   @override
   String get accountOfflineDesc => '用于单人和局域网的本地档案。';
@@ -751,6 +751,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String accountDeviceCodeExpires(int minutes) {
     return '代码约 $minutes 分钟后过期。';
   }
+
+  @override
+  String get accountBrowserSignInHint => '已在浏览器中打开登录页，请使用微软账户完成登录。';
+
+  @override
+  String get accountBrowserWaitingCallback => '等待浏览器回调…';
+
+  @override
+  String get accountOpenBrowser => '打开浏览器';
+
+  @override
+  String get accountBrowserOpenFailed => '无法自动打开浏览器，请手动打开下方链接。';
 
   @override
   String get accountAddOffline => '添加离线账户';

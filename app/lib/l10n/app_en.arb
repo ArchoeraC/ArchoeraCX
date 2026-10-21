@@ -208,7 +208,7 @@
   "accountsSubtitle": "Microsoft, offline, and third-party authlib accounts.",
   "currentAccount": "Current account",
   "addAccount": "Add account",
-  "accountMicrosoftDesc": "Sign in with Microsoft device code.",
+  "accountMicrosoftDesc": "Sign in with your Microsoft account in the browser.",
   "accountOfflineDesc": "Local profile for single-player and LAN.",
   "accountThirdPartyDesc": "Yggdrasil via authlib-injector.",
   "refresh": "Refresh",
@@ -427,6 +427,10 @@
   "accountDeviceCodeWaiting": "Waiting for Microsoft authorization…",
   "accountDeviceCodeCopied": "Code copied.",
   "accountDeviceCodeExpires": "The code expires in about {minutes} minutes.",
+  "accountBrowserSignInHint": "Your browser has been opened. Sign in with your Microsoft account to continue.",
+  "accountBrowserWaitingCallback": "Waiting for the browser callback…",
+  "accountOpenBrowser": "Open browser",
+  "accountBrowserOpenFailed": "Could not open the browser automatically. Open the link below manually.",
   "accountAddOffline": "Add offline account",
   "accountOfflineNameLabel": "Player name",
   "accountOfflineNameHint": "3–16 characters",
@@ -458,6 +462,18 @@
         "type": "int"
       }
     }
+  },
+  "@accountBrowserSignInHint": {
+    "description": "Authorization code flow instruction after opening the browser."
+  },
+  "@accountBrowserWaitingCallback": {
+    "description": "Status while waiting for the loopback browser callback."
+  },
+  "@accountOpenBrowser": {
+    "description": "Button that reopens the Microsoft authorization page."
+  },
+  "@accountBrowserOpenFailed": {
+    "description": "Shown when url_launcher could not open the authorization URL."
   },
   "@accountRemoveConfirm": {
     "description": "Remove account confirmation.",

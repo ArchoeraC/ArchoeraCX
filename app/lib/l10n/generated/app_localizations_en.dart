@@ -467,7 +467,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addAccount => 'Add account';
 
   @override
-  String get accountMicrosoftDesc => 'Sign in with Microsoft device code.';
+  String get accountMicrosoftDesc =>
+      'Sign in with your Microsoft account in the browser.';
 
   @override
   String get accountOfflineDesc => 'Local profile for single-player and LAN.';
@@ -777,6 +778,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String accountDeviceCodeExpires(int minutes) {
     return 'The code expires in about $minutes minutes.';
   }
+
+  @override
+  String get accountBrowserSignInHint =>
+      'Your browser has been opened. Sign in with your Microsoft account to continue.';
+
+  @override
+  String get accountBrowserWaitingCallback =>
+      'Waiting for the browser callback…';
+
+  @override
+  String get accountOpenBrowser => 'Open browser';
+
+  @override
+  String get accountBrowserOpenFailed =>
+      'Could not open the browser automatically. Open the link below manually.';
 
   @override
   String get accountAddOffline => 'Add offline account';
