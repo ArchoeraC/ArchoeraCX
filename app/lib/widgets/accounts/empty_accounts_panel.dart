@@ -13,10 +13,12 @@ class EmptyAccountsPanel extends StatelessWidget {
     super.key,
     required this.onMicrosoft,
     required this.onOffline,
+    this.offlineHint,
   });
 
   final VoidCallback onMicrosoft;
   final VoidCallback onOffline;
+  final String? offlineHint;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +63,7 @@ class EmptyAccountsPanel extends StatelessWidget {
         AccountTypeAction(
           icon: Icons.person_rounded,
           title: l10n.accountAddOffline,
-          subtitle: l10n.accountOfflineDesc,
+          subtitle: offlineHint ?? l10n.accountOfflineDesc,
           color: tokens.accent,
           onTap: onOffline,
         ),
