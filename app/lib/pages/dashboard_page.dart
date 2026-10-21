@@ -9,6 +9,7 @@ import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_panel.dart';
+import '../widgets/common/loader_mark.dart';
 import '../widgets/instances/create_instance_dialog.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -225,11 +226,10 @@ class _HeroArt extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  loader == null ? Icons.add_rounded : _loaderIcon(loader),
-                  size: 76,
-                  color: tokens.accent,
-                ),
+                if (loader == null)
+                  Icon(Icons.add_rounded, size: 76, color: tokens.accent)
+                else
+                  LoaderMark(loader: loader, size: 76),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   loader?.labelFor(AppLocalizations.of(context)) ??
@@ -508,8 +508,6 @@ class _InstanceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    final color = _loaderColor(tokens, instance.loader);
-
     return AppPanel(
       padding: const EdgeInsets.all(AppSpacing.sm),
       accent: selected,
@@ -520,7 +518,7 @@ class _InstanceTile extends StatelessWidget {
             width: 40,
             height: 40,
             color: tokens.surface2,
-            child: Icon(_loaderIcon(instance.loader), size: 20, color: color),
+            child: Center(child: LoaderMark(loader: instance.loader, size: 24)),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -588,22 +586,6 @@ class _HeroMeta extends StatelessWidget {
     );
   }
 }
-
-IconData _loaderIcon(GameLoader loader) => switch (loader) {
-  GameLoader.vanilla => Icons.landscape_rounded,
-  GameLoader.fabric => Icons.auto_awesome_rounded,
-  GameLoader.quilt => Icons.layers_rounded,
-  GameLoader.forge => Icons.handyman_rounded,
-  GameLoader.neoforge => Icons.extension_rounded,
-};
-
-Color _loaderColor(AppTokens tokens, GameLoader loader) => switch (loader) {
-  GameLoader.vanilla => tokens.accent,
-  GameLoader.fabric => tokens.success,
-  GameLoader.quilt => tokens.accent,
-  GameLoader.forge => tokens.warning,
-  GameLoader.neoforge => tokens.warning,
-};
 
 String _lastPlayedLabel(
   BuildContext context,

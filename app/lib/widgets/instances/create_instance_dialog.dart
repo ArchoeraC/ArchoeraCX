@@ -8,6 +8,7 @@ import '../../models/game_instance.dart';
 import '../../stores/instances.dart';
 import '../../stores/settings.dart';
 import '../../theme/tokens.dart';
+import '../common/loader_mark.dart';
 import '../../utils/app_paths.dart';
 
 Future<void> showCreateInstanceDialog(
@@ -165,13 +166,23 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                 for (final loader in _loaders)
                   DropdownMenuItem(
                     value: loader,
-                    child: Text(
-                      loader == GameLoader.vanilla
-                          ? loader.labelFor(l10n)
-                          : l10n.loaderVersionValue(
-                              loader.labelFor(l10n),
-                              loader.defaultVersion,
-                            ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        LoaderMark(loader: loader, size: 18),
+                        const SizedBox(width: AppSpacing.xs),
+                        Flexible(
+                          child: Text(
+                            loader == GameLoader.vanilla
+                                ? loader.labelFor(l10n)
+                                : l10n.loaderVersionValue(
+                                    loader.labelFor(l10n),
+                                    loader.defaultVersion,
+                                  ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
