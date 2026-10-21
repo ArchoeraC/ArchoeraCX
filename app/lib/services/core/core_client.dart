@@ -18,6 +18,7 @@ import 'launch_result.dart';
 import 'loader_versions.dart';
 import 'loader_plan.dart';
 import 'version_models.dart';
+import 'region_policy.dart';
 import 'resource_models.dart';
 import 'system_memory.dart';
 import 'task_update.dart';
@@ -430,6 +431,7 @@ final class CoreClient {
     String instanceId, {
     String mode = 'offline',
     bool requirePremium = false,
+    bool requireMicrosoft = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'launch.prepare';
@@ -439,6 +441,7 @@ final class CoreClient {
         'instanceId': instanceId,
         'mode': mode,
         'requirePremium': requirePremium,
+        'requireMicrosoft': requireMicrosoft,
       }),
       onProgress: onProgress,
     );
@@ -460,6 +463,7 @@ final class CoreClient {
     String instanceId, {
     String mode = 'offline',
     bool requirePremium = false,
+    bool requireMicrosoft = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'launch.start';
@@ -469,6 +473,7 @@ final class CoreClient {
         'instanceId': instanceId,
         'mode': mode,
         'requirePremium': requirePremium,
+        'requireMicrosoft': requireMicrosoft,
       }),
       onProgress: onProgress,
     );
@@ -1260,6 +1265,7 @@ final class CoreClient {
   Future<Account> selectAccount(
     String id, {
     bool requirePremium = false,
+    bool requireMicrosoft = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'account.select';
@@ -1268,6 +1274,7 @@ final class CoreClient {
       paramsJson: jsonEncode(<String, Object?>{
         'id': id,
         'requirePremium': requirePremium,
+        'requireMicrosoft': requireMicrosoft,
       }),
       onProgress: onProgress,
     );
@@ -1277,6 +1284,7 @@ final class CoreClient {
   Future<Account> loginOffline(
     String name, {
     bool requirePremium = false,
+    bool requireMicrosoft = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'account.login.offline';
@@ -1285,6 +1293,7 @@ final class CoreClient {
       paramsJson: jsonEncode(<String, Object?>{
         'name': name,
         'requirePremium': requirePremium,
+        'requireMicrosoft': requireMicrosoft,
       }),
       onProgress: onProgress,
     );
@@ -1456,6 +1465,25 @@ final class CoreClient {
         }
       }
     }
+  }
+
+  /// Read coarse region policy (mainland China vs other regions).
+  Future<RegionPolicyState> getRegionPolicy({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'region.policy';
+    final jsonText = await _runAsync(methodName, onProgress: onProgress);
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final policy = RegionPolicyState.tryParse(data);
+    if (policy == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an invalid region policy.',
+      );
+    }
+    return policy;
   }
 
   /// Read the local download-risk gate.

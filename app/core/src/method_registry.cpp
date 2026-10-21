@@ -43,6 +43,7 @@ constexpr MethodRoute kRoutes[] = {
     {"resource.plan", MethodRouteKind::kModule, kCsModule},
     {"download.execute", MethodRouteKind::kModule, kCsModule},
     {"download.policy", MethodRouteKind::kModule, kCsModule},
+    {"region.policy", MethodRouteKind::kModule, kCsModule},
 
     {"system.memory", MethodRouteKind::kModule, kCsModule},
     {"settings.get", MethodRouteKind::kModule, kCsModule},

@@ -57,12 +57,20 @@ The launcher stores settings, instance metadata, installed content records,
 download plans, launch logs and local paths. Account metadata is stored locally;
 credentials are stored in the encrypted local credential vault described below.
 
-### 3.4 Network data
+### 3.4 Network data and regional policy
 
 When the launcher contacts Microsoft, Xbox, Minecraft Services, Modrinth or a
 download mirror, those providers receive the network information necessary to
 serve the request, such as the user's IP address and request headers. ArchoeraCX
 does not operate a server that receives or stores account tokens.
+
+To apply the regional account policy, the launcher may make a coarse region
+request to Cloudflare's `cdn-cgi/trace` endpoint and read only the two-letter
+country code, with the local system locale/timezone as a fallback. The IP
+address is necessarily transmitted for that request but is not stored by the
+launcher; only the coarse region result is cached in memory. A developer can
+override the result with `ARCHOERACX_REGION=CN|GLOBAL`. No precise location is
+collected or persisted.
 
 ### 3.5 Diagnostics, telemetry and updates
 
@@ -122,6 +130,7 @@ the feature the user requested, including:
 - Minecraft Services for profile, ownership-related responses and certificates;
 - Mojang CDN for game files and skin textures;
 - Modrinth and selected download mirrors for content selected by the user;
+- Cloudflare for the coarse country lookup used by the regional account policy;
 - the operating system's credential store, when available.
 
 These third parties process data under their own terms and privacy policies.
@@ -131,6 +140,7 @@ Relevant policies include:
 - Microsoft Privacy Statement: <https://privacy.microsoft.com/>
 - Minecraft/Mojang privacy information: <https://www.minecraft.net/privacy>
 - Modrinth privacy policy: <https://modrinth.com/legal/privacy>
+- Cloudflare privacy policy: <https://www.cloudflare.com/privacypolicy/>
 - BMCLAPI: <https://bmclapidoc.bangbang93.com/>
 
 ## 7. Cross-border processing

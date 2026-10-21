@@ -472,5 +472,10 @@
   "downloadUnavailableMessage": "当前下载受本地策略限制。请在配置文件中添加所需字段，然后重新检查。已有实例和本地启动功能仍可使用。",
   "downloadConfigPath": "配置文件：{path}",
   "downloadConfigFields": "需要字段：developerMode=true、acceptRisk=true、downloadLevel=L2、acknowledgement=ENABLE-DOWNLOADS 1",
-  "downloadConfigReload": "重新检查配置"
+  "downloadConfigReload": "重新检查配置",
+  "accountMicrosoftOnly": "该地区只允许使用已验证的微软账户。",
+  "accountMicrosoftOnlyHint": "该地区仅允许微软验证账户，离线账户和第三方账户已禁用。",
+  "accountsSubtitleMicrosoftOnly": "该地区仅支持微软验证账户。",
+  "accountNoAccountsMicrosoftOnly": "添加微软账户后即可开始使用。",
+  "launchOnlineNotReady": "当前版本尚未启用在线启动。"
 }

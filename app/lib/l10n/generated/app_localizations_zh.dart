@@ -1154,4 +1154,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadConfigReload => '重新检查配置';
+
+  @override
+  String get accountMicrosoftOnly => '该地区只允许使用已验证的微软账户。';
+
+  @override
+  String get accountMicrosoftOnlyHint => '该地区仅允许微软验证账户，离线账户和第三方账户已禁用。';
+
+  @override
+  String get accountsSubtitleMicrosoftOnly => '该地区仅支持微软验证账户。';
+
+  @override
+  String get accountNoAccountsMicrosoftOnly => '添加微软账户后即可开始使用。';
+
+  @override
+  String get launchOnlineNotReady => '当前版本尚未启用在线启动。';
 }

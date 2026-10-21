@@ -29,6 +29,9 @@ class AccountsPage extends ConsumerWidget {
     final accounts = accountsAsync.value ?? const <Account>[];
     final current = ref.watch(currentAccountProvider);
     final policy = ref.watch(accountPolicyProvider);
+    final blockedHint = policy.microsoftOnly
+        ? l10n.accountMicrosoftOnlyHint
+        : l10n.accountPremiumRequiredHint;
     final loadFailed = accountsAsync.hasError && accounts.isEmpty;
     final empty =
         accounts.isEmpty &&
@@ -55,9 +58,11 @@ class AccountsPage extends ConsumerWidget {
       body = EmptyAccountsPanel(
         onMicrosoft: () => _addAccount(context, ref, 'microsoft'),
         onOffline: () => _addAccount(context, ref, 'offline'),
-        offlineHint: policy.canUseOtherAccounts
-            ? null
-            : l10n.accountPremiumRequiredHint,
+        offlineHint: policy.canUseOtherAccounts ? null : blockedHint,
+        showOffline: !policy.microsoftOnly,
+        emptyMessage: policy.microsoftOnly
+            ? l10n.accountNoAccountsMicrosoftOnly
+            : null,
       );
     } else {
       body = Column(
@@ -93,7 +98,9 @@ class AccountsPage extends ConsumerWidget {
         children: [
           AppPageHeader(
             title: l10n.accountsTitle,
-            subtitle: l10n.accountsSubtitle,
+            subtitle: policy.microsoftOnly
+                ? l10n.accountsSubtitleMicrosoftOnly
+                : l10n.accountsSubtitle,
             actions: [
               FilledButton.icon(
                 onPressed: () => _addAccount(context, ref),
@@ -102,7 +109,8 @@ class AccountsPage extends ConsumerWidget {
               ),
             ],
           ),
-          if (policy.requirePremium && !policy.hasPremium) ...[
+          if (policy.microsoftOnly ||
+              (policy.requirePremium && !policy.hasPremium)) ...[
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
@@ -121,7 +129,7 @@ class AccountsPage extends ConsumerWidget {
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
-                      l10n.accountPremiumRequiredHint,
+                      blockedHint,
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: context.tokens.warning),
                     ),
@@ -151,7 +159,9 @@ class AccountsPage extends ConsumerWidget {
         onOffline: () => Navigator.of(sheetContext).pop('offline'),
         offlineHint: ref.read(accountPolicyProvider).canUseOtherAccounts
             ? null
-            : AppLocalizations.of(context).accountPremiumRequiredHint,
+            : (ref.read(accountPolicyProvider).microsoftOnly
+                  ? AppLocalizations.of(context).accountMicrosoftOnlyHint
+                  : AppLocalizations.of(context).accountPremiumRequiredHint),
       ),
     );
 
@@ -196,7 +206,14 @@ class AccountsPage extends ConsumerWidget {
   Future<void> _loginOffline(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
     if (!ref.read(accountPolicyProvider).canUseOtherAccounts) {
-      _notify(context, l10n.accountPremiumRequired, error: true);
+      final policy = ref.read(accountPolicyProvider);
+      _notify(
+        context,
+        policy.microsoftOnly
+            ? l10n.accountMicrosoftOnly
+            : l10n.accountPremiumRequired,
+        error: true,
+      );
       return;
     }
     final client = ref.read(coreClientProvider);
@@ -238,9 +255,11 @@ class AccountsPage extends ConsumerWidget {
 
     if (name == null || name.trim().length < 3 || !context.mounted) return;
     try {
+      final policy = ref.read(accountPolicyProvider);
       await client.loginOffline(
         name.trim(),
-        requirePremium: ref.read(accountPolicyProvider).requirePremium,
+        requirePremium: policy.requirePremium,
+        requireMicrosoft: policy.microsoftOnly,
       );
       await ref.read(accountsProvider.notifier).reload();
       if (context.mounted) _notify(context, l10n.accountSelected);

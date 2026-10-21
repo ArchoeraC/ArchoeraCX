@@ -28,6 +28,7 @@ public sealed class ModuleRegistryTests
             Assert.Contains("launch.prepare", registry.Methods);
             Assert.Contains("resource.search", registry.Methods);
             Assert.Contains("download.policy", registry.Methods);
+            Assert.Contains("region.policy", registry.Methods);
             Assert.Contains("resource.project", registry.Methods);
             Assert.Contains("settings.get", registry.Methods);
             Assert.Contains("instance.list", registry.Methods);
