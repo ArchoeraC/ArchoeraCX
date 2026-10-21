@@ -999,4 +999,84 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsMemoryOverAvailable => '预计占用超过当前可用内存。';
+
+  @override
+  String downloadResults(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个结果',
+      one: '1 个结果',
+      zero: '没有结果',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get downloadSort => '排序';
+
+  @override
+  String get downloadSortRelevance => '相关度';
+
+  @override
+  String get downloadSortDownloads => '下载量';
+
+  @override
+  String get downloadSortFollows => '关注数';
+
+  @override
+  String get downloadSortNewest => '最新发布';
+
+  @override
+  String get downloadSortUpdated => '最近更新';
+
+  @override
+  String get downloadScreenshots => '图片';
+
+  @override
+  String downloadDependencies(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个依赖',
+      one: '1 个依赖',
+      zero: '无依赖',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get downloadLoadMore => '加载更多';
+
+  @override
+  String get downloadImagePreview => '图片预览';
+
+  @override
+  String downloadByAuthor(Object author) {
+    return '作者：$author';
+  }
+
+  @override
+  String get loaderVersionSelect => '选择加载器版本';
+
+  @override
+  String get loaderVersionSearch => '搜索版本';
+
+  @override
+  String get loaderVersionLatest => '最新';
+
+  @override
+  String get loaderVersionRecommended => '推荐';
+
+  @override
+  String get loaderVersionBeta => '测试版';
+
+  @override
+  String get loaderVersionLoadFailed => '无法加载加载器版本。';
+
+  @override
+  String get loaderVersionEmpty => '该游戏版本没有可用的加载器版本。';
+
+  @override
+  String get downloadDescription => '描述';
 }

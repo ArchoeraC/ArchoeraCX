@@ -12,6 +12,7 @@ import 'app_settings.dart';
 import 'installed_mod.dart';
 import 'java_scan.dart';
 import 'launch_result.dart';
+import 'loader_versions.dart';
 import 'loader_plan.dart';
 import 'version_models.dart';
 import 'resource_models.dart';
@@ -440,6 +441,30 @@ final class CoreClient {
     );
   }
 
+  /// List loader builds for a game version through the C# module.
+  Future<List<LoaderVersionInfo>> getLoaderVersions({
+    required String kind,
+    required String gameVersion,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'loader.versions';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'kind': kind,
+        'gameVersion': gameVersion,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return List<LoaderVersionInfo>.unmodifiable(
+      _asList(data['items'])
+          .map(LoaderVersionInfo.tryParse)
+          .whereType<LoaderVersionInfo>(),
+    );
+  }
+
   /// Build a Forge/NeoForge install plan from a local installer.
   ///
   /// The plan covers vanilla + loader libraries + the installer. Downloading
@@ -603,6 +628,7 @@ final class CoreClient {
     String? gameVersion,
     String? loader,
     String? shaderLoader,
+    String sort = 'relevance',
     int page = 0,
     int pageSize = 20,
     void Function(int done, int total)? onProgress,
@@ -617,6 +643,7 @@ final class CoreClient {
         'gameVersion': ?gameVersion,
         'loader': ?loader,
         'shaderLoader': ?shaderLoader,
+        'sort': sort,
         'page': page,
         'pageSize': pageSize,
       }),
@@ -637,6 +664,33 @@ final class CoreClient {
       pageSize: _asInt(data['pageSize']) ?? pageSize,
       items: List<ResourceProject>.unmodifiable(items),
     );
+  }
+
+  /// Load one Modrinth project, including gallery images and links.
+  Future<ResourceProject> modrinthProject({
+    required String projectId,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'resource.project';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'provider': 'modrinth',
+        'projectId': projectId,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    final project = ResourceProject.tryParse(data);
+    if (project == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned no project.',
+      );
+    }
+    return project;
   }
 
   /// List compatible Modrinth versions for a selected project.

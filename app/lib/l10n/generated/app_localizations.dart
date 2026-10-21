@@ -1891,6 +1891,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Estimated usage exceeds available memory.'**
   String get settingsMemoryOverAvailable;
+
+  /// Search result count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No results} =1{1 result} other{{count} results}}'**
+  String downloadResults(num count);
+
+  /// Search result sort label.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get downloadSort;
+
+  /// Sort by relevance.
+  ///
+  /// In en, this message translates to:
+  /// **'Relevance'**
+  String get downloadSortRelevance;
+
+  /// Sort by download count.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get downloadSortDownloads;
+
+  /// Sort by follower count.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows'**
+  String get downloadSortFollows;
+
+  /// Sort by newest project.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get downloadSortNewest;
+
+  /// Sort by recently updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently updated'**
+  String get downloadSortUpdated;
+
+  /// Project gallery heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshots'**
+  String get downloadScreenshots;
+
+  /// Version dependency count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No dependencies} =1{1 dependency} other{{count} dependencies}}'**
+  String downloadDependencies(num count);
+
+  /// Load the next search page.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get downloadLoadMore;
+
+  /// Accessible label for a gallery image.
+  ///
+  /// In en, this message translates to:
+  /// **'Image preview'**
+  String get downloadImagePreview;
+
+  /// Project author line.
+  ///
+  /// In en, this message translates to:
+  /// **'by {author}'**
+  String downloadByAuthor(Object author);
+
+  /// Open the loader-version picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Select loader version'**
+  String get loaderVersionSelect;
+
+  /// Filter the loader-version list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search versions'**
+  String get loaderVersionSearch;
+
+  /// Latest loader build.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest'**
+  String get loaderVersionLatest;
+
+  /// Recommended loader build.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get loaderVersionRecommended;
+
+  /// Beta loader build.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta'**
+  String get loaderVersionBeta;
+
+  /// Loader-version request failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load loader versions.'**
+  String get loaderVersionLoadFailed;
+
+  /// Empty loader-version list.
+  ///
+  /// In en, this message translates to:
+  /// **'No loader versions were found for this game version.'**
+  String get loaderVersionEmpty;
+
+  /// Project long description heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get downloadDescription;
 }
 
 class _AppLocalizationsDelegate

@@ -65,9 +65,46 @@ void main() {
       expect(result.ok, isTrue, reason: result.stderr);
       expect(result.status, 'completed');
     },
-    skip: enabled && core.existsSync() && module.existsSync() && downloader.existsSync()
+    skip:
+        enabled &&
+            core.existsSync() &&
+            module.existsSync() &&
+            downloader.existsSync()
         ? false
         : 'Set ARCHOERACX_NETWORK_TESTS=1 and build core/module/downloader to run.',
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+
+  test(
+    'Modrinth project details and loader versions cross the native module',
+    () async {
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+
+      final search = await client.searchModrinth(
+        query: 'sodium',
+        kind: 'mod',
+        gameVersion: '1.21.1',
+        loader: 'fabric',
+      );
+      expect(search.items, isNotEmpty);
+      final details = await client.modrinthProject(
+        projectId: search.items.first.id,
+      );
+      expect(details.id, search.items.first.id);
+      expect(details.gallery, isNotEmpty);
+
+      // Vanilla deliberately returns no remote list; this still exercises the
+      // C++ route and the C# registry without depending on a slow mirror.
+      final loaders = await client.getLoaderVersions(
+        kind: 'vanilla',
+        gameVersion: '1.21.1',
+      );
+      expect(loaders, isEmpty);
+    },
+    skip: enabled && core.existsSync() && module.existsSync()
+        ? false
+        : 'Set ARCHOERACX_NETWORK_TESTS=1 and build core/module to run.',
     timeout: const Timeout(Duration(minutes: 2)),
   );
 }

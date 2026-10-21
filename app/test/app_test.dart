@@ -156,4 +156,59 @@ void main() {
     expect(find.text('Appearance'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('page snapshot keeps its aspect ratio', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Download'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final images = tester.widgetList<RawImage>(find.byType(RawImage)).toList();
+    expect(images, isNotEmpty);
+    expect(
+      images.every(
+        (image) =>
+            image.fit == BoxFit.fitWidth &&
+            image.alignment == Alignment.topCenter,
+      ),
+      isTrue,
+    );
+
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('download content tab fits a narrow window', (tester) async {
+    tester.view.physicalSize = const Size(800, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mods'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mods'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 }

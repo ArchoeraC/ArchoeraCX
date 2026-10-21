@@ -22,6 +22,12 @@ class ResourceProject {
     this.gameVersions = const <String>[],
     this.clientSide,
     this.license,
+    this.gallery = const <ResourceGalleryImage>[],
+    this.sourceUrl,
+    this.issuesUrl,
+    this.wikiUrl,
+    this.publishedAt,
+    this.body,
   });
 
   final String id;
@@ -39,6 +45,12 @@ class ResourceProject {
   final List<String> gameVersions;
   final String? clientSide;
   final String? license;
+  final List<ResourceGalleryImage> gallery;
+  final String? sourceUrl;
+  final String? issuesUrl;
+  final String? wikiUrl;
+  final String? publishedAt;
+  final String? body;
 
   static ResourceProject? tryParse(Object? value) {
     if (value is! Map) return null;
@@ -62,6 +74,44 @@ class ResourceProject {
       gameVersions: _strings(value['gameVersions']),
       clientSide: _string(value['clientSide']),
       license: _string(value['license']),
+      gallery: _list(value['gallery'])
+          .map(ResourceGalleryImage.tryParse)
+          .whereType<ResourceGalleryImage>()
+          .toList(growable: false),
+      sourceUrl: _string(value['sourceUrl']),
+      issuesUrl: _string(value['issuesUrl']),
+      wikiUrl: _string(value['wikiUrl']),
+      publishedAt: _string(value['publishedAt']),
+      body: _string(value['body']),
+    );
+  }
+}
+
+class ResourceGalleryImage {
+  const ResourceGalleryImage({
+    required this.url,
+    this.featured = false,
+    this.title,
+    this.description,
+    this.ordering = 0,
+  });
+
+  final String url;
+  final bool featured;
+  final String? title;
+  final String? description;
+  final int ordering;
+
+  static ResourceGalleryImage? tryParse(Object? value) {
+    if (value is! Map) return null;
+    final url = _string(value['url']);
+    if (url == null) return null;
+    return ResourceGalleryImage(
+      url: url,
+      featured: value['featured'] == true,
+      title: _string(value['title']),
+      description: _string(value['description']),
+      ordering: _int(value['ordering']) ?? 0,
     );
   }
 }

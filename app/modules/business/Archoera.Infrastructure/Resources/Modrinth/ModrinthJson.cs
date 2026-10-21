@@ -75,7 +75,13 @@ internal static class ModrinthJson
             Loaders: GetStringArray(root, "loaders"),
             GameVersions: GetStringArray(root, "game_versions"),
             ClientSide: GetString(root, "client_side"),
-            License: license);
+            License: license,
+            Gallery: ParseGallery(root),
+            SourceUrl: GetString(root, "source_url"),
+            IssuesUrl: GetString(root, "issues_url"),
+            WikiUrl: GetString(root, "wiki_url"),
+            PublishedAt: GetDate(root, "published"),
+            Body: GetString(root, "body"));
     }
 
     public static IReadOnlyList<ResourceVersion> ParseVersions(JsonElement root)
@@ -138,6 +144,50 @@ internal static class ModrinthJson
             Downloads: GetInt64(root, "downloads"),
             Files: files,
             Dependencies: dependencies);
+    }
+
+    private static IReadOnlyList<ResourceGalleryImage> ParseGallery(JsonElement root)
+    {
+        if (!root.TryGetProperty("gallery", out var gallery) ||
+            gallery.ValueKind == JsonValueKind.Null)
+        {
+            return [];
+        }
+
+        if (gallery.ValueKind != JsonValueKind.Array)
+        {
+            throw Invalid("'gallery' must be an array");
+        }
+
+        var images = new List<ResourceGalleryImage>();
+        foreach (var item in gallery.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                throw Invalid("'gallery' entries must be objects");
+            }
+
+            var url = GetString(item, "url");
+            if (string.IsNullOrWhiteSpace(url) ||
+                !Uri.TryCreate(url, UriKind.Absolute, out var parsed) ||
+                (parsed.Scheme != Uri.UriSchemeHttps && parsed.Scheme != Uri.UriSchemeHttp))
+            {
+                continue;
+            }
+
+            images.Add(new ResourceGalleryImage(
+                Url: url,
+                Featured: item.TryGetProperty("featured", out var featured) &&
+                    featured.ValueKind == JsonValueKind.True,
+                Title: GetString(item, "title"),
+                Description: GetString(item, "description"),
+                Ordering: (int)Math.Clamp(GetInt64(item, "ordering"), 0, int.MaxValue)));
+        }
+
+        return images
+            .OrderByDescending(image => image.Featured)
+            .ThenBy(image => image.Ordering)
+            .ToArray();
     }
 
     private static ResourceProject ParseSearchHit(JsonElement hit, ResourceKind fallbackKind)

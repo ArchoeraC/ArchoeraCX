@@ -2288,6 +2288,7 @@ public interface IDownloadProvider {
 | `loader.catalog` | C# | 加载器版本/兼容矩阵 |
 | `loader.install` | C# | 安装/切换加载器 |
 | `loader.verify` | C# | `quick`/`full` 两种深度校验生成物与空 URL 库（不写文件） |
+| `loader.versions` | C# | 按游戏版本列出 Fabric/Quilt/Forge/NeoForge 加载器版本 |
 | `loader.check` | C# | 从实例安装目录定位 installer 后执行 quick/full 校验 |
 | `loader.plan` | C# | 从本地 installer 生成原版 + 加载器依赖 + installer 组合计划 |
 | `loader.commit` | C# | 原子写入合并后的 `versions/<id>/<id>.json` |
@@ -2308,7 +2309,8 @@ public interface IDownloadProvider {
 | `launch.stop` | C# | 优雅停止/杀进程树 |
 | `launch.status` | C# | 运行状态/pid |
 | `launch.log.tail` | C# | 游戏日志分页 |
-| `resource.search` | C# | 统一搜索（当前 Modrinth） |
+| `resource.search` | C# | 统一搜索（当前 Modrinth；支持排序/分页） |
+| `resource.project` | C# | 项目详情与画廊（当前 Modrinth） |
 | `resource.detail` | C# | 项目详情 |
 | `resource.versions` | C# | 版本列表（当前 Modrinth） |
 | `resource.plan` | C# | 生成并校验单文件 `DownloadPlan`（当前 Modrinth） |
@@ -2904,7 +2906,7 @@ ArchoeraCX/
 - Java 探测等子进程必须显式设置有效 `WorkingDirectory`，避免子进程继承已删除的 CWD。
 - 数据目录仍优先使用 `ARCHOERACX_DATA_DIR`，否则按 Windows `%APPDATA%`、macOS `Application Support`、Linux XDG/`~/.local/share` 解析。
 
-**当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 当前支持离线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；页面切换：首页切换用旧页快照覆盖，其他页面之间上浮淡入，切回首页收回；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表与全局 Mod 搜索。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Device Code 登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组，内联编辑内存/GC/JVM/游戏参数，并展示系统总内存、可用内存和启动后预计占用；真实 Entra client_id 与 Minecraft Services 审核仍待完成。262 个 C# 测试、31 个 Flutter 测试通过；Fabric/Quilt 无 Java 安装、正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、凭据保险库已接入（crypto/file），CurseForge 尚待接入。
+**当前进度（2026-10-21）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 当前支持离线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；页面切换：首页切换用旧页快照覆盖，其他页面之间上浮淡入，切回首页收回；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表、全局 Mod 搜索、项目详情画廊与排序/分页；Mod/资源包/光影结果带图标，详情通过 `resource.project` 获取 Modrinth 画廊。实例创建与 Forge/NeoForge 安装弹窗通过 `loader.versions` 列出全部加载器版本，可选择旧版。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Device Code 登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组，内联编辑内存/GC/JVM/游戏参数，并展示系统总内存、可用内存和启动后预计占用；真实 Entra client_id 与 Minecraft Services 审核仍待完成。266 个 C# 测试、35 个 Flutter 测试通过；Fabric/Quilt 无 Java 安装、正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、凭据保险库已接入（crypto/file），CurseForge 尚待接入。
 
 **P1 完成定义**
 

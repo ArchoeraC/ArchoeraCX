@@ -25,6 +25,7 @@ public static class BusinessModuleRegistry
                 settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new VersionModuleService(),
             new LaunchModuleService(dataRoot: dataRoot),
+            new LoaderVersionService(),
             new LoaderModuleService(),
             new ResourceModuleService(),
             new AccountModuleService(

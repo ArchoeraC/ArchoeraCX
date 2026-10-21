@@ -52,6 +52,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
     required String name,
     required String gameVersion,
     required GameLoader loader,
+    String? loaderVersion,
     String rootPath = '',
   }) async {
     if (name.trim().isEmpty) {
@@ -67,7 +68,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
         name: name,
         gameVersion: gameVersion,
         loader: loader.name,
-        loaderVersion: loader.defaultVersion,
+        loaderVersion: loaderVersion ?? loader.defaultVersion,
         rootPath: rootPath.isEmpty ? null : rootPath,
       );
     } else {
@@ -83,7 +84,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
         name: name.trim(),
         gameVersion: gameVersion,
         loader: loader,
-        loaderVersion: loader.defaultVersion,
+        loaderVersion: loaderVersion ?? loader.defaultVersion,
         rootPath: root,
       );
     }

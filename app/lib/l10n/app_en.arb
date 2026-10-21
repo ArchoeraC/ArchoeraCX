@@ -756,5 +756,85 @@
   "settingsMemoryOverAvailable": "Estimated usage exceeds available memory.",
   "@settingsMemoryOverAvailable": {
     "description": "Memory warning."
+  },
+  "downloadResults": "{count, plural, =0{No results} =1{1 result} other{{count} results}}",
+  "@downloadResults": {
+    "description": "Search result count."
+  },
+  "downloadSort": "Sort",
+  "@downloadSort": {
+    "description": "Search result sort label."
+  },
+  "downloadSortRelevance": "Relevance",
+  "@downloadSortRelevance": {
+    "description": "Sort by relevance."
+  },
+  "downloadSortDownloads": "Downloads",
+  "@downloadSortDownloads": {
+    "description": "Sort by download count."
+  },
+  "downloadSortFollows": "Follows",
+  "@downloadSortFollows": {
+    "description": "Sort by follower count."
+  },
+  "downloadSortNewest": "Newest",
+  "@downloadSortNewest": {
+    "description": "Sort by newest project."
+  },
+  "downloadSortUpdated": "Recently updated",
+  "@downloadSortUpdated": {
+    "description": "Sort by recently updated."
+  },
+  "downloadScreenshots": "Screenshots",
+  "@downloadScreenshots": {
+    "description": "Project gallery heading."
+  },
+  "downloadDependencies": "{count, plural, =0{No dependencies} =1{1 dependency} other{{count} dependencies}}",
+  "@downloadDependencies": {
+    "description": "Version dependency count."
+  },
+  "downloadLoadMore": "Load more",
+  "@downloadLoadMore": {
+    "description": "Load the next search page."
+  },
+  "downloadImagePreview": "Image preview",
+  "@downloadImagePreview": {
+    "description": "Accessible label for a gallery image."
+  },
+  "downloadByAuthor": "by {author}",
+  "@downloadByAuthor": {
+    "description": "Project author line."
+  },
+  "loaderVersionSelect": "Select loader version",
+  "@loaderVersionSelect": {
+    "description": "Open the loader-version picker."
+  },
+  "loaderVersionSearch": "Search versions",
+  "@loaderVersionSearch": {
+    "description": "Filter the loader-version list."
+  },
+  "loaderVersionLatest": "Latest",
+  "@loaderVersionLatest": {
+    "description": "Latest loader build."
+  },
+  "loaderVersionRecommended": "Recommended",
+  "@loaderVersionRecommended": {
+    "description": "Recommended loader build."
+  },
+  "loaderVersionBeta": "Beta",
+  "@loaderVersionBeta": {
+    "description": "Beta loader build."
+  },
+  "loaderVersionLoadFailed": "Could not load loader versions.",
+  "@loaderVersionLoadFailed": {
+    "description": "Loader-version request failed."
+  },
+  "loaderVersionEmpty": "No loader versions were found for this game version.",
+  "@loaderVersionEmpty": {
+    "description": "Empty loader-version list."
+  },
+  "downloadDescription": "Description",
+  "@downloadDescription": {
+    "description": "Project long description heading."
   }
 }

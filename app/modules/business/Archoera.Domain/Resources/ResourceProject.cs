@@ -20,7 +20,13 @@ public sealed record ResourceProject(
     IReadOnlyList<string>? Loaders = null,
     IReadOnlyList<string>? GameVersions = null,
     string? ClientSide = null,
-    string? License = null)
+    string? License = null,
+    IReadOnlyList<ResourceGalleryImage>? Gallery = null,
+    string? SourceUrl = null,
+    string? IssuesUrl = null,
+    string? WikiUrl = null,
+    DateTimeOffset? PublishedAt = null,
+    string? Body = null)
 {
     /// <summary>Non-null category list.</summary>
     public IReadOnlyList<string> CategoryList => Categories ?? [];
@@ -30,4 +36,15 @@ public sealed record ResourceProject(
 
     /// <summary>Non-null game-version list (union, not install candidates).</summary>
     public IReadOnlyList<string> GameVersionList => GameVersions ?? [];
+
+    /// <summary>Non-null project gallery images, featured image first by provider order.</summary>
+    public IReadOnlyList<ResourceGalleryImage> GalleryList => Gallery ?? [];
 }
+
+/// <summary>One project gallery image exposed by a provider.</summary>
+public sealed record ResourceGalleryImage(
+    string Url,
+    bool Featured = false,
+    string? Title = null,
+    string? Description = null,
+    int Ordering = 0);

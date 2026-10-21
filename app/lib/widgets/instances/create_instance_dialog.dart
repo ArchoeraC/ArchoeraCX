@@ -5,10 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
+import '../../services/core/loader_versions.dart';
 import '../../stores/instances.dart';
+import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/tokens.dart';
 import '../common/loader_mark.dart';
+import 'loader_version_picker.dart';
 import '../common/toast.dart';
 import '../../utils/app_paths.dart';
 
@@ -46,6 +49,11 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
   final _rootController = TextEditingController();
   late String _gameVersion;
   GameLoader _loader = GameLoader.fabric;
+  String _loaderVersion = GameLoader.fabric.defaultVersion;
+  List<LoaderVersionInfo> _loaderVersions = const [];
+  bool _loadingVersions = false;
+  String? _versionError;
+  int _versionRequest = 0;
   String? _selectedRoot;
   bool _creating = false;
 
@@ -57,6 +65,9 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         ? _baseGameVersions.first
         : requested;
     _nameController.addListener(_onNameChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadLoaderVersions();
+    });
   }
 
   @override
@@ -82,6 +93,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
     final canCreate = _nameController.text.trim().isNotEmpty;
 
     return AlertDialog(
+      scrollable: true,
       title: Text(l10n.instanceCreateTitle),
       content: SizedBox(
         width: 420,
@@ -156,7 +168,12 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                   DropdownMenuItem(value: version, child: Text(version)),
               ],
               onChanged: (value) {
-                if (value != null) setState(() => _gameVersion = value);
+                if (value == null) return;
+                setState(() {
+                  _gameVersion = value;
+                  _loaderVersion = '';
+                });
+                _loadLoaderVersions();
               },
             ),
             const SizedBox(height: AppSpacing.md),
@@ -174,12 +191,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                         const SizedBox(width: AppSpacing.xs),
                         Flexible(
                           child: Text(
-                            loader == GameLoader.vanilla
-                                ? loader.labelFor(l10n)
-                                : l10n.loaderVersionValue(
-                                    loader.labelFor(l10n),
-                                    loader.defaultVersion,
-                                  ),
+                            loader.labelFor(l10n),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -188,9 +200,66 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                   ),
               ],
               onChanged: (value) {
-                if (value != null) setState(() => _loader = value);
+                if (value == null) return;
+                setState(() {
+                  _loader = value;
+                  _loaderVersion = '';
+                });
+                _loadLoaderVersions();
               },
             ),
+            if (_loader != GameLoader.vanilla) ...[
+              const SizedBox(height: AppSpacing.md),
+              InkWell(
+                onTap: _loadingVersions ? null : () => _pickVersion(l10n),
+                borderRadius: BorderRadius.circular(tokens.radiusS),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: l10n.loaderVersionLabel,
+                    suffixIcon: _loadingVersions
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : const Icon(Icons.expand_more_rounded),
+                  ),
+                  child: Text(
+                    _loaderVersion.isEmpty
+                        ? (_versionError ?? l10n.loaderVersionEmpty)
+                        : _loaderVersion,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              if (_versionError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xxs),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _versionError!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: tokens.danger),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _loadingVersions
+                            ? null
+                            : _loadLoaderVersions,
+                        child: Text(l10n.refresh),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             Text(
               l10n.instanceCreateSummary(_loader.labelFor(l10n), _gameVersion),
@@ -217,6 +286,87 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         ),
       ],
     );
+  }
+
+  Future<void> _loadLoaderVersions() async {
+    final loader = _loader;
+    final game = _gameVersion;
+    final request = ++_versionRequest;
+    if (loader == GameLoader.vanilla) {
+      setState(() {
+        _loaderVersions = const [];
+        _loaderVersion = '';
+        _loadingVersions = false;
+        _versionError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingVersions = true;
+      _versionError = null;
+    });
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      if (!mounted || request != _versionRequest) return;
+      setState(() {
+        _loadingVersions = false;
+        _loaderVersion = loader.defaultVersion;
+        _versionError = AppLocalizations.of(context).commonCoreNotConnected;
+      });
+      return;
+    }
+
+    try {
+      final versions = await client.getLoaderVersions(
+        kind: loader.name,
+        gameVersion: game,
+      );
+      if (!mounted || request != _versionRequest) return;
+      if (versions.isEmpty) {
+        setState(() {
+          _loaderVersions = const [];
+          _loaderVersion = loader.defaultVersion;
+          _loadingVersions = false;
+          _versionError = AppLocalizations.of(context).loaderVersionEmpty;
+        });
+        return;
+      }
+      final preferred = versions.firstWhere(
+        (item) => item.recommended,
+        orElse: () => versions.first,
+      );
+      setState(() {
+        _loaderVersions = versions;
+        _loaderVersion = preferred.version;
+        _loadingVersions = false;
+        _versionError = null;
+      });
+    } catch (error) {
+      if (!mounted || request != _versionRequest) return;
+      setState(() {
+        _loadingVersions = false;
+        _loaderVersion = loader.defaultVersion;
+        _versionError = AppLocalizations.of(context).loaderVersionLoadFailed;
+      });
+    }
+  }
+
+  Future<void> _pickVersion(AppLocalizations l10n) async {
+    if (_loaderVersions.isEmpty) {
+      if (_loadingVersions) return;
+      toast(_versionError ?? l10n.loaderVersionEmpty, type: ToastType.warning);
+      return;
+    }
+    final selected = await showLoaderVersionPicker(
+      context,
+      versions: _loaderVersions,
+      selected: _loaderVersion,
+      gameVersion: _gameVersion,
+    );
+    if (selected != null && mounted) {
+      setState(() => _loaderVersion = selected);
+    }
   }
 
   Future<void> _chooseRoot() async {
@@ -251,6 +401,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
             name: name,
             gameVersion: _gameVersion,
             loader: _loader,
+            loaderVersion: _loaderVersion.isEmpty ? null : _loaderVersion,
             rootPath: rootPath,
           );
       if (!mounted) return;
