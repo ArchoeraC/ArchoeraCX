@@ -47,11 +47,15 @@ class SkinPreview extends StatelessWidget {
     required this.account,
     this.width = 150,
     this.height = 230,
+    this.imageProvider,
   });
 
   final Account account;
   final double width;
   final double height;
+
+  /// Test-only injection; production resolves [Account.skinUrl].
+  final ImageProvider? imageProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +69,7 @@ class SkinPreview extends StatelessWidget {
     }
     return _SkinImage(
       url: url,
+      provider: imageProvider,
       builder: (context, image) {
         if (image == null) {
           return _PlaceholderSkin(
@@ -83,9 +88,10 @@ class SkinPreview extends StatelessWidget {
 }
 
 class _SkinImage extends StatefulWidget {
-  const _SkinImage({required this.url, required this.builder});
+  const _SkinImage({required this.url, required this.builder, this.provider});
 
   final String url;
+  final ImageProvider? provider;
   final Widget Function(BuildContext context, ui.Image? image) builder;
 
   @override
@@ -115,8 +121,9 @@ class _SkinImageState extends State<_SkinImage> {
 
   void _resolve() {
     try {
-      final stream = NetworkImage(widget.url)
-          .resolve(const ImageConfiguration());
+      final stream = (widget.provider ?? NetworkImage(widget.url)).resolve(
+        const ImageConfiguration(),
+      );
       final listener = ImageStreamListener((info, _) {
         if (!mounted) return;
         setState(() => _image = info.image);
@@ -165,9 +172,18 @@ class _SkinHeadPainter extends CustomPainter {
     if (face != null) {
       canvas.drawImageRect(image, face, Rect.fromLTWH(0, 0, side, side), paint);
     }
-    final hat = _srcRect(image, 40, 8, 8, 8);
-    if (hat != null) {
-      canvas.drawImageRect(image, hat, Rect.fromLTWH(0, 0, side, side), paint);
+    // Legacy 64x32 skins do not have a usable hat layer; their trailing
+    // pixels are often opaque black padding and would cover the face.
+    if (image.height >= 64) {
+      final hat = _srcRect(image, 40, 8, 8, 8);
+      if (hat != null) {
+        canvas.drawImageRect(
+          image,
+          hat,
+          Rect.fromLTWH(0, 0, side, side),
+          paint,
+        );
+      }
     }
   }
 
