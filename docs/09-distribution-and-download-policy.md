@@ -220,6 +220,7 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 ### 2.7 发布渠道与构建期密钥
 
 - 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
+- 当前新仓库暂未启用 GitHub Actions；Workflow 草稿放在 `docs/ci-drafts/`，启用前不会自动构建或发布。
 - Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
 - Release 附件应包含源码 tag、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。
 - 不发布带有未审核 Microsoft client ID 的公共构建；若审核未完成，发布说明必须明确在线登录/在线启动的不可用状态。
