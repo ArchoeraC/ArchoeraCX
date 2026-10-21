@@ -236,11 +236,8 @@
   "settingsJavaUseAuto": "Use automatic selection",
   "settingsJavaSelected": "Java selection saved.",
   "settingsMemory": "Memory",
-  "settingsMemoryValue": "{min} – {max} MB",
   "settingsJvmArgs": "JVM arguments",
-  "settingsJvmArgsValue": "Default",
-  "settingsRuntimeTitle": "Java and memory",
-  "settingsRuntimeHint": "Memory is applied to the next launch.",
+  "settingsRuntimeHint": "Runtime options apply to the next launch and save automatically.",
   "settingsMemoryMin": "Minimum memory (MB)",
   "settingsMemoryMax": "Maximum memory (MB)",
   "settingsJvmArgsHint": "Optional, space-separated",
@@ -253,20 +250,8 @@
   "settingsGcShenandoah": "Shenandoah",
   "settingsGcEpsilon": "Epsilon (testing)",
   "settingsGameArgs": "Additional game arguments",
-  "settingsGameArgsValue": "Default",
   "settingsGameArgsHint": "Optional, appended after the version arguments",
-  "settingsRuntimeSaved": "Runtime settings saved.",
   "settingsMemoryInvalid": "Memory must be 128–65536 MB and min ≤ max.",
-  "@settingsMemoryValue": {
-    "placeholders": {
-      "min": {
-        "type": "int"
-      },
-      "max": {
-        "type": "int"
-      }
-    }
-  },
   "settingsNetwork": "Network",
   "settingsCompliance": "Compliance",
   "settingsAbout": "About",
@@ -747,5 +732,29 @@
   "accountDefaultSkin": "Default appearance",
   "@accountDefaultSkin": {
     "description": "Shown when an account has no skin texture."
+  },
+  "settingsMemorySystem": "System memory",
+  "@settingsMemorySystem": {
+    "description": "Memory summary heading."
+  },
+  "settingsMemoryTotal": "Total",
+  "@settingsMemoryTotal": {
+    "description": "Total physical memory label."
+  },
+  "settingsMemoryAvailable": "Available",
+  "@settingsMemoryAvailable": {
+    "description": "Available physical memory label."
+  },
+  "settingsMemoryEstimated": "After launch",
+  "@settingsMemoryEstimated": {
+    "description": "Estimated memory use after launching the game."
+  },
+  "settingsMemoryUnavailable": "Unavailable",
+  "@settingsMemoryUnavailable": {
+    "description": "Memory information is unavailable."
+  },
+  "settingsMemoryOverAvailable": "Estimated usage exceeds available memory.",
+  "@settingsMemoryOverAvailable": {
+    "description": "Memory warning."
   }
 }

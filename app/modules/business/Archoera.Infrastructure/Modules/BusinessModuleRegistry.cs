@@ -7,6 +7,7 @@ using Archoera.Infrastructure.Loaders;
 using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Resources;
 using Archoera.Infrastructure.Settings;
+using Archoera.Infrastructure.SystemInfo;
 
 namespace Archoera.Infrastructure.Modules;
 
@@ -30,6 +31,7 @@ public static class BusinessModuleRegistry
                 accounts: new JsonAccountStore(dataRoot),
                 credentials: new VaultCredentialStore(dataRoot),
                 dataRoot: dataRoot),
+            new SystemModuleService(),
             new SettingsModuleService(
                 dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new InstanceModuleService(

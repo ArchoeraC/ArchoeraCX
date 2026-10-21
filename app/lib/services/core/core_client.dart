@@ -15,6 +15,7 @@ import 'launch_result.dart';
 import 'loader_plan.dart';
 import 'version_models.dart';
 import 'resource_models.dart';
+import 'system_memory.dart';
 
 /// The error structure returned by the native core ABI.
 ///
@@ -769,6 +770,17 @@ final class CoreClient {
       onProgress: onProgress,
     );
     return _parseSettings(jsonText, methodName);
+  }
+
+  /// Read total/available physical memory through the native module.
+  Future<SystemMemoryInfo?> getSystemMemory({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.memory';
+    final jsonText = await _runAsync(methodName, onProgress: onProgress);
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return SystemMemoryInfo.tryParse(data);
   }
 
   /// Persist memory and JVM options.

@@ -553,21 +553,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsMemory => 'Memory';
 
   @override
-  String settingsMemoryValue(int min, int max) {
-    return '$min – $max MB';
-  }
-
-  @override
   String get settingsJvmArgs => 'JVM arguments';
 
   @override
-  String get settingsJvmArgsValue => 'Default';
-
-  @override
-  String get settingsRuntimeTitle => 'Java and memory';
-
-  @override
-  String get settingsRuntimeHint => 'Memory is applied to the next launch.';
+  String get settingsRuntimeHint =>
+      'Runtime options apply to the next launch and save automatically.';
 
   @override
   String get settingsMemoryMin => 'Minimum memory (MB)';
@@ -606,14 +596,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsGameArgs => 'Additional game arguments';
 
   @override
-  String get settingsGameArgsValue => 'Default';
-
-  @override
   String get settingsGameArgsHint =>
       'Optional, appended after the version arguments';
-
-  @override
-  String get settingsRuntimeSaved => 'Runtime settings saved.';
 
   @override
   String get settingsMemoryInvalid =>
@@ -1033,4 +1017,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountDefaultSkin => 'Default appearance';
+
+  @override
+  String get settingsMemorySystem => 'System memory';
+
+  @override
+  String get settingsMemoryTotal => 'Total';
+
+  @override
+  String get settingsMemoryAvailable => 'Available';
+
+  @override
+  String get settingsMemoryEstimated => 'After launch';
+
+  @override
+  String get settingsMemoryUnavailable => 'Unavailable';
+
+  @override
+  String get settingsMemoryOverAvailable =>
+      'Estimated usage exceeds available memory.';
 }

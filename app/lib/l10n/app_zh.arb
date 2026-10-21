@@ -230,11 +230,8 @@
   "settingsJavaUseAuto": "改用自动选择",
   "settingsJavaSelected": "Java 选择已保存。",
   "settingsMemory": "内存",
-  "settingsMemoryValue": "{min} – {max} MB",
   "settingsJvmArgs": "JVM 参数",
-  "settingsJvmArgsValue": "默认",
-  "settingsRuntimeTitle": "Java 与内存",
-  "settingsRuntimeHint": "内存设置将在下次启动时生效。",
+  "settingsRuntimeHint": "运行参数将在下次启动时生效，修改会自动保存。",
   "settingsMemoryMin": "最小内存（MB）",
   "settingsMemoryMax": "最大内存（MB）",
   "settingsJvmArgsHint": "可选，空格分隔",
@@ -247,20 +244,8 @@
   "settingsGcShenandoah": "Shenandoah",
   "settingsGcEpsilon": "Epsilon（测试）",
   "settingsGameArgs": "附加游戏参数",
-  "settingsGameArgsValue": "默认",
   "settingsGameArgsHint": "可选，追加在版本参数之后",
-  "settingsRuntimeSaved": "运行参数已保存。",
   "settingsMemoryInvalid": "内存需在 128–65536 MB 之间，且最小值不能大于最大值。",
-  "@settingsMemoryValue": {
-    "placeholders": {
-      "min": {
-        "type": "int"
-      },
-      "max": {
-        "type": "int"
-      }
-    }
-  },
   "settingsNetwork": "网络",
   "settingsCompliance": "合规",
   "settingsAbout": "关于",
@@ -439,5 +424,11 @@
   "instanceModDisabled": "已禁用",
   "instanceModsToggleFailed": "无法更新 Mod 状态。",
   "instanceModsRemoveFailed": "无法删除 Mod。",
-  "accountDefaultSkin": "默认外观"
+  "accountDefaultSkin": "默认外观",
+  "settingsMemorySystem": "系统内存",
+  "settingsMemoryTotal": "总内存",
+  "settingsMemoryAvailable": "可用",
+  "settingsMemoryEstimated": "启动后预计",
+  "settingsMemoryUnavailable": "暂不可用",
+  "settingsMemoryOverAvailable": "预计占用超过当前可用内存。"
 }
