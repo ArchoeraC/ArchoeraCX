@@ -69,7 +69,7 @@ flutter test
 flutter build linux --release
 ```
 
-当前为单一发行版：启动时按粗粒度 IP/系统地区判断是否处于中国大陆网络。中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；其他地区默认启用下载。发布包只从 GitHub CI 构建，Microsoft client ID 与未来的 CurseForge key 仅通过 CI secrets 在编译期注入，不进入仓库。
+当前为单一发行版：启动时按粗粒度 IP/系统地区判断是否处于中国大陆网络。中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；其他地区默认启用下载。发布包计划只从 GitHub CI 构建；当前新仓库暂未启用 Actions，Workflow 草稿位于 `docs/ci-drafts/`。Microsoft client ID 与未来的 CurseForge key 仅通过 CI secrets 在编译期注入，不进入仓库。
 
 启动 release bundle：
 

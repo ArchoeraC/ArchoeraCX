@@ -330,7 +330,7 @@ Generated from `app/modules/downloader/Cargo.lock` and `cargo metadata`; dev-onl
 
 ## 6. Release key handling
 
-GitHub Actions is the only release build path. The Microsoft Entra client ID and any future CurseForge API key are supplied as repository secrets at build time and are injected into the native module; they are not committed, logged, or placed in this notices file. Local maintainer builds may use the documented environment variables. No app-store or third-party binary channel is supported.
+When GitHub Actions is enabled, it is the only release build path; until then the workflows remain inactive drafts in `docs/ci-drafts/`. The Microsoft Entra client ID and any future CurseForge API key are supplied as repository secrets at build time and are injected into the native module; they are not committed, logged, or placed in this notices file. Local maintainer builds may use the documented environment variables. No app-store or third-party binary channel is supported.
 
 ## 7. Updating this inventory
 
