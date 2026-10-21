@@ -17,7 +17,7 @@
 - Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（HTTP、hash、原子落盘、取消）
 - Linux release bundle 自带 `libarchoera_core.so`、`archoera_cs.so` 和 `archoera-dl`
 
-当前基线：243 个 C# 测试、26 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+当前基线：270 个 C# 测试、36 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
 
 ## 架构
 
@@ -40,7 +40,7 @@ C# NativeAOT    Rust
 - C++ 只做生命周期、路由、任务和事件，不写业务规则。
 - C# 是 API、业务、SQLite 的唯一 owner。
 - Rust 只消费 `DownloadPlan`，不解压、不写 SQLite。
-- token 不跨 C ABI、不写日志；当前 refresh token 存在 C# 凭据文件中。
+- token 不跨 C ABI、不写日志；refresh token/Minecraft token 存在本地加密凭据保险库中。
 
 ## 环境
 
@@ -96,6 +96,11 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>" \
 > `login_with_xbox` 使用的 client_id 还必须通过 Minecraft Services 的应用审核
 > （`https://aka.ms/mce-reviewappid`）。未审核时返回 `MINECRAFT_APP_NOT_APPROVED`。
 > 不要复用其他启动器的 client_id 绕过审核。
+
+## 隐私与贡献
+
+- [隐私政策](PRIVACY.md)（本地账户、令牌、皮肤缓存、未成年人说明与删除方式）
+- 当前暂不接受外部代码贡献；仅接受指定开发者及经邀请的必要安全/合规修复，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 数据与安全
 

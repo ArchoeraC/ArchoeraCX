@@ -25,6 +25,7 @@ public sealed class ModuleRegistryTests
             Assert.Contains("version.plan", registry.Methods);
             Assert.Contains("version.commit", registry.Methods);
             Assert.Contains("launch.start", registry.Methods);
+            Assert.Contains("launch.prepare", registry.Methods);
             Assert.Contains("resource.search", registry.Methods);
             Assert.Contains("resource.project", registry.Methods);
             Assert.Contains("settings.get", registry.Methods);
