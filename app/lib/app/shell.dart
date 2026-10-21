@@ -290,21 +290,14 @@ class _TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [tokens.accent, tokens.accentPressed],
-              ),
-              borderRadius: BorderRadius.circular(tokens.radiusS),
-            ),
-            child: Icon(
-              Icons.grid_view_rounded,
-              size: 17,
-              color: tokens.onAccent,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radiusS),
+            child: Image.asset(
+              'assets/branding/archoera_icon_256.png',
+              width: 30,
+              height: 30,
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.medium,
             ),
           ),
           const SizedBox(width: AppSpacing.xs),

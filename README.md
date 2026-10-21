@@ -69,7 +69,6 @@ flutter test
 flutter build linux --release
 ```
 
-当前为单一发行版：启动时按粗粒度 IP/系统地区判断是否处于中国大陆网络。中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；其他地区默认启用下载。
 
 启动 release bundle：
 
@@ -105,6 +104,7 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>" \
 ## 隐私与贡献
 
 - [隐私政策](PRIVACY.md)（本地账户、令牌、皮肤缓存、未成年人说明与删除方式）
+- [第三方许可清单](THIRD-PARTY-NOTICES.md)（Flutter/Dart、.NET、Rust、字体与图标）
 - 当前暂不接受外部代码贡献；仅接受指定开发者及经邀请的必要安全/合规修复，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 数据与安全

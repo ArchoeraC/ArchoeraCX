@@ -5,6 +5,8 @@
 #include <gdk/gdkx.h>
 #endif
 
+#include <glib/gfileutils.h>
+
 #include "flutter/generated_plugin_registrant.h"
 
 struct _MyApplication {
@@ -53,6 +55,16 @@ static void my_application_activate(GApplication* application) {
   }
 
   gtk_window_set_default_size(window, 1280, 720);
+
+  // The icon is installed beside the bundle's data directory. Resolve it from
+  // /proc/self/exe so the app still works when launched outside its cwd.
+  g_autofree gchar* executable = g_file_read_link("/proc/self/exe", nullptr);
+  if (executable != nullptr) {
+    g_autofree gchar* executable_dir = g_path_get_dirname(executable);
+    g_autofree gchar* icon_path = g_build_filename(
+        executable_dir, "data", "archoera", "app_icon.png", nullptr);
+    gtk_window_set_icon_from_file(window, icon_path, nullptr);
+  }
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
