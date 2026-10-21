@@ -42,6 +42,8 @@ public static class ForgeMavenUrls
         {
             LoaderKind.Forge =>
                 $"net/minecraftforge/forge/{game}-{loader}/forge-{game}-{loader}-installer.jar",
+            LoaderKind.NeoForge when game == "1.20.1" =>
+                $"net/neoforged/forge/{NeoForgeLegacyVersion(game, loader)}/forge-{NeoForgeLegacyVersion(game, loader)}-installer.jar",
             LoaderKind.NeoForge =>
                 $"net/neoforged/neoforge/{loader}/neoforge-{loader}-installer.jar",
             _ => throw new ForgeDownloadException(
@@ -105,6 +107,11 @@ public static class ForgeMavenUrls
 
         return $"downloads/loaders/{token}/{game}-{loader}-installer.jar";
     }
+
+    private static string NeoForgeLegacyVersion(string game, string loader)
+        => loader.StartsWith(game + "-", StringComparison.Ordinal)
+            ? loader
+            : $"{game}-{loader}";
 
     private static Uri NormalizeBase(Uri baseAddress)
     {

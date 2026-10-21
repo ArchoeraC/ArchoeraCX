@@ -16,6 +16,7 @@ Microsoft / Minecraft 认证已单独整理到 [`../authentication.md`](../authe
 | [08-java-scan.md](08-java-scan.md) | Java 候选发现、版本探测、手动回退 |
 | [09-forge-generated-artifacts.md](09-forge-generated-artifacts.md) | Forge/NeoForge 生成物清单、校验、修复 |
 | [10-download-sources.md](10-download-sources.md) | 下载源矩阵、镜像、`DownloadPlan` 边界 |
+| [11-loader-install-strategy.md](11-loader-install-strategy.md) | 加载器无 Java 边界与安装策略 |
 
 ## 使用约束
 
