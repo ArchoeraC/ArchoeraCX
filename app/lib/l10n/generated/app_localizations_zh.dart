@@ -964,4 +964,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceManageLoader => '安装 / 更新加载器';
+
+  @override
+  String get instanceManageMods => '管理 Mod';
+
+  @override
+  String get instanceModsTitle => '已安装 Mod';
+
+  @override
+  String get instanceModsEmpty => '此实例没有 Mod。';
+
+  @override
+  String instanceModsLoadFailed(String message) {
+    return 'Mod 列表加载失败：$message';
+  }
+
+  @override
+  String get instanceModDelete => '删除 Mod';
+
+  @override
+  String instanceModDeleteConfirm(String name) {
+    return '删除“$name”？这会移除 Mod 文件。';
+  }
+
+  @override
+  String get instanceModDisabled => '已禁用';
+
+  @override
+  String get instanceModsToggleFailed => '无法更新 Mod 状态。';
+
+  @override
+  String get instanceModsRemoveFailed => '无法删除 Mod。';
 }

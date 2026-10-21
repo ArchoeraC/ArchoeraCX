@@ -999,4 +999,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceManageLoader => 'Install / update loader';
+
+  @override
+  String get instanceManageMods => 'Manage mods';
+
+  @override
+  String get instanceModsTitle => 'Installed mods';
+
+  @override
+  String get instanceModsEmpty => 'No mods in this instance.';
+
+  @override
+  String instanceModsLoadFailed(String message) {
+    return 'Could not load mods: $message';
+  }
+
+  @override
+  String get instanceModDelete => 'Delete mod';
+
+  @override
+  String instanceModDeleteConfirm(String name) {
+    return 'Delete “$name”? This removes the mod file.';
+  }
+
+  @override
+  String get instanceModDisabled => 'Disabled';
+
+  @override
+  String get instanceModsToggleFailed => 'Could not update the mod.';
+
+  @override
+  String get instanceModsRemoveFailed => 'Could not remove the mod.';
 }

@@ -9,6 +9,7 @@ import 'event_pump.dart';
 import '../../models/account.dart';
 import '../../models/game_instance.dart';
 import 'app_settings.dart';
+import 'installed_mod.dart';
 import 'java_scan.dart';
 import 'launch_result.dart';
 import 'loader_plan.dart';
@@ -792,6 +793,68 @@ final class CoreClient {
       onProgress: onProgress,
     );
     return _parseSettings(jsonText, methodName);
+  }
+
+  /// List mod files in an instance's `mods` directory.
+  Future<List<InstalledMod>> listInstanceMods(
+    String instanceId, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'instance.mods.list';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return List<InstalledMod>.unmodifiable(
+      _asList(data['items'])
+          .map(InstalledMod.tryParse)
+          .whereType<InstalledMod>(),
+    );
+  }
+
+  /// Enable or disable one mod by renaming `.jar` ↔ `.jar.disabled`.
+  Future<InstalledMod?> setInstanceModEnabled({
+    required String instanceId,
+    required String fileName,
+    required bool enabled,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'instance.mods.setEnabled';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'instanceId': instanceId,
+        'fileName': fileName,
+        'enabled': enabled,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return InstalledMod.tryParse(data['item']);
+  }
+
+  /// Delete one mod file from an instance.
+  Future<bool> removeInstanceMod({
+    required String instanceId,
+    required String fileName,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'instance.mods.remove';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'instanceId': instanceId,
+        'fileName': fileName,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return data['removed'] == true;
   }
 
   /// Backward-compatible single-root update.

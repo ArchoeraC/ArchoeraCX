@@ -201,6 +201,146 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
+    public async Task Module_lists_toggles_and_removes_instance_mods()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "instance");
+            var mods = Path.Combine(root, "mods");
+            Directory.CreateDirectory(mods);
+            await File.WriteAllTextAsync(Path.Combine(mods, "alpha.jar"), "a");
+            await File.WriteAllTextAsync(Path.Combine(mods, "beta.jar.disabled"), "b");
+
+            var service = new InstanceModuleService(
+                new JsonInstanceRepository(dataRoot, new JsonAppSettingsStore(dataRoot)));
+            using var createDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.create",
+                    $$"""
+                      {"name":"Mods","gameVersion":"1.21.4",
+                       "loader":"fabric","loaderVersion":"0.16.10",
+                       "rootPath":"{{root}}"}
+                      """,
+                    CancellationToken.None));
+            var id = createDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("instance")
+                .GetProperty("id")
+                .GetString();
+            Assert.NotNull(id);
+
+            using var listDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.mods.list",
+                    $$"""{"instanceId":"{{id}}"}""",
+                    CancellationToken.None));
+            var list = listDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("items")
+                .EnumerateArray()
+                .ToArray();
+            Assert.Equal(2, list.Length);
+            Assert.Contains(list, item => item.GetProperty("enabled").GetBoolean());
+
+            using var disableDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.mods.setEnabled",
+                    $$"""
+                      {"instanceId":"{{id}}","fileName":"alpha.jar","enabled":false}
+                      """,
+                    CancellationToken.None));
+            Assert.False(
+                disableDocument.RootElement
+                    .GetProperty("data")
+                    .GetProperty("item")
+                    .GetProperty("enabled")
+                    .GetBoolean());
+            Assert.True(File.Exists(Path.Combine(mods, "alpha.jar.disabled")));
+
+            using var enableDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.mods.setEnabled",
+                    $$"""
+                      {"instanceId":"{{id}}","fileName":"beta.jar.disabled","enabled":true}
+                      """,
+                    CancellationToken.None));
+            Assert.True(
+                enableDocument.RootElement
+                    .GetProperty("data")
+                    .GetProperty("item")
+                    .GetProperty("enabled")
+                    .GetBoolean());
+            Assert.True(File.Exists(Path.Combine(mods, "beta.jar")));
+
+            using var removeDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.mods.remove",
+                    $$"""
+                      {"instanceId":"{{id}}","fileName":"alpha.jar.disabled"}
+                      """,
+                    CancellationToken.None));
+            Assert.True(
+                removeDocument.RootElement
+                    .GetProperty("data")
+                    .GetProperty("removed")
+                    .GetBoolean());
+            Assert.False(File.Exists(Path.Combine(mods, "alpha.jar.disabled")));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Module_rejects_mod_path_traversal()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "instance");
+            Directory.CreateDirectory(Path.Combine(root, "mods"));
+            var service = new InstanceModuleService(
+                new JsonInstanceRepository(dataRoot, new JsonAppSettingsStore(dataRoot)));
+            using var createDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.create",
+                    $$"""
+                      {"name":"Mods","gameVersion":"1.21.4",
+                       "loader":"fabric","loaderVersion":"0.16.10",
+                       "rootPath":"{{root}}"}
+                      """,
+                    CancellationToken.None));
+            var id = createDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("instance")
+                .GetProperty("id")
+                .GetString();
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.mods.remove",
+                    $$"""
+                      {"instanceId":"{{id}}","fileName":"../escape.jar"}
+                      """,
+                    CancellationToken.None));
+            Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+            Assert.Equal(
+                "E_INVALID",
+                document.RootElement
+                    .GetProperty("error")
+                    .GetProperty("code")
+                    .GetString());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Sqlite_sync_discovers_sjmcl_versions_layout()
     {
         var directory = TempDirectory();

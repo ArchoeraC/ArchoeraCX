@@ -429,5 +429,14 @@
   "accountsLoadFailed": "账户列表加载失败：{message}",
   "downloadGlobalTarget": "全部版本 · 全部加载器",
   "instanceManage": "管理",
-  "instanceManageLoader": "安装 / 更新加载器"
+  "instanceManageLoader": "安装 / 更新加载器",
+  "instanceManageMods": "管理 Mod",
+  "instanceModsTitle": "已安装 Mod",
+  "instanceModsEmpty": "此实例没有 Mod。",
+  "instanceModsLoadFailed": "Mod 列表加载失败：{message}",
+  "instanceModDelete": "删除 Mod",
+  "instanceModDeleteConfirm": "删除“{name}”？这会移除 Mod 文件。",
+  "instanceModDisabled": "已禁用",
+  "instanceModsToggleFailed": "无法更新 Mod 状态。",
+  "instanceModsRemoveFailed": "无法删除 Mod。"
 }
