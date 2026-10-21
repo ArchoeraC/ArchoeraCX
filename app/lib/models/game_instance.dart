@@ -1,0 +1,116 @@
+import 'package:flutter/foundation.dart';
+
+/// Loader families currently represented by the UI shell.
+///
+/// Fabric/Quilt/Forge/NeoForge are display values only for now; installation
+/// and launch still go through the native core in later slices.
+enum GameLoader {
+  vanilla('Vanilla', ''),
+  fabric('Fabric', '0.16.10'),
+  quilt('Quilt', '0.27.0'),
+  forge('Forge', '47.2.0'),
+  neoforge('NeoForge', '21.1.209');
+
+  const GameLoader(this.label, this.defaultVersion);
+
+  final String label;
+  final String defaultVersion;
+}
+
+/// A UI-facing instance summary. This is intentionally not a persistence
+/// model: the C#/SQLite owner will replace the mock provider later.
+@immutable
+class GameInstance {
+  const GameInstance({
+    required this.id,
+    required this.name,
+    required this.gameVersion,
+    required this.loader,
+    this.loaderVersion = '',
+    this.modCount = 0,
+    this.lastPlayed,
+    this.favorite = false,
+    this.rootPath = '',
+  });
+
+  final String id;
+  final String name;
+  final String gameVersion;
+  final GameLoader loader;
+  final String loaderVersion;
+  final int modCount;
+  final DateTime? lastPlayed;
+  final bool favorite;
+
+  /// Absolute instance directory. Empty means "derive from the global
+  /// instances root and id" in the UI.
+  final String rootPath;
+
+  static GameLoader loaderFromWire(String? value) => switch (value) {
+    'fabric' => GameLoader.fabric,
+    'quilt' => GameLoader.quilt,
+    'forge' => GameLoader.forge,
+    'neoforge' => GameLoader.neoforge,
+    _ => GameLoader.vanilla,
+  };
+
+  static GameInstance? fromNative(Object? value) {
+    if (value is! Map) return null;
+    final id = value['id']?.toString();
+    final name = value['name']?.toString();
+    final gameVersion = value['gameVersion']?.toString();
+    if (id == null || name == null || gameVersion == null) return null;
+
+    return GameInstance(
+      id: id,
+      name: name,
+      gameVersion: gameVersion,
+      loader: loaderFromWire(value['loader']?.toString()),
+      loaderVersion: value['loaderVersion']?.toString() ?? '',
+      modCount: _int(value['modCount']) ?? 0,
+      lastPlayed: _date(value['lastPlayedAt']),
+      favorite: value['favorite'] == true,
+      rootPath: value['rootPath']?.toString() ?? '',
+    );
+  }
+
+  static int? _int(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static DateTime? _date(Object? value) {
+    if (value is! String) return null;
+    return DateTime.tryParse(value);
+  }
+
+  String get loaderLabel =>
+      loader == GameLoader.vanilla || loaderVersion.isEmpty
+      ? loader.label
+      : '${loader.label} $loaderVersion';
+
+  GameInstance copyWith({
+    String? name,
+    String? gameVersion,
+    GameLoader? loader,
+    String? loaderVersion,
+    int? modCount,
+    DateTime? lastPlayed,
+    bool? favorite,
+    String? rootPath,
+  }) {
+    return GameInstance(
+      id: id,
+      name: name ?? this.name,
+      gameVersion: gameVersion ?? this.gameVersion,
+      loader: loader ?? this.loader,
+      loaderVersion: loaderVersion ?? this.loaderVersion,
+      modCount: modCount ?? this.modCount,
+      lastPlayed: lastPlayed ?? this.lastPlayed,
+      favorite: favorite ?? this.favorite,
+      rootPath: rootPath ?? this.rootPath,
+    );
+  }
+}

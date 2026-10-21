@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Archoera.Infrastructure</RootNamespace>
+    <!-- CI/release injects this with -p:MicrosoftClientId=...; debug builds
+         may leave it empty and use the runtime environment override. -->
+    <MicrosoftClientId Condition="'$(MicrosoftClientId)' == ''">$(ARCHOERACX_MICROSOFT_CLIENT_ID)</MicrosoftClientId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.12" />
+    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" Version="2.1.12" />
+    <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Archoera.Domain/Archoera.Domain.csproj" />
+    <ProjectReference Include="../Archoera.Application/Archoera.Application.csproj" />
+  </ItemGroup>
+
+  <!-- Never commit the client id. Generate a tiny source file so NativeAOT
+       gets a compile-time default without a hand-maintained constant. -->
+  <Target Name="GenerateMicrosoftBuildConfig"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="PrepareForBuild">
+    <PropertyGroup>
+      <MicrosoftBuildConfigDir>$(IntermediateOutputPath)generated</MicrosoftBuildConfigDir>
+      <MicrosoftBuildConfigDir Condition="'$(IntermediateOutputPath)' == ''">$(MSBuildProjectDirectory)/obj/generated</MicrosoftBuildConfigDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(MicrosoftBuildConfigDir)" />
+    <WriteLinesToFile
+      File="$(MicrosoftBuildConfigDir)/MicrosoftBuildConfig.g.cs"
+      Lines="// &lt;auto-generated /&gt;%0Anamespace Archoera.Infrastructure.Build%3B%0A%0Ainternal static class MicrosoftBuildConfig%0A{%0A    internal const string ClientId = &quot;$(MicrosoftClientId)&quot;%3B%0A}"
+      Overwrite="true" />
+    <ItemGroup>
+      <Compile Remove="$(MicrosoftBuildConfigDir)/MicrosoftBuildConfig.g.cs" />
+      <Compile Include="$(MicrosoftBuildConfigDir)/MicrosoftBuildConfig.g.cs" />
+    </ItemGroup>
+  </Target>
+</Project>

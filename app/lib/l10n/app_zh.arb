@@ -1,0 +1,281 @@
+{
+  "@@locale": "zh",
+  "appName": "ArchoeraCX",
+  "appTagline": "跨平台 Minecraft: Java Edition 启动器",
+  "appPreview": "界面预览",
+  "navDashboard": "主页",
+  "navInstances": "实例",
+  "navDownload": "下载",
+  "navAccounts": "账户",
+  "navSettings": "设置",
+  "navTasks": "任务",
+  "navNotifications": "通知",
+  "coreOffline": "核心未连接",
+  "coreOfflineHint": "原生核心尚未接线。",
+  "accountOffline": "离线",
+  "accountLocal": "本地账户",
+  "launch": "启动",
+  "selectInstance": "请先选择实例",
+  "commonMockData": "模拟数据 · UI 外壳",
+  "commonCoreNotConnected": "原生核心尚未连接。",
+  "commonNoTasks": "暂无进行中的任务。",
+  "commonNoNotifications": "暂无通知。",
+  "dashboardTitle": "主页",
+  "dashboardSubtitle": "启动、安装和管理你的世界。",
+  "quickLaunch": "快速启动",
+  "quickLaunchSubtitle": "最近的实例已经准备好。",
+  "recentInstances": "最近实例",
+  "viewAll": "查看全部",
+  "statInstances": "实例",
+  "statJava": "Java",
+  "statDownloads": "下载",
+  "statAccounts": "账户",
+  "instanceName1": "1.21.4 · Fabric",
+  "instanceMeta1": "Fabric 0.16.10 · 12 个 Mod",
+  "instanceName2": "1.20.1 · Forge",
+  "instanceMeta2": "Forge 47.2.0 · 8 个 Mod",
+  "lastPlayedToday": "今天玩过",
+  "lastPlayedYesterday": "昨天玩过",
+  "instancesTitle": "实例",
+  "instancesSubtitle": "实例目录隔离，库与资源按 hash 共享。",
+  "searchInstances": "搜索实例",
+  "filterAll": "全部",
+  "createInstance": "创建实例",
+  "importPack": "导入整合包",
+  "instanceCreateTitle": "创建实例",
+  "instanceNameLabel": "名称",
+  "instanceNameHint": "例如 1.21.4 · Fabric",
+  "instanceGameVersionLabel": "游戏版本",
+  "instanceLocationLabel": "实例目录",
+  "instanceChooseLocation": "选择目录",
+  "instanceLocationHint": "留空则使用全局实例目录",
+  "instanceLoaderLabel": "加载器",
+  "instanceMods": "{count, plural, =0{无 Mod} other{{count} 个 Mod}}",
+  "@instanceMods": {
+    "description": "实例卡片上的 Mod 数量。",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "instanceLastPlayedNever": "从未启动",
+  "instanceEmptyTitle": "还没有实例",
+  "instanceEmptyMessage": "创建一个原版或带加载器的实例开始吧。",
+  "instanceNoMatches": "没有匹配的实例。",
+  "instanceDelete": "删除实例",
+  "instanceDeleteConfirm": "删除“{name}”？",
+  "@instanceDeleteConfirm": {
+    "description": "删除实例前的确认提示。",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "instanceLaunchNotReady": "启动流程尚未接线。",
+  "instanceCreated": "实例已创建。",
+  "commonCancel": "取消",
+  "commonCreate": "创建",
+  "commonDelete": "删除",
+  "downloadTitle": "下载",
+  "downloadSubtitle": "游戏版本、加载器、Mod、整合包、资源包与光影。",
+  "tabVersions": "游戏版本",
+  "tabLoaders": "加载器",
+  "tabMods": "Mod",
+  "tabPacks": "整合包",
+  "tabResourcePacks": "资源包",
+  "tabShaders": "光影",
+  "sourceModrinth": "Modrinth",
+  "sourceCurseForge": "CurseForge",
+  "sourceCurseForgeKeyHint": "请在设置中配置 CurseForge API Key 后再使用该源。",
+  "providerNotWired": "下载源接线是下一步；当前为 UI 结构。",
+  "searchDownload": "搜索资源",
+  "downloadSearchAction": "搜索",
+  "downloadSearchEmpty": "没有找到兼容的项目。",
+  "downloadSearchError": "搜索失败",
+  "downloadInstall": "安装",
+  "downloadInstalling": "下载中…",
+  "downloadInstalled": "已安装",
+  "downloadSelectVersion": "选择版本",
+  "downloadNoVersions": "没有兼容版本。",
+  "downloadResult": "结果：{status}",
+  "@downloadResult": {
+    "description": "下载结果状态。",
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadRootLabel": "安装目录",
+  "commonClose": "关闭",
+  "comingSoon": "即将支持",
+  "versionStable": "正式版",
+  "versionSnapshot": "快照",
+  "accountsTitle": "账户",
+  "accountsSubtitle": "微软、离线与第三方 authlib 账户。",
+  "currentAccount": "当前账户",
+  "addAccount": "添加账户",
+  "accountMicrosoftDesc": "使用微软设备码登录。",
+  "accountOfflineDesc": "用于单人和局域网的本地档案。",
+  "accountThirdPartyDesc": "通过 authlib-injector 接入 Yggdrasil。",
+  "refresh": "刷新",
+  "logout": "退出登录",
+  "settingsTitle": "设置",
+  "settingsSubtitle": "外观、Java、网络、合规与诊断。",
+  "settingsGeneral": "通用",
+  "settingsAppearance": "外观",
+  "settingsStorage": "存储",
+  "settingsInstancesRoot": "实例目录",
+  "settingsDataRoot": "应用数据目录",
+  "settingsChooseFolder": "选择目录",
+  "settingsSaved": "已保存",
+  "settingsJava": "Java",
+  "settingsNetwork": "网络",
+  "settingsCompliance": "合规",
+  "settingsAbout": "关于",
+  "settingsTheme": "主题",
+  "settingsThemeSystem": "跟随系统",
+  "settingsLanguage": "语言",
+  "settingsLanguageValue": "简体中文 / English",
+  "settingsMotion": "动效",
+  "settingsMotionDesc": "减少页面过渡与背景效果。",
+  "settingsDiagnostics": "诊断",
+  "settingsDiagnosticsDesc": "日志、模块版本与崩溃报告。",
+  "settingsVersion": "版本",
+  "settingsLicense": "许可证",
+  "settingsSource": "源代码",
+  "coreStatusTitle": "核心状态",
+  "coreStatusIdle": "空闲",
+  "coreStatusConnecting": "探测中",
+  "coreStatusConnected": "已连接",
+  "coreStatusUnavailable": "核心不可用",
+  "coreStatusIdleHint": "原生核心已加载，点击探测以验证 ABI。",
+  "coreStatusPingingHint": "正在调用 system.pingAsync…",
+  "coreStatusProgress": "进度：{done}/{total}",
+  "coreStatusUnavailableHint": "未找到原生核心库，或无法加载。",
+  "coreStatusPing": "探测核心",
+  "coreStatusPong": "pong：{value}",
+  "coreStatusMethod": "方法：{method}",
+  "coreStatusAbiVersion": "ABI v{version}",
+  "coreStatusBuildInfo": "构建：{build}",
+  "coreStatusPingFailed": "探测失败：{message}",
+  "javaStatusTitle": "Java",
+  "javaStatusIdle": "空闲",
+  "javaStatusScanning": "扫描中",
+  "javaStatusReady": "就绪",
+  "javaStatusUnavailable": "不可用",
+  "javaStatusIdleHint": "扫描系统中已安装的 Java 运行时。",
+  "javaStatusScanningHint": "正在调用 java.scan…",
+  "javaStatusProgress": "进度：{done}/{total}",
+  "javaStatusUnavailableHint": "Java 扫描不可用，业务模块可能尚未构建。",
+  "javaStatusScan": "扫描 Java",
+  "javaStatusCount": "{count, plural, =0{未发现 Java 运行时} other{找到 {count} 个 Java 运行时}}",
+  "javaStatusMeta": "{version} · {arch}",
+  "javaStatusScanFailed": "扫描失败：{message}",
+  "javaStatusEmptyHint": "请安装 JDK 或设置 JAVA_HOME，然后重新扫描。",
+  "javaStatusNoResultsTitle": "未找到 Java",
+  "javaStatusNoResultsHint": "在默认位置未找到 Java。请搜索文件夹或选择 java 可执行文件。",
+  "javaStatusSearchFolder": "搜索文件夹",
+  "javaStatusSelectExecutable": "选择 java 可执行文件",
+  "javaStatusAddFolder": "添加文件夹",
+  "javaStatusStillNotFound": "仍未找到 — 请选择 java 可执行文件。",
+  "javaStatusNoValidExecutable": "此路径下没有有效的 Java：{path}",
+  "@javaStatusNoValidExecutable": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "javaStatusNoValidExecutableHint": "请选择 JDK 目录中的 bin/java（Windows 为 bin\\java.exe）。",
+  "javaStatusCustomPaths": "自定义路径",
+  "javaStatusRemovePath": "移除 {path}",
+  "@javaStatusRemovePath": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "homeFootnote": "ArchoeraCX 不是官方 Minecraft 产品，与 Mojang 或 Microsoft 无关联，也未获其批准。",
+  "javaStatusViewAll": "查看全部 {count} 个",
+  "@javaStatusViewAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "javaStatusAllTitle": "Java 运行时（{count}）",
+  "@javaStatusAllTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "close": "关闭",
+  "@close": {
+    "description": "Generic close button label."
+  },
+  "javaStatusSelectJdkHome": "选择 JDK 目录",
+  "@javaStatusSelectJdkHome": {
+    "description": "Folder picker action for a JDK home directory."
+  },
+  "accountMicrosoftTitle": "微软登录",
+  "accountDeviceCodeTitle": "输入此代码",
+  "accountDeviceCodeHint": "在浏览器打开 {uri}，然后输入下方代码。",
+  "accountDeviceCodeWaiting": "等待微软授权…",
+  "accountDeviceCodeCopied": "代码已复制。",
+  "accountDeviceCodeExpires": "代码约 {minutes} 分钟后过期。",
+  "accountAddOffline": "添加离线账户",
+  "accountOfflineNameLabel": "玩家名",
+  "accountOfflineNameHint": "3–16 个字符",
+  "accountRemove": "移除账户",
+  "accountRemoveConfirm": "移除“{name}”？不会删除游戏文件。",
+  "accountRefresh": "刷新会话",
+  "accountNoAccounts": "还没有账户。添加微软或离线账户后即可启动游戏。",
+  "accountLoginFailed": "登录失败：{message}",
+  "accountWaitingAuthorization": "等待授权",
+  "accountSignIn": "登录",
+  "accountCancelSignIn": "取消登录",
+  "accountSessionRefreshed": "会话已刷新。",
+  "accountRemoved": "账户已移除。",
+  "accountSelected": "已切换当前账户。",
+  "commonCopy": "复制",
+  "commonAdd": "添加",
+  "@accountDeviceCodeHint": {
+    "description": "设备码提示。",
+    "placeholders": {
+      "uri": {
+        "type": "String"
+      }
+    }
+  },
+  "@accountDeviceCodeExpires": {
+    "description": "设备码有效期。",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@accountRemoveConfirm": {
+    "description": "移除账户确认。",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "@accountLoginFailed": {
+    "description": "登录错误。",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}

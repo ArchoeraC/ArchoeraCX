@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Archoera.Exports</RootNamespace>
+    <AssemblyName>archoera_cs</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
+    <NativeLib>Shared</NativeLib>
+    <StripSymbols>true</StripSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Archoera.Application/Archoera.Application.csproj" />
+    <ProjectReference Include="../Archoera.Infrastructure/Archoera.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

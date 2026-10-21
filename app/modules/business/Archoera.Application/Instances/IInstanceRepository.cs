@@ -1,0 +1,23 @@
+using Archoera.Domain.Instances;
+
+namespace Archoera.Application.Instances;
+
+/// <summary>Instance metadata/index owner contract.</summary>
+public interface IInstanceRepository
+{
+    Task<IReadOnlyList<GameInstanceRecord>> ListAsync(CancellationToken cancellationToken = default);
+    Task<GameInstanceRecord> CreateAsync(
+        string name,
+        string gameVersion,
+        string loader,
+        string loaderVersion,
+        string? rootPath,
+        CancellationToken cancellationToken = default);
+    Task<GameInstanceRecord?> UpdateAsync(
+        string id,
+        string? name,
+        bool? favorite,
+        DateTimeOffset? lastPlayedAt,
+        CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
+}
