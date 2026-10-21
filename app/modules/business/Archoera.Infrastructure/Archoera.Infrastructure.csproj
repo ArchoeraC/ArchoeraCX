@@ -4,6 +4,8 @@
     <!-- CI/release injects this with -p:MicrosoftClientId=...; debug builds
          may leave it empty and use the runtime environment override. -->
     <MicrosoftClientId Condition="'$(MicrosoftClientId)' == ''">$(ARCHOERACX_MICROSOFT_CLIENT_ID)</MicrosoftClientId>
+    <ChinaBuild Condition="'$(ChinaBuild)' == ''">false</ChinaBuild>
+    <DefineConstants Condition="'$(ChinaBuild)' == 'true' or '$(ChinaBuild)' == '1'">$(DefineConstants);ARCHOERACX_CHINA_BUILD</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

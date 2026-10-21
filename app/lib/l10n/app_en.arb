@@ -948,5 +948,13 @@
   "accountPremiumRequiredHint": "A verified Microsoft account is required before adding or selecting other accounts.",
   "@accountPremiumRequiredHint": {
     "description": "Subtitle shown when offline accounts are gated."
+  },
+  "downloadUnavailableTitle": "Downloads are unavailable in this build",
+  "@downloadUnavailableTitle": {
+    "description": "China build download block title."
+  },
+  "downloadUnavailableMessage": "This mainland-China build does not provide online game, loader or content downloads. Use files you already have or the official Minecraft launcher.",
+  "@downloadUnavailableMessage": {
+    "description": "China build download block explanation."
   }
 }

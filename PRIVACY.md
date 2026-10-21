@@ -23,6 +23,10 @@ account, profile, instance and download features. It does not apply to
 Microsoft, Xbox, Minecraft Services, Modrinth, BMCLAPI or any other third-party
 service. Those services have their own privacy policies and terms.
 
+Mainland-China distribution builds currently do not provide online game,
+loader or content downloads. Those builds still support local instances,
+local launch and Microsoft account sign-in.
+
 ## 3. Data processed
 
 ### 3.1 Microsoft/Minecraft account data
@@ -58,7 +62,19 @@ download mirror, those providers receive the network information necessary to
 serve the request, such as the user's IP address and request headers. ArchoeraCX
 does not operate a server that receives or stores account tokens.
 
-### 3.5 Images and caches
+### 3.5 Diagnostics, telemetry and updates
+
+The current launcher does **not** include advertising, third-party analytics,
+automatic crash-report uploads, cloud account sync or a remote account backend.
+Diagnostic logs are written locally for troubleshooting and may contain error
+codes, local paths and account display names. They are not uploaded by the
+launcher.
+
+The current build does not perform a background update check. If an update
+check or optional diagnostic upload is added later, it will be opt-in or
+clearly disclosed, and will be described in an updated version of this policy.
+
+### 3.6 Images and caches
 
 Skin and project images may be loaded from Mojang/Modrinth CDN endpoints and
 cached locally or in memory to avoid repeated downloads. Image caches are used
@@ -108,6 +124,12 @@ the feature the user requested, including:
 
 These third parties process data under their own terms and privacy policies.
 ArchoeraCX does not control their retention or cross-border processing.
+Relevant policies include:
+
+- Microsoft Privacy Statement: <https://privacy.microsoft.com/>
+- Minecraft/Mojang privacy information: <https://www.minecraft.net/privacy>
+- Modrinth privacy policy: <https://modrinth.com/legal/privacy>
+- BMCLAPI: <https://bmclapidoc.bangbang93.com/>
 
 ## 7. Cross-border processing
 

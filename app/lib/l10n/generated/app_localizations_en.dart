@@ -1211,4 +1211,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accountPremiumRequiredHint =>
       'A verified Microsoft account is required before adding or selecting other accounts.';
+
+  @override
+  String get downloadUnavailableTitle =>
+      'Downloads are unavailable in this build';
+
+  @override
+  String get downloadUnavailableMessage =>
+      'This mainland-China build does not provide online game, loader or content downloads. Use files you already have or the official Minecraft launcher.';
 }

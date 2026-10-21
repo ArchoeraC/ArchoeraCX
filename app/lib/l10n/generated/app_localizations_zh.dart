@@ -1170,4 +1170,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get accountPremiumRequiredHint => '发布版需要先登录已拥有 Minecraft 的正版微软账户。';
+
+  @override
+  String get downloadUnavailableTitle => '当前构建不提供下载';
+
+  @override
+  String get downloadUnavailableMessage =>
+      '中国大陆构建暂时不提供游戏、加载器或内容下载。请使用本地已有文件或官方 Minecraft 启动器。';
 }

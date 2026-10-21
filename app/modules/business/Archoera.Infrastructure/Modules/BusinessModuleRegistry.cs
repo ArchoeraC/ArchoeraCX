@@ -19,15 +19,17 @@ namespace Archoera.Infrastructure.Modules;
 public static class BusinessModuleRegistry
 {
     public static ModuleMethodRegistry CreateDefault(string? dataRoot = null)
-        => new(
-        [
+    {
+        var chinaBuild = false;
+#if ARCHOERACX_CHINA_BUILD
+        chinaBuild = true;
+#endif
+        var handlers = new List<IModuleMethodHandler>
+        {
             new JavaModuleService(
                 settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
-            new VersionModuleService(),
+            new VersionModuleService(enableDownloads: !chinaBuild),
             new LaunchModuleService(dataRoot: dataRoot),
-            new LoaderVersionService(),
-            new LoaderModuleService(),
-            new ResourceModuleService(),
             new AccountModuleService(
                 accounts: new JsonAccountStore(dataRoot),
                 credentials: new VaultCredentialStore(dataRoot),
@@ -42,5 +44,21 @@ public static class BusinessModuleRegistry
                         dataRoot,
                         new JsonAppSettingsStore(dataRoot)),
                 dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
-        ]);
+        };
+
+        if (!chinaBuild)
+        {
+            handlers.Add(new LoaderVersionService());
+            handlers.Add(new ResourceModuleService());
+            handlers.Add(new LoaderModuleService());
+        }
+        else
+        {
+            // Local verification/repair remains available; plan/commit and all
+            // resource/download methods are not registered in the China build.
+            handlers.Add(new LoaderModuleService(enableDownloads: false));
+        }
+
+        return new ModuleMethodRegistry(handlers);
+    }
 }

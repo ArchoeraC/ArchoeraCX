@@ -1,5 +1,6 @@
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/app/shell.dart';
+import 'package:archoera_cx/services/core/build_policy.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -230,6 +231,28 @@ void main() {
 
     expect(find.text('Tasks'), findsOneWidget);
     expect(find.text('No active tasks.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('china build hides download entry points', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coreClientProvider.overrideWithValue(null),
+          downloadEnabledProvider.overrideWithValue(false),
+        ],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.text('Download'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

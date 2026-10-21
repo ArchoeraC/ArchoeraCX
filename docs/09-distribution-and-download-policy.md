@@ -155,6 +155,26 @@ A 通过（schema/枚举/布尔严格）
 
 ---
 
+
+### 2.5 当前中国大陆构建：直接移除下载能力
+
+在律师复核完成前，中国大陆公开构建采用“无下载”策略，而不是仅把按钮置灰：
+
+- Flutter 构建：`ARCHOERACX_CHINA_BUILD=true`，隐藏 Download 导航与下载入口，`/download` 显示不可用说明；
+- Dart `CoreClient`：所有资源搜索、版本下载计划、加载器版本/安装、原版安装方法在调用前抛出 `DOWNLOAD_DISABLED`；
+- C#：不注册 `ResourceModuleService`、`LoaderVersionService`；`VersionModuleService` 只保留 `version.list`；`LoaderModuleService` 只保留本地 `verify/repair/check`；
+- C++：从 `MethodRegistry` 移除 `resource.*`、`download.execute`、`version.plan/commit`、`loader.versions/plan/commit` 路由；
+- 登录、实例管理、本地启动、本地 Mod 启停/删除保留。
+
+构建命令：
+
+```bash
+cd app
+./tool/build-cn.sh
+```
+
+这是构建期裁剪，不是运行期地区探测；全球/开发构建仍可使用下载能力，但需遵守对应发行地区的法律与平台条款。
+
 ## 3. 发行通道矩阵
 
 | 能力 | official-cn（L0） | official-global（L1/L2） | dev（L2） |

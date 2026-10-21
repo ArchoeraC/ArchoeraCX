@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../services/core/build_policy.dart';
 import '../stores/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_empty_state.dart';
@@ -34,53 +35,87 @@ class _DownloadPageState extends State<DownloadPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    return DefaultTabController(
-      length: 5,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppPageHeader(
-            title: l10n.downloadTitle,
-            subtitle: l10n.downloadSubtitle,
+    return Consumer(
+      builder: (context, ref, _) {
+        if (!ref.watch(downloadEnabledProvider)) {
+          return _DownloadUnavailable(l10n: l10n);
+        }
+        return DefaultTabController(
+          length: 5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppPageHeader(
+                title: l10n.downloadTitle,
+                subtitle: l10n.downloadSubtitle,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _SourceSelector(
+                selected: _source,
+                onSelected: (source) => setState(() => _source = source),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _CategoryTabs(l10n: l10n),
+              const SizedBox(height: AppSpacing.sm),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    const _VersionsPanel(),
+                    ResourceSearchPanel(
+                      kind: 'mod',
+                      title: l10n.tabMods,
+                      icon: Icons.extension_rounded,
+                      global: true,
+                    ),
+                    _ComingSoonTab(
+                      l10n: l10n,
+                      icon: Icons.inventory_2_rounded,
+                      message: l10n.downloadModpackPending,
+                    ),
+                    ResourceSearchPanel(
+                      kind: 'resourcepack',
+                      title: l10n.tabResourcePacks,
+                      icon: Icons.photo_library_rounded,
+                    ),
+                    ResourceSearchPanel(
+                      kind: 'shader',
+                      title: l10n.tabShaders,
+                      icon: Icons.flare_rounded,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          _SourceSelector(
-            selected: _source,
-            onSelected: (source) => setState(() => _source = source),
+        );
+      },
+    );
+  }
+}
+
+class _DownloadUnavailable extends StatelessWidget {
+  const _DownloadUnavailable({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppPageHeader(
+          title: l10n.downloadTitle,
+          subtitle: l10n.downloadSubtitle,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Expanded(
+          child: AppEmptyState(
+            icon: Icons.download_for_offline_outlined,
+            title: l10n.downloadUnavailableTitle,
+            message: l10n.downloadUnavailableMessage,
           ),
-          const SizedBox(height: AppSpacing.xs),
-          _CategoryTabs(l10n: l10n),
-          const SizedBox(height: AppSpacing.sm),
-          Expanded(
-            child: TabBarView(
-              children: [
-                const _VersionsPanel(),
-                ResourceSearchPanel(
-                  kind: 'mod',
-                  title: l10n.tabMods,
-                  icon: Icons.extension_rounded,
-                  global: true,
-                ),
-                _ComingSoonTab(
-                  l10n: l10n,
-                  icon: Icons.inventory_2_rounded,
-                  message: l10n.downloadModpackPending,
-                ),
-                ResourceSearchPanel(
-                  kind: 'resourcepack',
-                  title: l10n.tabResourcePacks,
-                  icon: Icons.photo_library_rounded,
-                ),
-                ResourceSearchPanel(
-                  kind: 'shader',
-                  title: l10n.tabShaders,
-                  icon: Icons.flare_rounded,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

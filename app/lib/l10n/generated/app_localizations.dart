@@ -2179,6 +2179,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A verified Microsoft account is required before adding or selecting other accounts.'**
   String get accountPremiumRequiredHint;
+
+  /// China build download block title.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads are unavailable in this build'**
+  String get downloadUnavailableTitle;
+
+  /// China build download block explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'This mainland-China build does not provide online game, loader or content downloads. Use files you already have or the official Minecraft launcher.'**
+  String get downloadUnavailableMessage;
 }
 
 class _AppLocalizationsDelegate
