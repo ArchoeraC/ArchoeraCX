@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../stores/locale.dart';
 import '../stores/providers.dart';
+import '../widgets/common/toast.dart';
 import '../theme/app_theme.dart';
 
 class ArchoeraApp extends ConsumerWidget {
@@ -20,6 +21,8 @@ class ArchoeraApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
       routerConfig: router,
+      builder: (context, child) =>
+          ToastOverlay(child: child ?? const SizedBox.shrink()),
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

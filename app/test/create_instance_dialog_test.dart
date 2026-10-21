@@ -1,6 +1,7 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
+import 'package:archoera_cx/widgets/common/toast.dart';
 import 'package:archoera_cx/widgets/instances/create_instance_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,12 +17,14 @@ void main() {
           locale: const Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => showCreateInstanceDialog(context),
-                  child: const Text('Open'),
+          home: ToastOverlay(
+            child: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () => showCreateInstanceDialog(context),
+                    child: const Text('Open'),
+                  ),
                 ),
               ),
             ),
@@ -42,5 +45,9 @@ void main() {
 
     expect(find.text('Instance created.'), findsOneWidget);
     expect(find.text('Create instance'), findsNothing);
+
+    // Let the global toast timer/exit animation finish before teardown.
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
   });
 }

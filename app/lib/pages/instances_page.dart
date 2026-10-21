@@ -11,6 +11,7 @@ import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_page_header.dart';
+import '../widgets/common/toast.dart';
 import '../widgets/common/loader_mark.dart';
 import '../widgets/instances/instance_mods_dialog.dart';
 import '../widgets/instances/loader_install_dialog.dart';
@@ -53,10 +54,12 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
         if (result != null && result.missing.isNotEmpty) {
           message.write(' ${l10n.instanceSyncMissing(result.missing.length)}');
         }
-        _notify(context, message.toString());
+        _notify(context, message.toString(), type: ToastType.success);
       }
     } catch (error) {
-      if (mounted && !silent) _notify(context, error.toString());
+      if (mounted && !silent) {
+        _notify(context, error.toString(), type: ToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _syncing = false);
     }
@@ -95,8 +98,11 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 subtitle: l10n.instancesSubtitle,
                 actions: [
                   OutlinedButton.icon(
-                    onPressed: () =>
-                        _notify(context, l10n.commonCoreNotConnected),
+                    onPressed: () => _notify(
+                      context,
+                      l10n.commonCoreNotConnected,
+                      type: ToastType.error,
+                    ),
                     icon: const Icon(Icons.file_download_outlined, size: 18),
                     label: Text(l10n.importPack),
                   ),
@@ -225,7 +231,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   ) async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
-      _notify(context, l10n.commonCoreNotConnected);
+      _notify(context, l10n.commonCoreNotConnected, type: ToastType.error);
       return;
     }
 
@@ -244,20 +250,16 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
             _DependencyCheckDialog(l10n: l10n, mode: mode, envelope: envelope),
       );
     } catch (error) {
-      if (mounted) _notify(context, error.toString());
+      if (mounted) _notify(context, error.toString(), type: ToastType.error);
     }
   }
 
-  void _notify(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(message),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+  void _notify(
+    BuildContext context,
+    String message, {
+    ToastType type = ToastType.info,
+  }) {
+    toast(message, type: type);
   }
 }
 
@@ -471,15 +473,7 @@ class _EmptyInstancesPanel extends StatelessWidget {
   }
 
   void _showUnavailable(BuildContext context, AppLocalizations l10n) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(l10n.commonCoreNotConnected),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    toast(l10n.commonCoreNotConnected, type: ToastType.error);
   }
 }
 

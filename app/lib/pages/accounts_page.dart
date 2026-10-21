@@ -16,6 +16,7 @@ import '../widgets/accounts/add_account_sheet.dart';
 import '../widgets/accounts/current_account_panel.dart';
 import '../widgets/accounts/empty_accounts_panel.dart';
 import '../widgets/common/app_page_header.dart';
+import '../widgets/common/toast.dart';
 
 class AccountsPage extends ConsumerWidget {
   const AccountsPage({super.key});
@@ -280,17 +281,7 @@ class AccountsPage extends ConsumerWidget {
     String message, {
     bool error = false,
   }) {
-    final tokens = context.tokens;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: error ? tokens.danger : null,
-          content: Text(message),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+    toast(message, type: error ? ToastType.error : ToastType.success);
   }
 }
 
@@ -465,14 +456,7 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: start.userCode));
               if (context.mounted) {
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      content: Text(l10n.accountDeviceCodeCopied),
-                    ),
-                  );
+                toast(l10n.accountDeviceCodeCopied, type: ToastType.success);
               }
             },
             icon: const Icon(Icons.copy_rounded, size: 18),
