@@ -155,6 +155,8 @@ void main() {
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('Network'), findsNothing);
+    expect(find.text('Compliance'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

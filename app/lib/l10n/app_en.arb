@@ -214,7 +214,7 @@
   "refresh": "Refresh",
   "logout": "Sign out",
   "settingsTitle": "Settings",
-  "settingsSubtitle": "Appearance, Java, network, compliance, and diagnostics.",
+  "settingsSubtitle": "Appearance, storage, Java, and about.",
   "settingsGeneral": "General",
   "settingsAppearance": "Appearance",
   "settingsStorage": "Storage",
@@ -252,8 +252,6 @@
   "settingsGameArgs": "Additional game arguments",
   "settingsGameArgsHint": "Optional, appended after the version arguments",
   "settingsMemoryInvalid": "Memory must be 128–65536 MB and min ≤ max.",
-  "settingsNetwork": "Network",
-  "settingsCompliance": "Compliance",
   "settingsAbout": "About",
   "settingsTheme": "Theme",
   "settingsThemeSystem": "Follow system",
@@ -517,47 +515,6 @@
   "accountAuthlib": "Authlib",
   "@accountAuthlib": {
     "description": "Authlib account type."
-  },
-  "settingsProxy": "Proxy",
-  "@settingsProxy": {
-    "description": "Network proxy setting label."
-  },
-  "settingsProxySystem": "System",
-  "@settingsProxySystem": {
-    "description": "Proxy follows the operating system."
-  },
-  "settingsDownloads": "Downloads",
-  "@settingsDownloads": {
-    "description": "Download concurrency setting label."
-  },
-  "settingsDownloadsStreams": "{count, plural, =1{1 stream} other{{count} streams}}",
-  "@settingsDownloadsStreams": {
-    "description": "Number of parallel download streams.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "settingsProvider": "Provider",
-  "@settingsProvider": {
-    "description": "Content provider setting label."
-  },
-  "settingsDownloadLevel": "Download level",
-  "@settingsDownloadLevel": {
-    "description": "Download compliance level label."
-  },
-  "settingsDownloadLevelValue": "L0 · official-cn",
-  "@settingsDownloadLevelValue": {
-    "description": "Current download compliance level."
-  },
-  "settingsConsent": "Consent",
-  "@settingsConsent": {
-    "description": "Telemetry/consent setting label."
-  },
-  "settingsConsentNotAccepted": "Not accepted",
-  "@settingsConsentNotAccepted": {
-    "description": "Consent has not been accepted."
   },
   "settingsDiagnosticsOpen": "Open",
   "@settingsDiagnosticsOpen": {
