@@ -995,4 +995,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceModsRemoveFailed => '无法删除 Mod。';
+
+  @override
+  String get accountDefaultSkin => '默认外观';
 }

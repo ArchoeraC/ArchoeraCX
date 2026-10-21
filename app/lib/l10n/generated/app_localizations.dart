@@ -1879,6 +1879,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not remove the mod.'**
   String get instanceModsRemoveFailed;
+
+  /// Shown when an account has no skin texture.
+  ///
+  /// In en, this message translates to:
+  /// **'Default appearance'**
+  String get accountDefaultSkin;
 }
 
 class _AppLocalizationsDelegate

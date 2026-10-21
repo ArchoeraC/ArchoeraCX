@@ -214,7 +214,9 @@ class _KindArt extends StatelessWidget {
                 const SizedBox(width: AppSpacing.xxs),
                 Flexible(
                   child: Text(
-                    account.kind.labelFor(l10n),
+                    account.skinUrl == null
+                        ? l10n.accountDefaultSkin
+                        : account.kind.labelFor(l10n),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelMedium
