@@ -11,6 +11,7 @@ import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_page_header.dart';
+import '../widgets/common/loader_mark.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/instances/create_instance_dialog.dart';
 
@@ -723,8 +724,6 @@ class _InstanceRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    final color = _colorFor(instance.loader, tokens);
-
     return Material(
       color: selected ? tokens.accentSoft : Colors.transparent,
       child: InkWell(
@@ -748,7 +747,7 @@ class _InstanceRow extends StatelessWidget {
               final wide = constraints.maxWidth >= 720;
               return Row(
                 children: [
-                  Icon(_iconFor(instance.loader), size: 24, color: color),
+                  LoaderMark(loader: instance.loader, size: 24),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
@@ -859,22 +858,6 @@ String _instanceMeta(GameInstance instance, AppLocalizations l10n) {
   if (instance.custom) parts.insert(0, l10n.instanceCustom);
   return parts.join(' · ');
 }
-
-IconData _iconFor(GameLoader loader) => switch (loader) {
-  GameLoader.vanilla => Icons.landscape_rounded,
-  GameLoader.fabric => Icons.auto_awesome_rounded,
-  GameLoader.quilt => Icons.layers_rounded,
-  GameLoader.forge => Icons.handyman_rounded,
-  GameLoader.neoforge => Icons.extension_rounded,
-};
-
-Color _colorFor(GameLoader loader, AppTokens tokens) => switch (loader) {
-  GameLoader.vanilla => tokens.accent,
-  GameLoader.fabric => tokens.success,
-  GameLoader.quilt => tokens.accent,
-  GameLoader.forge => tokens.warning,
-  GameLoader.neoforge => tokens.warning,
-};
 
 String _lastPlayedLabel(
   BuildContext context,
