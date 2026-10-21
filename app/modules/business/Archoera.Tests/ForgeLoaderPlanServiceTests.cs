@@ -19,6 +19,8 @@ public sealed class ForgeLoaderPlanServiceTests
         "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.209/neoforge-21.1.209-installer.jar")]
     [InlineData(LoaderKind.NeoForge, "1.21.1", "21.1.209",
         "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.209/neoforge-21.1.209-installer.jar")]
+    [InlineData(LoaderKind.NeoForge, "1.20.1", "47.1.106",
+        "https://maven.neoforged.net/releases/net/neoforged/forge/1.20.1-47.1.106/forge-1.20.1-47.1.106-installer.jar")]
     public void Installer_uses_the_official_maven_path(
         LoaderKind kind,
         string gameVersion,
