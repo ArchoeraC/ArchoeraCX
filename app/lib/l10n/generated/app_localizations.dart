@@ -626,10 +626,10 @@ abstract class AppLocalizations {
   /// **'Download'**
   String get downloadTitle;
 
-  /// No description provided for @downloadSubtitle.
+  /// Download hub subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Versions, loaders, mods, packs, resource packs, and shaders.'**
+  /// **'Versions, mods, packs, resource packs, and shaders.'**
   String get downloadSubtitle;
 
   /// No description provided for @sourceLabel.
@@ -685,12 +685,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No versions match.'**
   String get versionEmpty;
-
-  /// No description provided for @tabLoaders.
-  ///
-  /// In en, this message translates to:
-  /// **'Loaders'**
-  String get tabLoaders;
 
   /// No description provided for @tabMods.
   ///
@@ -793,12 +787,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loader files downloaded, version JSON written, and processors completed.'**
   String get loaderInstallDone;
-
-  /// No description provided for @loaderInstallNoInstance.
-  ///
-  /// In en, this message translates to:
-  /// **'Select an instance first.'**
-  String get loaderInstallNoInstance;
 
   /// No description provided for @loaderInstallPickInstaller.
   ///
@@ -1819,6 +1807,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not load accounts: {message}'**
   String accountsLoadFailed(String message);
+
+  /// Global Modrinth search target label.
+  ///
+  /// In en, this message translates to:
+  /// **'All versions · all loaders'**
+  String get downloadGlobalTarget;
+
+  /// Instance overflow menu tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get instanceManage;
+
+  /// Open the loader installation dialog for an instance.
+  ///
+  /// In en, this message translates to:
+  /// **'Install / update loader'**
+  String get instanceManageLoader;
 }
 
 class _AppLocalizationsDelegate

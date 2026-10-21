@@ -306,7 +306,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadTitle => '下载';
 
   @override
-  String get downloadSubtitle => '游戏版本、加载器、Mod、整合包、资源包与光影。';
+  String get downloadSubtitle => '游戏版本、Mod、整合包、资源包与光影。';
 
   @override
   String get sourceLabel => '内容来源';
@@ -334,9 +334,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get versionEmpty => '没有匹配的版本。';
-
-  @override
-  String get tabLoaders => '加载器';
 
   @override
   String get tabMods => 'Mod';
@@ -388,9 +385,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loaderInstallDone => '加载器文件已下载，版本 JSON 已写入，processors 已完成。';
-
-  @override
-  String get loaderInstallNoInstance => '请先选择实例。';
 
   @override
   String get loaderInstallPickInstaller => '请先选择 Forge/NeoForge 安装包。';
@@ -961,4 +955,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String accountsLoadFailed(String message) {
     return '账户列表加载失败：$message';
   }
+
+  @override
+  String get downloadGlobalTarget => '全部版本 · 全部加载器';
+
+  @override
+  String get instanceManage => '管理';
+
+  @override
+  String get instanceManageLoader => '安装 / 更新加载器';
 }

@@ -57,6 +57,27 @@ public sealed class ModrinthClientTests
     }
 
     [Fact]
+    public async Task SearchAsync_without_target_is_global()
+    {
+        var handler = new FakeHttpMessageHandler();
+        handler.EnqueueJson(SearchJson);
+        var client = CreateClient(handler);
+
+        await client.SearchAsync(new ResourceSearchRequest
+        {
+            Query = "sodium",
+            Kind = ResourceKind.Mod,
+            PageSize = 20,
+        });
+
+        var request = Assert.Single(handler.Requests);
+        var query = Uri.UnescapeDataString(request.Uri.Query);
+        Assert.Contains("project_type:mod", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("versions:", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("categories:fabric", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GetProjectAsync_maps_project_metadata()
     {
         var handler = new FakeHttpMessageHandler();

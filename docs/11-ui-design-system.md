@@ -174,7 +174,7 @@ LauncherX 的暖黄只作为“可选主题”存在，不作为默认品牌识�
 | 页面 | 布局 |
 |---|---|
 | Dashboard | 快速启动 Hero + 单行快捷入口 + 最近实例网格；不展示核心/Java 调试卡 |
-| Instances | 搜索/计数栏 + 平铺实例行列表（左侧 2px 选中条） |
+| Instances | 搜索/计数栏 + 平铺实例行列表（左侧 2px 选中条）；每行“更多”提供加载器安装/更新 |
 | Download | 来源选择 + 分类 Tab + 搜索/结果区，内容区独立滚动 |
 | Accounts | 左侧当前账户摘要 + 右侧账户列表/空态 |
 | Settings | 左侧分区导航 + 右侧单分区内容；窄屏切为顶部横向 Tab |
@@ -185,7 +185,7 @@ LauncherX 的暖黄只作为“可选主题”存在，不作为默认品牌识�
 |---|---|---|
 | `/` | Dashboard | 快速启动、当前账户/实例/下载快捷入口、最近实例 |
 | `/instances` | Instances | 实例列表、筛选、创建/导入入口 |
-| `/download` | Download | 版本/加载器/资源搜索（Tab） |
+| `/download` | Download | 版本、全局 Mod、整合包、资源包、光影（Tab） |
 | `/accounts` | Accounts | 账户列表、添加账户、当前账户 |
 | `/settings` | Settings | 通用/外观/Java/网络/合规/关于 |
 | overlay | Task Center | 下载/安装队列、暂停/取消 |

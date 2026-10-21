@@ -598,7 +598,7 @@ final class CoreClient {
   Future<ResourceSearchResult> searchModrinth({
     required String query,
     required String kind,
-    required String gameVersion,
+    String? gameVersion,
     String? loader,
     String? shaderLoader,
     int page = 0,
@@ -612,7 +612,7 @@ final class CoreClient {
         'provider': 'modrinth',
         'kind': kind,
         'query': query,
-        'gameVersion': gameVersion,
+        'gameVersion': ?gameVersion,
         'loader': ?loader,
         'shaderLoader': ?shaderLoader,
         'page': page,
