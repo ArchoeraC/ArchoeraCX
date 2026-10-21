@@ -1,8 +1,9 @@
 # Minecraft Services application review
 
-Status: submission draft for the **current Device Code implementation**. Do not
-submit the older authorization-code/sessionserver wording unless those features
-are implemented first. The Client ID itself is stored as the GitHub Actions
+Status: submission draft for the **current Device Code implementation**. Online
+launch is now wired to the stored Minecraft session. Do not submit the older
+authorization-code/sessionserver wording unless those features are implemented
+first. The Client ID itself is stored as the GitHub Actions
 secret `ARCHOERACX_MICROSOFT_CLIENT_ID` and must not be committed here.
 
 ## Submission text (English)
@@ -43,10 +44,11 @@ fallback otherwise). They are not sent to ArchoeraCX servers, are not written
 to logs, and are not exposed to the UI model. The launcher checks the official
 Minecraft entitlement during sign-in and does not bypass or disable
 authentication, ownership checks, license checks, or other required checks. It
-does not use another application's Client ID. The current GitHub-only alpha
-does not enable online launch; when online launch is enabled it will use the
-same reviewed Client ID and the official Microsoft, Xbox and Minecraft
-services. We can provide more details or a test build if needed.
+does not use another application's Client ID. The same reviewed Client ID is
+used for online launch; the launcher resolves the stored Minecraft session and
+refreshes it through the official Microsoft, Xbox and Minecraft services before
+starting the game. The project is still a GitHub-only alpha and we can provide
+more details or a test build if needed.
 
 ## Why this differs from the earlier draft
 
@@ -55,7 +57,7 @@ services. We can provide more details or a test build if needed.
 | Authorization code flow with a native public-client redirect URI | OAuth 2.0 Device Code Flow; no redirect URI or local callback listener |
 | `sessionserver.mojang.com` profile lookup | `api.minecraftservices.com/minecraft/profile`; sessionserver is not called |
 | Ownership implied by profile/login | `/entitlements/mcstore` is checked during sign-in |
-| “Before enabling launch” | Ownership is checked during sign-in; online launch remains disabled in the current alpha |
+| “Before enabling launch” | Ownership is checked during sign-in; online launch now consumes the stored Minecraft session |
 
 If Minecraft review specifically requires the authorization-code flow, implement
 loopback redirect + PKCE and update this document before submitting. Do not

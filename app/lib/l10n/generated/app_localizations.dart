@@ -569,7 +569,7 @@ abstract class AppLocalizations {
   /// No description provided for @launchNoAccount.
   ///
   /// In en, this message translates to:
-  /// **'Add an offline account before launching.'**
+  /// **'Add an account before launching.'**
   String get launchNoAccount;
 
   /// No description provided for @launchOfflineOnly.
@@ -2185,6 +2185,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Development build — incomplete and may corrupt data. Do not use it for production or important instances.'**
   String get developmentBuildWarning;
+
+  /// Online launch session expired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Minecraft session expired. Sign in again.'**
+  String get launchOnlineSessionExpired;
+
+  /// Online launch requires a Microsoft account.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a Microsoft account to launch online.'**
+  String get launchMicrosoftAccountRequired;
+
+  /// Online launch client ID missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Online launch is not configured in this build.'**
+  String get launchOnlineNotConfigured;
 }
 
 class _AppLocalizationsDelegate

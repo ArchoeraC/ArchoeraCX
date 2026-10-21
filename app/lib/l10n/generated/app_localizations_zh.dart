@@ -274,7 +274,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get launchStarting => '正在启动游戏…';
 
   @override
-  String get launchNoAccount => '请先添加离线账户。';
+  String get launchNoAccount => '请先添加账户。';
 
   @override
   String get launchOfflineOnly => '当前基础启动仅支持离线账户。';
@@ -1175,4 +1175,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get developmentBuildWarning => '开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。';
+
+  @override
+  String get launchOnlineSessionExpired => 'Minecraft 会话已过期，请重新登录。';
+
+  @override
+  String get launchMicrosoftAccountRequired => '请选择微软账户进行在线启动。';
+
+  @override
+  String get launchOnlineNotConfigured => '当前构建未配置在线启动。';
 }

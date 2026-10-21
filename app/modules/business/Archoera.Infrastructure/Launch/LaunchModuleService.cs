@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Archoera.Application.Accounts;
 using Archoera.Application.Instances;
 using Archoera.Application.Java;
 using Archoera.Application.Modules;
@@ -18,24 +19,40 @@ using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Launch;
 
-/// <summary>Basic offline launch through the C# business module.</summary>
+/// <summary>
+/// Launch orchestration through the C# business module. Offline accounts use
+/// the local UUID; Microsoft accounts resolve their stored Minecraft session
+/// (refreshing it when needed) and never expose tokens to the caller.
+/// </summary>
 public sealed class LaunchModuleService : IModuleMethodHandler
 {
     private static readonly string[] SupportedMethods = ["launch.start", "launch.prepare"];
 
+    private static readonly HttpClient Http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(60),
+    };
+
     private readonly IInstanceRepository _instances;
     private readonly JsonAppSettingsStore _settings;
     private readonly JsonAccountStore _accounts;
+    private readonly IAccountCredentialStore _credentials;
+    private readonly MicrosoftAuthClient _auth;
     private readonly JavaScanner _java = new();
 
     public LaunchModuleService(
         IInstanceRepository? instances = null,
         JsonAppSettingsStore? settings = null,
-        string? dataRoot = null)
+        string? dataRoot = null,
+        JsonAccountStore? accounts = null,
+        IAccountCredentialStore? credentials = null,
+        MicrosoftAuthClient? auth = null)
     {
         _settings = settings ?? new JsonAppSettingsStore(dataRoot);
         _instances = instances ?? new SqliteInstanceRepository(dataRoot, _settings);
-        _accounts = new JsonAccountStore(dataRoot);
+        _accounts = accounts ?? new JsonAccountStore(dataRoot);
+        _credentials = credentials ?? _accounts;
+        _auth = auth ?? new MicrosoftAuthClient(Http, new MicrosoftAuthOptions());
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -45,7 +62,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         var instanceId = ReadRequired(paramsJson, "instanceId");
-        var mode = ReadOptional(paramsJson, "mode") ?? "offline";
+        var mode = (ReadOptional(paramsJson, "mode") ?? "offline").ToLowerInvariant();
         if (mode is not ("offline" or "online"))
         {
             return ModuleJson.Error("E_INVALID", "mode must be 'offline' or 'online'");
@@ -56,15 +73,21 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             ?? throw new LaunchException("INSTANCE_NOT_FOUND", $"instance not found: {instanceId}");
         var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false);
         var requirePremium = ReadBool(paramsJson, "requirePremium");
-        var premium = requirePremium
-            ? (await _accounts.ListAsync(cancellationToken).ConfigureAwait(false)).Any(
-                item => item.Kind == AccountKind.Microsoft &&
-                        !string.IsNullOrWhiteSpace(item.Uuid))
-            : true;
+        var premium = !requirePremium ||
+                      (mode == "online"
+                          ? account is { Kind: AccountKind.Microsoft } &&
+                            !string.IsNullOrWhiteSpace(account.Uuid)
+                          : (await _accounts.ListAsync(cancellationToken).ConfigureAwait(false)).Any(
+                              item => item.Kind == AccountKind.Microsoft &&
+                                      !string.IsNullOrWhiteSpace(item.Uuid)));
 
-        var ready = string.Equals(mode, "offline", StringComparison.Ordinal) && premium;
-        string? reason = premium ? null : "PREMIUM_ACCOUNT_REQUIRED";
-        if (!ready && reason is null)
+        var ready = false;
+        string? reason = null;
+        if (!premium)
+        {
+            reason = "PREMIUM_ACCOUNT_REQUIRED";
+        }
+        else if (mode == "online")
         {
             if (account is null)
             {
@@ -75,13 +98,33 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             {
                 reason = "MICROSOFT_ACCOUNT_REQUIRED";
             }
+            else if (string.IsNullOrWhiteSpace(_auth.Options.ClientId))
+            {
+                reason = "MICROSOFT_CLIENT_ID_MISSING";
+            }
+            else if (!await HasOnlineCredentialAsync(account.Id, cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                reason = "AUTH_REQUIRED";
+            }
             else
             {
-                // Online launch requires an approved Minecraft client ID,
-                // entitlement verification and certificate wiring. Keep the
-                // request contract stable while those pieces are completed.
-                reason = "ONLINE_LAUNCH_NOT_READY";
+                // Credentials are present. A refresh, if needed, happens in
+                // launch.start; prepare never touches the network.
+                ready = true;
             }
+        }
+        else if (account is null)
+        {
+            reason = "ACCOUNT_REQUIRED";
+        }
+        else if (account.Kind != AccountKind.Offline)
+        {
+            reason = "OFFLINE_ACCOUNT_REQUIRED";
+        }
+        else
+        {
+            ready = true;
         }
 
         return ModuleJson.Envelope(writer =>
@@ -96,6 +139,38 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 "accountKind",
                 account?.Kind.ToString().ToLowerInvariant());
         });
+    }
+
+    /// <summary>
+    /// Read-only readiness probe. A credential is usable when it still has a
+    /// Minecraft access token and either is not near expiry or can be refreshed.
+    /// </summary>
+    private async Task<bool> HasOnlineCredentialAsync(
+        string accountId,
+        CancellationToken cancellationToken)
+    {
+        AccountCredential? credential;
+        try
+        {
+            credential = await _credentials
+                .GetCredentialAsync(accountId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (CredentialVaultException)
+        {
+            // Prepare is advisory; launch.start reports the vault error.
+            return false;
+        }
+
+        if (credential is null || string.IsNullOrWhiteSpace(credential.MinecraftAccessToken))
+        {
+            return false;
+        }
+
+        var expiresAt = credential.MinecraftAccessTokenExpiresAt;
+        return credential.HasRefreshToken ||
+               (expiresAt is not null &&
+                expiresAt > DateTimeOffset.UtcNow.AddMinutes(2));
     }
 
     public async Task<byte[]> HandleAsync(
@@ -116,15 +191,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         try
         {
             var instanceId = ReadRequired(paramsJson, "instanceId");
-            var mode = ReadOptional(paramsJson, "mode") ?? "offline";
-            if (!string.Equals(mode, "offline", StringComparison.OrdinalIgnoreCase))
+            var mode = (ReadOptional(paramsJson, "mode") ?? "offline").ToLowerInvariant();
+            if (mode is not ("offline" or "online"))
             {
-                throw new LaunchException(
-                    "ONLINE_LAUNCH_NOT_READY",
-                    "online launch is reserved but not enabled in this build");
+                throw new LaunchException("E_INVALID", "mode must be 'offline' or 'online'");
             }
 
-            if (ReadBool(paramsJson, "requirePremium"))
+            var requirePremium = ReadBool(paramsJson, "requirePremium");
+            if (requirePremium)
             {
                 var accounts = await _accounts
                     .ListAsync(cancellationToken)
@@ -145,6 +219,15 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
             var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false)
                 ?? throw new LaunchException("ACCOUNT_REQUIRED", "add an account before launching");
+            if (mode == "online" && requirePremium &&
+                (account.Kind != AccountKind.Microsoft ||
+                 string.IsNullOrWhiteSpace(account.Uuid)))
+            {
+                throw new LaunchException(
+                    "PREMIUM_ACCOUNT_REQUIRED",
+                    "The active account must be a Microsoft account that owns Minecraft.");
+            }
+
             var requireMicrosoft = ReadBool(paramsJson, "requireMicrosoft");
             if (requireMicrosoft && account.Kind != AccountKind.Microsoft)
             {
@@ -152,24 +235,40 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     "MICROSOFT_ACCOUNT_ONLY",
                     "Only a verified Microsoft account may launch in this region.");
             }
-            if (account.Kind != AccountKind.Offline)
-            {
-                if (requireMicrosoft)
-                {
-                    throw new LaunchException(
-                        "ONLINE_LAUNCH_NOT_READY",
-                        "online launch is reserved but not enabled in this build");
-                }
 
+            var launchAccount = account;
+            var accessToken = "0";
+            var clientId = string.Empty;
+            var userType = "legacy";
+            if (mode == "online")
+            {
+                var session = await ResolveOnlineSessionAsync(account, cancellationToken)
+                    .ConfigureAwait(false);
+                launchAccount = session.Account;
+                accessToken = session.AccessToken;
+                clientId = _auth.Options.ClientId;
+                userType = "msa";
+            }
+            else if (account.Kind != AccountKind.Offline)
+            {
                 throw new LaunchException(
                     "AUTH_REQUIRED",
-                    "basic launch currently supports offline accounts only");
+                    "Offline launch requires an offline account. Sign in with Microsoft or switch to online mode.");
             }
 
             var paths = LaunchPaths.Resolve(instance.RootPath);
             var version = LoadVersion(instance, paths);
             var java = await SelectJavaAsync(settings, version, cancellationToken).ConfigureAwait(false);
-            var plan = LaunchPlanBuilder.Build(instance, version, account, java, settings, paths);
+            var plan = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                launchAccount,
+                java,
+                settings,
+                paths,
+                accessToken: accessToken,
+                clientId: clientId,
+                userType: userType);
             var (process, logPath) = Start(plan);
             return ModuleJson.Envelope(writer =>
             {
@@ -177,13 +276,17 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 writer.WriteString("instanceId", instance.Id);
                 writer.WriteString("javaPath", java.Path);
                 writer.WriteString("javaVersion", java.Version);
-                writer.WriteString("accountName", account.DisplayName);
+                writer.WriteString("accountName", launchAccount.DisplayName);
                 writer.WriteString("logPath", logPath);
             });
         }
         catch (LaunchException exception)
         {
             return ModuleJson.Error(exception.Code, exception.Message);
+        }
+        catch (CredentialVaultException exception)
+        {
+            return ModuleJson.Error("E_VAULT", exception.Message);
         }
         catch (ArgumentException exception)
         {
@@ -197,6 +300,109 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         {
             return ModuleJson.Error("LAUNCH_FAILED", exception.Message);
         }
+    }
+
+    /// <summary>
+    /// Resolves the launchable Microsoft session. A still-valid Minecraft token
+    /// is reused; otherwise the Microsoft refresh token is exchanged for a new
+    /// Minecraft session and both stores are updated. Tokens are never logged.
+    /// </summary>
+    private async Task<OnlineSession> ResolveOnlineSessionAsync(
+        AccountRecord account,
+        CancellationToken cancellationToken)
+    {
+        if (account.Kind != AccountKind.Microsoft ||
+            string.IsNullOrWhiteSpace(account.Uuid))
+        {
+            throw new LaunchException(
+                "MICROSOFT_ACCOUNT_REQUIRED",
+                "Online launch requires an active Microsoft account with a Minecraft profile.");
+        }
+
+        var clientId = _auth.Options.ClientId;
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            throw new LaunchException(
+                "MICROSOFT_CLIENT_ID_MISSING",
+                "No Microsoft client ID is configured, so online launch is unavailable.");
+        }
+
+        var credential = await _credentials
+            .GetCredentialAsync(account.Id, cancellationToken)
+            .ConfigureAwait(false);
+        if (credential is null ||
+            string.IsNullOrWhiteSpace(credential.MinecraftAccessToken))
+        {
+            throw new LaunchException(
+                "AUTH_REQUIRED",
+                "No stored Minecraft session for this account. Sign in again.");
+        }
+
+        var expiresAt = credential.MinecraftAccessTokenExpiresAt;
+        var needsRefresh = expiresAt is null ||
+                           expiresAt <= DateTimeOffset.UtcNow.AddMinutes(2);
+        if (!needsRefresh)
+        {
+            return new OnlineSession(account, credential.MinecraftAccessToken);
+        }
+
+        if (!credential.HasRefreshToken)
+        {
+            throw new LaunchException(
+                "AUTH_REQUIRED",
+                "The Minecraft session expired. Sign in again.");
+        }
+
+        MicrosoftTokenSet microsoftTokens;
+        MinecraftAuthenticatedSession session;
+        try
+        {
+            microsoftTokens = await _auth
+                .RefreshMicrosoftAsync(credential.MicrosoftRefreshToken!, cancellationToken)
+                .ConfigureAwait(false);
+            session = await _auth
+                .CompleteMinecraftLoginAsync(microsoftTokens, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (AccountAuthException exception)
+        {
+            throw new LaunchException(exception.Code, exception.Message);
+        }
+
+        var refreshToken = microsoftTokens.RefreshToken;
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            throw new LaunchException(
+                "AUTH_REQUIRED",
+                "Microsoft returned no reusable refresh token. Sign in again.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var updated = new AccountRecord(
+            account.Id,
+            AccountKind.Microsoft,
+            session.Name,
+            session.Uuid,
+            session.Xuid,
+            session.SkinUrl,
+            session.CapeUrl,
+            account.Active,
+            account.CreatedAt,
+            now,
+            now);
+        await _accounts.SaveAsync(updated, cancellationToken).ConfigureAwait(false);
+        await _credentials.SaveCredentialAsync(
+                new AccountCredential(
+                    account.Id,
+                    refreshToken,
+                    session.AccessToken,
+                    session.ExpiresAt,
+                    session.CertificatesJson,
+                    now),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return new OnlineSession(updated, session.AccessToken);
     }
 
     internal static MojangVersion LoadVersion(
@@ -428,6 +634,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         };
         return (process, logPath);
     }
+
+    private sealed record OnlineSession(AccountRecord Account, string AccessToken);
 
     private static bool ReadBool(string? json, string name)
     {

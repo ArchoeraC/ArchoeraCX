@@ -20,7 +20,10 @@ internal static class LaunchPlanBuilder
         AccountRecord account,
         JavaRuntimeInfo java,
         AppSettings settings,
-        LaunchPaths paths)
+        LaunchPaths paths,
+        string accessToken = "0",
+        string clientId = "",
+        string userType = "legacy")
     {
         if (string.IsNullOrWhiteSpace(version.MainClass))
         {
@@ -51,10 +54,10 @@ internal static class LaunchPlanBuilder
             ["assets_root"] = paths.AssetsRoot,
             ["assets_index_name"] = assetIndex,
             ["auth_uuid"] = uuid,
-            ["auth_access_token"] = "0",
-            ["clientid"] = string.Empty,
+            ["auth_access_token"] = accessToken,
+            ["clientid"] = clientId,
             ["auth_xuid"] = account.Xuid ?? string.Empty,
-            ["user_type"] = "legacy",
+            ["user_type"] = userType,
             ["version_type"] = string.IsNullOrWhiteSpace(version.Type) ? "release" : version.Type,
             ["resolution_width"] = "854",
             ["resolution_height"] = "480",
@@ -145,8 +148,8 @@ internal static class LaunchPlanBuilder
                 "--assetsDir", paths.AssetsRoot,
                 "--assetIndex", assetIndex,
                 "--uuid", uuid,
-                "--accessToken", "0",
-                "--userType", "legacy",
+                "--accessToken", accessToken,
+                "--userType", userType,
                 "--versionType", "release",
             ]);
         }

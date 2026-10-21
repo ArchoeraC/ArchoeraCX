@@ -42,6 +42,7 @@ Future<void> launchInstance(
   try {
     final result = await client.launchInstance(
       instance.id,
+      mode: account?.kind == AccountKind.microsoft ? 'online' : 'offline',
       requirePremium: policy.requirePremium,
       requireMicrosoft: policy.microsoftOnly,
     );
@@ -51,9 +52,13 @@ Future<void> launchInstance(
     if (!context.mounted) return;
     final message = switch (error) {
       CoreException(code: 'ACCOUNT_REQUIRED') => l10n.launchNoAccount,
-      CoreException(code: 'AUTH_REQUIRED') => l10n.launchOfflineOnly,
+      CoreException(code: 'AUTH_REQUIRED') => l10n.launchOnlineSessionExpired,
       CoreException(code: 'MICROSOFT_ACCOUNT_ONLY') =>
         l10n.accountMicrosoftOnly,
+      CoreException(code: 'MICROSOFT_ACCOUNT_REQUIRED') =>
+        l10n.launchMicrosoftAccountRequired,
+      CoreException(code: 'MICROSOFT_CLIENT_ID_MISSING') =>
+        l10n.launchOnlineNotConfigured,
       CoreException(code: 'ONLINE_LAUNCH_NOT_READY') =>
         l10n.launchOnlineNotReady,
       CoreException(code: 'PREMIUM_ACCOUNT_REQUIRED') =>

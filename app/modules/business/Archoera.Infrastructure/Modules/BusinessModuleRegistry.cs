@@ -18,24 +18,37 @@ namespace Archoera.Infrastructure.Modules;
 /// </summary>
 public static class BusinessModuleRegistry
 {
+    private static readonly HttpClient AuthHttp = new()
+    {
+        Timeout = TimeSpan.FromSeconds(60),
+    };
+
     public static ModuleMethodRegistry CreateDefault(string? dataRoot = null)
     {
         var region = new RegionPolicy();
         var policy = new DownloadPolicy(dataRoot, region);
+        var accounts = new JsonAccountStore(dataRoot);
+        var credentials = new VaultCredentialStore(dataRoot);
+        var auth = new MicrosoftAuthClient(AuthHttp, new MicrosoftAuthOptions());
         var handlers = new List<IModuleMethodHandler>
         {
             new JavaModuleService(
                 settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new VersionModuleService(policy: policy),
-            new LaunchModuleService(dataRoot: dataRoot),
+            new LaunchModuleService(
+                dataRoot: dataRoot,
+                accounts: accounts,
+                credentials: credentials,
+                auth: auth),
             new LoaderVersionService(policy: policy),
             new LoaderModuleService(policy: policy),
             new ResourceModuleService(policy: policy),
             new DownloadPolicyModuleService(policy),
             new RegionPolicyModuleService(region),
             new AccountModuleService(
-                accounts: new JsonAccountStore(dataRoot),
-                credentials: new VaultCredentialStore(dataRoot),
+                accounts: accounts,
+                credentials: credentials,
+                auth: auth,
                 dataRoot: dataRoot),
             new SystemModuleService(),
             new SettingsModuleService(
