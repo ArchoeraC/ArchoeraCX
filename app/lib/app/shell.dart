@@ -27,6 +27,7 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey _pageKey = GlobalKey();
   ui.Image? _coverImage;
+  bool _retract = false;
 
   @override
   void dispose() {
@@ -54,16 +55,18 @@ class _AppShellState extends ConsumerState<AppShell> {
       return;
     }
 
-    final homeRelated = current == 0 || index == 0;
-    ui.Image? image;
-    if (homeRelated) {
-      image = await _capturePage();
-      if (!mounted) {
-        image?.dispose();
-        return;
-      }
-      setState(() => _coverImage = image);
+    // Every branch switch gets a snapshot underlay so the new page can cover
+    // the old one. Returning to the home page reverses the motion: the old
+    // page retracts downward instead of a new page covering it.
+    final image = await _capturePage();
+    if (!mounted) {
+      image?.dispose();
+      return;
     }
+    setState(() {
+      _coverImage = image;
+      _retract = index == 0;
+    });
 
     navigationShell.goBranch(index);
   }
@@ -144,6 +147,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       child: _PageTransition(
                         index: index,
                         coverImage: _coverImage,
+                        retract: _retract,
                         onCoverFinished: _finishCover,
                         child: navigationShell,
                       ),
@@ -245,12 +249,14 @@ class _PageTransition extends StatefulWidget {
     required this.index,
     required this.child,
     required this.coverImage,
+    required this.retract,
     required this.onCoverFinished,
   });
 
   final int index;
   final Widget child;
   final ui.Image? coverImage;
+  final bool retract;
   final ValueChanged<ui.Image> onCoverFinished;
 
   @override
@@ -270,22 +276,28 @@ class _PageTransitionState extends State<_PageTransition>
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
+  late final Animation<Offset> _outOffset = Tween<Offset>(
+    begin: Offset.zero,
+    end: const Offset(0, 1),
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
+
   ui.Image? _previous;
   bool _finishing = false;
+  bool _retract = false;
 
   @override
   void didUpdateWidget(covariant _PageTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.index == widget.index) return;
 
-    final homeRelated = oldWidget.index == 0 || widget.index == 0;
-    if (!homeRelated || widget.coverImage == null) {
+    if (widget.coverImage == null) {
       _clearPrevious();
       _controller.value = 1;
       return;
     }
 
     _previous = widget.coverImage;
+    _retract = widget.retract;
     _finishing = false;
     _controller.forward(from: 0);
   }
@@ -323,16 +335,31 @@ class _PageTransitionState extends State<_PageTransition>
   Widget build(BuildContext context) {
     final current = Material(color: context.tokens.bg, child: widget.child);
     final previous = _previous;
-    if (previous == null) return current;
+    if (previous == null) {
+      _retract = false;
+      return current;
+    }
 
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: RawImage(image: previous, fit: BoxFit.fill),
-          ),
-          SlideTransition(position: _offset, child: current),
+          if (_retract) ...[
+            Positioned.fill(child: current),
+            Positioned.fill(
+              child: SlideTransition(
+                position: _outOffset,
+                child: RawImage(image: previous, fit: BoxFit.fill),
+              ),
+            ),
+          ] else ...[
+            Positioned.fill(
+              child: RawImage(image: previous, fit: BoxFit.fill),
+            ),
+            Positioned.fill(
+              child: SlideTransition(position: _offset, child: current),
+            ),
+          ],
         ],
       ),
     );
@@ -372,7 +399,9 @@ class _CommandBar extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
         height: currentIndex == 0
             ? AppLayout.homeBarHeight
             : AppLayout.bottomBarHeight,
