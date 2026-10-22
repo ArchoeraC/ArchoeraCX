@@ -122,6 +122,17 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 subtitle: l10n.instancesSubtitle,
                 actions: [
                   OutlinedButton.icon(
+                    onPressed: _syncing ? null : () => _sync(),
+                    icon: _syncing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(l10n.refresh),
+                  ),
+                  OutlinedButton.icon(
                     onPressed: downloadsEnabled
                         ? () => _importPack(l10n)
                         : null,
@@ -140,8 +151,6 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 query: _query,
                 count: filtered.length,
                 total: instances.length,
-                syncing: _syncing,
-                onSync: () => _sync(),
                 onChanged: (value) => setState(() => _query = value),
               ),
             ],
@@ -365,16 +374,12 @@ class _InstancesToolbar extends StatelessWidget {
     required this.query,
     required this.count,
     required this.total,
-    required this.syncing,
-    required this.onSync,
     required this.onChanged,
   });
 
   final String query;
   final int count;
   final int total;
-  final bool syncing;
-  final VoidCallback onSync;
   final ValueChanged<String> onChanged;
 
   @override
@@ -409,17 +414,6 @@ class _InstancesToolbar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final syncButton = IconButton(
-            onPressed: syncing ? null : onSync,
-            tooltip: l10n.instanceScanAction,
-            icon: syncing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.sync_rounded, size: 20),
-          );
           if (constraints.maxWidth < 720) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -428,16 +422,7 @@ class _InstancesToolbar extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (syncing)
-                      Text(
-                        l10n.instanceScanning,
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: tokens.textTertiary),
-                      ),
-                    syncButton,
-                    countLabel,
-                  ],
+                  children: [countLabel],
                 ),
               ],
             );
@@ -447,16 +432,6 @@ class _InstancesToolbar extends StatelessWidget {
             children: [
               SizedBox(width: 380, child: field),
               const Spacer(),
-              if (syncing)
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.xs),
-                  child: Text(
-                    l10n.instanceScanning,
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: tokens.textTertiary),
-                  ),
-                ),
-              syncButton,
               countLabel,
             ],
           );
