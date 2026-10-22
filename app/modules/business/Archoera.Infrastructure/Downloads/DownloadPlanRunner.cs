@@ -254,6 +254,7 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         if (!string.IsNullOrWhiteSpace(cwd))
         {
             bases.Add(Path.Combine(cwd, "build", "native"));
+            bases.Add(Path.Combine(cwd, "app", "build", "native"));
             bases.Add(Path.Combine(cwd, "app", "modules", "downloader", "target", "release"));
             bases.Add(Path.Combine(cwd, "modules", "downloader", "target", "release"));
         }

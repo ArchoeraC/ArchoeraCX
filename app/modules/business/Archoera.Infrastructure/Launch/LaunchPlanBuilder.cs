@@ -118,6 +118,111 @@ internal static class LaunchPlanBuilder
         return LaunchFileCheck.Valid;
     }
 
+    /// <summary>
+    /// Checks loader artifacts that the version JSON does not list as
+    /// libraries. Modern NeoForge locates its patched client and universal jar
+    /// through <c>-DlibraryDirectory</c> and <c>--fml.neoForgeVersion</c>, so a
+    /// merged profile can pass <see cref="CheckFiles"/> while the game is still
+    /// unable to start. Forge profiles list those jars, so only NeoForge needs
+    /// this extra probe.
+    ///
+    /// No installer is needed: an instance prepared by another launcher is
+    /// launchable as-is, and repair is only requested when a generated jar is
+    /// actually absent.
+    /// </summary>
+    internal static LaunchFileCheck CheckLoaderArtifacts(
+        GameInstanceRecord instance,
+        MojangVersion version,
+        LaunchPaths paths)
+    {
+        if (!string.Equals(instance.Loader, "neoforge", StringComparison.OrdinalIgnoreCase))
+        {
+            return LaunchFileCheck.Valid;
+        }
+
+        // Inherited profiles are merged/repaired by the caller.
+        if (!string.IsNullOrWhiteSpace(version.InheritsFrom)) return LaunchFileCheck.Valid;
+
+        // Some NeoForge profiles do list their generated jars; CheckFiles has
+        // already verified those.
+        if (version.Libraries.Any(library =>
+                library.Name.StartsWith("net.neoforged:neoforge:", StringComparison.OrdinalIgnoreCase) ||
+                library.Name.StartsWith("net.neoforged:forge:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return LaunchFileCheck.Valid;
+        }
+
+        if (string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
+            string.IsNullOrWhiteSpace(ArgumentValue(version, "--fml.neoForgeVersion")))
+        {
+            return new LaunchFileCheck(
+                false,
+                "LOADER_VERSION_MISSING",
+                $"instance {instance.Id} has no NeoForge version");
+        }
+
+        // The profile is authoritative: it is what the loader will use.
+        var loader = ArgumentValue(version, "--fml.neoForgeVersion") ??
+                     instance.LoaderVersion.Trim();
+        var game = ArgumentValue(version, "--fml.mcVersion") ?? instance.GameVersion;
+        var relative = string.Equals(game, "1.20.1", StringComparison.Ordinal)
+            ? LegacyNeoForgeRelative(game, loader)
+            : $"net/neoforged/neoforge/{loader}/neoforge-{loader}";
+        var basePath = Path.Combine(
+            paths.LibrariesRoot,
+            relative.Replace('/', Path.DirectorySeparatorChar));
+        foreach (var suffix in new[] { "-universal.jar", "-client.jar" })
+        {
+            var path = basePath + suffix;
+            if (!File.Exists(path))
+            {
+                return new LaunchFileCheck(
+                    false,
+                    "LOADER_FILES_MISSING",
+                    $"NeoForge artifact not found: {path}");
+            }
+        }
+
+        return LaunchFileCheck.Valid;
+    }
+
+    /// <summary>
+    /// Legacy NeoForge (1.20.1) publishes under <c>net/neoforged/forge</c> with
+    /// the game version prefixed to the loader version.
+    /// </summary>
+    private static string LegacyNeoForgeRelative(string game, string loader)
+    {
+        var combined = loader.StartsWith(game + "-", StringComparison.Ordinal)
+            ? loader
+            : $"{game}-{loader}";
+        return $"net/neoforged/forge/{combined}/forge-{combined}";
+    }
+
+    /// <summary>Value of a <c>--name value</c> pair in the game arguments.</summary>
+    private static string? ArgumentValue(MojangVersion version, string name)
+    {
+        if (version.Arguments is null) return null;
+        foreach (var argument in version.Arguments.Game)
+        {
+            for (var index = 0; index + 1 < argument.Values.Count; index++)
+            {
+                if (!string.Equals(argument.Values[index], name, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var value = argument.Values[index + 1];
+                if (!string.IsNullOrWhiteSpace(value) &&
+                    !value.Contains("${", StringComparison.Ordinal))
+                {
+                    return value;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public static LaunchPlan Build(
         GameInstanceRecord instance,
         MojangVersion version,
