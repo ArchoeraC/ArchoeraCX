@@ -1120,7 +1120,6 @@
     "description": "Prominent release policy notice on the accounts page."
   },
   "settingsAppearanceNote": "Theme, accent color and interface effects apply immediately.",
-  "settingsAppearancePersonalization": "Personalization",
   "settingsAppearanceLanguage": "Language & region",
   "settingsDensity": "Interface density",
   "settingsDensityDesc": "Adjust control spacing and list height.",
@@ -1437,5 +1436,25 @@
   "javaPageManageHint": "Browse every scan result, add a folder or pick a java executable.",
   "@javaPageManageHint": {
     "description": "Settings row subtitle for the Java page entry."
+  },
+  "settingsSectionTheme": "Theme",
+  "@settingsSectionTheme": {
+    "description": "Appearance settings section title."
+  },
+  "settingsSectionAccent": "Accent",
+  "@settingsSectionAccent": {
+    "description": "Appearance settings section title."
+  },
+  "settingsSectionInterface": "Interface",
+  "@settingsSectionInterface": {
+    "description": "Appearance settings section title."
+  },
+  "settingsThemeAccentSystemDesc": "Use the desktop accent color.",
+  "@settingsThemeAccentSystemDesc": {
+    "description": "Accent row subtitle when following the system accent."
+  },
+  "settingsThemeAccentCustomDesc": "Pick a single accent color for the launcher.",
+  "@settingsThemeAccentCustomDesc": {
+    "description": "Accent row subtitle when a custom accent is set."
   }
 }

@@ -533,7 +533,6 @@
     }
   },
   "settingsAppearanceNote": "主题、主题色与界面效果会即时生效。",
-  "settingsAppearancePersonalization": "个性化",
   "settingsAppearanceLanguage": "语言与区域",
   "settingsDensity": "界面密度",
   "settingsDensityDesc": "调整控件间距与列表高度。",
@@ -635,5 +634,10 @@
   "back": "返回",
   "javaPageSubtitle": "本机扫描到的全部 Java 运行环境，选择启动游戏时使用哪一个。",
   "javaPageManage": "Java 运行环境",
-  "javaPageManageHint": "查看全部扫描结果，添加目录或指定 java 可执行文件。"
+  "javaPageManageHint": "查看全部扫描结果，添加目录或指定 java 可执行文件。",
+  "settingsSectionTheme": "主题",
+  "settingsSectionAccent": "主题色",
+  "settingsSectionInterface": "界面",
+  "settingsThemeAccentSystemDesc": "跟随桌面强调色。",
+  "settingsThemeAccentCustomDesc": "为启动器指定单一强调色。"
 }

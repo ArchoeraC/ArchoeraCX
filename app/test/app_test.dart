@@ -93,9 +93,13 @@ void main() {
 
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Language & region'));
+
+    // The language row sits below the appearance groups; scroll it into view
+    // before opening the picker.
+    final languageRow = find.text('Language');
+    await tester.ensureVisible(languageRow);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Language'));
+    await tester.tap(languageRow);
     await tester.pumpAndSettle();
     await tester.tap(find.text('简体中文'));
     await tester.pumpAndSettle();

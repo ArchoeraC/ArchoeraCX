@@ -1292,9 +1292,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAppearanceNote => '主题、主题色与界面效果会即时生效。';
 
   @override
-  String get settingsAppearancePersonalization => '个性化';
-
-  @override
   String get settingsAppearanceLanguage => '语言与区域';
 
   @override
@@ -1626,4 +1623,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get javaPageManageHint => '查看全部扫描结果，添加目录或指定 java 可执行文件。';
+
+  @override
+  String get settingsSectionTheme => '主题';
+
+  @override
+  String get settingsSectionAccent => '主题色';
+
+  @override
+  String get settingsSectionInterface => '界面';
+
+  @override
+  String get settingsThemeAccentSystemDesc => '跟随桌面强调色。';
+
+  @override
+  String get settingsThemeAccentCustomDesc => '为启动器指定单一强调色。';
 }

@@ -27,8 +27,6 @@ import '../widgets/common/app_page_header.dart';
 
 enum _SettingsSection { appearance, storage, java, about }
 
-enum _AppearanceTab { personalization, language }
-
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
@@ -38,7 +36,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   _SettingsSection _section = _SettingsSection.appearance;
-  _AppearanceTab _appearanceTab = _AppearanceTab.personalization;
 
   @override
   Widget build(BuildContext context) {
@@ -199,188 +196,140 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     Color? systemAccent,
     Locale? locale,
   ) {
-    final tokens = context.tokens;
+    final notifier = ref.read(appearanceProvider.notifier);
+    final customized = appearance.accentMode == AccentMode.custom;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: SegmentedButton<_AppearanceTab>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(
-                value: _AppearanceTab.personalization,
-                label: Text(l10n.settingsAppearancePersonalization),
-                icon: const Icon(Icons.person_outline_rounded, size: 17),
+        _SettingsGroup(
+          title: l10n.settingsSectionTheme,
+          children: [
+            _AppearanceTile(
+              icon: Icons.contrast_rounded,
+              title: l10n.settingsThemeMode,
+              subtitle: l10n.settingsThemeModeDesc,
+              trailing: _SegmentedControl<ThemeMode>(
+                selected: appearance.themeMode,
+                options: [
+                  _SegmentedOption(ThemeMode.light, l10n.settingsThemeLight),
+                  _SegmentedOption(ThemeMode.dark, l10n.settingsThemeDark),
+                  _SegmentedOption(ThemeMode.system, l10n.settingsThemeSystem),
+                ],
+                onChanged: notifier.setThemeMode,
               ),
-              ButtonSegment(
-                value: _AppearanceTab.language,
-                label: Text(l10n.settingsAppearanceLanguage),
-                icon: const Icon(Icons.translate_rounded, size: 17),
-              ),
-            ],
-            selected: {_appearanceTab},
-            onSelectionChanged: (selection) =>
-                setState(() => _appearanceTab = selection.first),
-          ),
+            ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (_appearanceTab == _AppearanceTab.personalization) ...[
-          _SettingsCard(
-            children: [
-              _SettingControlRow(
-                icon: Icons.contrast_rounded,
-                title: l10n.settingsThemeMode,
-                subtitle: l10n.settingsThemeModeDesc,
-                control: SegmentedButton<ThemeMode>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(
-                      value: ThemeMode.light,
-                      label: Text(l10n.settingsThemeLight),
-                    ),
-                    ButtonSegment(
-                      value: ThemeMode.dark,
-                      label: Text(l10n.settingsThemeDark),
-                    ),
-                    ButtonSegment(
-                      value: ThemeMode.system,
-                      label: Text(l10n.settingsThemeSystem),
-                    ),
-                  ],
-                  selected: {appearance.themeMode},
-                  onSelectionChanged: (selection) => ref
-                      .read(appearanceProvider.notifier)
-                      .setThemeMode(selection.first),
-                ),
+        const SizedBox(height: AppSpacing.lg),
+        _SettingsGroup(
+          title: l10n.settingsSectionAccent,
+          children: [
+            _AppearanceTile(
+              icon: Icons.palette_outlined,
+              title: l10n.settingsThemeAccent,
+              subtitle: customized
+                  ? l10n.settingsThemeAccentCustomDesc
+                  : l10n.settingsThemeAccentSystemDesc,
+              trailing: _SegmentedControl<AccentMode>(
+                selected: appearance.accentMode,
+                options: [
+                  _SegmentedOption(
+                    AccentMode.system,
+                    l10n.settingsThemeAccentSystem,
+                  ),
+                  _SegmentedOption(
+                    AccentMode.custom,
+                    l10n.settingsThemeAccentCustom,
+                  ),
+                ],
+                onChanged: notifier.setAccentMode,
               ),
-              _SettingControlRow(
-                icon: Icons.palette_outlined,
-                title: l10n.settingsThemeAccent,
-                subtitle: l10n.settingsThemeAccentDesc,
-                control: Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xxs,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    SegmentedButton<AccentMode>(
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(
-                          value: AccentMode.system,
-                          label: Text(l10n.settingsThemeAccentSystem),
-                        ),
-                        ButtonSegment(
-                          value: AccentMode.custom,
-                          label: Text(l10n.settingsThemeAccentCustom),
-                        ),
-                      ],
-                      selected: {appearance.accentMode},
-                      onSelectionChanged: (selection) => ref
-                          .read(appearanceProvider.notifier)
-                          .setAccentMode(selection.first),
-                    ),
-                    _AccentSwatch(
-                      color: systemAccent ?? AppTokens.brandAccent,
-                      selected: appearance.accentMode == AccentMode.system,
-                      onTap: () => ref
-                          .read(appearanceProvider.notifier)
-                          .setAccentMode(AccentMode.system),
-                    ),
-                    if (appearance.accentMode == AccentMode.custom)
-                      _AccentSwatch(
-                        color: appearance.accentColor,
-                        selected: true,
-                        onTap: () => _chooseAccent(context, l10n),
-                      ),
-                    if (appearance.accentMode == AccentMode.custom)
-                      TextButton(
-                        onPressed: () => _chooseAccent(context, l10n),
-                        child: Text(l10n.settingsThemeAccentCustom),
-                      ),
-                  ],
-                ),
+            ),
+            if (customized)
+              _AccentSwatchRow(
+                current: appearance.accentColor,
+                onPick: (color) => notifier.setAccentColor(color),
+                onChoose: () => _chooseAccent(context, l10n),
+              )
+            else
+              _SystemAccentRow(color: systemAccent ?? AppTokens.brandAccent),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _SettingsGroup(
+          title: l10n.settingsSectionInterface,
+          note: l10n.settingsAppearanceNote,
+          children: [
+            _AppearanceTile(
+              icon: Icons.tonality_rounded,
+              title: l10n.settingsGlobalTint,
+              subtitle: l10n.settingsGlobalTintDesc,
+              trailing: Switch(
+                value: appearance.globalTint,
+                onChanged: notifier.setGlobalTint,
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _SettingsCard(
-            children: [
-              _SettingRow(
-                icon: Icons.tonality_rounded,
-                title: l10n.settingsGlobalTint,
-                subtitle: l10n.settingsGlobalTintDesc,
-                trailing: Switch(
-                  value: appearance.globalTint,
-                  onChanged: (value) => ref
-                      .read(appearanceProvider.notifier)
-                      .setGlobalTint(value),
-                ),
+            ),
+            _AppearanceTile(
+              icon: Icons.view_agenda_outlined,
+              title: l10n.settingsDensity,
+              subtitle: l10n.settingsDensityDesc,
+              trailing: _SegmentedControl<UiDensity>(
+                selected: appearance.density,
+                options: [
+                  _SegmentedOption(
+                    UiDensity.compact,
+                    l10n.settingsDensityCompact,
+                  ),
+                  _SegmentedOption(
+                    UiDensity.standard,
+                    l10n.settingsDensityStandard,
+                  ),
+                  _SegmentedOption(
+                    UiDensity.comfortable,
+                    l10n.settingsDensityComfortable,
+                  ),
+                ],
+                onChanged: notifier.setDensity,
               ),
-              _SettingControlRow(
-                icon: Icons.view_agenda_outlined,
-                title: l10n.settingsDensity,
-                subtitle: l10n.settingsDensityDesc,
-                control: SegmentedButton<UiDensity>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(
-                      value: UiDensity.compact,
-                      label: Text(l10n.settingsDensityCompact),
-                    ),
-                    ButtonSegment(
-                      value: UiDensity.standard,
-                      label: Text(l10n.settingsDensityStandard),
-                    ),
-                    ButtonSegment(
-                      value: UiDensity.comfortable,
-                      label: Text(l10n.settingsDensityComfortable),
-                    ),
-                  ],
-                  selected: {appearance.density},
-                  onSelectionChanged: (selection) => ref
-                      .read(appearanceProvider.notifier)
-                      .setDensity(selection.first),
-                ),
+            ),
+            _AppearanceTile(
+              icon: Icons.animation_rounded,
+              title: l10n.settingsMotion,
+              subtitle: l10n.settingsMotionDesc,
+              trailing: Switch(
+                value: appearance.reduceMotion,
+                onChanged: notifier.setReduceMotion,
               ),
-              _SettingRow(
-                icon: Icons.animation_rounded,
-                title: l10n.settingsMotion,
-                subtitle: l10n.settingsMotionDesc,
-                trailing: Switch(
-                  value: appearance.reduceMotion,
-                  onChanged: (value) => ref
-                      .read(appearanceProvider.notifier)
-                      .setReduceMotion(value),
-                ),
+            ),
+            _AppearanceTile(
+              icon: Icons.restart_alt_rounded,
+              title: l10n.settingsResetAppearance,
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: context.tokens.textTertiary,
               ),
-              _SettingRow(
-                icon: Icons.restart_alt_rounded,
-                title: l10n.settingsResetAppearance,
-                onTap: () => _resetAppearance(context, l10n),
+              onTap: () => _resetAppearance(context, l10n),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _SettingsGroup(
+          title: l10n.settingsAppearanceLanguage,
+          children: [
+            _AppearanceTile(
+              icon: Icons.translate_rounded,
+              title: l10n.settingsLanguage,
+              subtitle: _languageLabel(l10n, locale),
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: context.tokens.textTertiary,
               ),
-            ],
-          ),
-        ] else ...[
-          _SettingsCard(
-            children: [
-              _SettingRow(
-                icon: Icons.translate_rounded,
-                title: l10n.settingsLanguage,
-                value: _languageLabel(l10n, locale),
-                onTap: () => _chooseLanguage(context, l10n),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: AppSpacing.sm),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-          child: Text(
-            l10n.settingsAppearanceNote,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: tokens.textTertiary),
-          ),
+              onTap: () => _chooseLanguage(context, l10n),
+            ),
+          ],
         ),
       ],
     );
@@ -1389,56 +1338,334 @@ Color? _parseHexColor(String raw) {
   return Color(text.length == 8 ? value : 0xFF000000 | value);
 }
 
-class _SettingControlRow extends StatelessWidget {
-  const _SettingControlRow({
+/// Settings group: a small section label above a filled row card, with an
+/// optional note underneath. Mirrors the section/title/note rhythm used by the
+/// other Archoera apps while keeping the launcher's angular panel shape.
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({
+    required this.title,
+    required this.children,
+    this.note,
+  });
+
+  final String title;
+  final List<Widget> children;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final noteText = note;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: AppSpacing.xs),
+          child: Text(
+            title,
+            style: textTheme.labelSmall?.copyWith(
+              color: tokens.textSecondary,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        AppSection(
+          showTop: true,
+          showBottom: true,
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+          child: Column(
+            children: [
+              for (var index = 0; index < children.length; index++) ...[
+                children[index],
+                if (index < children.length - 1)
+                  Divider(
+                    height: 1,
+                    indent: AppSpacing.sm,
+                    endIndent: AppSpacing.sm,
+                    color: tokens.border,
+                  ),
+              ],
+            ],
+          ),
+        ),
+        if (noteText != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 2, top: AppSpacing.xs),
+            child: Text(
+              noteText,
+              style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// One appearance option: icon badge, title with a short description, and a
+/// trailing control. The whole row is tappable when [onTap] is set.
+class _AppearanceTile extends StatelessWidget {
+  const _AppearanceTile({
     required this.icon,
     required this.title,
-    required this.control,
     this.subtitle,
+    this.trailing,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
-  final Widget control;
+  final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xs,
-        AppSpacing.sm,
-        AppSpacing.xs,
-        AppSpacing.sm,
+    final textTheme = Theme.of(context).textTheme;
+    final subtitleText = subtitle;
+    final control = trailing;
+
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(icon, size: 20, color: tokens.textSecondary),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: tokens.accent.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(tokens.radiusM),
+            ),
+            child: Icon(icon, size: 18, color: tokens.accent),
           ),
-          const SizedBox(width: AppSpacing.xs),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium),
-                if (subtitle != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: tokens.textTertiary),
+                Text(title, style: textTheme.titleSmall),
+                if (subtitleText != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitleText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: tokens.textTertiary,
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xs),
-                  child: Align(alignment: Alignment.centerLeft, child: control),
+                ],
+              ],
+            ),
+          ),
+          if (control != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            control,
+          ],
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(onTap: onTap, child: content),
+    );
+  }
+}
+
+class _SegmentedOption<T> {
+  const _SegmentedOption(this.value, this.label);
+
+  final T value;
+  final String label;
+}
+
+/// Compact segmented control with a flat track and an accent-tinted selection.
+class _SegmentedControl<T> extends StatelessWidget {
+  const _SegmentedControl({
+    required this.options,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<_SegmentedOption<T>> options;
+  final T selected;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: tokens.surface2,
+        borderRadius: BorderRadius.circular(tokens.radiusM),
+        border: Border.all(color: tokens.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final option in options)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(tokens.radiusS),
+                onTap: () => onChanged(option.value),
+                child: AnimatedContainer(
+                  duration: tokens.fast,
+                  curve: tokens.curve,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: option.value == selected
+                        ? tokens.accent.withValues(alpha: 0.14)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(tokens.radiusS),
+                  ),
+                  child: Text(
+                    option.label,
+                    maxLines: 1,
+                    style: textTheme.labelMedium?.copyWith(
+                      color: option.value == selected
+                          ? tokens.accent
+                          : tokens.textSecondary,
+                      fontWeight: option.value == selected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Preset swatches plus a picker for a custom hex color.
+class _AccentSwatchRow extends StatelessWidget {
+  const _AccentSwatchRow({
+    required this.current,
+    required this.onPick,
+    required this.onChoose,
+  });
+
+  final Color current;
+  final ValueChanged<Color> onPick;
+  final VoidCallback onChoose;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        0,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                for (final color in _accentPresets)
+                  _AccentSwatch(
+                    color: color,
+                    selected: color.toARGB32() == current.toARGB32(),
+                    onTap: () => onPick(color),
+                  ),
+                Tooltip(
+                  message: _hexColor(current),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(26),
+                    onTap: onChoose,
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: tokens.surface2,
+                        border: Border.all(color: tokens.borderStrong),
+                      ),
+                      child: Icon(
+                        Icons.colorize_rounded,
+                        size: 14,
+                        color: tokens.textSecondary,
+                      ),
+                    ),
+                  ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            _hexColor(current),
+            style: textTheme.labelSmall?.copyWith(
+              color: tokens.textTertiary,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Read-only swatch shown when the launcher follows the desktop accent.
+class _SystemAccentRow extends StatelessWidget {
+  const _SystemAccentRow({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        0,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: tokens.borderStrong),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          const Spacer(),
+          Text(
+            _hexColor(color),
+            style: textTheme.labelSmall?.copyWith(
+              color: tokens.textTertiary,
+              letterSpacing: 0,
             ),
           ),
         ],
