@@ -45,6 +45,7 @@ Future<void> launchInstance(
       mode: account?.kind == AccountKind.microsoft ? 'online' : 'offline',
       requirePremium: policy.requirePremium,
       requireMicrosoft: policy.microsoftOnly,
+      label: instance.name,
     );
     if (!context.mounted) return;
     toast(l10n.launchStarted(result.pid), type: ToastType.success);

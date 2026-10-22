@@ -1420,4 +1420,201 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAboutOpenFailed => '无法打开链接。';
+
+  @override
+  String get instanceViewLogs => '查看日志';
+
+  @override
+  String get gameLogTitle => '游戏日志';
+
+  @override
+  String get gameLogEmpty => '暂无日志。启动一次该实例后，输出会显示在这里。';
+
+  @override
+  String get gameLogNoOutput => '该日志为空。';
+
+  @override
+  String get gameLogLoadFailed => '读取游戏日志失败。';
+
+  @override
+  String get gameLogRunning => '运行中';
+
+  @override
+  String get gameLogStopped => '已结束';
+
+  @override
+  String get gameLogFollow => '跟随';
+
+  @override
+  String get gameLogFollowHint => '游戏运行时持续接收新日志行。';
+
+  @override
+  String get gameLogCopy => '复制全部';
+
+  @override
+  String get gameLogCopied => '日志已复制到剪贴板。';
+
+  @override
+  String get gameLogFileLabel => '日志文件';
+
+  @override
+  String gameLogTruncated(int count) {
+    return '仅显示最后 $count 行。';
+  }
+
+  @override
+  String get taskCenterLaunch => '启动';
+
+  @override
+  String taskCenterTaskWithTarget(String category, String target) {
+    return '$category · $target';
+  }
+
+  @override
+  String get navWiki => 'Wiki';
+
+  @override
+  String get wikiSubtitle => 'Minecraft 社区动态与系统负载。';
+
+  @override
+  String get wikiSystemTitle => '系统负载';
+
+  @override
+  String get wikiFeedTitle => '社区动态';
+
+  @override
+  String get wikiFeedSubtitle => '官方新闻、Java 版本与 Wiki 编辑。';
+
+  @override
+  String get wikiRefresh => '刷新';
+
+  @override
+  String wikiUpdatedAt(String time) {
+    return '更新于 $time';
+  }
+
+  @override
+  String get wikiSourceNews => '官方新闻';
+
+  @override
+  String get wikiSourceJava => 'Java 版本';
+
+  @override
+  String get wikiSourceWiki => 'Wiki 编辑';
+
+  @override
+  String get wikiKindNews => '新闻';
+
+  @override
+  String get wikiKindRelease => '正式版';
+
+  @override
+  String get wikiKindSnapshot => '快照';
+
+  @override
+  String get wikiKindEdit => '编辑';
+
+  @override
+  String get wikiKindNew => '新建';
+
+  @override
+  String get wikiFeedEmpty => '暂时没有内容。';
+
+  @override
+  String get wikiFeedFailed => '无法加载社区动态';
+
+  @override
+  String get wikiStatusFailed => '无法读取系统负载';
+
+  @override
+  String get wikiUnavailable => '不可用';
+
+  @override
+  String get wikiCpuLabel => 'CPU';
+
+  @override
+  String get wikiMemoryLabel => '内存';
+
+  @override
+  String get wikiDiskLabel => '磁盘';
+
+  @override
+  String get wikiLauncherLabel => '启动器';
+
+  @override
+  String wikiCoresCount(int count) {
+    return '$count 线程';
+  }
+
+  @override
+  String wikiLoadAverage(String value) {
+    return '负载 $value';
+  }
+
+  @override
+  String wikiMemoryUsage(String used, String total) {
+    return '$used / $total GB';
+  }
+
+  @override
+  String wikiDiskFree(String free) {
+    return '可用 $free';
+  }
+
+  @override
+  String wikiUptime(String duration) {
+    return '已运行 $duration';
+  }
+
+  @override
+  String wikiSystemUptime(String duration) {
+    return '系统已运行 $duration';
+  }
+
+  @override
+  String get wikiTimeJustNow => '刚刚';
+
+  @override
+  String wikiTimeMinutesAgo(int count) {
+    return '$count 分钟前';
+  }
+
+  @override
+  String wikiTimeHoursAgo(int count) {
+    return '$count 小时前';
+  }
+
+  @override
+  String wikiTimeDaysAgo(int count) {
+    return '$count 天前';
+  }
+
+  @override
+  String get wikiOpenLinkFailed => '无法打开链接';
+
+  @override
+  String wikiSourceError(String error) {
+    return '获取失败：$error';
+  }
+
+  @override
+  String get wikiRetry => '重试';
+
+  @override
+  String get wikiNoSourceData => '该来源暂无内容';
+
+  @override
+  String get wikiOpenInBrowser => '在浏览器中打开';
+
+  @override
+  String get javaSearchHint => '按版本、厂商、架构或路径筛选';
+
+  @override
+  String get javaSelectedBadge => '使用中';
+
+  @override
+  String get javaFilteredEmpty => '没有匹配的 Java。';
+
+  @override
+  String get javaDiscovered => '已发现的 Java';
 }

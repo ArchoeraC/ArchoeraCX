@@ -1481,4 +1481,203 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutOpenFailed => 'Could not open the link.';
+
+  @override
+  String get instanceViewLogs => 'View logs';
+
+  @override
+  String get gameLogTitle => 'Game log';
+
+  @override
+  String get gameLogEmpty =>
+      'No log yet. Launch this instance once and its output will appear here.';
+
+  @override
+  String get gameLogNoOutput => 'This log is empty.';
+
+  @override
+  String get gameLogLoadFailed => 'Could not read the game log.';
+
+  @override
+  String get gameLogRunning => 'Running';
+
+  @override
+  String get gameLogStopped => 'Stopped';
+
+  @override
+  String get gameLogFollow => 'Follow';
+
+  @override
+  String get gameLogFollowHint => 'Stream new lines while the game is running.';
+
+  @override
+  String get gameLogCopy => 'Copy all';
+
+  @override
+  String get gameLogCopied => 'Log copied to the clipboard.';
+
+  @override
+  String get gameLogFileLabel => 'Log file';
+
+  @override
+  String gameLogTruncated(int count) {
+    return 'Showing the last $count lines.';
+  }
+
+  @override
+  String get taskCenterLaunch => 'Launch';
+
+  @override
+  String taskCenterTaskWithTarget(String category, String target) {
+    return '$category · $target';
+  }
+
+  @override
+  String get navWiki => 'Wiki';
+
+  @override
+  String get wikiSubtitle => 'Minecraft community news and machine load.';
+
+  @override
+  String get wikiSystemTitle => 'System load';
+
+  @override
+  String get wikiFeedTitle => 'Community';
+
+  @override
+  String get wikiFeedSubtitle => 'Official news, Java versions and wiki edits.';
+
+  @override
+  String get wikiRefresh => 'Refresh';
+
+  @override
+  String wikiUpdatedAt(String time) {
+    return 'Updated $time';
+  }
+
+  @override
+  String get wikiSourceNews => 'Official news';
+
+  @override
+  String get wikiSourceJava => 'Java versions';
+
+  @override
+  String get wikiSourceWiki => 'Wiki edits';
+
+  @override
+  String get wikiKindNews => 'News';
+
+  @override
+  String get wikiKindRelease => 'Release';
+
+  @override
+  String get wikiKindSnapshot => 'Snapshot';
+
+  @override
+  String get wikiKindEdit => 'Edit';
+
+  @override
+  String get wikiKindNew => 'New page';
+
+  @override
+  String get wikiFeedEmpty => 'Nothing to show right now.';
+
+  @override
+  String get wikiFeedFailed => 'Could not load the community feed';
+
+  @override
+  String get wikiStatusFailed => 'Could not read system load';
+
+  @override
+  String get wikiUnavailable => 'Unavailable';
+
+  @override
+  String get wikiCpuLabel => 'CPU';
+
+  @override
+  String get wikiMemoryLabel => 'Memory';
+
+  @override
+  String get wikiDiskLabel => 'Disk';
+
+  @override
+  String get wikiLauncherLabel => 'Launcher';
+
+  @override
+  String wikiCoresCount(int count) {
+    return '$count threads';
+  }
+
+  @override
+  String wikiLoadAverage(String value) {
+    return 'load $value';
+  }
+
+  @override
+  String wikiMemoryUsage(String used, String total) {
+    return '$used / $total GB';
+  }
+
+  @override
+  String wikiDiskFree(String free) {
+    return '$free free';
+  }
+
+  @override
+  String wikiUptime(String duration) {
+    return 'up $duration';
+  }
+
+  @override
+  String wikiSystemUptime(String duration) {
+    return 'System up $duration';
+  }
+
+  @override
+  String get wikiTimeJustNow => 'just now';
+
+  @override
+  String wikiTimeMinutesAgo(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String wikiTimeHoursAgo(int count) {
+    return '$count h ago';
+  }
+
+  @override
+  String wikiTimeDaysAgo(int count) {
+    return '$count d ago';
+  }
+
+  @override
+  String get wikiOpenLinkFailed => 'Could not open the link';
+
+  @override
+  String wikiSourceError(String error) {
+    return 'Fetch failed: $error';
+  }
+
+  @override
+  String get wikiRetry => 'Retry';
+
+  @override
+  String get wikiNoSourceData => 'No items from this source';
+
+  @override
+  String get wikiOpenInBrowser => 'Open in browser';
+
+  @override
+  String get javaSearchHint =>
+      'Filter by version, vendor, architecture or path';
+
+  @override
+  String get javaSelectedBadge => 'In use';
+
+  @override
+  String get javaFilteredEmpty => 'No Java matches this filter.';
+
+  @override
+  String get javaDiscovered => 'Discovered Java';
 }

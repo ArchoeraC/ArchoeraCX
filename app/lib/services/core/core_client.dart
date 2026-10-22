@@ -15,6 +15,7 @@ import 'installed_mod.dart';
 import 'java_scan.dart';
 import 'launch_preparation.dart';
 import 'launch_result.dart';
+import 'launch_log.dart';
 import 'loader_versions.dart';
 import 'loader_plan.dart';
 import 'pack_install_result.dart';
@@ -23,8 +24,10 @@ import 'region_policy.dart';
 import 'resource_models.dart';
 import 'system_memory.dart';
 import 'system_appearance.dart';
+import 'system_status.dart';
 import 'task_update.dart';
 import 'vanilla_install_plan.dart';
+import 'wiki_feed.dart';
 
 /// Progress callback carrying the module-provided phase/current line.
 typedef CoreDetailedProgress = void Function(
@@ -358,6 +361,7 @@ final class CoreClient {
     List<String> executables = const <String>[],
     bool includeDefaults = true,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'java.scan';
     final paramsJson = jsonEncode(<String, Object?>{
@@ -369,6 +373,7 @@ final class CoreClient {
       methodName,
       paramsJson: paramsJson,
       onProgress: onProgress,
+      label: label,
     );
     return _parseJavaScan(jsonText, fallbackMethod: methodName);
   }
@@ -441,6 +446,7 @@ final class CoreClient {
     bool requirePremium = false,
     bool requireMicrosoft = false,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'launch.prepare';
     final jsonText = await _runAsync(
@@ -452,6 +458,7 @@ final class CoreClient {
         'requireMicrosoft': requireMicrosoft,
       }),
       onProgress: onProgress,
+      label: label,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
@@ -473,6 +480,7 @@ final class CoreClient {
     bool requirePremium = false,
     bool requireMicrosoft = false,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'launch.start';
     final jsonText = await _runAsync(
@@ -484,6 +492,7 @@ final class CoreClient {
         'requireMicrosoft': requireMicrosoft,
       }),
       onProgress: onProgress,
+      label: label,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
@@ -502,6 +511,128 @@ final class CoreClient {
       javaVersion: _asString(data['javaVersion']),
       accountName: _asString(data['accountName']),
       logPath: _asString(data['logPath']),
+    );
+  }
+
+  /// List the recent launch logs of an instance.
+  ///
+  /// Logs live under `<instance>/.archoera/logs`; the UI never reads them
+  /// directly, it only renders what the module returns.
+  Future<LaunchLogList> listLaunchLogs(
+    String instanceId, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'launch.logs';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final logs = LaunchLogList.tryParse(_asMap(decoded['data'], methodName));
+    if (logs == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an invalid log list.',
+      );
+    }
+    return logs;
+  }
+
+  /// Read the tail of one launch log. Omit [fileName] to use the running
+  /// launch's log, or the newest one.
+  Future<LaunchLogSnapshot> readLaunchLog({
+    required String instanceId,
+    String? fileName,
+    int lines = 400,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'launch.log.read';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'instanceId': instanceId,
+        'fileName': ?fileName,
+        'lines': lines,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final snapshot = LaunchLogSnapshot.tryParse(
+      _asMap(decoded['data'], methodName),
+    );
+    if (snapshot == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an invalid log snapshot.',
+      );
+    }
+    return snapshot;
+  }
+
+  /// Follow a running launch's log.
+  ///
+  /// The C# module pushes appended lines through the ABI progress callback, so
+  /// this stream is wake-driven: no Dart timer, no file access, no polling
+  /// loop. [LaunchLogTail.stop] cancels the native task.
+  Future<LaunchLogTail> tailLaunchLog({
+    required String instanceId,
+    String? fileName,
+    int lines = 400,
+  }) async {
+    const methodName = 'launch.log.tail';
+    final controller = StreamController<String>();
+    final started = Completer<int>();
+    final finished = Completer<void>();
+
+    void finish() {
+      if (!controller.isClosed) controller.close();
+      if (!finished.isCompleted) finished.complete();
+    }
+
+    unawaited(
+      _runAsync(
+        methodName,
+        paramsJson: jsonEncode(<String, Object?>{
+          'instanceId': instanceId,
+          'fileName': ?fileName,
+          'lines': lines,
+          'follow': true,
+        }),
+        onTaskStarted: (taskId) {
+          if (!started.isCompleted) started.complete(taskId);
+        },
+        onDetailedProgress: (_, _, message) {
+          if (message == null || message.isEmpty) return;
+          if (!controller.isClosed) controller.add(message);
+        },
+      ).then<void>(
+        (_) => finish(),
+        onError: (Object error, StackTrace stack) {
+          // Cancelling the follow is a normal stop, not a stream failure.
+          if (error is CoreException && error.code == 'E_CANCELLED') {
+            finish();
+            return;
+          }
+          if (!controller.isClosed) controller.addError(error, stack);
+          finish();
+        },
+      ),
+    );
+
+    final taskId = await started.future;
+    return LaunchLogTail(
+      chunks: controller.stream,
+      done: finished.future,
+      stop: () {
+        try {
+          cancel(taskId);
+        } catch (_) {
+          // The task already finished or the core is gone; both are fine.
+        }
+      },
     );
   }
 
@@ -540,6 +671,7 @@ final class CoreClient {
     required String gameVersion,
     required String loaderVersion,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'loader.plan';
     final jsonText = await _runAsync(
@@ -552,6 +684,7 @@ final class CoreClient {
         'loaderVersion': loaderVersion,
       }),
       onProgress: onProgress,
+      label: label,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
@@ -580,6 +713,7 @@ final class CoreClient {
     required String versionId,
     required String versionJson,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'loader.commit';
     final jsonText = await _runAsync(
@@ -590,6 +724,7 @@ final class CoreClient {
         'versionJson': versionJson,
       }),
       onProgress: onProgress,
+      label: label,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
@@ -639,6 +774,7 @@ final class CoreClient {
     required String javaPath,
     String librariesPath = 'libraries',
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'loader.repair';
     final paramsJson = jsonEncode(<String, Object?>{
@@ -652,6 +788,7 @@ final class CoreClient {
       methodName,
       paramsJson: paramsJson,
       onProgress: onProgress,
+      label: label,
     );
     return _decodeRawEnvelope(jsonText, fallbackMethod: methodName);
   }
@@ -661,6 +798,7 @@ final class CoreClient {
     required String root,
     required String versionId,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'version.plan';
     final jsonText = await _runAsync(
@@ -670,6 +808,7 @@ final class CoreClient {
         'versionId': versionId,
       }),
       onProgress: onProgress,
+      label: label,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
@@ -698,6 +837,7 @@ final class CoreClient {
     required String versionId,
     required String versionJson,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'version.commit';
     final jsonText = await _runAsync(
@@ -708,6 +848,7 @@ final class CoreClient {
         'versionJson': versionJson,
       }),
       onProgress: onProgress,
+      label: label,
     );
     _decodeEnvelope(jsonText, fallbackMethod: methodName);
   }
@@ -881,12 +1022,14 @@ final class CoreClient {
   Future<PackInspection> inspectModpack(
     String path, {
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'modpack.inspect';
     final jsonText = await _runAsync(
       methodName,
       paramsJson: jsonEncode(<String, Object?>{'path': path}),
       onProgress: onProgress,
+      label: label,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
@@ -908,6 +1051,7 @@ final class CoreClient {
     String? rootPath,
     CoreDetailedProgress? onDetailedProgress,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'modpack.installLocal';
     final jsonText = await _runAsync(
@@ -918,6 +1062,7 @@ final class CoreClient {
         'rootPath': ?rootPath,
       }),
       onProgress: onProgress,
+      label: label,
       onDetailedProgress: onDetailedProgress,
     );
     return _parsePackInstall(jsonText, methodName);
@@ -931,6 +1076,7 @@ final class CoreClient {
     String? rootPath,
     CoreDetailedProgress? onDetailedProgress,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'modpack.install';
     final jsonText = await _runAsync(
@@ -943,6 +1089,7 @@ final class CoreClient {
         'rootPath': ?rootPath,
       }),
       onProgress: onProgress,
+      label: label,
       onDetailedProgress: onDetailedProgress,
     );
     return _parsePackInstall(jsonText, methodName);
@@ -954,12 +1101,14 @@ final class CoreClient {
     String instanceId, {
     CoreDetailedProgress? onDetailedProgress,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'loader.autoRepair';
     final jsonText = await _runAsync(
       methodName,
       paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
       onProgress: onProgress,
+      label: label,
       onDetailedProgress: onDetailedProgress,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
@@ -997,12 +1146,14 @@ final class CoreClient {
   Future<DownloadExecutionResult> executeDownload(
     Map<String, Object?> plan, {
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'download.execute';
     final jsonText = await _runAsync(
       methodName,
       paramsJson: jsonEncode(<String, Object?>{'plan': plan}),
       onProgress: onProgress,
+      label: label,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
@@ -1122,6 +1273,53 @@ final class CoreClient {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Read CPU/memory/disk/process load for the Wiki page.
+  ///
+  /// [path] selects the volume used for the disk row; the module falls back to
+  /// the launcher directory when it is omitted.
+  Future<SystemStatus?> getSystemStatus({
+    String? path,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.status';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: path == null
+          ? '{}'
+          : jsonEncode(<String, Object?>{'path': path}),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return SystemStatus.tryParse(data);
+  }
+
+  /// Fetch Minecraft community news, Java patch notes and wiki changes.
+  ///
+  /// [force] bypasses the module's five minute cache; [limit] caps rows per
+  /// source and [sources] narrows the set (`mojang-news`, `mojang-java`,
+  /// `minecraft-wiki`).
+  Future<WikiFeed?> getWikiFeed({
+    bool force = false,
+    int? limit,
+    List<String>? sources,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'wiki.feed';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'force': force,
+        'limit': ?limit,
+        'sources': ?sources,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = _asMap(decoded['data'], methodName);
+    return WikiFeed.tryParse(data);
   }
 
   /// Persist memory and JVM options.
@@ -1534,7 +1732,9 @@ final class CoreClient {
     String methodName, {
     void Function(int done, int total)? onProgress,
     CoreDetailedProgress? onDetailedProgress,
+    void Function(int taskId)? onTaskStarted,
     String paramsJson = '{}',
+    String? label,
   }) async {
     final core = _requireCore();
     final pump = _pump;
@@ -1549,11 +1749,13 @@ final class CoreClient {
     var taskId = 0;
     try {
       taskId = _startTask(core, methodName, paramsJson: paramsJson);
+      onTaskStarted?.call(taskId);
       _emitTask(
         TaskUpdate(
           taskId: taskId,
           method: methodName,
           state: TaskUpdateState.running,
+          label: label,
         ),
       );
 
@@ -1572,6 +1774,7 @@ final class CoreClient {
                   taskId: taskId,
                   method: methodName,
                   state: TaskUpdateState.running,
+                  label: label,
                   done: event.done,
                   total: event.total,
                   bytesPerSecond: event.bytesPerSec,
@@ -1588,6 +1791,7 @@ final class CoreClient {
             taskId: taskId,
             method: methodName,
             state: TaskUpdateState.cancelled,
+            label: label,
             message: error.message,
           ),
         );
@@ -1608,6 +1812,7 @@ final class CoreClient {
               taskId: taskId,
               method: methodName,
               state: TaskUpdateState.cancelled,
+              label: label,
             ),
           );
           throw CoreException(
@@ -1623,6 +1828,7 @@ final class CoreClient {
             taskId: taskId,
             method: methodName,
             state: TaskUpdateState.completed,
+            label: label,
           ),
         );
         return result;
@@ -1635,6 +1841,7 @@ final class CoreClient {
           state: terminal.state == CoreTaskState.cancelled
               ? TaskUpdateState.cancelled
               : TaskUpdateState.failed,
+          label: label,
           message: terminal.message,
         ),
       );

@@ -4,6 +4,7 @@ import 'package:archoera_cx/services/core/build_policy.dart';
 import 'package:archoera_cx/services/core/download_policy.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -236,6 +237,18 @@ void main() {
 
     expect(find.text('Tasks'), findsOneWidget);
     expect(find.text('No active tasks.'), findsOneWidget);
+
+    // The panel is a right-hand sidebar: pinned to the top of the window and
+    // anchored to its right edge instead of rising from the bottom.
+    final header = tester.getTopLeft(find.text('Tasks'));
+    expect(header.dy, lessThan(120));
+    expect(header.dx, greaterThan(900));
+
+    // Escape closes it like any desktop overlay.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Tasks'), findsNothing);
+
     expect(tester.takeException(), isNull);
   });
 

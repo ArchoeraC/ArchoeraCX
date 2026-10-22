@@ -10,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
-import '../services/core/java_scan.dart';
 import '../services/core/system_memory.dart';
 import '../stores/appearance.dart';
 import '../stores/instances.dart';
@@ -21,7 +20,7 @@ import '../theme/tokens.dart';
 import '../utils/app_info.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/common/toast.dart';
-import '../widgets/common/java_status_card.dart';
+import '../widgets/settings/java_runtimes_panel.dart';
 import '../widgets/common/app_page_header.dart';
 
 enum _SettingsSection { appearance, storage, java, about }
@@ -177,13 +176,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          _RuntimeSettingsPanel(settings: settings),
           const SizedBox(height: AppSpacing.md),
-          JavaStatusCard(
-            autoScan: true,
-            selectedPath: settings?.javaPath,
-            onSelect: (runtime) => _selectJava(context, l10n, runtime),
-          ),
+          const JavaRuntimesPanel(),
+          const SizedBox(height: AppSpacing.md),
+          _RuntimeSettingsPanel(settings: settings),
         ],
       ),
       _SettingsSection.about => _AboutPanel(settings: settings),
@@ -542,25 +538,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           );
       if (context.mounted) {
         _notify(context, l10n.settingsSaved, type: ToastType.success);
-      }
-    } catch (error) {
-      if (context.mounted) {
-        _notify(context, error.toString(), type: ToastType.error);
-      }
-    }
-  }
-
-  Future<void> _selectJava(
-    BuildContext context,
-    AppLocalizations l10n,
-    JavaRuntime runtime,
-  ) async {
-    try {
-      await ref
-          .read(appSettingsProvider.notifier)
-          .setJavaSelection(javaPath: runtime.path, javaAuto: false);
-      if (context.mounted) {
-        _notify(context, l10n.settingsJavaSelected, type: ToastType.success);
       }
     } catch (error) {
       if (context.mounted) {

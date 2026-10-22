@@ -429,6 +429,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
           projectId: project.id,
           versionId: selected.id,
           title: l10n.packInstallTitle,
+          taskLabel: project.name,
         );
       }
     } catch (error) {
@@ -484,7 +485,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         root: downloadRoot,
       );
       if (!mounted) return;
-      final result = await client.executeDownload(plan);
+      final result = await client.executeDownload(plan, label: project.name);
       if (!mounted) return;
       _notify(AppLocalizations.of(context).downloadResult(result.status));
     } catch (error) {

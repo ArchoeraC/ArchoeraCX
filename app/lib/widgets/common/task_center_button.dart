@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
@@ -7,6 +8,11 @@ import '../../stores/providers.dart';
 import '../../stores/tasks.dart';
 import '../../theme/tokens.dart';
 
+/// Title-bar entry point for the task center.
+///
+/// Tasks open as a right-hand sidebar that slides in over the content instead
+/// of a bottom sheet: the list is tall enough to keep several downloads
+/// readable and does not cover the command bar.
 class TaskCenterButton extends ConsumerWidget {
   const TaskCenterButton({super.key});
 
@@ -19,7 +25,7 @@ class TaskCenterButton extends ConsumerWidget {
     return Tooltip(
       message: AppLocalizations.of(context).taskCenterTitle,
       child: IconButton(
-        onPressed: () => _open(context),
+        onPressed: () => openTaskCenterSidebar(context),
         icon: Badge(
           isLabelVisible: active > 0,
           label: Text('$active'),
@@ -31,81 +37,193 @@ class TaskCenterButton extends ConsumerWidget {
       ),
     );
   }
-
-  void _open(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.72,
-      ),
-      builder: (_) => const _TaskCenterPanel(),
-    );
-  }
 }
 
-class _TaskCenterPanel extends ConsumerWidget {
-  const _TaskCenterPanel();
+/// Shows the task center as a modal sidebar pinned to the right edge.
+Future<void> openTaskCenterSidebar(BuildContext context) {
+  final tokens = context.tokens;
+  final l10n = AppLocalizations.of(context);
+
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: l10n.taskCenterTitle,
+    barrierColor: tokens.overlay.withValues(alpha: 0.55),
+    transitionDuration: tokens.slow,
+    pageBuilder: (_, _, _) => const Align(
+      alignment: Alignment.centerRight,
+      child: _TaskCenterSidebar(),
+    ),
+    transitionBuilder: (context, animation, _, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: tokens.curve,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1, 0),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      );
+    },
+  );
+}
+
+class _TaskCenterSidebar extends ConsumerWidget {
+  const _TaskCenterSidebar();
+
+  /// Wide enough for progress text and speed, capped on small windows.
+  static const double _width = 380;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final tasks = ref.watch(taskCenterProvider);
-    final hasCompleted = tasks.any((task) => task.isTerminal);
+    final active = tasks.where((task) => !task.isTerminal).length;
+    final hasCompleted = tasks.length > active;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final panelWidth = screenWidth < _width + AppSpacing.xl
+        ? screenWidth - AppSpacing.xl
+        : _width;
 
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              0,
-              AppSpacing.sm,
-              AppSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.taskCenterTitle,
-                    style: Theme.of(context).textTheme.titleLarge,
+    final shape = BeveledRectangleBorder(
+      side: BorderSide(color: tokens.border),
+      borderRadius: BorderRadius.only(topLeft: Radius.circular(tokens.bevelL)),
+    );
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.of(context).maybePop(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: SizedBox(
+          width: panelWidth.clamp(0.0, _width),
+          height: double.infinity,
+          child: Material(
+            color: Colors.transparent,
+            child: ClipPath(
+              clipper: ShapeBorderClipper(shape: shape),
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: tokens.surface1,
+                  shape: shape,
+                ),
+                child: SafeArea(
+                  left: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _SidebarHeader(
+                        active: active,
+                        hasCompleted: hasCompleted,
+                        onClear: () => ref
+                            .read(taskCenterProvider.notifier)
+                            .clearCompleted(),
+                      ),
+                      Divider(height: 1, color: tokens.border),
+                      Expanded(
+                        child: tasks.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(AppSpacing.xl),
+                                  child: Text(
+                                    l10n.taskCenterEmpty,
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: tokens.textSecondary),
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xs,
+                                ),
+                                itemCount: tasks.length,
+                                separatorBuilder: (_, _) =>
+                                    Divider(height: 1, color: tokens.border),
+                                itemBuilder: (context, index) =>
+                                    _TaskRow(task: tasks[index]),
+                              ),
+                      ),
+                    ],
                   ),
                 ),
-                if (hasCompleted)
-                  TextButton(
-                    onPressed: () =>
-                        ref.read(taskCenterProvider.notifier).clearCompleted(),
-                    child: Text(l10n.taskCenterClear),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarHeader extends StatelessWidget {
+  const _SidebarHeader({
+    required this.active,
+    required this.hasCompleted,
+    required this.onClear,
+  });
+
+  final int active;
+  final bool hasCompleted;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.taskCenterTitle, style: textTheme.titleLarge),
+                if (active > 0)
+                  Text(
+                    l10n.taskCenterActive(active),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: tokens.textTertiary,
+                    ),
                   ),
               ],
             ),
           ),
-          Divider(height: 1, color: tokens.border),
-          if (tasks.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Text(
-                l10n.taskCenterEmpty,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(color: tokens.textSecondary),
+          if (hasCompleted)
+            TextButton(
+              onPressed: onClear,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
               ),
-            )
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                itemCount: tasks.length,
-                separatorBuilder: (_, _) =>
-                    Divider(height: 1, color: tokens.border),
-                itemBuilder: (context, index) => _TaskRow(task: tasks[index]),
-              ),
+              child: Text(l10n.taskCenterClear),
             ),
+          IconButton(
+            tooltip: l10n.close,
+            onPressed: () => Navigator.of(context).maybePop(),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.close_rounded, size: 18),
+          ),
         ],
       ),
     );
@@ -131,9 +249,11 @@ class _TaskRow extends ConsumerWidget {
     };
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.sm,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +282,9 @@ class _TaskRow extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        _taskLabel(l10n, task.method),
+                        _title(l10n, task),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
@@ -202,29 +324,49 @@ class _TaskRow extends ConsumerWidget {
                         ),
                     ],
                   ),
-                ],
-                if (active && task.message?.isNotEmpty == true)
+                ] else if (task.done > 0)
                   Text(
-                    task.message!,
+                    _formatBytes(task.done),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall
                         ?.copyWith(color: tokens.textTertiary),
                   ),
+                if (task.message?.isNotEmpty == true)
+                  Text(
+                    task.message!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: task.state == TaskUpdateState.failed
+                          ? tokens.danger
+                          : tokens.textTertiary,
+                    ),
+                  ),
               ],
             ),
           ),
-          if (active) ...[
-            const SizedBox(width: AppSpacing.xs),
-            TextButton(
+          if (active)
+            IconButton(
+              tooltip: l10n.taskCenterCancel,
               onPressed: () =>
                   ref.read(coreClientProvider)?.cancel(task.taskId),
-              child: Text(l10n.taskCenterCancel),
+              visualDensity: VisualDensity.compact,
+              iconSize: 18,
+              icon: Icon(Icons.close_rounded, color: tokens.textTertiary),
             ),
-          ],
         ],
       ),
     );
+  }
+
+  /// Row title: the module category plus the specific target when the caller
+  /// supplied one, e.g. "Modpack · AutumnTown" instead of a bare "Task".
+  String _title(AppLocalizations l10n, TaskUpdate task) {
+    final category = _taskLabel(l10n, task.method);
+    final target = task.label?.trim();
+    if (target == null || target.isEmpty) return category;
+    return l10n.taskCenterTaskWithTarget(category, target);
   }
 
   String _taskLabel(AppLocalizations l10n, String method) => switch (method) {
@@ -233,10 +375,12 @@ class _TaskRow extends ConsumerWidget {
     'loader.plan' ||
     'loader.commit' ||
     'loader.repair' ||
+    'loader.autoRepair' ||
     'loader.versions' => l10n.taskCenterLoader,
     'modpack.install' ||
     'modpack.installLocal' ||
     'modpack.inspect' => l10n.taskCenterModpack,
+    'launch.start' || 'launch.prepare' => l10n.taskCenterLaunch,
     'java.scan' => l10n.taskCenterJavaScan,
     _ => l10n.taskCenterTask,
   };

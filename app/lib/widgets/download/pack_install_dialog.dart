@@ -15,6 +15,7 @@ Future<PackInstallResult?> showPackInstallDialog(
   String? projectId,
   String? versionId,
   String? title,
+  String? taskLabel,
 }) {
   return showDialog<PackInstallResult>(
     context: context,
@@ -24,6 +25,7 @@ Future<PackInstallResult?> showPackInstallDialog(
       projectId: projectId,
       versionId: versionId,
       title: title,
+      taskLabel: taskLabel,
     ),
   );
 }
@@ -38,12 +40,17 @@ class PackInstallDialog extends ConsumerStatefulWidget {
     this.projectId,
     this.versionId,
     this.title,
+    this.taskLabel,
   });
 
   final String? localPath;
   final String? projectId;
   final String? versionId;
   final String? title;
+
+  /// Human name of the pack shown in the task center sidebar. Falls back to
+  /// the inspected pack name or the file name.
+  final String? taskLabel;
 
   @override
   ConsumerState<PackInstallDialog> createState() => _PackInstallDialogState();
@@ -108,6 +115,10 @@ class _PackInstallDialogState extends ConsumerState<PackInstallDialog> {
 
         final result = await client.installModpackLocal(
           path: localPath,
+          label:
+              widget.taskLabel ??
+              _inspection?.name ??
+              localPath.split('/').last,
           onDetailedProgress: _onProgress,
         );
         await _complete(result);
@@ -123,6 +134,7 @@ class _PackInstallDialogState extends ConsumerState<PackInstallDialog> {
       final result = await client.installModpackFromModrinth(
         projectId: projectId,
         versionId: versionId,
+        label: widget.taskLabel,
         onDetailedProgress: _onProgress,
       );
       await _complete(result);

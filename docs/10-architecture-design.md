@@ -1232,7 +1232,7 @@ JavaLocator
 - 探测：`java -XshowSettings:properties -version`，解析 `java.version`/`java.home`/`java.vendor`/`os.arch`；超时 5s。
 - 候选：`JAVA_HOME`、PATH、`/usr/lib/jvm`、`/opt/java`（含 `vendor/jdk` 嵌套）、`/opt`、Windows 注册表、macOS `java_home`；详见 `08/08-java-scan.md`。
 - 缓存：按路径 + mtime + size 缓存版本；PATH 变化时失效。
-- 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；UI 默认显示前 5 个，支持“查看全部”。
+- 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；设置页 Java 分区平铺展示全部扫描结果（带搜索与自定义路径管理）。
 - 手动路径：`java.scan {roots, executables, includeDefaults}`；默认扫描为空时 UI 提示“选择目录搜索”，仍为空再提示“选择 JDK 目录 / java 可执行文件”；用户选择后用 `includeDefaults:false` 验证，路径持久化并随扫描带上。
 - 安装：Mojang runtime 优先；Adoptium 作为可选源；校验 SHA-256/签名；不打包 Oracle JDK。
 - 选择：`majorVersion` 必须匹配；Forge/NeoForge processors 用同一 JRE；不匹配时预检失败，不进入 processor。
@@ -2291,6 +2291,8 @@ public interface IDownloadProvider {
 | `system.log.tail` | C++ | 环形缓冲分页 |
 | `system.log.export` | C++ | 导出诊断日志 |
 | `system.memory` | C# | 上报物理总内存/可用内存 |
+| `system.status` | C# | 机器负载快照：CPU 采样/核数/负载、内存、指定路径所在磁盘、启动器进程与系统运行时长（未知值写 null） |
+| `wiki.feed` | C# | Wiki 页社区流：Mojang 官方新闻、Java 版本补丁说明、Minecraft Wiki 最近编辑；逐源独立失败 + 5 分钟缓存 |
 | `system.diagnostics` | C++/C# | 生成诊断包 |
 | `system.openPath` | C++ | 打开本地路径（校验） |
 | `system.openUrl` | C++ | 打开 https 白名单 |
@@ -2350,7 +2352,9 @@ public interface IDownloadProvider {
 | `launch.start` | C# | spawn JVM |
 | `launch.stop` | C# | 优雅停止/杀进程树 |
 | `launch.status` | C# | 运行状态/pid |
-| `launch.log.tail` | C# | 游戏日志分页 |
+| `launch.logs` | C# | 列出实例最近的启动日志（含运行中标记） |
+| `launch.log.read` | C# | 读取单个日志尾部（默认 400 行，256 KiB 窗口） |
+| `launch.log.tail` | C# | 跟随日志：经 ABI 进度回调推送新行，进程退出或取消时结束 |
 | `resource.search` | C# | 统一搜索（当前 Modrinth；支持排序/分页） |
 | `resource.project` | C# | 项目详情与画廊（当前 Modrinth） |
 | `resource.detail` | C# | 项目详情 |

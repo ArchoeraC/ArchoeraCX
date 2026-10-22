@@ -49,4 +49,4 @@ ArchoeraCX 的公开文档。实现以代码和契约为准；文档与代码冲
 - 新方法必须同时登记到 C++ `method_registry` 与 C# `BusinessModuleRegistry`。
 - 新增文档先判断是否已有 SSOT；重复摘要优先删除，而不是继续叠加。
 - 被取代的设计稿移入 `docs/archive/` 并在[归档索引](archive/README.md)登记原位置、理由与现行替代。
-- 本地临时草稿、反编译产物与样本放 `.local/`，不进入公开仓库。
+- 本地临时草稿、反编译产物与样本放 `Reference/local/`，不进入公开仓库。

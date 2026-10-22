@@ -7,6 +7,7 @@ import '../pages/dashboard_page.dart';
 import '../pages/download_page.dart';
 import '../pages/instances_page.dart';
 import '../pages/settings_page.dart';
+import '../pages/wiki_page.dart';
 import 'shell.dart';
 
 GoRouter buildAppRouter() {
@@ -56,6 +57,15 @@ GoRouter buildAppRouter() {
                 path: '/accounts',
                 name: 'accounts',
                 builder: (context, state) => const AccountsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/wiki',
+                name: 'wiki',
+                builder: (context, state) => const WikiPage(),
               ),
             ],
           ),
