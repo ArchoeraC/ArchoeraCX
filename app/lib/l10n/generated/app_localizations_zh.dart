@@ -272,12 +272,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceNoMatches => '没有匹配的实例。';
 
   @override
-  String get instanceScanAction => '扫描实例';
-
-  @override
-  String get instanceScanning => '正在扫描实例目录…';
-
-  @override
   String get instanceDelete => '删除实例';
 
   @override
