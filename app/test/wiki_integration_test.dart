@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:archoera_cx/services/core/core_client.dart';
+import 'package:archoera_cx/services/core/core_event.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// End-to-end check for `wiki.feed` and `system.status`.
@@ -54,7 +55,7 @@ void main() {
   );
 
   test(
-    'system.status reports load through the ABI',
+    'system.status samples load and pushes it every interval',
     () async {
       final client = CoreClient.openDefault();
       addTearDown(client.close);
@@ -70,6 +71,30 @@ void main() {
       }
       expect(status.diskPath, isNotNull);
       expect(status.launcherWorkingSetMb, greaterThan(0));
+
+      // The core pushes domain events every interval; Dart only drains them.
+      final pushed = client.events
+          .where(
+            (event) =>
+                event.type == CoreEventType.domain &&
+                event.payload['kind'] == 'system.status',
+          )
+          .first;
+      expect(
+        await client.startSystemStatusWatch(
+          intervalMs: 1000,
+          path: Directory.current.path,
+        ),
+        isTrue,
+      );
+      final event = await pushed.timeout(const Duration(seconds: 5));
+      final pushedStatus = event.payload;
+      expect(pushedStatus['platform'], isA<String>());
+      expect(pushedStatus['cores'], isA<int>());
+      expect(pushedStatus['cpu'], isA<Map<String, Object?>>());
+      expect(pushedStatus['memory'], isA<Map<String, Object?>>());
+
+      await client.stopSystemStatusWatch();
     },
     skip: !library.existsSync()
         ? 'Run the CMake native build to enable the FFI smoke test.'

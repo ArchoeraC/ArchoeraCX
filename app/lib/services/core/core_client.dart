@@ -1296,6 +1296,41 @@ final class CoreClient {
     return SystemStatus.tryParse(data);
   }
 
+  /// Starts the core-owned load sampler. The core pushes `system.status`
+  /// domain events every [intervalMs] while the watch is active; Dart never
+  /// polls. Idempotent: calling it again only updates the interval/path.
+  Future<bool> startSystemStatusWatch({
+    int intervalMs = 5000,
+    String? path,
+  }) async {
+    const methodName = 'system.status.watch';
+    try {
+      final jsonText = await _runAsync(
+        methodName,
+        paramsJson: jsonEncode(<String, Object?>{
+          'intervalMs': intervalMs,
+          'path': ?path,
+        }),
+      );
+      final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+      final data = _asMap(decoded['data'], methodName);
+      return data['watching'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Stops the core-owned load sampler. Safe to call when no watch is active
+  /// or when the core has already been closed.
+  Future<void> stopSystemStatusWatch() async {
+    const methodName = 'system.status.unwatch';
+    try {
+      await _runAsync(methodName);
+    } catch (_) {
+      // Shutdown races are expected; the core stops the sampler itself.
+    }
+  }
+
   /// Fetch Minecraft community news, Java patch notes and wiki changes.
   ///
   /// [force] bypasses the module's five minute cache; [limit] caps rows per

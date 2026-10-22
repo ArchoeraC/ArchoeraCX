@@ -3,11 +3,15 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "archoera_abi.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <time.h>
 
 #define CHECK(cond)                                                        \
   do {                                                                     \
@@ -156,6 +160,61 @@ int main(void) {
   CHECK(strstr(json, "\"theme\":") != NULL);
   CHECK(strstr(json, "\"source\":") != NULL);
   archoera_release(core, appearance_task);
+
+  /* system.status runs on a core worker (CPU is sampled over ~140 ms), so it
+   * completes asynchronously like the other native calls. */
+  {
+    uint64_t status_task = 0;
+    CHECK(archoera_call(core, "system.status", "{}", &status_task, &err) ==
+          ARCHOERA_OK);
+    CHECK(status_task != 0);
+    int found = 0;
+    for (int attempt = 0; attempt < 200 && !found; ++attempt) {
+      count = archoera_poll(core, events, 64);
+      if (count < 0) {
+        break;
+      }
+      for (int index = 0; index < count; ++index) {
+        if (events[index].task_id == status_task &&
+            events[index].state == ARCHOERA_TASK_COMPLETED) {
+          found = 1;
+        }
+      }
+      if (!found) {
+        struct timespec pause = {0, 10 * 1000 * 1000};
+        nanosleep(&pause, NULL);
+      }
+    }
+    CHECK(found);
+    free(json);
+    json = NULL;
+    len = 0;
+    CHECK(archoera_result(core, status_task, NULL, 0, &len, &err) ==
+          ARCHOERA_OK);
+    json = (char*)malloc(len);
+    CHECK(json != NULL);
+    CHECK(archoera_result(core, status_task, json, len, &len, &err) ==
+          ARCHOERA_OK);
+    CHECK(strstr(json, "\"platform\":") != NULL);
+    CHECK(strstr(json, "\"memory\":") != NULL);
+    CHECK(strstr(json, "\"disk\":") != NULL);
+    CHECK(strstr(json, "\"process\":") != NULL);
+    archoera_release(core, status_task);
+
+    /* The push watcher is core-owned and can be stopped again. */
+    uint64_t watch_task = 0;
+    CHECK(archoera_call(core, "system.status.watch",
+                        "{\"intervalMs\":1000}", &watch_task, &err) ==
+          ARCHOERA_OK);
+    CHECK(watch_task != 0);
+    archoera_release(core, watch_task);
+
+    uint64_t unwatch_task = 0;
+    CHECK(archoera_call(core, "system.status.unwatch", "{}", &unwatch_task,
+                        &err) == ARCHOERA_OK);
+    CHECK(unwatch_task != 0);
+    archoera_release(core, unwatch_task);
+  }
 
   /* Native system actions reject non-http(s) URLs before spawning work. */
   rejected_task = 123;

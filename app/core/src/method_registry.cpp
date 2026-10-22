@@ -25,6 +25,9 @@ constexpr MethodRoute kRoutes[] = {
     {"system.appearance", MethodRouteKind::kCoreAppearance, {}},
     {"system.openUrl", MethodRouteKind::kCoreOpenUrl, {}},
     {"system.notify", MethodRouteKind::kCoreNotify, {}},
+    {"system.status", MethodRouteKind::kCoreStatus, {}},
+    {"system.status.watch", MethodRouteKind::kCoreStatusWatch, {}},
+    {"system.status.unwatch", MethodRouteKind::kCoreStatusUnwatch, {}},
 
     {"java.scan", MethodRouteKind::kModule, kCsModule},
     {"java.select", MethodRouteKind::kModule, kCsModule},
@@ -56,7 +59,6 @@ constexpr MethodRoute kRoutes[] = {
     {"loader.autoRepair", MethodRouteKind::kModule, kCsModule},
 
     {"system.memory", MethodRouteKind::kModule, kCsModule},
-    {"system.status", MethodRouteKind::kModule, kCsModule},
     {"wiki.feed", MethodRouteKind::kModule, kCsModule},
     {"settings.get", MethodRouteKind::kModule, kCsModule},
     {"settings.set", MethodRouteKind::kModule, kCsModule},

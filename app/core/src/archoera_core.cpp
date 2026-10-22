@@ -11,6 +11,7 @@
 #include "method_registry.h"
 #include "module_registry.h"
 #include "platform_appearance.h"
+#include "platform_status.h"
 #include "platform_system.h"
 
 #include <algorithm>
@@ -19,6 +20,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <deque>
 #include <memory>
@@ -140,6 +142,18 @@ struct WakeTarget {
 
 }  // namespace
 
+// Native sampler owned by system.status.watch. A single thread waits on a
+// condition variable for the next interval (no busy polling) and pushes one
+// domain event per tick.
+struct StatusWatch {
+  std::mutex mutex;
+  std::condition_variable cv;
+  std::thread thread;
+  bool stopping = false;
+  std::chrono::milliseconds interval{5000};
+  std::string disk_path;
+};
+
 // The opaque handle from the public header. It must stay in the global
 // namespace so it is the same type as the forward declaration in the ABI.
 struct archoera_core {
@@ -175,6 +189,14 @@ struct archoera_core {
   // OS notification thread and is stopped before this core is deleted.
   std::unique_ptr<archoera::PlatformAppearanceWatcher> appearance;
   bool appearance_started = false;
+
+  // system.status.watch: one native sampler thread that pushes a domain event
+  // every interval. Started on demand and joined before the core is deleted.
+  std::unique_ptr<StatusWatch> status_watch;
+
+  // Used for the launcher process uptime row; steady clock never jumps.
+  std::chrono::steady_clock::time_point started_at =
+      std::chrono::steady_clock::now();
 };
 
 namespace {
@@ -271,7 +293,8 @@ std::string make_modules_result(const archoera_core& core) {
       "\"version\":\"0.0.1+1\",\"state\":\"ready\","
       "\"methods\":[\"system.ping\",\"system.pingAsync\","
       "\"system.info\",\"system.modules\",\"system.appearance\","
-      "\"system.openUrl\",\"system.notify\"]}";
+      "\"system.openUrl\",\"system.notify\",\"system.status\","
+      "\"system.status.watch\",\"system.status.unwatch\"]}";
   if (core.module_registry != nullptr) {
     for (const auto& module : core.module_registry->modules()) {
       json.append(",{\"name\":\"");
@@ -532,6 +555,33 @@ constexpr const char* kMsgShuttingDown = "core is shutting down";
 
 // Requires core.mutex to be held. A released/missing task is a stop signal for
 // its worker because there is no longer anywhere to publish progress or state.
+bool extract_json_int(const std::string& json,
+                      const char* key,
+                      long long* out) {
+  if (out == nullptr || key == nullptr) return false;
+  const std::string needle = std::string("\"") + key + "\"";
+  size_t position = json.find(needle);
+  if (position == std::string::npos) return false;
+  position += needle.size();
+  while (position < json.size() &&
+         (json[position] == ' ' || json[position] == '\t' ||
+          json[position] == '\r' || json[position] == '\n')) {
+    ++position;
+  }
+  if (position >= json.size() || json[position] != ':') return false;
+  ++position;
+  while (position < json.size() &&
+         (json[position] == ' ' || json[position] == '\t' ||
+          json[position] == '\r' || json[position] == '\n')) {
+    ++position;
+  }
+  char* end = nullptr;
+  const long long value = std::strtoll(json.c_str() + position, &end, 10);
+  if (end == json.c_str() + position) return false;
+  *out = value;
+  return true;
+}
+
 bool async_task_should_stop_locked(const archoera_core& core, uint64_t task_id) {
   auto it = core.tasks.find(task_id);
   if (it == core.tasks.end()) {
@@ -847,6 +897,375 @@ archoera_status start_system_action(archoera_core* core,
       try {
         core->workers.emplace_back(&system_action_worker, core, task_id,
                                    std::move(action));
+      } catch (...) {
+        core->tasks.erase(inserted.first);
+        throw;
+      }
+    }
+
+    *out_task_id = task_id;
+    clear_error(err);
+    return ARCHOERA_OK;
+  } catch (const std::bad_alloc&) {
+    set_error(err, ARCHOERA_E_INTERNAL, kMsgOutOfMemory);
+    return ARCHOERA_E_INTERNAL;
+  } catch (...) {
+    set_error(err, ARCHOERA_E_INTERNAL, kMsgInternal);
+    return ARCHOERA_E_INTERNAL;
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Machine load (system.status / system.status.watch)
+// ---------------------------------------------------------------------------
+
+void append_number_field(std::string& json,
+                         const char* name,
+                         double value) {
+  char buffer[64];
+  std::snprintf(buffer, sizeof(buffer), "%.1f", value);
+  json.append("\"");
+  json.append(name);
+  json.append("\":");
+  json.append(buffer);
+}
+
+void append_int_field(std::string& json, const char* name, long long value) {
+  json.append("\"");
+  json.append(name);
+  json.append("\":");
+  json.append(std::to_string(value));
+}
+
+// Shared payload members for the one-shot result and the pushed event. The
+// caller adds the `ok`/`data` or `kind` wrapper.
+void append_status_fields(std::string& json,
+                          const archoera::SystemStatus& status,
+                          bool cpu_known,
+                          double cpu_percent,
+                          double launcher_uptime_seconds) {
+  json.append("\"platform\":\"");
+  append_json_escaped(json, status.platform.c_str());
+  json.append("\",\"os\":\"");
+  append_json_escaped(json, status.os.c_str());
+  json.append("\",");
+  append_int_field(json, "cores", status.cores > 0 ? status.cores : 1);
+  json.append(",");
+
+  json.append("\"cpu\":{");
+  if (cpu_known) {
+    append_number_field(json, "usagePercent", cpu_percent);
+  } else {
+    json.append("\"usagePercent\":null");
+  }
+  json.append(",");
+  if (status.load_known) {
+    append_number_field(json, "loadAverage1m", status.load1);
+  } else {
+    json.append("\"loadAverage1m\":null");
+  }
+  json.append("},");
+
+  json.append("\"memory\":{");
+  if (status.memory_known && status.memory_total_mb > 0) {
+    const long long used = std::max<long long>(
+        0, status.memory_total_mb - status.memory_available_mb);
+    append_int_field(json, "totalMb", status.memory_total_mb);
+    json.append(",");
+    append_int_field(json, "availableMb", status.memory_available_mb);
+    json.append(",");
+    append_int_field(json, "usedMb", used);
+    json.append(",");
+    append_number_field(
+        json, "usagePercent",
+        static_cast<double>(used) * 100.0 /
+            static_cast<double>(status.memory_total_mb));
+  } else {
+    json.append(
+        "\"totalMb\":null,\"availableMb\":null,\"usedMb\":null,"
+        "\"usagePercent\":null");
+  }
+  json.append("},");
+
+  json.append("\"disk\":{");
+  if (status.disk_known && status.disk_total_bytes > 0) {
+    json.append("\"path\":\"");
+    append_json_escaped(json, status.disk_path.c_str());
+    json.append("\",");
+    append_int_field(json, "totalBytes", status.disk_total_bytes);
+    json.append(",");
+    append_int_field(json, "freeBytes", status.disk_free_bytes);
+    json.append(",");
+    const long long used =
+        std::max<long long>(0, status.disk_total_bytes - status.disk_free_bytes);
+    append_number_field(
+        json, "usagePercent",
+        static_cast<double>(used) * 100.0 /
+            static_cast<double>(status.disk_total_bytes));
+  } else {
+    json.append(
+        "\"path\":null,\"totalBytes\":null,\"freeBytes\":null,"
+        "\"usagePercent\":null");
+  }
+  json.append("},");
+
+  json.append("\"process\":{");
+  if (status.process_known) {
+    append_int_field(json, "workingSetMb", status.process_working_set_mb);
+  } else {
+    json.append("\"workingSetMb\":null");
+  }
+  json.append(",\"managedMb\":null,");
+  append_number_field(json, "uptimeSeconds", launcher_uptime_seconds);
+  json.append("},");
+
+  json.append("\"system\":{");
+  if (status.uptime_known) {
+    append_number_field(json, "uptimeSeconds", status.system_uptime_seconds);
+  } else {
+    json.append("\"uptimeSeconds\":null");
+  }
+  json.append("}");
+}
+
+double launcher_uptime_seconds(const archoera_core& core) {
+  const auto elapsed = std::chrono::steady_clock::now() - core.started_at;
+  return std::chrono::duration<double>(elapsed).count();
+}
+
+std::string make_status_result(const archoera::SystemStatus& status,
+                               bool cpu_known,
+                               double cpu_percent,
+                               double launcher_uptime) {
+  std::string json = "{\"ok\":true,\"data\":{";
+  append_status_fields(json, status, cpu_known, cpu_percent, launcher_uptime);
+  json.append("},\"meta\":{\"schemaVersion\":1}}");
+  return json;
+}
+
+// Publishes one sample as a `system.status` domain event. Never throws and
+// never calls wake under the core lock.
+void publish_status(archoera_core* core,
+                    const archoera::SystemStatus& status,
+                    bool cpu_known,
+                    double cpu_percent) noexcept {
+  try {
+    std::string json = "{\"schemaVersion\":1,\"kind\":\"system.status\",";
+    append_status_fields(json, status, cpu_known, cpu_percent,
+                         launcher_uptime_seconds(*core));
+    json.append("}");
+
+    WakeTarget wake;
+    bool notify = false;
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      if (core->shutting_down.load(std::memory_order_acquire)) {
+        return;
+      }
+
+      EventRecord event;
+      event.type = ARCHOERA_EV_DOMAIN;
+      event.task_id = 0;
+      event.json = std::move(json);
+      enqueue_event_locked(*core, std::move(event));
+      wake = wake_target_locked(*core);
+      notify = true;
+    }
+    if (notify) {
+      notify_wake(wake);
+    }
+  } catch (...) {
+    // A missed sample must never escape the sampler thread.
+  }
+}
+
+void status_watch_loop(archoera_core* core, StatusWatch* watch) noexcept {
+  try {
+    // First window: a short pair of samples so the first push already carries
+    // CPU usage instead of a gap.
+    const auto first = archoera::read_cpu_times();
+    {
+      std::unique_lock<std::mutex> lock(watch->mutex);
+      if (watch->cv.wait_for(lock, std::chrono::milliseconds(120),
+                             [watch] { return watch->stopping; })) {
+        return;
+      }
+    }
+
+    auto previous = archoera::read_cpu_times();
+    double percent = 0.0;
+    const bool cpu_known =
+        archoera::cpu_usage_percent(first, previous, &percent);
+    publish_status(core, archoera::sample_system_status(watch->disk_path),
+                   cpu_known, percent);
+
+    std::unique_lock<std::mutex> lock(watch->mutex);
+    while (!watch->stopping) {
+      if (watch->cv.wait_for(lock, watch->interval,
+                             [watch] { return watch->stopping; })) {
+        break;
+      }
+      const std::string path = watch->disk_path;
+      lock.unlock();
+
+      const auto current = archoera::read_cpu_times();
+      double value = 0.0;
+      const bool known = archoera::cpu_usage_percent(previous, current, &value);
+      previous = current;
+      publish_status(core, archoera::sample_system_status(path), known, value);
+
+      lock.lock();
+    }
+  } catch (...) {
+    // Stop pushing; Dart keeps the last sample and the manual refresh.
+  }
+}
+
+bool start_status_watch(archoera_core& core,
+                        std::chrono::milliseconds interval,
+                        std::string disk_path) noexcept {
+  try {
+    std::lock_guard<std::mutex> lock(core.mutex);
+    if (core.shutting_down.load(std::memory_order_acquire)) {
+      return false;
+    }
+
+    if (core.status_watch != nullptr) {
+      std::lock_guard<std::mutex> watch_lock(core.status_watch->mutex);
+      core.status_watch->interval = interval;
+      core.status_watch->disk_path = std::move(disk_path);
+      core.status_watch->cv.notify_all();
+      return true;
+    }
+
+    auto watch = std::make_unique<StatusWatch>();
+    watch->interval = interval;
+    watch->disk_path = std::move(disk_path);
+    watch->thread = std::thread(status_watch_loop, &core, watch.get());
+    core.status_watch = std::move(watch);
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
+void stop_status_watch(archoera_core& core) noexcept {
+  try {
+    std::thread worker;
+    {
+      std::lock_guard<std::mutex> lock(core.mutex);
+      if (core.status_watch == nullptr) {
+        return;
+      }
+      {
+        std::lock_guard<std::mutex> watch_lock(core.status_watch->mutex);
+        core.status_watch->stopping = true;
+      }
+      core.status_watch->cv.notify_all();
+
+      // Another thread already moved the thread out and is joining it; leave
+      // the object alone so its sampler cannot observe a freed watch.
+      if (!core.status_watch->thread.joinable()) {
+        return;
+      }
+      worker = std::move(core.status_watch->thread);
+    }
+
+    // Join without holding core.mutex: the loop publishes through it.
+    if (worker.joinable()) {
+      worker.join();
+    }
+
+    std::lock_guard<std::mutex> lock(core.mutex);
+    core.status_watch.reset();
+  } catch (...) {
+    // Shutdown must stay idempotent and exception-free.
+  }
+}
+
+void status_worker(archoera_core* core,
+                   uint64_t task_id,
+                   std::string method,
+                   std::string disk_path) noexcept {
+  try {
+    const auto first = archoera::read_cpu_times();
+    std::this_thread::sleep_for(std::chrono::milliseconds(140));
+    const auto second = archoera::read_cpu_times();
+    double percent = 0.0;
+    const bool cpu_known =
+        archoera::cpu_usage_percent(first, second, &percent);
+    const std::string result = make_status_result(
+        archoera::sample_system_status(disk_path), cpu_known, percent,
+        launcher_uptime_seconds(*core));
+
+    WakeTarget wake;
+    bool notify = false;
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      if (core->shutting_down.load(std::memory_order_acquire)) {
+        return;
+      }
+
+      auto it = core->tasks.find(task_id);
+      if (it == core->tasks.end() || is_terminal(it->second.state)) {
+        return;
+      }
+
+      TaskRecord& task = it->second;
+      EventRecord event;
+      event.type = ARCHOERA_EV_TASK_STATE;
+      event.task_id = task_id;
+
+      if (task.cancel_requested) {
+        task.state = ARCHOERA_TASK_CANCELLED;
+        task.result.clear();
+        event.state = ARCHOERA_TASK_CANCELLED;
+        event.json = make_state_json(method, "cancelled", "task cancelled");
+      } else {
+        task.state = ARCHOERA_TASK_COMPLETED;
+        task.result = result;
+        event.state = ARCHOERA_TASK_COMPLETED;
+        event.json = make_state_json(method, "completed", "task completed");
+      }
+
+      enqueue_event_locked(*core, std::move(event));
+      wake = wake_target_locked(*core);
+      notify = true;
+    }
+    if (notify) {
+      notify_wake(wake);
+    }
+  } catch (...) {
+    fail_async_task(core, task_id);
+  }
+}
+
+archoera_status start_status_call(archoera_core* core,
+                                  std::string method,
+                                  std::string disk_path,
+                                  uint64_t* out_task_id,
+                                  archoera_error* err) {
+  try {
+    uint64_t task_id = 0;
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      if (core->shutting_down.load(std::memory_order_acquire)) {
+        set_error(err, ARCHOERA_E_INVALID, kMsgShuttingDown);
+        return ARCHOERA_E_INVALID;
+      }
+
+      task_id = core->next_task_id++;
+      TaskRecord task;
+      task.id = task_id;
+      task.method = method;
+      task.state = ARCHOERA_TASK_RUNNING;
+      task.async = true;
+
+      auto inserted = core->tasks.emplace(task_id, std::move(task));
+      try {
+        core->workers.emplace_back(&status_worker, core, task_id,
+                                   std::move(method), std::move(disk_path));
       } catch (...) {
         core->tasks.erase(inserted.first);
         throw;
@@ -1348,6 +1767,9 @@ ARCHOERA_API void archoera_shutdown(archoera_core* core) {
       core->appearance->stop();
     }
 
+    // The status sampler pushes domain events; join it before the queue dies.
+    stop_status_watch(*core);
+
     // Module contract: shutdown blocks until callbacks stop, so no callback
     // can touch this core after this call. Only then may the core die.
     if (core->module_registry != nullptr) {
@@ -1477,6 +1899,11 @@ ARCHOERA_API archoera_status archoera_call(archoera_core* core,
       return ARCHOERA_E_UNSUPPORTED;
     }
 
+    // Sync core methods fill this instead of breaking into the switch's
+    // result builder below (watch/unwatch need their parsed parameters).
+    std::string early_result;
+    bool has_early_result = false;
+
     switch (route->kind) {
       case MethodRouteKind::kCorePingAsync:
         return start_ping_async(core, out_task_id, err);
@@ -1519,10 +1946,44 @@ ARCHOERA_API archoera_status archoera_call(archoera_core* core,
         }
         return start_system_action(core, std::move(action), out_task_id, err);
       }
+      case MethodRouteKind::kCoreStatus: {
+        std::string path;
+        extract_json_string(raw_params, "path", &path);
+        return start_status_call(core, method_name, std::move(path),
+                                 out_task_id, err);
+      }
+      case MethodRouteKind::kCoreStatusWatch: {
+        long long interval = 5000;
+        extract_json_int(raw_params, "intervalMs", &interval);
+        if (interval < 1000) interval = 1000;
+        if (interval > 60000) interval = 60000;
+        std::string path;
+        extract_json_string(raw_params, "path", &path);
+        if (!start_status_watch(*core, std::chrono::milliseconds(interval),
+                                std::move(path))) {
+          set_error(err, ARCHOERA_E_INVALID, kMsgShuttingDown);
+          return ARCHOERA_E_INVALID;
+        }
+        early_result = "{\"ok\":true,\"data\":{\"watching\":true,"
+                       "\"intervalMs\":" +
+                       std::to_string(interval) +
+                       "},\"meta\":{\"schemaVersion\":1}}";
+        has_early_result = true;
+        break;
+      }
+      case MethodRouteKind::kCoreStatusUnwatch:
+        stop_status_watch(*core);
+        early_result =
+            "{\"ok\":true,\"data\":{\"watching\":false},"
+            "\"meta\":{\"schemaVersion\":1}}";
+        has_early_result = true;
+        break;
     }
 
     std::string result;
-    if (route->kind == MethodRouteKind::kCorePing) {
+    if (has_early_result) {
+      result = std::move(early_result);
+    } else if (route->kind == MethodRouteKind::kCorePing) {
       result = kPingResult;
     } else if (route->kind == MethodRouteKind::kCoreInfo) {
       result = make_info_result();

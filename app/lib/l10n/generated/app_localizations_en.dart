@@ -1704,4 +1704,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsThemeAccentCustomDesc =>
       'Pick a single accent color for the launcher.';
+
+  @override
+  String get wikiSystemLive => 'Updates every 5 s';
 }
