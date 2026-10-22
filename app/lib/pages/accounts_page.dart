@@ -69,29 +69,52 @@ class AccountsPage extends ConsumerWidget {
             : null,
       );
     } else {
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (current != null) ...[
-            CurrentAccountPanel(
-              account: current,
-              onRefresh: current.kind == AccountKind.microsoft
-                  ? () => _refresh(context, ref, current)
+      final currentAccount = current;
+      final panel = currentAccount == null
+          ? null
+          : CurrentAccountPanel(
+              account: currentAccount,
+              onRefresh: currentAccount.kind == AccountKind.microsoft
+                  ? () => _refresh(context, ref, currentAccount)
                   : null,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
-          AccountsListSection(
-            accounts: accounts,
-            loading: accountsAsync.isLoading,
-            error: accountsAsync.hasError
-                ? l10n.accountsLoadFailed('${accountsAsync.error}')
-                : null,
-            onSelect: (account) => _select(context, ref, account),
-            onRefresh: (account) => _refresh(context, ref, account),
-            onRemove: (account) => _remove(context, ref, account),
-          ),
-        ],
+            );
+      final list = AccountsListSection(
+        accounts: accounts,
+        loading: accountsAsync.isLoading,
+        error: accountsAsync.hasError
+            ? l10n.accountsLoadFailed('${accountsAsync.error}')
+            : null,
+        onSelect: (account) => _select(context, ref, account),
+        onRefresh: (account) => _refresh(context, ref, account),
+        onRemove: (account) => _remove(context, ref, account),
+      );
+
+      body = LayoutBuilder(
+        builder: (context, constraints) {
+          // On a fullscreen window the hero alone leaves the right half empty;
+          // place the account list beside it instead of underneath.
+          if (panel == null || constraints.maxWidth < 1400) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (panel != null) ...[
+                  panel,
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+                list,
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: panel),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(flex: 2, child: list),
+            ],
+          );
+        },
       );
     }
 
