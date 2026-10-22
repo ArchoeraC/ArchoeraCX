@@ -640,5 +640,8 @@
   "settingsSectionInterface": "界面",
   "settingsThemeAccentSystemDesc": "跟随桌面强调色。",
   "settingsThemeAccentCustomDesc": "为启动器指定单一强调色。",
-  "wikiSystemLive": "每 5 秒自动更新"
+  "wikiSystemLive": "每 5 秒自动更新",
+  "loaderPickerVanillaHint": "不安装加载器，直接安装原版游戏。",
+  "loaderVersionCount": "{count, plural, =0{无可用版本} other{{count} 个版本}}",
+  "loaderVersionNoMatch": "没有匹配的版本。"
 }

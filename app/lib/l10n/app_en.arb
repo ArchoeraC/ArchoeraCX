@@ -1460,5 +1460,22 @@
   "wikiSystemLive": "Updates every 5 s",
   "@wikiSystemLive": {
     "description": "Hint that machine load is pushed by the core every five seconds."
+  },
+  "loaderPickerVanillaHint": "No mod loader; the instance installs the vanilla game.",
+  "@loaderPickerVanillaHint": {
+    "description": "Hint shown when vanilla is selected in the loader picker."
+  },
+  "loaderVersionCount": "{count, plural, =0{No builds} =1{1 build} other{{count} builds}}",
+  "@loaderVersionCount": {
+    "description": "Number of loader builds matching the current filter.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loaderVersionNoMatch": "No builds match this search.",
+  "@loaderVersionNoMatch": {
+    "description": "Empty state when the loader version search matches nothing."
   }
 }

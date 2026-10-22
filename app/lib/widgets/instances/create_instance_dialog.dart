@@ -10,8 +10,7 @@ import '../../stores/instances.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/tokens.dart';
-import '../common/loader_mark.dart';
-import 'loader_version_picker.dart';
+import 'loader_picker_panel.dart';
 import '../common/toast.dart';
 import '../../utils/app_paths.dart';
 
@@ -92,12 +91,16 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         ? _selectedRoot!
         : roots.first;
     final canCreate = _nameController.text.trim().isNotEmpty;
+    final contentWidth = (MediaQuery.sizeOf(context).width - 120).clamp(
+      420.0,
+      600.0,
+    );
 
     return AlertDialog(
       scrollable: true,
       title: Text(l10n.instanceCreateTitle),
       content: SizedBox(
-        width: 420,
+        width: contentWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,89 +192,27 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
               },
             ),
             const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<GameLoader>(
-              initialValue: _loader,
-              decoration: InputDecoration(labelText: l10n.instanceLoaderLabel),
-              items: [
-                for (final loader in _loaders)
-                  DropdownMenuItem(
-                    value: loader,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        LoaderMark(loader: loader, size: 18),
-                        const SizedBox(width: AppSpacing.xs),
-                        Flexible(
-                          child: Text(
-                            loader.labelFor(l10n),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
+            LoaderPickerPanel(
+              loaders: _loaders,
+              selectedLoader: _loader,
+              onLoaderSelected: (loader) {
+                if (loader == _loader) return;
                 setState(() {
-                  _loader = value;
+                  _loader = loader;
                   _loaderVersion = '';
                 });
                 _loadLoaderVersions();
               },
+              versions: _loaderVersions,
+              selectedVersion: _loaderVersion,
+              onVersionSelected: (version) =>
+                  setState(() => _loaderVersion = version),
+              loading: _loadingVersions,
+              error: _versionError,
+              onRetry: _loadLoaderVersions,
+              gameVersion: _gameVersion,
+              width: contentWidth,
             ),
-            if (_loader != GameLoader.vanilla) ...[
-              const SizedBox(height: AppSpacing.md),
-              InkWell(
-                onTap: _loadingVersions ? null : () => _pickVersion(l10n),
-                borderRadius: BorderRadius.circular(tokens.radiusS),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: l10n.loaderVersionLabel,
-                    suffixIcon: _loadingVersions
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : const Icon(Icons.expand_more_rounded),
-                  ),
-                  child: Text(
-                    _loaderVersion.isEmpty
-                        ? (_versionError ?? l10n.loaderVersionEmpty)
-                        : _loaderVersion,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              if (_versionError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xxs),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _versionError!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: tokens.danger),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _loadingVersions
-                            ? null
-                            : _loadLoaderVersions,
-                        child: Text(l10n.refresh),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
             const SizedBox(height: AppSpacing.sm),
             Text(
               l10n.instanceCreateSummary(_loader.labelFor(l10n), _gameVersion),
@@ -361,23 +302,6 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         _loaderVersion = loader.defaultVersion;
         _versionError = AppLocalizations.of(context).loaderVersionLoadFailed;
       });
-    }
-  }
-
-  Future<void> _pickVersion(AppLocalizations l10n) async {
-    if (_loaderVersions.isEmpty) {
-      if (_loadingVersions) return;
-      toast(_versionError ?? l10n.loaderVersionEmpty, type: ToastType.warning);
-      return;
-    }
-    final selected = await showLoaderVersionPicker(
-      context,
-      versions: _loaderVersions,
-      selected: _loaderVersion,
-      gameVersion: _gameVersion,
-    );
-    if (selected != null && mounted) {
-      setState(() => _loaderVersion = selected);
     }
   }
 

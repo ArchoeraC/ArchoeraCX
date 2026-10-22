@@ -1641,4 +1641,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get wikiSystemLive => '每 5 秒自动更新';
+
+  @override
+  String get loaderPickerVanillaHint => '不安装加载器，直接安装原版游戏。';
+
+  @override
+  String loaderVersionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个版本',
+      zero: '无可用版本',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get loaderVersionNoMatch => '没有匹配的版本。';
 }

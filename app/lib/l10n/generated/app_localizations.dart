@@ -3037,6 +3037,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Updates every 5 s'**
   String get wikiSystemLive;
+
+  /// Hint shown when vanilla is selected in the loader picker.
+  ///
+  /// In en, this message translates to:
+  /// **'No mod loader; the instance installs the vanilla game.'**
+  String get loaderPickerVanillaHint;
+
+  /// Number of loader builds matching the current filter.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No builds} =1{1 build} other{{count} builds}}'**
+  String loaderVersionCount(int count);
+
+  /// Empty state when the loader version search matches nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No builds match this search.'**
+  String get loaderVersionNoMatch;
 }
 
 class _AppLocalizationsDelegate
