@@ -33,6 +33,21 @@ class SystemAppearance {
     _ => null,
   };
 
+  /// Combine with an older snapshot: known fields win over `unknown`/null.
+  ///
+  /// `system.appearance` starts the native watcher and returns the cached
+  /// snapshot, which may still be empty when a fresh core answers. The change
+  /// event can overtake that reply, so the later, emptier result must not
+  /// overwrite what the event already delivered.
+  SystemAppearance merge(SystemAppearance? previous) {
+    if (previous == null) return this;
+    return SystemAppearance(
+      theme: theme == 'unknown' ? previous.theme : theme,
+      accent: accent ?? previous.accent,
+      source: source == 'unknown' ? previous.source : source,
+    );
+  }
+
   static SystemAppearance? tryParse(Object? value) {
     if (value is! Map) return null;
     final theme = value['theme']?.toString();

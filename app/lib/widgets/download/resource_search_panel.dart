@@ -10,6 +10,7 @@ import '../../services/core/resource_models.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
 import '../../theme/tokens.dart';
+import '../common/app_progress_bar.dart';
 import '../common/app_empty_state.dart';
 import '../common/app_network_image.dart';
 import '../common/app_section.dart';
@@ -883,7 +884,7 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
                 ],
               ),
             ),
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            if (_loading) const AppProgressBar(height: 3),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(

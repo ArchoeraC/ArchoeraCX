@@ -29,12 +29,12 @@ void main() {
     await tester.tap(find.text('Java').last);
     await tester.pumpAndSettle();
 
-    // The Java section keeps the selection rows and memory options; the runtime
-    // list lives on its own page, so neither the old five-row list nor the
-    // "view all" dialog remains here.
+    // Java selection (auto/current) lives on the dedicated Java page, so this
+    // section only links there and keeps the memory/GC/JVM/game options.
     expect(find.text('Java runtimes'), findsOneWidget);
     expect(find.textContaining('Browse every scan result'), findsOneWidget);
-    expect(find.text('Automatic (per game version)'), findsOneWidget);
+    expect(find.text('Automatic (per game version)'), findsNothing);
+    expect(find.text('Current Java'), findsNothing);
     expect(find.textContaining('View all'), findsNothing);
     expect(find.text('Scan Java'), findsNothing);
     expect(find.text('System memory'), findsOneWidget);

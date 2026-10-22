@@ -3,18 +3,20 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Archoera.Application.Modules;
+using Archoera.Infrastructure.Build;
 using Archoera.Infrastructure.Modules;
 
 namespace Archoera.Infrastructure.SystemInfo;
 
 /// <summary>
-/// Physical memory used by the settings page. Machine load (CPU, disk, uptime,
-/// process working set) is owned by the C++ core (`system.status`) so the
-/// platform APIs live in one place.
+/// Physical memory used by the settings page and the build identity badge.
+/// Machine load (CPU, disk, uptime, process working set) is owned by the C++
+/// core (`system.status`) so the platform APIs live in one place.
 /// </summary>
 public sealed class SystemModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods = ["system.memory"];
+    private static readonly string[] SupportedMethods =
+        ["system.memory", "system.identity"];
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
 
@@ -23,20 +25,31 @@ public sealed class SystemModuleService : IModuleMethodHandler
         string? paramsJson,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(method, "system.memory", StringComparison.Ordinal))
-        {
-            return Task.FromResult(
-                ModuleJson.Error("E_UNSUPPORTED", $"unsupported system method '{method}'"));
-        }
-
         try
         {
-            return Task.FromResult(Envelope(WriteMemory));
+            return method switch
+            {
+                "system.memory" => Task.FromResult(Envelope(WriteMemory)),
+                "system.identity" => Task.FromResult(Envelope(WriteIdentity)),
+                _ => Task.FromResult(
+                    ModuleJson.Error("E_UNSUPPORTED", $"unsupported system method '{method}'")),
+            };
         }
         catch (Exception exception)
         {
             return Task.FromResult(ModuleJson.Error("E_INTERNAL", exception.Message));
         }
+    }
+
+    private static void WriteIdentity(Utf8JsonWriter writer)
+    {
+        // Only the hash leaves the module: the client id itself stays in CI
+        // secrets and in the compiled binary.
+        var identity = OfficialBuildIdentity.Describe(MicrosoftBuildConfig.ClientId);
+        writer.WriteString("channel", identity.Channel);
+        writer.WriteBoolean("official", identity.Official);
+        writer.WriteString("clientIdSha256", identity.ClientIdSha256);
+        writer.WriteString("clientIdFingerprint", identity.ClientIdFingerprint);
     }
 
     private static void WriteMemory(Utf8JsonWriter writer)

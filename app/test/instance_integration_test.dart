@@ -53,9 +53,48 @@ void main() {
       expect(online.ready, isFalse);
       expect(online.reason, isNotNull);
 
-      expect(await client.deleteInstance(created.id), isTrue);
+      final deletion = await client.deleteInstance(created.id);
+      expect(deletion.deleted, isTrue);
+      expect(deletion.filesDeleted, isFalse);
+      expect(Directory(root).existsSync(), isTrue);
       final remaining = await client.listInstances();
       expect(remaining.any((instance) => instance.id == created.id), isFalse);
+    },
+    skip: enabled && core.existsSync() && module.existsSync()
+        ? false
+        : 'Set ARCHOERACX_INSTANCE_TESTS=1 and build core/module to run.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
+
+  test(
+    'instance.delete with deleteFiles removes the instance directory',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'archoera-instance-files-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+
+      final root = '${directory.path}/files instance';
+      final created = await client.createInstance(
+        name: 'Files Instance',
+        gameVersion: '1.21.4',
+        loader: 'vanilla',
+        loaderVersion: '',
+        rootPath: root,
+      );
+      File('$root/options.txt').writeAsStringSync('fov:70');
+      expect(Directory(root).existsSync(), isTrue);
+
+      final deletion = await client.deleteInstance(
+        created.id,
+        deleteFiles: true,
+      );
+      expect(deletion.deleted, isTrue);
+      expect(deletion.filesDeleted, isTrue);
+      expect(deletion.filesSkippedReason, isNull);
+      expect(Directory(root).existsSync(), isFalse);
     },
     skip: enabled && core.existsSync() && module.existsSync()
         ? false

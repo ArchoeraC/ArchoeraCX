@@ -160,3 +160,18 @@ class InstanceRootStatus {
   final bool exists;
   final int instanceCount;
 }
+
+/// Result of `instance.delete`. [filesSkippedReason] carries a stable reason
+/// code when the caller asked to delete local files but the directory was kept.
+@immutable
+class InstanceDeleteOutcome {
+  const InstanceDeleteOutcome({
+    required this.deleted,
+    this.filesDeleted = false,
+    this.filesSkippedReason,
+  });
+
+  final bool deleted;
+  final bool filesDeleted;
+  final String? filesSkippedReason;
+}

@@ -21,8 +21,63 @@
     <ProjectReference Include="../Archoera.Application/Archoera.Application.csproj" />
   </ItemGroup>
 
-  <!-- Never commit the client id. Generate a tiny source file so NativeAOT
-       gets a compile-time default without a hand-maintained constant. -->
+  <!-- Never commit the client id, and never leave it in plaintext on disk
+       either. The build turns it into a high-entropy blob (random nonce +
+       SHA-256 keystream XOR) that mirrors ClientIdObfuscation at runtime. -->
+  <UsingTask TaskName="ObfuscateClientId"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <ClientId ParameterType="System.String" Required="false" />
+      <Blob ParameterType="System.String" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Security.Cryptography" />
+      <Using Namespace="System.Text" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        if (string.IsNullOrWhiteSpace(ClientId))
+        {
+            Blob = string.Empty;
+        }
+        else
+        {
+            var plain = Encoding.UTF8.GetBytes(ClientId.Trim());
+            var nonce = new byte[16];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(nonce);
+            }
+
+            var nonceHex = BitConverter.ToString(nonce)
+                .Replace("-", string.Empty)
+                .ToLowerInvariant();
+            byte[] key;
+            using (var sha = SHA256.Create())
+            {
+                key = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(
+                        "archoeracx/client-id-blob/v1:" + nonceHex));
+            }
+
+            var blob = new byte[16 + plain.Length];
+            for (var i = 0; i < 16; i++)
+            {
+                blob[i] = nonce[i];
+            }
+
+            for (var i = 0; i < plain.Length; i++)
+            {
+                var stream = key[i % key.Length] ^ (i * 31 + nonce[i % 16]);
+                blob[16 + i] = (byte)(plain[i] ^ stream);
+            }
+
+            Blob = Convert.ToBase64String(blob);
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
   <Target Name="GenerateMicrosoftBuildConfig"
           BeforeTargets="CoreCompile"
           DependsOnTargets="PrepareForBuild">
@@ -31,9 +86,12 @@
       <MicrosoftBuildConfigDir Condition="'$(IntermediateOutputPath)' == ''">$(MSBuildProjectDirectory)/obj/generated</MicrosoftBuildConfigDir>
     </PropertyGroup>
     <MakeDir Directories="$(MicrosoftBuildConfigDir)" />
+    <ObfuscateClientId ClientId="$(MicrosoftClientId)">
+      <Output TaskParameter="Blob" PropertyName="MicrosoftClientIdBlob" />
+    </ObfuscateClientId>
     <WriteLinesToFile
       File="$(MicrosoftBuildConfigDir)/MicrosoftBuildConfig.g.cs"
-      Lines="// &lt;auto-generated /&gt;%0Anamespace Archoera.Infrastructure.Build%3B%0A%0Ainternal static class MicrosoftBuildConfig%0A{%0A    internal const string ClientId = &quot;$(MicrosoftClientId)&quot;%3B%0A}"
+      Lines="// &lt;auto-generated /&gt;%0Anamespace Archoera.Infrastructure.Build%3B%0A%0Ainternal static class MicrosoftBuildConfig%0A{%0A    internal const string ClientIdBlob = &quot;$(MicrosoftClientIdBlob)&quot;%3B%0A%0A    internal static string ClientId =&gt; ClientIdObfuscation.Decode(ClientIdBlob)%3B%0A}"
       Overwrite="true" />
     <ItemGroup>
       <Compile Remove="$(MicrosoftBuildConfigDir)/MicrosoftBuildConfig.g.cs" />

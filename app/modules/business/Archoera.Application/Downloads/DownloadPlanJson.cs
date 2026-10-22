@@ -170,6 +170,21 @@ public static class DownloadPlanJson
         writer.WriteNumber("rangeThreshold", plan.Options.RangeThreshold);
         writer.WriteNumber("chunkSize", plan.Options.ChunkSize);
         writer.WriteNumber("progressIntervalMs", plan.Options.ProgressIntervalMs);
+        writer.WriteNumber("perHostConcurrency", plan.Options.PerHostConcurrency);
+        if (plan.Options.Proxy is { } proxy)
+        {
+            writer.WriteStartObject("proxy");
+            writer.WriteString("url", proxy.Url);
+            writer.WriteStartArray("noProxy");
+            foreach (var entry in proxy.NoProxy)
+            {
+                writer.WriteStringValue(entry);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+
         writer.WriteEndObject();
 
         writer.WriteStartArray("files");
@@ -267,9 +282,17 @@ public static class DownloadPlanJson
         if (!TryReadOptionalBool(element, "dedup", true, out var dedup, out error)
             || !TryReadOptionalInt64(element, "rangeThreshold", DownloadPlanLimits.DefaultRangeThreshold, out var rangeThreshold, out error)
             || !TryReadOptionalInt64(element, "chunkSize", DownloadPlanLimits.DefaultChunkSize, out var chunkSize, out error)
-            || !TryReadOptionalInt32(element, "progressIntervalMs", DownloadPlanLimits.DefaultProgressIntervalMs, out var progressIntervalMs, out error))
+            || !TryReadOptionalInt32(element, "progressIntervalMs", DownloadPlanLimits.DefaultProgressIntervalMs, out var progressIntervalMs, out error)
+            || !TryReadOptionalInt32(element, "perHostConcurrency", DownloadPlanLimits.DefaultPerHostConcurrency, out var perHostConcurrency, out error))
         {
             return false;
+        }
+
+        DownloadProxyOptions? proxy = null;
+        if (element.TryGetProperty("proxy", out var proxyElement) &&
+            proxyElement.ValueKind != JsonValueKind.Null)
+        {
+            if (!TryReadProxy(proxyElement, out proxy, out error)) return false;
         }
 
         var verifyExisting = DownloadVerifyExisting.Size;
@@ -302,8 +325,57 @@ public static class DownloadPlanJson
             RangeThreshold = rangeThreshold,
             ChunkSize = chunkSize,
             ProgressIntervalMs = progressIntervalMs,
+            PerHostConcurrency = perHostConcurrency,
+            Proxy = proxy,
         };
 
+        return true;
+    }
+
+    private static bool TryReadProxy(
+        JsonElement element,
+        out DownloadProxyOptions? proxy,
+        out DownloadPlanIssue? error)
+    {
+        proxy = null;
+        error = null;
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            error = Invalid("options.proxy must be an object");
+            return false;
+        }
+
+        if (!element.TryGetProperty("url", out var urlElement) ||
+            urlElement.ValueKind != JsonValueKind.String)
+        {
+            error = Invalid("options.proxy.url must be a string");
+            return false;
+        }
+
+        var entries = new List<string>();
+        if (element.TryGetProperty("noProxy", out var listElement) &&
+            listElement.ValueKind != JsonValueKind.Null)
+        {
+            if (listElement.ValueKind != JsonValueKind.Array)
+            {
+                error = Invalid("options.proxy.noProxy must be an array of strings");
+                return false;
+            }
+
+            foreach (var entry in listElement.EnumerateArray())
+            {
+                if (entry.ValueKind != JsonValueKind.String)
+                {
+                    error = Invalid("options.proxy.noProxy must be an array of strings");
+                    return false;
+                }
+
+                entries.Add(entry.GetString() ?? string.Empty);
+            }
+        }
+
+        proxy = new DownloadProxyOptions(urlElement.GetString() ?? string.Empty, entries);
         return true;
     }
 

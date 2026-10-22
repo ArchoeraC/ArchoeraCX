@@ -57,8 +57,12 @@ public sealed class DownloadPlanTests
                 "rangeThreshold",
                 "chunkSize",
                 "progressIntervalMs",
+                "perHostConcurrency",
             ],
             options.EnumerateObject().Select(property => property.Name).ToArray());
+        Assert.Equal(
+            DownloadPlanLimits.DefaultPerHostConcurrency,
+            options.GetProperty("perHostConcurrency").GetInt32());
         Assert.Equal("size", options.GetProperty("verifyExisting").GetString());
         Assert.Equal("normal", options.GetProperty("durability").GetString());
 
@@ -199,6 +203,92 @@ public sealed class DownloadPlanTests
         Assert.Equal("Bearer short-lived", file.Headers["Authorization"]);
 
         Assert.Equal(bytes, DownloadPlanJson.Build(parsed));
+    }
+
+    [Fact]
+    public void Json_round_trips_proxy_and_per_host_options()
+    {
+        var options = DownloadPlanOptions.Default with
+        {
+            PerHostConcurrency = 4,
+            Proxy = new DownloadProxyOptions(
+                "http://user:secret@127.0.0.1:7890",
+                ["localhost", ".lan"]),
+        };
+        var plan = new DownloadPlanBuilder(Root)
+            .WithConcurrency(4)
+            .WithOptions(options)
+            .AddFile(
+                "https://cdn.example.com/mods/a.jar",
+                "mods/a.jar",
+                DownloadHashAlgorithm.Sha1,
+                Sha1B,
+                1)
+            .Build();
+
+        var bytes = DownloadPlanJson.Build(plan);
+        Assert.True(DownloadPlanJson.TryParse(bytes, out var parsed, out var error), error?.ToString());
+        Assert.NotNull(parsed);
+        Assert.Equal(4, parsed!.Options.PerHostConcurrency);
+        Assert.NotNull(parsed.Options.Proxy);
+        Assert.Equal(options.Proxy!.Url, parsed.Options.Proxy!.Url);
+        Assert.Equal(options.Proxy.NoProxy, parsed.Options.Proxy.NoProxy);
+        Assert.Equal(bytes, DownloadPlanJson.Build(parsed));
+    }
+
+    [Fact]
+    public void Accepts_a_socks5_proxy()
+    {
+        var plan = new DownloadPlanBuilder("/tmp/archoera-plan")
+            .WithOptions(DownloadPlanOptions.Default with
+            {
+                Proxy = new DownloadProxyOptions("socks5h://127.0.0.1:7890", []),
+            })
+            .AddFile(
+                "https://cdn.example.com/mods/a.jar",
+                "mods/a.jar",
+                DownloadHashAlgorithm.Sha1,
+                new string('a', 40),
+                10)
+            .Build();
+
+        Assert.Null(DownloadPlanValidator.Validate(plan));
+    }
+
+    [Fact]
+    public void Rejects_a_non_http_proxy()
+    {
+        var issue = RequireIssue(builder => builder
+            .WithOptions(DownloadPlanOptions.Default with
+            {
+                Proxy = new DownloadProxyOptions("ftp://127.0.0.1:1080", []),
+            })
+            .AddFile(
+                "https://cdn.example.com/mods/a.jar",
+                "mods/a.jar",
+                DownloadHashAlgorithm.Sha1,
+                Sha1B,
+                1));
+
+        Assert.Equal(DownloadPlanErrorCode.InvalidPlan, issue.Code);
+    }
+
+    [Fact]
+    public void Rejects_per_host_concurrency_above_the_limit()
+    {
+        var issue = RequireIssue(builder => builder
+            .WithOptions(DownloadPlanOptions.Default with
+            {
+                PerHostConcurrency = DownloadPlanLimits.MaxPerHostConcurrency + 1,
+            })
+            .AddFile(
+                "https://cdn.example.com/mods/a.jar",
+                "mods/a.jar",
+                DownloadHashAlgorithm.Sha1,
+                Sha1B,
+                1));
+
+        Assert.Equal(DownloadPlanErrorCode.InvalidPlan, issue.Code);
     }
 
     [Fact]

@@ -12,6 +12,10 @@ class AppSettings {
     this.jvmArgs,
     this.gcMode = 'auto',
     this.gameArgs,
+    this.downloadSource = 'auto',
+    this.downloadConcurrency = 16,
+    this.downloadPerHost = 16,
+    this.downloadProxy,
   });
 
   /// Primary/legacy root. Always the first entry of [instancesRoots].
@@ -34,6 +38,25 @@ class AppSettings {
   final String? jvmArgs;
   final String gcMode;
   final String? gameArgs;
+
+  /// Download source preference: `auto`, `official` or `mirror`.
+  final String downloadSource;
+
+  /// Global parallel download streams (1..64).
+  final int downloadConcurrency;
+
+  /// Streams per host (0..64, 0 = unlimited).
+  final int downloadPerHost;
+
+  /// Manual download proxy URL; null follows the system proxy.
+  final String? downloadProxy;
+
+  /// Human readable source label for tooltips/diagnostics.
+  String get downloadSourceLabel => switch (downloadSource) {
+    'official' => 'official',
+    'mirror' => 'mirror',
+    _ => 'auto',
+  };
 
   /// Normalized roots with a legacy fallback for older native modules.
   List<String> get roots =>
@@ -68,7 +91,22 @@ class AppSettings {
       jvmArgs: _string(value['jvmArgs']),
       gcMode: _gcMode(value['gcMode']),
       gameArgs: _string(value['gameArgs']),
+      downloadSource: _downloadSource(value['downloadSource']),
+      downloadConcurrency: (_int(value['downloadConcurrency']) ?? 16).clamp(
+        1,
+        64,
+      ),
+      downloadPerHost: (_int(value['downloadPerHost']) ?? 16).clamp(0, 64),
+      downloadProxy: _string(value['downloadProxy']),
     );
+  }
+
+  static String _downloadSource(Object? value) {
+    final source = _string(value);
+    return switch (source) {
+      'official' || 'mirror' => source!,
+      _ => 'auto',
+    };
   }
 
   static String _gcMode(Object? value) {

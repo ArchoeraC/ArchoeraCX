@@ -11,17 +11,21 @@ class AppNetworkImage extends StatelessWidget {
     super.key,
     required this.url,
     this.fit = BoxFit.cover,
-    this.fallbackIcon = Icons.image_outlined,
+    this.fallbackIcon,
     this.borderRadius,
   });
 
   final String url;
   final BoxFit fit;
-  final IconData fallbackIcon;
+  final IconData? fallbackIcon;
   final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context) {
+    // `image_outlined` is not emitted by the release icon tree shaker in this
+    // SDK, so the placeholder uses a glyph that is already part of the subset
+    // (and matches the download page's broken-image placeholder).
+    final placeholderIcon = fallbackIcon ?? Icons.broken_image_outlined;
     final image = Image.network(
       url,
       fit: fit,
@@ -36,8 +40,8 @@ class AppNetworkImage extends StatelessWidget {
         );
       },
       loadingBuilder: (context, child, progress) =>
-          progress == null ? child : _Placeholder(icon: fallbackIcon),
-      errorBuilder: (_, _, _) => _Placeholder(icon: fallbackIcon),
+          progress == null ? child : _Placeholder(icon: placeholderIcon),
+      errorBuilder: (_, _, _) => _Placeholder(icon: placeholderIcon),
     );
     if (borderRadius == null) return image;
     return ClipRRect(borderRadius: borderRadius!, child: image);

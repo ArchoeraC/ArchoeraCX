@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Archoera.Application.Downloads;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Mojang;
 
@@ -36,6 +37,7 @@ public sealed class MojangPlanService
         string root,
         string versionId,
         MojangPlatform platform,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(platform);
@@ -79,7 +81,8 @@ public sealed class MojangPlanService
             version,
             assetIndex,
             platform,
-            version.AssetIndex);
+            version.AssetIndex,
+            sourceMode);
     }
 
     /// <summary>
@@ -95,6 +98,7 @@ public sealed class MojangPlanService
         string root,
         ReadOnlyMemory<byte> versionJson,
         MojangPlatform platform,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(platform);
@@ -140,7 +144,8 @@ public sealed class MojangPlanService
             version,
             assetIndex,
             platform,
-            version.AssetIndex);
+            version.AssetIndex,
+            sourceMode);
     }
 
     /// <summary>Convenience overload for <see cref="EffectiveVersion"/>.</summary>
@@ -148,10 +153,16 @@ public sealed class MojangPlanService
         string root,
         EffectiveVersion effective,
         MojangPlatform platform,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(effective);
-        return BuildFromVersionJsonAsync(root, effective.Json, platform, cancellationToken);
+        return BuildFromVersionJsonAsync(
+            root,
+            effective.Json,
+            platform,
+            sourceMode,
+            cancellationToken);
     }
 
     // NEXT STEP: build a Java runtime plan from Mojang all.json

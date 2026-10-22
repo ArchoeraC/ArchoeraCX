@@ -29,6 +29,7 @@ flutter gen-l10n
 dart analyze            # 中文路径下不要用 flutter analyze
 flutter test
 flutter build linux --release
+python3 tool/check_icons.py   # 校验 release 图标子集包含所有 Icons.*
 ```
 
 Microsoft 登录的 client ID 必须在 C# 构建步骤注入：
@@ -39,6 +40,7 @@ export ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>"
 ```
 
 - CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注入。
+- 构建期只把 client ID 的**高熵 blob**（随机 nonce + SHA-256 keystream 异或）写进 `obj/.../MicrosoftBuildConfig.g.cs`，运行时在内存里还原；明文不落仓库、不出现在二进制字符串表。
 - 本地构建未设置该变量时 client ID 为空，登录返回 `MICROSOFT_CLIENT_ID_MISSING`，不会发出网络请求。
 - 运行时环境变量优先于编译期默认值。
 - Authorization Code + loopback 登录需要在 Entra 注册精确回调 `http://localhost:53682/callback`；端口可用 `ARCHOERACX_OAUTH_PORT` 覆盖，并同步更新 Entra 回调地址。
@@ -123,3 +125,22 @@ logs/account.log              脱敏的账户诊断日志
 - 发布包计划只从 GitHub CI 构建；当前新仓库暂未启用 Actions，Workflow 草稿位于 [`ci-drafts/`](ci-drafts/)；
 
 发行通道、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
+
+
+## 图标子集与增量构建
+
+Release 构建会把 `MaterialIcons-Regular.otf` 按实际引用的 `Icons.*` 裁成子集。两类问题会让界面出现空方块：
+
+- **增量构建复用了旧子集**：新增图标后若 `flutter build` 跳过了 AOT/字体子集步骤，字体仍是旧的。
+  处理：`rm -rf build/flutter_assets` 后再构建（或 `flutter clean`）。
+- **SDK 图标字体缺少该字形**：`Icons.*` 常量存在但字体里没有对应 glyph（较少见）。
+  处理：换用已有图标。
+
+每次 release 构建后运行：
+
+```bash
+python3 tool/check_icons.py            # 默认检查 linux bundle
+python3 tool/check_icons.py <assets-dir>
+```
+
+失败时按提示清理 `build/flutter_assets` 重新构建。

@@ -20,6 +20,7 @@
 //! # }
 //! ```
 
+mod edge;
 mod error;
 mod executor;
 mod hash;

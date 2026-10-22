@@ -21,9 +21,14 @@ case "$(uname -s)" in
 esac
 
 # Public OAuth client ID. Never commit a real value; CI injects it from
-# repository secrets and local builds pass it through the environment.
+# repository secrets and local builds pass it through the environment. The
+# build turns it into an obfuscated blob, so the id never lands in obj/ or in
+# the binary's string table.
 if [[ -z "${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" ]]; then
-  echo "warning: ARCHOERACX_MICROSOFT_CLIENT_ID is empty; Microsoft sign-in will return MICROSOFT_CLIENT_ID_MISSING." >&2
+  echo "warning: ARCHOERACX_MICROSOFT_CLIENT_ID is empty; Microsoft sign-in will" >&2
+  echo "         return MICROSOFT_CLIENT_ID_MISSING and the About build marker stays hidden." >&2
+else
+  echo "client id: injected (obfuscated at build time, value not echoed)"
 fi
 
 OUT_DIR="$(pwd)/build/native/cs"

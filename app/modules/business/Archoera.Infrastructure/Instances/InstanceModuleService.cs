@@ -203,9 +203,41 @@ public sealed class InstanceModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         using var document = Parse(paramsJson);
-        var id = ReadString(document.RootElement, "id") ?? throw new ArgumentException("id is required");
+        var rootElement = document.RootElement;
+        var id = ReadString(rootElement, "id") ?? throw new ArgumentException("id is required");
+        var deleteFiles = rootElement.TryGetProperty("deleteFiles", out var deleteFilesElement) &&
+                          deleteFilesElement.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                          deleteFilesElement.GetBoolean();
+
+        // Read the record first: the registry row disappears below and the
+        // cleaner needs the original path plus every sibling instance path.
+        var items = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
+        var record = items.FirstOrDefault(item => item.Id == id);
+
         var deleted = await _repository.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
-        return BuildEnvelope(writer => writer.WriteBoolean("deleted", deleted));
+
+        var filesDeleted = false;
+        string? filesSkippedReason = null;
+        if (deleteFiles && record is not null)
+        {
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            var siblings = items
+                .Where(item => !string.Equals(item.Id, id, StringComparison.Ordinal))
+                .Select(item => item.RootPath)
+                .ToArray();
+            filesDeleted = InstanceDirectoryCleaner.TryDelete(
+                record.RootPath,
+                settings.Roots,
+                siblings,
+                out filesSkippedReason);
+        }
+
+        return BuildEnvelope(writer =>
+        {
+            writer.WriteBoolean("deleted", deleted);
+            writer.WriteBoolean("filesDeleted", filesDeleted);
+            writer.WriteString("filesSkippedReason", filesSkippedReason);
+        });
     }
 
     private async Task<byte[]> ListModsAsync(

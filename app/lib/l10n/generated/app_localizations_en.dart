@@ -49,6 +49,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get launch => 'Launch';
 
   @override
+  String launchWithInstance(String name) {
+    return 'Launch “$name”';
+  }
+
+  @override
   String get selectInstance => 'Select an instance first';
 
   @override
@@ -287,6 +292,50 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get instanceDeleteBody =>
+      'The instance is removed from the launcher list.';
+
+  @override
+  String get instanceDeleteFiles => 'Also delete local files';
+
+  @override
+  String get instanceDeleteFilesHint =>
+      'Removes game files, mods, logs and configs in the instance folder. This cannot be undone.';
+
+  @override
+  String get instanceDeleteFilesConfirmTitle => 'Delete local files?';
+
+  @override
+  String instanceDeleteFilesConfirmBody(String path) {
+    return 'This permanently deletes the folder and everything inside it:\n$path';
+  }
+
+  @override
+  String get instanceDeleteFilesConfirmAction => 'Delete permanently';
+
+  @override
+  String get instanceDeleteDone => 'Instance deleted.';
+
+  @override
+  String get instanceDeleteDoneFiles => 'Instance and local files deleted.';
+
+  @override
+  String get instanceDeleteFilesKeptMissing =>
+      'Instance deleted; the local folder was already gone.';
+
+  @override
+  String get instanceDeleteFilesKeptShared =>
+      'Instance deleted, but the folder is shared with another instance or instance root, so it was kept.';
+
+  @override
+  String get instanceDeleteFilesKeptUnsafe =>
+      'Instance deleted, but the folder path is unsafe, so it was kept.';
+
+  @override
+  String get instanceDeleteFilesKeptFailed =>
+      'Instance deleted, but the local files could not be removed. Clean them up manually.';
+
+  @override
   String get instanceCheckQuick => 'Quick check';
 
   @override
@@ -367,6 +416,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get launchJavaMissing => 'No suitable Java runtime found.';
+
+  @override
+  String get launchLoaderNotInstalled =>
+      'This instance has no loader installed. Install Forge/NeoForge from the instance menu, then launch again.';
 
   @override
   String launchLog(String path) {
@@ -575,6 +628,92 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsStorage => 'Storage';
 
   @override
+  String get settingsDownload => 'Downloads';
+
+  @override
+  String get settingsDownloadSource => 'Source priority';
+
+  @override
+  String get settingsDownloadTuning => 'Concurrency and connections';
+
+  @override
+  String get settingsDownloadSourceDesc =>
+      'Which host is tried first. The other side stays as a fallback.';
+
+  @override
+  String get settingsDownloadSourceAuto => 'Automatic';
+
+  @override
+  String get settingsDownloadSourceAutoDesc =>
+      'Follows the detected region; mirrors are used when the official host is slow or blocked.';
+
+  @override
+  String get settingsDownloadSourceOfficial => 'Official first';
+
+  @override
+  String get settingsDownloadAutoResolvedMirror =>
+      'Automatic · using mirrors now (mainland China)';
+
+  @override
+  String get settingsDownloadAutoResolvedOfficial =>
+      'Automatic · using official hosts now';
+
+  @override
+  String get settingsDownloadAutoDetecting =>
+      'Automatic · detecting the region…';
+
+  @override
+  String get settingsDownloadSourceMirror => 'Mirror first';
+
+  @override
+  String get settingsDownloadConcurrency => 'Parallel downloads';
+
+  @override
+  String get settingsDownloadConcurrencyDesc =>
+      'Files (and large-file chunks) fetched at the same time, 1–64.';
+
+  @override
+  String get settingsDownloadPerHost => 'Connections per host';
+
+  @override
+  String get settingsDownloadPerHostDesc =>
+      'Caps how many streams one host may use, 0 = unlimited.';
+
+  @override
+  String get settingsDownloadHighConcurrencyTitle =>
+      'Enable very high concurrency?';
+
+  @override
+  String get settingsDownloadHighConcurrencyWarning =>
+      'Unless you know what you are doing, do not do this: more than 32 streams sharply increases CPU, memory and network usage, and heavy chunking accelerates disk wear.';
+
+  @override
+  String get settingsDownloadHighConcurrencyContinue => 'Enable anyway';
+
+  @override
+  String settingsDownloadHighConcurrencyActive(int streams, int perHost) {
+    return 'High concurrency enabled ($streams streams, $perHost per host): expect much higher resource usage and disk wear.';
+  }
+
+  @override
+  String get settingsDownloadProxy => 'Download proxy';
+
+  @override
+  String get settingsDownloadProxySystem => 'Follow the system proxy';
+
+  @override
+  String get settingsDownloadProxyHint =>
+      'http://host:port or socks5h://host:port. Leave empty to follow the system proxy.';
+
+  @override
+  String get settingsDownloadProxyInvalid =>
+      'Enter an http(s) or socks5 proxy URL, e.g. http://127.0.0.1:7890.';
+
+  @override
+  String get settingsDownloadNote =>
+      'Higher values finish faster on fast links but use more bandwidth and connections; lower them on metered or unstable networks.';
+
+  @override
   String get settingsInstancesRoot => 'Instances folder';
 
   @override
@@ -619,9 +758,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsJavaAutoValue => 'Automatic (per game version)';
-
-  @override
-  String get settingsJavaUseAuto => 'Use automatic selection';
 
   @override
   String get settingsJavaSelected => 'Java selection saved.';

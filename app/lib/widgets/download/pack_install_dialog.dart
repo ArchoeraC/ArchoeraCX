@@ -8,6 +8,7 @@ import '../../stores/instances.dart';
 import '../../stores/tasks.dart';
 import '../../stores/providers.dart';
 import '../../theme/tokens.dart';
+import '../common/app_progress_bar.dart';
 
 Future<PackInstallResult?> showPackInstallDialog(
   BuildContext context, {
@@ -280,7 +281,7 @@ class _PackInstallDialogState extends ConsumerState<PackInstallDialog> {
             ),
             if (_busy) ...[
               const SizedBox(height: AppSpacing.md),
-              LinearProgressIndicator(value: progress),
+              AppProgressBar(value: progress),
               const SizedBox(height: AppSpacing.xs),
               Row(
                 children: [

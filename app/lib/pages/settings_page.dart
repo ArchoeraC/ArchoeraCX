@@ -11,12 +11,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
 import '../services/core/system_memory.dart';
+import '../stores/account_policy.dart';
 import '../stores/appearance.dart';
 import '../stores/instances.dart';
 import '../stores/locale.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
+import '../widgets/common/app_progress_bar.dart';
 import '../utils/app_info.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/common/toast.dart';
@@ -25,7 +27,21 @@ import 'package:go_router/go_router.dart';
 
 import '../widgets/common/app_page_header.dart';
 
-enum _SettingsSection { appearance, storage, java, about }
+enum _SettingsSection { appearance, storage, download, java, about }
+
+/// Sentinel for "follow the system proxy" in the proxy dialog.
+const Object _clearProxy = Object();
+
+/// Parses `http(s)://host[:port]` (a bare `host:port` is treated as http).
+Uri? _parseProxy(String value) {
+  final text = value.contains('://') ? value : 'http://$value';
+  final uri = Uri.tryParse(text);
+  if (uri == null || uri.host.isEmpty) return null;
+  if (!const {'http', 'https', 'socks5', 'socks5h'}.contains(uri.scheme)) {
+    return null;
+  }
+  return uri;
+}
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -134,6 +150,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         systemAccent,
         locale,
       ),
+      _SettingsSection.download => _downloadContent(context, l10n, settings),
       _SettingsSection.storage => _SettingsCard(
         children: [
           _InstanceRootsEditor(
@@ -155,33 +172,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _SettingsSection.java => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SettingsCard(
-            children: [
-              _SettingRow(
-                icon: Icons.auto_awesome_rounded,
-                title: l10n.settingsJavaAuto,
-                subtitle: l10n.settingsJavaAutoHint,
-                trailing: Switch(
-                  value: settings?.javaAuto ?? true,
-                  onChanged: (value) => _setJavaAuto(context, l10n, value),
-                ),
-              ),
-              _SettingRow(
-                icon: Icons.terminal_rounded,
-                title: l10n.settingsJavaCurrent,
-                value: (settings?.javaAuto ?? true)
-                    ? l10n.settingsJavaAutoValue
-                    : (settings?.javaPath ?? '—'),
-                trailing: (settings?.javaAuto ?? true)
-                    ? null
-                    : TextButton(
-                        onPressed: () => _setJavaAuto(context, l10n, true),
-                        child: Text(l10n.settingsJavaUseAuto),
-                      ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
+          // Java selection (auto/manual) and the current runtime live on the
+          // dedicated Java page; this section only links to it and keeps the
+          // memory/GC/JVM/game argument panel.
           _SettingRow(
             icon: Icons.developer_board_rounded,
             title: l10n.javaPageManage,
@@ -194,6 +187,192 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
       _SettingsSection.about => _AboutPanel(settings: settings),
     };
+  }
+
+  Widget _downloadContent(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppSettings? settings,
+  ) {
+    final notifier = ref.read(appSettingsProvider.notifier);
+    final source = settings?.downloadSource ?? 'auto';
+    final concurrency = settings?.downloadConcurrency ?? 16;
+    final perHost = settings?.downloadPerHost ?? 16;
+    final proxy = settings?.downloadProxy;
+
+    // `auto` follows the detected region; show what it actually resolves to.
+    final region = ref.watch(regionPolicyProvider).value;
+    final autoResolved = region == null
+        ? null
+        : (region.region == 'CN' ? 'mirror' : 'official');
+    final autoSubtitle = switch (autoResolved) {
+      'mirror' => l10n.settingsDownloadAutoResolvedMirror,
+      'official' => l10n.settingsDownloadAutoResolvedOfficial,
+      _ => l10n.settingsDownloadAutoDetecting,
+    };
+
+    // Beyond 32 streams the cost grows faster than the benefit: warn once when
+    // crossing the line and keep a persistent reminder while it stays high.
+    final highConcurrency = concurrency > 32 || perHost > 32;
+
+    Future<void> applyConcurrency(int value) async {
+      if (value > 32 && concurrency <= 32) {
+        final accepted = await _confirmHighConcurrency(context, l10n);
+        if (accepted != true || !context.mounted) return;
+      }
+      await notifier.setDownloadPreferences(downloadConcurrency: value);
+      if (context.mounted) {
+        _notify(context, l10n.settingsSaved, type: ToastType.success);
+      }
+    }
+
+    Future<void> applyPerHost(int value) async {
+      if (value > 32 && perHost <= 32) {
+        final accepted = await _confirmHighConcurrency(context, l10n);
+        if (accepted != true || !context.mounted) return;
+      }
+      await notifier.setDownloadPreferences(downloadPerHost: value);
+      if (context.mounted) {
+        _notify(context, l10n.settingsSaved, type: ToastType.success);
+      }
+    }
+
+    final sourceGroup = _SettingsGroup(
+      title: l10n.settingsDownload,
+      note: l10n.settingsDownloadSourceDesc,
+      children: [
+        _AppearanceTile(
+          icon: Icons.dns_outlined,
+          title: l10n.settingsDownloadSource,
+          // Only `auto` needs an explanation: it hides a region decision.
+          subtitle: source == 'auto' ? autoSubtitle : null,
+          trailing: _SegmentedControl<String>(
+            selected: source,
+            options: [
+              _SegmentedOption('auto', l10n.settingsDownloadSourceAuto),
+              _SegmentedOption('official', l10n.settingsDownloadSourceOfficial),
+              _SegmentedOption('mirror', l10n.settingsDownloadSourceMirror),
+            ],
+            onChanged: (value) async {
+              await notifier.setDownloadPreferences(downloadSource: value);
+              if (context.mounted) {
+                _notify(context, l10n.settingsSaved, type: ToastType.success);
+              }
+            },
+          ),
+        ),
+      ],
+    );
+
+    final tuningGroup = _SettingsGroup(
+      title: l10n.settingsDownloadTuning,
+      note: l10n.settingsDownloadNote,
+      children: [
+        _AppearanceTile(
+          icon: Icons.speed_rounded,
+          title: l10n.settingsDownloadConcurrency,
+          subtitle: l10n.settingsDownloadConcurrencyDesc,
+          trailing: _NumberStepper(
+            key: const ValueKey('download-concurrency-stepper'),
+            value: concurrency,
+            min: 1,
+            max: 64,
+            onChanged: applyConcurrency,
+          ),
+        ),
+        _AppearanceTile(
+          icon: Icons.hub_outlined,
+          title: l10n.settingsDownloadPerHost,
+          subtitle: l10n.settingsDownloadPerHostDesc,
+          trailing: _NumberStepper(
+            key: const ValueKey('download-per-host-stepper'),
+            value: perHost,
+            min: 0,
+            max: 64,
+            onChanged: applyPerHost,
+          ),
+        ),
+        _AppearanceTile(
+          icon: Icons.route_outlined,
+          title: l10n.settingsDownloadProxy,
+          subtitle: proxy == null || proxy.isEmpty
+              ? l10n.settingsDownloadProxySystem
+              : proxy,
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: context.tokens.textTertiary,
+          ),
+          onTap: () => _editProxy(context, l10n),
+        ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        sourceGroup,
+        const SizedBox(height: AppSpacing.lg),
+        tuningGroup,
+        if (highConcurrency) ...[
+          const SizedBox(height: AppSpacing.xs),
+          _HighConcurrencyNotice(
+            message: l10n.settingsDownloadHighConcurrencyActive(
+              concurrency,
+              perHost,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Manual proxy for downloads; empty input follows the system proxy.
+  Future<void> _editProxy(BuildContext context, AppLocalizations l10n) async {
+    final current = ref.read(appSettingsProvider).value?.downloadProxy;
+    final result = await showDialog<Object?>(
+      context: context,
+      builder: (_) => _DownloadProxyDialog(l10n: l10n, initial: current),
+    );
+    if (result == null || !context.mounted) return;
+
+    await ref
+        .read(appSettingsProvider.notifier)
+        .setDownloadPreferences(
+          downloadProxy: result == _clearProxy ? null : result as String,
+        );
+    if (!context.mounted) return;
+    _notify(context, l10n.settingsSaved, type: ToastType.success);
+  }
+
+  /// Explicit acknowledgement before going past 32 streams.
+  Future<bool?> _confirmHighConcurrency(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) {
+    final tokens = context.tokens;
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.warning_amber_rounded, color: tokens.warning),
+        title: Text(l10n.settingsDownloadHighConcurrencyTitle),
+        content: Text(l10n.settingsDownloadHighConcurrencyWarning),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: tokens.warning,
+              foregroundColor: tokens.onAccent,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.settingsDownloadHighConcurrencyContinue),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _appearanceContent(
@@ -330,50 +509,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ],
     );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 1200) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              themeGroup,
-              const SizedBox(height: AppSpacing.lg),
-              accentGroup,
-              const SizedBox(height: AppSpacing.lg),
-              interfaceGroup,
-              const SizedBox(height: AppSpacing.lg),
-              languageGroup,
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  themeGroup,
-                  const SizedBox(height: AppSpacing.lg),
-                  accentGroup,
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  interfaceGroup,
-                  const SizedBox(height: AppSpacing.lg),
-                  languageGroup,
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+    // Single-column stack, matching the storage/java/about sections.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        themeGroup,
+        const SizedBox(height: AppSpacing.lg),
+        accentGroup,
+        const SizedBox(height: AppSpacing.lg),
+        interfaceGroup,
+        const SizedBox(height: AppSpacing.lg),
+        languageGroup,
+      ],
     );
   }
 
@@ -516,30 +663,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         AppLocalizations.of(context).settingsLanguageChanged,
         type: ToastType.success,
       );
-    }
-  }
-
-  Future<void> _setJavaAuto(
-    BuildContext context,
-    AppLocalizations l10n,
-    bool auto,
-  ) async {
-    try {
-      await ref
-          .read(appSettingsProvider.notifier)
-          .setJavaSelection(
-            javaPath: auto
-                ? null
-                : (ref.read(appSettingsProvider).value?.javaPath),
-            javaAuto: auto,
-          );
-      if (context.mounted) {
-        _notify(context, l10n.settingsSaved, type: ToastType.success);
-      }
-    } catch (error) {
-      if (context.mounted) {
-        _notify(context, error.toString(), type: ToastType.error);
-      }
     }
   }
 
@@ -862,6 +985,11 @@ List<_SettingsItem> _settingsItems(AppLocalizations l10n) => [
     l10n.settingsStorage,
     Icons.folder_outlined,
   ),
+  _SettingsItem(
+    _SettingsSection.download,
+    l10n.settingsDownload,
+    Icons.download_outlined,
+  ),
   _SettingsItem(_SettingsSection.java, l10n.settingsJava, Icons.coffee_rounded),
   _SettingsItem(
     _SettingsSection.about,
@@ -1099,13 +1227,11 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
               ),
               if (memory?.isKnown == true) ...[
                 const SizedBox(height: AppSpacing.sm),
-                ClipRect(
-                  child: LinearProgressIndicator(
-                    value: ratio,
-                    minHeight: 4,
-                    backgroundColor: tokens.surface3,
-                    color: overAvailable ? tokens.warning : tokens.accent,
-                  ),
+                AppProgressBar(
+                  value: ratio,
+                  height: 5,
+                  trackColor: tokens.surface3,
+                  color: overAvailable ? tokens.warning : tokens.accent,
                 ),
               ],
               if (overAvailable) ...[
@@ -1306,7 +1432,6 @@ class _SettingRow extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.value,
-    this.trailing,
     this.onTap,
   });
 
@@ -1314,7 +1439,6 @@ class _SettingRow extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? value;
-  final Widget? trailing;
   final VoidCallback? onTap;
 
   @override
@@ -1333,20 +1457,18 @@ class _SettingRow extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: tokens.textTertiary),
             ),
-      trailing:
-          trailing ??
-          (value == null
-              ? null
-              : ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  child: Text(
-                    value!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: tokens.textTertiary),
-                  ),
-                )),
+      trailing: value == null
+          ? null
+          : ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: Text(
+                value!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+            ),
     );
   }
 }
@@ -1518,6 +1640,168 @@ class _AppearanceTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(onTap: onTap, child: content),
+    );
+  }
+}
+
+/// Manual download proxy editor. Owns its controller so the dialog's exit
+/// animation never touches a disposed controller.
+class _DownloadProxyDialog extends StatefulWidget {
+  const _DownloadProxyDialog({required this.l10n, this.initial});
+
+  final AppLocalizations l10n;
+  final String? initial;
+
+  @override
+  State<_DownloadProxyDialog> createState() => _DownloadProxyDialogState();
+}
+
+class _DownloadProxyDialogState extends State<_DownloadProxyDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial ?? '',
+  );
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final value = _controller.text.trim();
+    if (value.isNotEmpty && _parseProxy(value) == null) {
+      setState(() => _error = widget.l10n.settingsDownloadProxyInvalid);
+      return;
+    }
+    Navigator.of(context).pop(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    final tokens = context.tokens;
+    return AlertDialog(
+      title: Text(l10n.settingsDownloadProxy),
+      content: SizedBox(
+        width: 380,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: l10n.settingsDownloadProxy,
+                hintText: 'http://127.0.0.1:7890',
+                errorText: _error,
+              ),
+              onChanged: (_) => setState(() => _error = null),
+              onSubmitted: (_) => _save(),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              l10n.settingsDownloadProxyHint,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: tokens.textTertiary),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_clearProxy),
+          child: Text(l10n.settingsDownloadProxySystem),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(onPressed: _save, child: Text(l10n.commonSave)),
+      ],
+    );
+  }
+}
+
+/// Persistent reminder shown while a stream count stays above the safe range.
+class _HighConcurrencyNotice extends StatelessWidget {
+  const _HighConcurrencyNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.warning_amber_rounded, size: 16, color: tokens.warning),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            message,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: tokens.warning),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Compact −/value/+ control used by numeric settings.
+class _NumberStepper extends StatelessWidget {
+  const _NumberStepper({
+    super.key,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: tokens.surface2,
+        borderRadius: BorderRadius.circular(tokens.radiusM),
+        border: Border.all(color: tokens.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: value > min ? () => onChanged(value - 1) : null,
+            icon: const Icon(Icons.remove_rounded, size: 16),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+            padding: EdgeInsets.zero,
+          ),
+          SizedBox(
+            width: 32,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ),
+          IconButton(
+            onPressed: value < max ? () => onChanged(value + 1) : null,
+            icon: const Icon(Icons.add_rounded, size: 16),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+            padding: EdgeInsets.zero,
+          ),
+        ],
+      ),
     );
   }
 }

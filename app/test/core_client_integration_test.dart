@@ -68,4 +68,33 @@ void main() {
         : 'Run the CMake native build to enable the FFI smoke test.',
     timeout: const Timeout(Duration(seconds: 20)),
   );
+
+  test(
+    'system.identity reports a client id digest, never the id',
+    () async {
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+
+      final identity = await client.getBuildIdentity();
+      expect(identity, isNotNull);
+      expect(identity!.channel, anyOf('official', 'custom', 'unconfigured'));
+      expect(identity.official, identity.channel == 'official');
+
+      if (identity.hasClientId) {
+        expect(identity.clientIdSha256, matches(RegExp(r'^[0-9a-f]{64}$')));
+        expect(identity.clientIdFingerprint, hasLength(12));
+        expect(
+          identity.clientIdSha256,
+          startsWith(identity.clientIdFingerprint!),
+        );
+      } else {
+        expect(identity.channel, 'unconfigured');
+        expect(identity.official, isFalse);
+      }
+    },
+    skip: library.existsSync()
+        ? false
+        : 'Run the CMake native build to enable the FFI smoke test.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
 }

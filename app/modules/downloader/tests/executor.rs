@@ -21,6 +21,7 @@ struct TestServer {
     address: std::net::SocketAddr,
     stop: Arc<AtomicBool>,
     handle: Option<thread::JoinHandle<()>>,
+    requests: Arc<Mutex<Vec<String>>>,
 }
 
 #[derive(Clone)]
@@ -29,6 +30,8 @@ struct Route {
     body: Vec<u8>,
     omit_length: bool,
     slow: Option<Duration>,
+    /// Honour `Range: bytes=a-b` with a 206 response.
+    ranges: bool,
 }
 
 impl Route {
@@ -38,6 +41,14 @@ impl Route {
             body: body.into(),
             omit_length: false,
             slow: None,
+            ranges: false,
+        }
+    }
+
+    fn ranged(body: impl Into<Vec<u8>>) -> Self {
+        Self {
+            ranges: true,
+            ..Self::ok(body)
         }
     }
 
@@ -47,6 +58,7 @@ impl Route {
             body: b"error".to_vec(),
             omit_length: false,
             slow: None,
+            ranges: false,
         }
     }
 
@@ -56,6 +68,7 @@ impl Route {
             body: body.into(),
             omit_length: true,
             slow: None,
+            ranges: false,
         }
     }
 
@@ -65,6 +78,7 @@ impl Route {
             body: body.into(),
             omit_length: false,
             slow: Some(delay),
+            ranges: false,
         }
     }
 }
@@ -76,20 +90,28 @@ impl TestServer {
         let stop = Arc::new(AtomicBool::new(false));
         let stop_thread = Arc::clone(&stop);
         let routes = Arc::new(routes);
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let request_log = Arc::clone(&requests);
         let handle = thread::spawn(move || {
             while let Ok((stream, _)) = listener.accept() {
                 if stop_thread.load(Ordering::SeqCst) {
                     break;
                 }
                 let routes = Arc::clone(&routes);
-                thread::spawn(move || serve_connection(stream, &routes));
+                let request_log = Arc::clone(&request_log);
+                thread::spawn(move || serve_connection(stream, &routes, &request_log));
             }
         });
         Self {
             address,
             stop,
             handle: Some(handle),
+            requests,
         }
+    }
+
+    fn requests(&self) -> Vec<String> {
+        self.requests.lock().expect("requests lock").clone()
     }
 
     fn url(&self, path: &str) -> String {
@@ -107,7 +129,11 @@ impl Drop for TestServer {
     }
 }
 
-fn serve_connection(mut stream: TcpStream, routes: &HashMap<String, Route>) {
+fn serve_connection(
+    mut stream: TcpStream,
+    routes: &HashMap<String, Route>,
+    requests: &Mutex<Vec<String>>,
+) {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
     let _ = stream.set_nodelay(true);
     let mut request = Vec::new();
@@ -128,12 +154,23 @@ fn serve_connection(mut stream: TcpStream, routes: &HashMap<String, Route>) {
         }
     }
 
-    let text = String::from_utf8_lossy(&request);
+    let text = String::from_utf8_lossy(&request).to_string();
     let path = text
         .lines()
         .next()
         .and_then(|line| line.split_whitespace().nth(1))
         .unwrap_or("/");
+    let range_header = text
+        .lines()
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.eq_ignore_ascii_case("range")
+                .then(|| value.trim().to_owned())
+        });
+    requests
+        .lock()
+        .expect("requests lock")
+        .push(format!("{path} {}", range_header.clone().unwrap_or_default()));
     let route = routes
         .get(path)
         .cloned()
@@ -146,12 +183,41 @@ fn serve_connection(mut stream: TcpStream, routes: &HashMap<String, Route>) {
         _ => "Status",
     };
 
+    // Ranged responses: `bytes=a-b`, inclusive, validated against the body.
+    let mut body: &[u8] = &route.body;
+    let mut status = route.status;
+    let mut content_range = None;
+    if route.ranges && status == 200 {
+        if let Some(spec) = range_header.as_deref().and_then(|value| value.strip_prefix("bytes=")) {
+            if let Some((start, end)) = spec.split_once('-') {
+                let total = route.body.len() as u64;
+                let start: u64 = start.trim().parse().unwrap_or(0);
+                let end: u64 = end
+                    .trim()
+                    .parse()
+                    .unwrap_or(total.saturating_sub(1))
+                    .min(total.saturating_sub(1));
+                if start <= end && start < total {
+                    body = &route.body[start as usize..=end as usize];
+                    status = 206;
+                    content_range = Some(format!("bytes {start}-{end}/{total}"));
+                }
+            }
+        }
+    }
+    let reason = match status {
+        206 => "Partial Content",
+        _ => reason,
+    };
     let mut headers = format!(
         "HTTP/1.1 {} {}\r\nConnection: close\r\nContent-Type: application/octet-stream\r\n",
-        route.status, reason
+        status, reason
     );
+    if let Some(value) = content_range {
+        headers.push_str(&format!("Content-Range: {value}\r\n"));
+    }
     if !route.omit_length {
-        headers.push_str(&format!("Content-Length: {}\r\n", route.body.len()));
+        headers.push_str(&format!("Content-Length: {}\r\n", body.len()));
     }
     headers.push_str("\r\n");
     if stream.write_all(headers.as_bytes()).is_err() {
@@ -169,7 +235,7 @@ fn serve_connection(mut stream: TcpStream, routes: &HashMap<String, Route>) {
             thread::sleep(delay);
         }
     } else {
-        let _ = stream.write_all(&route.body);
+        let _ = stream.write_all(body);
     }
     let _ = stream.flush();
 }
@@ -244,8 +310,8 @@ fn assert_no_parts(root: &Path) {
                     .and_then(|name| name.to_str())
                     .unwrap_or("");
                 assert!(
-                    !name.ends_with(".part"),
-                    "leftover part file: {}",
+                    !name.ends_with(".part") && !name.ends_with(".meta"),
+                    "leftover temporary file: {}",
                     path.display()
                 );
             }
@@ -605,4 +671,172 @@ fn http_is_only_allowed_on_loopback() {
         vec![file("http://127.0.0.1:8080/a".into(), &body, "a.bin")],
     );
     validate_plan(&request).expect("allow loopback http");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn large_files_use_parallel_range_requests() {
+    let temp = TempDir::new().expect("tempdir");
+    // 1 MiB body with a 64 KiB chunk size: 16 ranged requests.
+    let body: Vec<u8> = (0..(1024 * 1024)).map(|index| (index % 251) as u8).collect();
+
+    let mut routes = HashMap::new();
+    routes.insert("/big".into(), Route::ranged(body.clone()));
+    let server = TestServer::start(routes);
+
+    let mut spec = file(server.url("/big"), &body, "big.bin");
+    let mut plan = plan(temp.path(), vec![spec.clone()]);
+    plan.concurrency = 4;
+    plan.options.range_threshold = 64 * 1024;
+    plan.options.chunk_size = 64 * 1024;
+    spec.size = body.len() as u64;
+
+    let result = execute_plan(plan, CancellationToken::new(), None)
+        .await
+        .expect("execute");
+
+    assert_eq!(result.status.as_str(), "completed");
+    assert!(result.failed.is_empty(), "{:?}", result.failed);
+    assert_eq!(read(&temp.path().join("big.bin")), body);
+    assert_no_parts(temp.path());
+
+    let ranged = server
+        .requests()
+        .into_iter()
+        .filter(|line| line.starts_with("/big bytes="))
+        .count();
+    assert!(
+        ranged >= 4,
+        "expected several ranged requests, saw {ranged}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn range_ignoring_servers_fall_back_to_one_stream() {
+    let temp = TempDir::new().expect("tempdir");
+    let body: Vec<u8> = (0..(512 * 1024)).map(|index| (index % 239) as u8).collect();
+
+    let mut routes = HashMap::new();
+    // No range support: the server always replies 200 with the whole body.
+    routes.insert("/plain".into(), Route::ok(body.clone()));
+    let server = TestServer::start(routes);
+
+    let mut plan = plan(
+        temp.path(),
+        vec![file(server.url("/plain"), &body, "plain.bin")],
+    );
+    plan.options.range_threshold = 64 * 1024;
+    plan.options.chunk_size = 64 * 1024;
+
+    let result = execute_plan(plan, CancellationToken::new(), None)
+        .await
+        .expect("execute");
+
+    assert_eq!(result.status.as_str(), "completed");
+    assert_eq!(read(&temp.path().join("plain.bin")), body);
+    assert_no_parts(temp.path());
+
+    let requests = server.requests();
+    let ranged = requests
+        .iter()
+        .filter(|line| line.starts_with("/plain bytes="))
+        .count();
+    assert_eq!(ranged, 1, "only the probe asks for a range: {requests:?}");
+    let plain = requests
+        .iter()
+        .filter(|line| line.trim() == "/plain")
+        .count();
+    assert_eq!(plain, 1, "fallback streams the file once: {requests:?}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn resumes_only_the_missing_chunks() {
+    let temp = TempDir::new().expect("tempdir");
+    let body: Vec<u8> = (0..(256 * 1024)).map(|index| (index % 241) as u8).collect();
+    let chunk = 64 * 1024_u64;
+
+    let mut routes = HashMap::new();
+    routes.insert("/resume".into(), Route::ranged(body.clone()));
+    let server = TestServer::start(routes);
+
+    // Pretend two of four chunks finished before the process was interrupted.
+    let part = temp.path().join("resume.bin.part");
+    let mut partial = body.clone();
+    for index in (2 * chunk as usize)..partial.len() {
+        partial[index] = 0;
+    }
+    std::fs::write(&part, &partial).expect("write part");
+    let meta = format!(
+        r#"{{"schemaVersion":1,"size":{size},"hashAlgo":"sha1","hashHex":"{hash}",
+            "chunkSize":{chunk},"completed":[0,1]}}"#,
+        size = body.len(),
+        hash = sha1_hex(&body),
+        chunk = chunk
+    );
+    std::fs::write(temp.path().join("resume.bin.part.meta"), meta).expect("write meta");
+
+    let mut plan = plan(
+        temp.path(),
+        vec![file(server.url("/resume"), &body, "resume.bin")],
+    );
+    plan.options.range_threshold = chunk;
+    plan.options.chunk_size = chunk;
+
+    let result = execute_plan(plan, CancellationToken::new(), None)
+        .await
+        .expect("execute");
+
+    assert_eq!(result.status.as_str(), "completed");
+    assert_eq!(read(&temp.path().join("resume.bin")), body);
+    assert_no_parts(temp.path());
+
+    let ranges: Vec<String> = server
+        .requests()
+        .into_iter()
+        .filter(|line| line.contains("bytes="))
+        .collect();
+    assert_eq!(
+        ranges.len(),
+        2,
+        "only the two missing chunks should be fetched: {ranges:?}"
+    );
+    assert!(ranges.iter().any(|line| line.contains("bytes=131072-196607")));
+    assert!(ranges.iter().any(|line| line.contains("bytes=196608-262143")));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_changed_validator_restarts_as_one_stream() {
+    let temp = TempDir::new().expect("tempdir");
+    let body: Vec<u8> = (0..(128 * 1024)).map(|index| (index % 233) as u8).collect();
+    let chunk = 64 * 1024_u64;
+
+    // Range ignored -> the resumed validator no longer matches.
+    let mut routes = HashMap::new();
+    routes.insert("/changed".into(), Route::ok(body.clone()));
+    let server = TestServer::start(routes);
+
+    std::fs::write(temp.path().join("changed.bin.part"), vec![0_u8; body.len()])
+        .expect("write part");
+    let meta = format!(
+        r#"{{"schemaVersion":1,"size":{size},"hashAlgo":"sha1","hashHex":"{hash}",
+            "chunkSize":{chunk},"etag":"\"old\"","completed":[0]}}"#,
+        size = body.len(),
+        hash = sha1_hex(&body),
+        chunk = chunk
+    );
+    std::fs::write(temp.path().join("changed.bin.part.meta"), meta).expect("write meta");
+
+    let mut plan = plan(
+        temp.path(),
+        vec![file(server.url("/changed"), &body, "changed.bin")],
+    );
+    plan.options.range_threshold = chunk;
+    plan.options.chunk_size = chunk;
+
+    let result = execute_plan(plan, CancellationToken::new(), None)
+        .await
+        .expect("execute");
+
+    assert_eq!(result.status.as_str(), "completed");
+    assert_eq!(read(&temp.path().join("changed.bin")), body);
+    assert_no_parts(temp.path());
 }

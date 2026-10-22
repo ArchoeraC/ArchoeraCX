@@ -93,6 +93,195 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public async Task Settings_module_round_trips_download_preferences()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var store = new JsonAppSettingsStore(Path.Combine(directory, "data"));
+            var service = new SettingsModuleService(store);
+
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"downloadSource":"mirror","downloadConcurrency":24,"downloadPerHost":4}""",
+                    CancellationToken.None));
+            var settings = document.RootElement
+                .GetProperty("data")
+                .GetProperty("settings");
+            Assert.Equal("mirror", settings.GetProperty("downloadSource").GetString());
+            Assert.Equal(24, settings.GetProperty("downloadConcurrency").GetInt32());
+            Assert.Equal(4, settings.GetProperty("downloadPerHost").GetInt32());
+
+            var reloaded = await store.LoadAsync();
+            Assert.Equal("mirror", reloaded.DownloadSource);
+            Assert.Equal(24, reloaded.DownloadConcurrency);
+            Assert.Equal(4, reloaded.DownloadPerHost);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Settings_module_rejects_invalid_download_values()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var service = new SettingsModuleService(
+                new JsonAppSettingsStore(Path.Combine(directory, "data")));
+
+            foreach (var payload in new[]
+                     {
+                         """{"downloadSource":"fastest"}""",
+                         """{"downloadConcurrency":0}""",
+                         """{"downloadConcurrency":65}""",
+                         """{"downloadPerHost":-1}""",
+                         """{"downloadPerHost":65}""",
+                     })
+            {
+                using var document = JsonDocument.Parse(
+                    await service.HandleAsync(
+                        "settings.set",
+                        payload,
+                        CancellationToken.None));
+                Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+                Assert.Equal(
+                    "E_INVALID",
+                    document.RootElement
+                        .GetProperty("error")
+                        .GetProperty("code")
+                        .GetString());
+            }
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Legacy_per_host_default_is_raised_on_load()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var games = Path.Combine(directory, "games");
+            Directory.CreateDirectory(dataRoot);
+            Directory.CreateDirectory(games);
+            await File.WriteAllTextAsync(
+                Path.Combine(dataRoot, "settings.json"),
+                $$"""
+                  {"schemaVersion":6,"instancesRoot":"{{games}}",
+                   "downloadSource":"auto","downloadConcurrency":16,"downloadPerHost":6}
+                  """);
+
+            var loaded = await new JsonAppSettingsStore(dataRoot).LoadAsync();
+
+            Assert.Equal(16, loaded.DownloadPerHost);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Explicit_per_host_choice_survives_the_schema_bump()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var games = Path.Combine(directory, "games");
+            Directory.CreateDirectory(dataRoot);
+            Directory.CreateDirectory(games);
+            await File.WriteAllTextAsync(
+                Path.Combine(dataRoot, "settings.json"),
+                $$"""
+                  {"schemaVersion":7,"instancesRoot":"{{games}}",
+                   "downloadSource":"auto","downloadConcurrency":16,"downloadPerHost":6}
+                  """);
+
+            var loaded = await new JsonAppSettingsStore(dataRoot).LoadAsync();
+
+            Assert.Equal(6, loaded.DownloadPerHost);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Download_proxy_round_trips_and_rejects_bad_urls()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var root = Path.Combine(directory, "data");
+            var store = new JsonAppSettingsStore(root);
+            var service = new SettingsModuleService(store);
+
+            using (var document = JsonDocument.Parse(
+                       await service.HandleAsync(
+                           "settings.set",
+                           """{"downloadProxy":"http://127.0.0.1:7890"}""",
+                           CancellationToken.None)))
+            {
+                Assert.Equal(
+                    "http://127.0.0.1:7890",
+                    document.RootElement
+                        .GetProperty("data")
+                        .GetProperty("settings")
+                        .GetProperty("downloadProxy")
+                        .GetString());
+            }
+
+            Assert.Equal("http://127.0.0.1:7890", (await store.LoadAsync()).DownloadProxy);
+
+            using (var document = JsonDocument.Parse(
+                       await service.HandleAsync(
+                           "settings.set",
+                           """{"downloadProxy":"ftp://127.0.0.1:1080"}""",
+                           CancellationToken.None)))
+            {
+                Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
+                Assert.Equal(
+                    "E_INVALID",
+                    document.RootElement
+                        .GetProperty("error")
+                        .GetProperty("code")
+                        .GetString());
+            }
+
+            using (var document = JsonDocument.Parse(
+                       await service.HandleAsync(
+                           "settings.set",
+                           """{"downloadProxy":null}""",
+                           CancellationToken.None)))
+            {
+                Assert.Equal(
+                    JsonValueKind.Null,
+                    document.RootElement
+                        .GetProperty("data")
+                        .GetProperty("settings")
+                        .GetProperty("downloadProxy")
+                        .ValueKind);
+            }
+
+            Assert.Null((await store.LoadAsync()).DownloadProxy);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Store_persists_java_selection_and_preserves_roots()
     {
         var directory = TempDirectory();

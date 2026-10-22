@@ -201,6 +201,225 @@ public sealed class LaunchVersionResolutionTests
         }
     }
 
+    [Fact]
+    public void Loader_instance_without_a_loader_profile_is_reported_as_not_installed()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            // Only the vanilla profile exists: launching it would silently boot
+            // the unmodded game, so resolution must fail loudly instead.
+            var versionDirectory = Path.Combine(gameRoot, "versions", "1.21.8");
+            Directory.CreateDirectory(versionDirectory);
+            File.WriteAllText(
+                Path.Combine(versionDirectory, "1.21.8.json"),
+                MinimalVersionJson("1.21.8"));
+            var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.8-forgetest");
+            Directory.CreateDirectory(instanceRoot);
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "1.21.8 - ForgeTest",
+                "1.21.8",
+                "forge",
+                "58.1.26",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var exception = Assert.Throws<LaunchException>(
+                () => LaunchModuleService.LoadVersion(
+                    instance,
+                    LaunchPaths.Resolve(instanceRoot)));
+
+            Assert.Equal("LOADER_NOT_INSTALLED", exception.Code);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Loader_profile_without_listed_libraries_is_still_a_loader_profile()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var versionDirectory = Path.Combine(gameRoot, "versions", "1.21.1-neoforge-21.1.264");
+            Directory.CreateDirectory(versionDirectory);
+            File.WriteAllText(
+                Path.Combine(versionDirectory, "1.21.1-neoforge-21.1.264.json"),
+                MinimalVersionJson("1.21.1-neoforge-21.1.264"));
+            var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.1-neoforge-21.1.264");
+            Directory.CreateDirectory(instanceRoot);
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "1.21.1 - NeoForge",
+                "1.21.1",
+                "neoforge",
+                "21.1.264",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var version = LaunchModuleService.LoadVersion(
+                instance,
+                LaunchPaths.Resolve(instanceRoot));
+
+            Assert.Equal("1.21.1-neoforge-21.1.264", version.Id);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Finds_the_neoforge_profile_whose_id_omits_the_game_version()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            // NeoForge installs "versions/neoforge-21.1.264" next to the
+            // vanilla profile; the id carries no game version.
+            var vanilla = Path.Combine(gameRoot, "versions", "1.21.1");
+            Directory.CreateDirectory(vanilla);
+            File.WriteAllText(
+                Path.Combine(vanilla, "1.21.1.json"),
+                MinimalVersionJson("1.21.1"));
+            var loader = Path.Combine(gameRoot, "versions", "neoforge-21.1.264");
+            Directory.CreateDirectory(loader);
+            File.WriteAllText(
+                Path.Combine(loader, "neoforge-21.1.264.json"),
+                MinimalVersionJson("neoforge-21.1.264"));
+
+            var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.1-neoforge-21.1.264");
+            Directory.CreateDirectory(instanceRoot);
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "1.21.1 - NeoForge",
+                "1.21.1",
+                "neoforge",
+                "21.1.264",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var version = LaunchModuleService.LoadVersion(
+                instance,
+                LaunchPaths.Resolve(instanceRoot));
+
+            Assert.Equal("neoforge-21.1.264", version.Id);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Finds_the_forge_profile_by_its_installer_id()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var vanilla = Path.Combine(gameRoot, "versions", "1.21.8");
+            Directory.CreateDirectory(vanilla);
+            File.WriteAllText(
+                Path.Combine(vanilla, "1.21.8.json"),
+                MinimalVersionJson("1.21.8"));
+            var loader = Path.Combine(gameRoot, "versions", "1.21.8-forge-58.1.26");
+            Directory.CreateDirectory(loader);
+            File.WriteAllText(
+                Path.Combine(loader, "1.21.8-forge-58.1.26.json"),
+                MinimalVersionJson("1.21.8-forge-58.1.26"));
+
+            var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.8-forgetest");
+            Directory.CreateDirectory(instanceRoot);
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "1.21.8 - ForgeTest",
+                "1.21.8",
+                "forge",
+                "58.1.26",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var version = LaunchModuleService.LoadVersion(
+                instance,
+                LaunchPaths.Resolve(instanceRoot));
+
+            Assert.Equal("1.21.8-forge-58.1.26", version.Id);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Does_not_borrow_a_profile_for_a_different_loader_version()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var vanilla = Path.Combine(gameRoot, "versions", "1.21.1");
+            Directory.CreateDirectory(vanilla);
+            File.WriteAllText(
+                Path.Combine(vanilla, "1.21.1.json"),
+                MinimalVersionJson("1.21.1"));
+            var other = Path.Combine(gameRoot, "versions", "neoforge-21.1.248");
+            Directory.CreateDirectory(other);
+            File.WriteAllText(
+                Path.Combine(other, "neoforge-21.1.248.json"),
+                MinimalVersionJson("neoforge-21.1.248"));
+
+            var instanceRoot = Path.Combine(gameRoot, "versions", "pack");
+            Directory.CreateDirectory(instanceRoot);
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "pack",
+                "1.21.1",
+                "neoforge",
+                "21.1.264",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var exception = Assert.Throws<LaunchException>(
+                () => LaunchModuleService.LoadVersion(
+                    instance,
+                    LaunchPaths.Resolve(instanceRoot)));
+
+            Assert.Equal("LOADER_NOT_INSTALLED", exception.Code);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
     private static string MinimalVersionJson(string id)
         => JsonSerializer.Serialize(new
         {

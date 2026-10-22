@@ -7,6 +7,7 @@ import '../../services/core/task_update.dart';
 import '../../stores/providers.dart';
 import '../../stores/tasks.dart';
 import '../../theme/tokens.dart';
+import '../common/app_progress_bar.dart';
 
 /// Title-bar entry point for the task center.
 ///
@@ -301,7 +302,7 @@ class _TaskRow extends ConsumerWidget {
                 ),
                 if (active) ...[
                   const SizedBox(height: AppSpacing.xs),
-                  LinearProgressIndicator(value: progress),
+                  AppProgressBar(value: progress),
                   const SizedBox(height: AppSpacing.xxs),
                   Row(
                     children: [

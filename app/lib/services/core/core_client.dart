@@ -8,6 +8,7 @@ import 'package:ffi/ffi.dart';
 import '../../models/account.dart';
 import '../../models/game_instance.dart';
 import 'app_settings.dart';
+import 'build_identity.dart';
 import 'download_policy.dart';
 import 'core_event.dart';
 import 'event_pump.dart';
@@ -28,6 +29,9 @@ import 'system_status.dart';
 import 'task_update.dart';
 import 'vanilla_install_plan.dart';
 import 'wiki_feed.dart';
+
+/// Sentinel for optional fields where `null` is a meaningful value.
+const Object noChange = Object();
 
 /// Progress callback carrying the module-provided phase/current line.
 typedef CoreDetailedProgress = void Function(
@@ -1191,6 +1195,29 @@ final class CoreClient {
     return _parseSettings(jsonText, methodName);
   }
 
+  /// Persist the download preferences (source priority, stream counts).
+  Future<AppSettings> setDownloadSettings({
+    String? downloadSource,
+    int? downloadConcurrency,
+    int? downloadPerHost,
+    Object? downloadProxy = noChange,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'settings.set';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'downloadSource': ?downloadSource,
+        'downloadConcurrency': ?downloadConcurrency,
+        'downloadPerHost': ?downloadPerHost,
+        if (downloadProxy != noChange)
+          'downloadProxy': downloadProxy as String?,
+      }),
+      onProgress: onProgress,
+    );
+    return _parseSettings(jsonText, methodName);
+  }
+
   /// Persist the manual Java selection or switch back to automatic.
   Future<AppSettings> setJavaSelection({
     String? javaPath,
@@ -1218,6 +1245,19 @@ final class CoreClient {
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
     return SystemMemoryInfo.tryParse(data);
+  }
+
+  /// Read build provenance (official build badge) through the native module.
+  ///
+  /// Only the SHA-256 of the compiled-in Microsoft client id is returned; the
+  /// id itself never crosses the ABI.
+  Future<BuildIdentity?> getBuildIdentity({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.identity';
+    final jsonText = await _runAsync(methodName, onProgress: onProgress);
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return BuildIdentity.tryParse(decoded['data']);
   }
 
   /// Read the OS light/dark preference and accent color from the C++ core.
@@ -1573,20 +1613,30 @@ final class CoreClient {
     return _parseInstance(jsonText, methodName);
   }
 
-  /// Remove the registry entry. Files are intentionally not deleted here.
-  Future<bool> deleteInstance(
+  /// Remove the registry entry. Pass [deleteFiles] to also remove the
+  /// instance's own game directory; the C# owner refuses when the directory is
+  /// shared with a configured root or another instance.
+  Future<InstanceDeleteOutcome> deleteInstance(
     String id, {
+    bool deleteFiles = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'instance.delete';
     final jsonText = await _runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{'id': id}),
+      paramsJson: jsonEncode(<String, Object?>{
+        'id': id,
+        'deleteFiles': deleteFiles,
+      }),
       onProgress: onProgress,
     );
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
-    return data['deleted'] == true;
+    return InstanceDeleteOutcome(
+      deleted: data['deleted'] == true,
+      filesDeleted: data['filesDeleted'] == true,
+      filesSkippedReason: data['filesSkippedReason']?.toString(),
+    );
   }
 
   GameInstance _parseInstance(String jsonText, String methodName) {

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/core/app_settings.dart';
+import '../services/core/core_client.dart';
 import '../utils/app_paths.dart';
 import 'providers.dart';
 
@@ -121,6 +122,43 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         jvmArgs: jvmArgs,
         gcMode: gcMode,
         gameArgs: gameArgs,
+      ),
+    );
+  }
+
+  Future<void> setDownloadPreferences({
+    String? downloadSource,
+    int? downloadConcurrency,
+    int? downloadPerHost,
+    Object? downloadProxy = noChange,
+  }) async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      final current = state.value ?? _fallback;
+      state = AsyncData(
+        AppSettings(
+          instancesRoot: current.instancesRoot,
+          instancesRoots: current.instancesRoots,
+          dataRoot: current.dataRoot,
+          settingsPath: current.settingsPath,
+          downloadSource: downloadSource ?? current.downloadSource,
+          downloadConcurrency:
+              downloadConcurrency ?? current.downloadConcurrency,
+          downloadPerHost: downloadPerHost ?? current.downloadPerHost,
+          downloadProxy: downloadProxy is String?
+              ? downloadProxy
+              : current.downloadProxy,
+        ),
+      );
+      return;
+    }
+
+    state = AsyncData(
+      await client.setDownloadSettings(
+        downloadSource: downloadSource,
+        downloadConcurrency: downloadConcurrency,
+        downloadPerHost: downloadPerHost,
+        downloadProxy: downloadProxy,
       ),
     );
   }

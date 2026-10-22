@@ -71,6 +71,41 @@ public sealed class VanillaDownloadPlanBuilderTests
     }
 
     [Fact]
+    public void Mirror_preference_swaps_primary_and_fallback()
+    {
+        var official = VanillaDownloadPlanBuilder.Build(
+            MojangTestData.Root,
+            MojangTestData.Version(),
+            MojangTestData.AssetIndex(),
+            MojangPlatform.LinuxX64,
+            sourceMode: DownloadSourceMode.Official);
+        var mirror = VanillaDownloadPlanBuilder.Build(
+            MojangTestData.Root,
+            MojangTestData.Version(),
+            MojangTestData.AssetIndex(),
+            MojangPlatform.LinuxX64,
+            sourceMode: DownloadSourceMode.Mirror);
+
+        var officialClient = official.Files.Single(
+            file => file.Dest == MojangTestData.ClientPath);
+        Assert.StartsWith("https://piston-data.mojang.com/", officialClient.Url, StringComparison.Ordinal);
+        Assert.Contains(officialClient.Mirrors, mirrorUrl =>
+            mirrorUrl.StartsWith("https://bmclapi2.bangbang93.com/", StringComparison.Ordinal));
+
+        var mirrorClient = mirror.Files.Single(
+            file => file.Dest == MojangTestData.ClientPath);
+        Assert.StartsWith("https://bmclapi2.bangbang93.com/", mirrorClient.Url, StringComparison.Ordinal);
+        Assert.Contains(mirrorClient.Mirrors, officialUrl =>
+            officialUrl.StartsWith("https://piston-data.mojang.com/", StringComparison.Ordinal));
+
+        // Assets follow the same order.
+        var mirrorAsset = mirror.Files.Single(file => file.Dest == MojangTestData.AssetAPath);
+        Assert.StartsWith("https://bmclapi2.bangbang93.com/assets/", mirrorAsset.Url, StringComparison.Ordinal);
+        Assert.Contains(mirrorAsset.Mirrors, officialUrl =>
+            officialUrl.StartsWith("https://resources.download.minecraft.net/", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Build_asset_objects_are_deduped_by_hash()
     {
         var plan = VanillaDownloadPlanBuilder.Build(
