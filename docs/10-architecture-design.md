@@ -2304,7 +2304,7 @@ public interface IDownloadProvider {
 | `settings.reset` | C# | 恢复默认 |
 | `instance.list` | C# | 实例列表/分组/搜索 |
 | `instance.get` | C# | 详情 |
-| `instance.create` | C# | 创建空实例/从版本创建 |
+| `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离） |
 | `instance.update` | C# | 名称/内存/Java/参数 |
 | `instance.delete` | C# | 移入 trash |
 | `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |

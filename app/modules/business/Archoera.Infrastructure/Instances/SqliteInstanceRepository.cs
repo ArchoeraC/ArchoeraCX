@@ -544,12 +544,16 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
 
         var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
         var slug = Slug(name);
-        var candidate = Path.Combine(settings.Roots[0], slug);
+        // New instances are version-isolated by default: the game directory
+        // lives in versions/<name> while libraries and assets stay shared with
+        // the instance root. An explicit rootPath still wins.
+        var versionsRoot = Path.Combine(settings.Roots[0], "versions");
+        var candidate = Path.Combine(versionsRoot, slug);
         var suffix = 2;
         while (Directory.Exists(candidate) || await RootExistsAsync(candidate, cancellationToken)
                    .ConfigureAwait(false))
         {
-            candidate = Path.Combine(settings.Roots[0], $"{slug}-{suffix++}");
+            candidate = Path.Combine(versionsRoot, $"{slug}-{suffix++}");
         }
 
         return candidate;

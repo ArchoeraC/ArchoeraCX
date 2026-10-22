@@ -242,7 +242,8 @@ public sealed class JsonInstanceRepository : IInstanceRepository
 
         var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
         var slug = Slug(name);
-        return Path.Combine(settings.Roots[0], slug);
+        // Match the SQLite repository: version isolation is the default.
+        return Path.Combine(settings.Roots[0], "versions", slug);
     }
 
     private static string CreateId(DateTimeOffset now)
