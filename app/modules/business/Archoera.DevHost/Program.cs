@@ -343,7 +343,7 @@ internal static class Program
         {
             BaseAddress = baseAddress,
             UserAgent = ModrinthClientOptions.CreateUserAgent(
-                "0.1.0",
+                "0.0.1+1",
                 "dev@archoera.local"),
         };
         var client = new ModrinthClient(http, options);

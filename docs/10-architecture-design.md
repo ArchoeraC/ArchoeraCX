@@ -999,7 +999,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 ```json
 {
   "schemaVersion": 1,
-  "appVersion": "0.1.0",
+  "appVersion": "0.0.1+1",
   "dataDir": "/home/u/.local/share/archoera",
   "cacheDir": "/home/u/.cache/archoera",
   "logDir": "/home/u/.cache/archoera/logs",
@@ -1040,7 +1040,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 ```json
 {
   "name": "archoera_cs",
-  "version": "0.1.0",
+  "version": "0.0.1+1",
   "abiVersion": 1,
   "capabilities": ["instance", "java", "version", "account", "resource", "mod", "modpack", "launch", "compliance", "crash"],
   "methods": ["instance.list", "java.scan", "version.install", "launch.start"],
@@ -2284,6 +2284,9 @@ public interface IDownloadProvider {
 | `system.ping` | C++ | 健康检查 |
 | `system.info` | C++ | 应用/ABI/模块版本 |
 | `system.modules` | C++ | 已加载模块名称/版本/状态 |
+| `system.appearance` | C++ | 系统深浅色与强调色；变化以 `system.appearance` domain 事件推送 |
+| `system.openUrl` | C++ | 用系统 API 打开 http(s) 链接（默认浏览器） |
+| `system.notify` | C++ | 发送系统桌面通知（登录成功等） |
 | `system.snapshot` | C++ | 活跃任务 + 事件 seq |
 | `system.log.tail` | C++ | 环形缓冲分页 |
 | `system.log.export` | C++ | 导出诊断日志 |

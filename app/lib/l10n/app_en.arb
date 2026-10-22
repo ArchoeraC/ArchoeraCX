@@ -364,8 +364,8 @@
   "settingsTheme": "Theme",
   "settingsThemeSystem": "Follow system",
   "settingsLanguage": "Language",
-  "settingsMotion": "Motion",
-  "settingsMotionDesc": "Reduce transitions and background effects.",
+  "settingsMotion": "Reduce motion",
+  "settingsMotionDesc": "Limit page transitions and background effects.",
   "settingsDiagnostics": "Diagnostics",
   "settingsDiagnosticsDesc": "Logs, module versions, and crash reports.",
   "settingsVersion": "Version",
@@ -1091,7 +1091,60 @@
     "description": "Online launch client ID missing."
   },
   "accountVerifiedRequiredNotice": "This launcher requires a verified Microsoft account to start a game. You can still download content and manage instance files, but offline/local accounts stay locked until a verified Minecraft account is present.",
+  "accountLoginSuccessNotificationTitle": "ArchoeraCX signed in",
+  "accountLoginSuccessNotificationBody": "Signed in as {account}.",
+  "@accountLoginSuccessNotificationBody": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
   "@accountVerifiedRequiredNotice": {
     "description": "Prominent release policy notice on the accounts page."
-  }
+  },
+  "settingsAppearanceNote": "Theme, accent color and interface effects apply immediately.",
+  "settingsAppearancePersonalization": "Personalization",
+  "settingsAppearanceLanguage": "Language & region",
+  "settingsDensity": "Interface density",
+  "settingsDensityDesc": "Adjust control spacing and list height.",
+  "settingsDensityCompact": "Compact",
+  "settingsDensityStandard": "Standard",
+  "settingsDensityComfortable": "Comfortable",
+  "settingsThemeMode": "Color mode",
+  "settingsThemeModeDesc": "Use light, dark, or match the operating system.",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsThemeAccent": "Accent color",
+  "settingsThemeAccentDesc": "Use the system accent, or pick a color for the launcher.",
+  "settingsThemeAccentSystem": "System",
+  "settingsThemeAccentCustom": "Custom",
+  "settingsThemeAccentCustomHint": "Enter a hex color such as #4F7CFF.",
+  "settingsThemeAccentInvalid": "Enter a valid hex color.",
+  "settingsGlobalTint": "Global tint",
+  "settingsGlobalTintDesc": "Shift panels and backgrounds slightly toward the accent color.",
+  "settingsResetAppearance": "Reset appearance",
+  "settingsAppearanceResetDone": "Appearance reset.",
+  "settingsAboutDesc": "Version, runtime, licenses and community links.",
+  "settingsAboutTagline": "Cross-platform Minecraft: Java Edition launcher",
+  "settingsAboutEnvironment": "Environment",
+  "settingsAboutBuildInfo": "Build",
+  "settingsAboutPlatform": "Platform",
+  "settingsAboutRuntime": "Runtime",
+  "settingsAboutCore": "Native core",
+  "settingsAboutCoreUnknown": "Not connected",
+  "settingsAboutCopyEnvironment": "Copy environment",
+  "settingsAboutCopied": "Environment copied to the clipboard.",
+  "settingsAboutCommunity": "Community & support",
+  "settingsAboutRepository": "Source code",
+  "settingsAboutIssues": "Report an issue",
+  "settingsAboutThanks": "Thanks",
+  "settingsAboutThanksDesc": "Open-source projects and services this build relies on.",
+  "settingsAboutLegal": "Legal",
+  "settingsAboutPrivacy": "Privacy policy",
+  "settingsAboutSecurity": "Security policy",
+  "settingsAboutThirdParty": "Third-party licenses",
+  "settingsAboutThirdPartyDesc": "Open-source packages bundled with this build.",
+  "settingsAboutDisclaimer": "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
+  "settingsAboutOpenFailed": "Could not open the link."
 }

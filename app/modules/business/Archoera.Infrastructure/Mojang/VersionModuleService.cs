@@ -32,7 +32,7 @@ public sealed class VersionModuleService : IModuleMethodHandler
             new MojangClientOptions
             {
                 UserAgent = MojangClientOptions.CreateUserAgent(
-                    "0.1.0",
+                    "0.0.1+1",
                     "https://github.com/BetaStudio2/ArchoeraCX"),
             });
         _planService = new MojangPlanService(_client);

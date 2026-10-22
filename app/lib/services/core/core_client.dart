@@ -22,6 +22,7 @@ import 'version_models.dart';
 import 'region_policy.dart';
 import 'resource_models.dart';
 import 'system_memory.dart';
+import 'system_appearance.dart';
 import 'task_update.dart';
 import 'vanilla_install_plan.dart';
 
@@ -1066,6 +1067,61 @@ final class CoreClient {
     final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = _asMap(decoded['data'], methodName);
     return SystemMemoryInfo.tryParse(data);
+  }
+
+  /// Read the OS light/dark preference and accent color from the C++ core.
+  ///
+  /// The first call also starts the native watcher; subsequent changes arrive
+  /// as `system.appearance` domain events.
+  Future<SystemAppearance?> getSystemAppearance({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.appearance';
+    final jsonText = await _runAsync(methodName, onProgress: onProgress);
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return SystemAppearance.tryParse(decoded['data']);
+  }
+
+  /// Opens an http(s) URL through the OS default browser using native APIs.
+  ///
+  /// Returns false when the core is unavailable or the platform refused the
+  /// request; callers may keep a Dart-side fallback for older cores.
+  Future<bool> openExternalUrl(
+    String url, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.openUrl';
+    try {
+      final jsonText = await _runAsync(
+        methodName,
+        paramsJson: jsonEncode(<String, Object?>{'url': url}),
+        onProgress: onProgress,
+      );
+      final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+      final data = _asMap(decoded['data'], methodName);
+      return data['opened'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Posts a desktop notification through the OS notification service.
+  Future<bool> showSystemNotification({
+    required String title,
+    required String body,
+  }) async {
+    const methodName = 'system.notify';
+    try {
+      final jsonText = await _runAsync(
+        methodName,
+        paramsJson: jsonEncode(<String, Object?>{'title': title, 'body': body}),
+      );
+      final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+      final data = _asMap(decoded['data'], methodName);
+      return data['sent'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Persist memory and JVM options.

@@ -18,7 +18,7 @@ public sealed record ModrinthClientOptions
 
     /// <summary>
     /// Identifiable application user agent, for example
-    /// <c>ArchoeraCX/0.1.0 (contact@example.com)</c>. Required: Modrinth rate
+    /// <c>ArchoeraCX/0.0.1+1 (contact@example.com)</c>. Required: Modrinth rate
     /// limits and blocks unidentified clients.
     /// </summary>
     public string UserAgent { get; init; } = string.Empty;
@@ -90,7 +90,7 @@ public sealed record ModrinthClientOptions
         {
             throw new ArgumentException(
                 "A non-empty, identifiable UserAgent is required " +
-                "(for example 'ArchoeraCX/0.1.0 (contact@example.com)')",
+                "(for example 'ArchoeraCX/0.0.1+1 (contact@example.com)')",
                 nameof(UserAgent));
         }
 

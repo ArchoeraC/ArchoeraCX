@@ -1,41 +1,54 @@
-# AGENTS.md — ArchoeraCX 维护指引
+# AGENTS.md — ArchoeraCX
 
-面向在本仓库工作的 AI 助手与维护者。当前阶段：**Phase 1，Flutter UI + C++/C# 模块注册表 + 实例/下载/账户垂直切片**。
+面向在本仓库工作的 AI 助手与维护者。当前阶段：**Phase 1**（Flutter UI + C++ 枢纽 + C# 模块注册表 + 实例/下载/账户/整合包垂直切片）。
 
-## 工作范围
+## 先读
 
-- 只处理本仓库；不要修改仓库之外的目录。
-- 不要复制 LauncherX / HMCL / Prism / Modrinth 的代码、XAML、图标、插画、文案或字体。
-- 不接受外部代码贡献的仓库政策见 `CONTRIBUTING.md`。
+- [`docs/12-build-and-test.md`](docs/12-build-and-test.md)：环境、逐模块构建、测试矩阵、数据目录
+- [`docs/10-architecture-design.md`](docs/10-architecture-design.md)：ABI、模块协议、任务/事件、存储、安全
+- [`docs/11-ui-design-system.md`](docs/11-ui-design-system.md)：设计令牌、AppShell、页面与动效
+- [`docs/09-distribution-and-download-policy.md`](docs/09-distribution-and-download-policy.md)：发行地区门控、Provider、下载策略
+- [`docs/README.md`](docs/README.md)：文档索引；冲突时以代码与契约为准
+
+## 边界
+
+- 只改本仓库；不要动仓库之外的目录。本地草稿、样本与反编译产物放 `.local/`。
+- 不复制 LauncherX / HMCL / Prism / Modrinth 的代码、XAML、图标、插画、文案或字体；新资产必须登记来源与许可证。
+- 不接受外部代码贡献，政策见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+- 代码、注释、提交信息用英文；面向用户的文档与 UI 文案用中文，UI 文案走 ARB（`en` / `zh`）。
 
 ## 目录
 
 ```text
-app/                 # 单应用根
-├─ lib/
-│  ├─ app/           # app / router / shell
-│  ├─ pages/         # 页面
-│  ├─ services/      # CoreClient / 事件 / 平台服务
-│  ├─ stores/        # Riverpod providers
-│  ├─ theme/         # tokens / app_theme
-│  ├─ widgets/       # common / layout
-│  ├─ utils/
-│  └─ l10n/          # ARB + generated/
-├─ core/             # C++ archoera_core
-├─ modules/          # C# / Rust（下一步）
-├─ native/           # 平台桥接（下一步）
-├─ contracts/        # ABI / schema
-├─ assets/
-├─ tool/             # build-core.sh / build-core.bat
-└─ test/
-docs/                # 架构 / UI / 预研 / 发行
-Reference/           # 只读参考，不参与构建
+app/
+├─ lib/                  # Flutter：app/、pages/、stores/、services/core/、widgets/、theme/、l10n/
+├─ core/                 # C++20 枢纽 archoera_core；core/vault-rs 为凭据保险库
+├─ modules/business/     # C# NativeAOT archoera_cs（API / 业务 / SQLite 唯一 owner）
+├─ modules/downloader/   # Rust archoera_dl（只执行 DownloadPlan）
+├─ contracts/            # ABI 与模块 schema
+├─ native/               # 平台桥接（占位）
+├─ tool/                 # build-core / build-cs / build-dl / build-vault
+└─ test/                 # Flutter 测试
+docs/                    # 架构 / 构建 / 发行 / UI 文档
+Reference/               # 只读参考，不参与构建
 ```
+
+## 架构红线
+
+- Dart 只经 `app/lib/services/core/CoreClient` 调 C++；UI 不读文件、不起进程、不直连业务 API（图片加载例外）。
+- C++ 只做生命周期、路由、任务与事件，不写 Mojang/Modrinth/加载器业务。
+- C# 是 API、业务、SQLite 的唯一 owner；SQLite 只由 C# 持有，Flutter 不引入数据库插件。
+- Rust 只消费 `DownloadPlan`：不解压、不写 SQLite、不理解业务语义。
+- `.mrpack` 由 C# 解析与安全解压（zip-slip、symlink、size/entry 上限）；Rust 仍只执行计划。
+- 例外：Forge/NeoForge 官方 Maven 不可达时，C# 仅对 installer 做 BMCLAPI 镜像引导下载并计算 SHA-1；库与游戏文件仍由 Rust 下载。
+- 核事件必须 **wake 驱动**：C++ 调 `wake`，Dart `NativeCallable.listener` 收到后批量 drain；**禁止 `Timer.periodic` 轮询**。
+- 新方法必须同时登记到 C++ `method_registry` 与 C# `BusinessModuleRegistry`；未知方法返回 `E_UNSUPPORTED`，导出层不加 if 分支。
+- 跨模块协作走效果协议，不直接互调；所有跨边界数据都有 schema、owner、生命周期与失败路径。
+- token / refresh token / device code 不跨 ABI、不写日志；Microsoft client id 不硬编码（CI 注入 `-p:MicrosoftClientId`，调试用 `ARCHOERACX_MICROSOFT_CLIENT_ID`，运行时优先）。
 
 ## 提交前必跑
 
 ```bash
-# 原生核心 + C# 模块
 cd app
 ./tool/build-core.sh
 ./tool/build-cs.sh
@@ -49,10 +62,9 @@ dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
 dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
 cargo test --manifest-path modules/downloader/Cargo.toml
 
-# Flutter
 flutter pub get
 flutter gen-l10n
-dart analyze          # 中文路径下不要用 flutter analyze
+dart analyze                 # 中文路径下不要用 flutter analyze
 flutter test
 ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
 ARCHOERACX_SETTINGS_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-settings flutter test test/settings_integration_test.dart
@@ -61,64 +73,35 @@ ARCHOERACX_ACCOUNT_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-account flutter tes
 flutter build linux --release
 ```
 
-## 架构红线
+## 协作约定
 
-- Dart 只通过 `app/lib/services/core/CoreClient` 调 C++ 枢纽；**不直连业务 API**。
-- UI 不读文件、不起进程；图片加载是唯一例外。
-- C++ 枢纽不做 Mojang/Modrinth/加载器业务。
-- C# 是 API、业务、SQLite 的唯一 owner。
-- Rust 只消费 `DownloadPlan`：不解压、不写 SQLite、不理解业务语义。
-- `.mrpack` 由 C# 解析与解压（zip-slip、symlink、size/entry 上限）；Rust 仍只执行 `DownloadPlan`。
-- 例外：Forge/NeoForge 官方 Maven 不可达时，C# 仅对 installer 做 BMCLAPI 镜像引导下载并计算 SHA-1；所有库与游戏文件仍由 Rust 按计划下载。
-- SQLite 只由 C# 持有；Flutter 不引入数据库插件、不直接读 SQLite；C++ 只路由。Linux/macOS 使用系统 SQLite，Windows 使用随 C# 模块分发的 `e_sqlite3.dll`。
-- 跨模块协作走效果协议，不直接互调。
-- 核事件必须 **wake 驱动**：C++ 调 `wake`，Dart `NativeCallable.listener` 收到后批量 drain；**禁止 `Timer.periodic` 轮询**。
-- 所有跨边界数据都有 schema、owner、生命周期和失败路径。
-- 新方法必须同时登记到 C++ `method_registry` 与 C# `BusinessModuleRegistry`；未知方法返回 `E_UNSUPPORTED`，不允许在导出层加 if 分支。
-- Microsoft 登录默认 Device Code Flow；device code / access token / refresh token 不跨 ABI，也不写日志。
-- Microsoft client id **不硬编码**：CI/发布构建用 `-p:MicrosoftClientId=<GUID>` 注入编译期默认值；本地调试用 `ARCHOERACX_MICROSOFT_CLIENT_ID` 运行时临时覆盖（运行时优先）。
+- ABI 改动必须同时更新 `app/contracts/abi/archoera_abi.h`、C++、Dart、C harness 与相关测试。
+- 按边界拆子代理：C++/CMake、Dart/Flutter、文档/契约可并行；不要让两个代理改同一文件，共享契约先由主代理冻结。
+- 子代理的报告不等于验证：完成后由主代理统一跑构建与测试。
+- 不臆造进度或测试结果；没有实际运行就写“未验证”。
 
-## 子代理协作
+## 版本与身份
 
-- 按边界拆任务：C++/CMake、Dart/Flutter、文档/契约可以并行。
-- 不要让两个代理同时改同一个文件；共享契约先由主代理冻结。
-- 子代理完成后必须由主代理统一跑构建/测试，不直接相信报告。
-- 涉及 ABI 的改动必须同时改 `app/contracts/abi/archoera_abi.h`、C++、Dart 和 C harness。
+- 版本唯一来源是 `app/pubspec.yaml` 的 `version`（当前 `0.0.1+1`），并与 `app/lib/utils/app_info.dart` 的 `AppInfo.version` 保持一致。
+- 所有对外版本号都跟随它：C++ `build_info`/`system.modules`、C# 模块表与 User-Agent、启动参数 `launcher_version`、Rust crate（`archoera-dl` / `archoera-vault`）。改版本时一并更新这些常量。
+- 应用 ID：Linux/Android `awa.archoera.archoera_cx`，macOS `awa.archoera.archoeraCx`（Apple 不允许下划线）。
+- 身份与品牌细则见 [`app/README.md`](app/README.md)、[`docs/04-licensing.md`](docs/04-licensing.md)。
 
 ## 当前进度
 
-- ✅ Flutter AppShell + 5 页面骨架 + 设计令牌 + i18n；全局文案走 ARB，支持跟随系统/English/简体中文切换；首页改为 Hero + 单行快捷条 + 最近实例网格，使用斜切角/直线面板；底栏降至 60（首页动画收至 46）且首页隐藏启动按钮；首页切换使用旧页快照覆盖、其他页面之间上浮淡入、切回首页使用收回动效；账户页改为当前账户 Hero + 单列表，并支持 2D 纸娃娃皮肤预览与离线默认外观；全局通知改为标题栏下方斜切角 Toast，设置页保留分区导航 + 平铺设置组，内存/GC/JVM/游戏参数改为内联编辑并展示系统总内存/可用内存/启动后预计占用；下载页 Modrinth 结果支持图标、详情画廊、排序、自动分页与图片预览；实例创建/加载器安装支持选择旧版加载器；页面切换快照按等比宽度绘制，避免底栏高度变化造成形变；实例支持 `versions/` 版本隔离，原版下载优先官方源、失败回退 BMCLAPI；右上角任务中心展示真实下载进度/速度并可取消；模块 ABI v2 增加进度回调；发布版要求账户元数据中存在带 UUID 的 Microsoft 账户且保险库凭据可用（过期先刷新并重验 entitlement），才允许其它账户登录/选择与启动；单一发行版按运行期 IP/系统地区判断：中国大陆网络默认隐藏下载入口并禁用下载，需手动配置 `compliance.json`（developerMode/acceptRisk/downloadLevel=L2/acknowledgement）后重启解锁，非中国大陆默认启用；非中国大陆仅允许微软验证账户；加载器图标全部使用素材资产（原版为 Wikimedia 草方块，Fabric/Quilt/Forge/NeoForge 为官方图标），来源/许可证见 `assets/icons/loaders/SOURCES.md`
-- ✅ `system.ping` / `system.pingAsync`：C++ ABI / C harness / Dart `CoreClient` / integration test；首页不再暴露调试卡片
-- ✅ 事件泵：wake + `NativeCallable.listener` + 批量 drain；无定时器/轮询
-- ✅ C# `java.scan`：C++ ModuleRegistry + NativeAOT `archoera_cs` + Java status 卡；支持手动目录/可执行文件回退与持久化
-- ✅ Forge/NeoForge 生成物清单 + 校验 + 修复；`loader.verify`/`loader.repair` 已接 ModuleRegistry/CoreClient（待接 launch preflight/UI）
-- ✅ Rust `DownloadPlan` 执行器 MVP（待接 C++ ModuleRegistry）
-- ✅ C# `DownloadPlan` 契约 + Modrinth provider（Mod/光影/资源包；待接 ModuleRegistry/UI）
-- ✅ Mojang 原版 `DownloadPlan`（manifest/version/assets/libraries/logging；待接 ModuleRegistry/UI）
-- ✅ Forge/NeoForge installer + 依赖库 `DownloadPlan`（生成物不进计划；待接安装流程/UI）
-- ✅ 版本合并 / `EffectiveVersion`（inheritsFrom、库去重、参数拼接、legacy 参数）
-- ✅ Forge/NeoForge 安装下载组合计划（原版 + 加载器依赖 + installer）
-- ✅ Mojang Java runtime 下载计划（all.json → platform manifest → raw/executable）
-- ✅ C++ `ModuleRegistry` + `MethodRegistry`；`system.modules` 可查询已加载模块；C# `BusinessModuleRegistry` 统一注册业务方法
-- ✅ Microsoft Authorization Code + PKCE（loopback）登录：Microsoft token → XBL → XSTS → Minecraft login → entitlement/profile/certificates；账户页可登录/切换/刷新/移除，离线账户可用
-- ✅ 实例 UI：创建/选择/删除/搜索、可选实例目录；C# SQLite 索引 + `instance.json` 权威源
-- ✅ C# `settings.get/set`：多实例根目录（`instancesRoots`，首项默认）；`instance.sync` 采纳/刷新/标记缺失；Flutter 设置页与创建实例对话框已接入
-- ✅ C# SQLite 实例索引 + `instance.json` 权威源；Flutter 通过 `instance.*` 模块方法读写
-- ✅ Modrinth 端到端：Flutter 搜索/版本/安装 → C# 计划 → Rust `archoera-dl` 下载并校验（Sodium 1.21.1 Fabric 实测）
-- ✅ Noto Sans SC Medium 打包为默认 UI 字体
-- ✅ Java 扫描按 `java.home` 归并 symlink/JRE 别名，扩展用户目录，UI 显示前 5 + 查看全部
-- ✅ `version.list` / `loader.check` / `loader.plan` / `loader.commit`；下载页版本列表与全局 Mod 搜索；实例“更多”中安装/更新 Forge/NeoForge 加载器、管理已安装 Mod（启停/删除），支持 quick/full 依赖检查
-- ✅ `settings.get/set` 持久化 `javaPath` / `javaAuto` / `memoryMinMb` / `memoryMaxMb` / `jvmArgs` / `gcMode` / `gameArgs`；设置页支持自动/手动 Java、内存、GC、JVM 参数与附加游戏参数；`launch.start` 支持基础离线账户启动（自动选择匹配游戏版本的 Java，持久化日志）
-- ✅ Modrinth 模组安装支持递归安装 required 依赖（深度 8、环检测），optional/incompatible 只报告不自动安装
-- ✅ Forge/NeoForge 安装前通过 `java.select` 选择 Java，下载后调用 `loader.repair` 执行 processors；仍需 JVM（自动选择或手动指定）
-- ⚠️ Fabric/Quilt 无 Java 安装待接
-- ⬜ 真实 Entra client_id + Minecraft Services client_id 审核；构建期注入 `-p:MicrosoftClientId`，调试期用 `ARCHOERACX_MICROSOFT_CLIENT_ID`
-- ✅ 凭据保险库：`core/vault-rs`（ArchoeraMusic 同系列 AGPL 实现）已接入 C# `VaultCredentialStore`；仅暴露 crypto/file 免密模式，旧 `accounts.credentials.json` 首次使用时迁移并删除
-- ⬜ CurseForge provider（鉴权后置）
-- ✅ 在线启动：凭据刷新、真实 accessToken/clientId/xuid/userType=msa 已接入 `LaunchPlan`；
-- ✅ 整合包：`modpack.inspect` / `modpack.install` / `modpack.installLocal`；Modrinth 与本地 `.mrpack` 均按依赖新建实例，自动安装原版 + Fabric/Quilt（profile JSON）或 Forge/NeoForge（installer + processor 链），C# 安全解压 `overrides`/`client-overrides` 并与索引下载并发执行；包内自带文件按路径优先，冲突的索引文件不再下载；实例写入 `.archoera/pack.json` 来源记录
-- ✅ Forge/NeoForge 整合包：installer 通过 Maven sidecar 校验后下载；NeoForge 官方 Maven 不可达时用 BMCLAPI 镜像引导 installer 并计算 SHA-1，库按 installer 元数据 hash 校验；processor 需要 Java（按游戏版本自动选择），修复完成后再写入合并版 `versions/<id>/<id>.json`
-- ✅ Forge/NeoForge repair 不再把 installer 自带 `version.json` 当作 artifact 覆盖合并版；合并版 JSON 由 `loader.commit` / 整合包流程单独写入
-- ✅ 启动依赖预检：`launch.prepare` / `launch.start` 校验库、client jar、asset index、asset objects 与 Forge/NeoForge 生成物；任一加载器缺失时在 `launch.start` 自动执行一次“下载补全”，Forge/NeoForge 额外重跑 processor repair；下载策略关闭时返回 `AUTO_REPAIR_BLOCKED`
-- ✅ `loader.check` 支持 vanilla/Fabric/Quilt/Forge/NeoForge 并返回 `launchFiles`（库/client/资源）状态；实例“依赖检查”对话框可调用 `loader.autoRepair` 补全下载，Forge/NeoForge 额外重跑 processors，然后自动复检
-- ⬜ 正式 C++ DownloadManager / 安装原版、进程状态/停止/日志流待接
+已完成：
+
+- 界面：AppShell + 5 页面、设计令牌、明暗主题、中英文 i18n、斜切角面板/Toast/页面转场、账户皮肤预览。
+- 外观设置：C++ `system.appearance`（XDG Portal / Windows 注册表 / AppKit）推送系统深浅色与强调色；“外观”下分“个性化 / 语言与区域”子菜单，个性化收纳主题模式、系统/自定义主题色、全局着色、界面密度、减少动效与重置；关于页含环境信息复制、源码/反馈、许可证/隐私/安全入口。
+- 系统集成：C++ `system.openUrl` / `system.notify` 用系统 API 打开授权浏览器并发送登录成功桌面通知（Linux D-Bus / Windows Shell API / macOS AppKit+UserNotifications）。
+- 核心：C++ Method/Module 注册表、wake 事件泵、C ABI v2 进度回调；C# NativeAOT 模块与 DevHost。
+- 账户：Microsoft Authorization Code + PKCE（loopback）→ XBL/XSTS → Minecraft；凭据保险库（crypto/file）；离线账户；在线启动。
+- 实例与设置：SQLite 索引 + `instance.json` 权威源；Java 扫描/选择、内存/GC/JVM/游戏参数持久化。
+- 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消。
+- 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。
+- 启动依赖预检 `launch.prepare` / `launch.start`，缺失时自动下载补全（下载策略关闭返回 `AUTO_REPAIR_BLOCKED`）。
+
+待接：
+
+- 正式 C++ DownloadManager、原版安装入口；进程状态/停止/日志流。
+- 真实 Entra / Minecraft Services client_id 审核；更新器、签名与安装包。

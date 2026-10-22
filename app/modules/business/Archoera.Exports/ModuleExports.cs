@@ -321,7 +321,7 @@ public static unsafe class ModuleExports
 
         table->AbiVersion = AbiVersion;
         table->Name = Marshal.StringToCoTaskMemUTF8("archoera_cs");
-        table->Version = Marshal.StringToCoTaskMemUTF8("0.1.0");
+        table->Version = Marshal.StringToCoTaskMemUTF8("0.0.1+1");
         table->Init = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr*, IntPtr, int>)&ModuleInit;
         table->Call = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, ulong, IntPtr, IntPtr, IntPtr, IntPtr, IntPtr, int>)&ModuleCall;
         table->Cancel = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, ulong, int>)&ModuleCancel;

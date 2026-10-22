@@ -149,7 +149,7 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 new MojangClientOptions
                 {
                     UserAgent = MojangClientOptions.CreateUserAgent(
-                        "0.1.0",
+                        "0.0.1+1",
                         "https://github.com/BetaStudio2/ArchoeraCX"),
                 });
             var plan = await new ForgeInstallPlanService(mojang)

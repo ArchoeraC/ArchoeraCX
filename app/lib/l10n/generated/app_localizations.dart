@@ -1343,13 +1343,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMotion.
   ///
   /// In en, this message translates to:
-  /// **'Motion'**
+  /// **'Reduce motion'**
   String get settingsMotion;
 
   /// No description provided for @settingsMotionDesc.
   ///
   /// In en, this message translates to:
-  /// **'Reduce transitions and background effects.'**
+  /// **'Limit page transitions and background effects.'**
   String get settingsMotionDesc;
 
   /// No description provided for @settingsDiagnostics.
@@ -2371,6 +2371,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This launcher requires a verified Microsoft account to start a game. You can still download content and manage instance files, but offline/local accounts stay locked until a verified Minecraft account is present.'**
   String get accountVerifiedRequiredNotice;
+
+  /// No description provided for @accountLoginSuccessNotificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'ArchoeraCX signed in'**
+  String get accountLoginSuccessNotificationTitle;
+
+  /// No description provided for @accountLoginSuccessNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {account}.'**
+  String accountLoginSuccessNotificationBody(String account);
+
+  /// No description provided for @settingsAppearanceNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme, accent color and interface effects apply immediately.'**
+  String get settingsAppearanceNote;
+
+  /// No description provided for @settingsAppearancePersonalization.
+  ///
+  /// In en, this message translates to:
+  /// **'Personalization'**
+  String get settingsAppearancePersonalization;
+
+  /// No description provided for @settingsAppearanceLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language & region'**
+  String get settingsAppearanceLanguage;
+
+  /// No description provided for @settingsDensity.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface density'**
+  String get settingsDensity;
+
+  /// No description provided for @settingsDensityDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust control spacing and list height.'**
+  String get settingsDensityDesc;
+
+  /// No description provided for @settingsDensityCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get settingsDensityCompact;
+
+  /// No description provided for @settingsDensityStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get settingsDensityStandard;
+
+  /// No description provided for @settingsDensityComfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfortable'**
+  String get settingsDensityComfortable;
+
+  /// No description provided for @settingsThemeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Color mode'**
+  String get settingsThemeMode;
+
+  /// No description provided for @settingsThemeModeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Use light, dark, or match the operating system.'**
+  String get settingsThemeModeDesc;
+
+  /// No description provided for @settingsThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsThemeLight;
+
+  /// No description provided for @settingsThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsThemeDark;
+
+  /// No description provided for @settingsThemeAccent.
+  ///
+  /// In en, this message translates to:
+  /// **'Accent color'**
+  String get settingsThemeAccent;
+
+  /// No description provided for @settingsThemeAccentDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the system accent, or pick a color for the launcher.'**
+  String get settingsThemeAccentDesc;
+
+  /// No description provided for @settingsThemeAccentSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settingsThemeAccentSystem;
+
+  /// No description provided for @settingsThemeAccentCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get settingsThemeAccentCustom;
+
+  /// No description provided for @settingsThemeAccentCustomHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a hex color such as #4F7CFF.'**
+  String get settingsThemeAccentCustomHint;
+
+  /// No description provided for @settingsThemeAccentInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid hex color.'**
+  String get settingsThemeAccentInvalid;
+
+  /// No description provided for @settingsGlobalTint.
+  ///
+  /// In en, this message translates to:
+  /// **'Global tint'**
+  String get settingsGlobalTint;
+
+  /// No description provided for @settingsGlobalTintDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift panels and backgrounds slightly toward the accent color.'**
+  String get settingsGlobalTintDesc;
+
+  /// No description provided for @settingsResetAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset appearance'**
+  String get settingsResetAppearance;
+
+  /// No description provided for @settingsAppearanceResetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance reset.'**
+  String get settingsAppearanceResetDone;
+
+  /// No description provided for @settingsAboutDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Version, runtime, licenses and community links.'**
+  String get settingsAboutDesc;
+
+  /// No description provided for @settingsAboutTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross-platform Minecraft: Java Edition launcher'**
+  String get settingsAboutTagline;
+
+  /// No description provided for @settingsAboutEnvironment.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment'**
+  String get settingsAboutEnvironment;
+
+  /// No description provided for @settingsAboutBuildInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Build'**
+  String get settingsAboutBuildInfo;
+
+  /// No description provided for @settingsAboutPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform'**
+  String get settingsAboutPlatform;
+
+  /// No description provided for @settingsAboutRuntime.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime'**
+  String get settingsAboutRuntime;
+
+  /// No description provided for @settingsAboutCore.
+  ///
+  /// In en, this message translates to:
+  /// **'Native core'**
+  String get settingsAboutCore;
+
+  /// No description provided for @settingsAboutCoreUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get settingsAboutCoreUnknown;
+
+  /// No description provided for @settingsAboutCopyEnvironment.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy environment'**
+  String get settingsAboutCopyEnvironment;
+
+  /// No description provided for @settingsAboutCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment copied to the clipboard.'**
+  String get settingsAboutCopied;
+
+  /// No description provided for @settingsAboutCommunity.
+  ///
+  /// In en, this message translates to:
+  /// **'Community & support'**
+  String get settingsAboutCommunity;
+
+  /// No description provided for @settingsAboutRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Source code'**
+  String get settingsAboutRepository;
+
+  /// No description provided for @settingsAboutIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Report an issue'**
+  String get settingsAboutIssues;
+
+  /// No description provided for @settingsAboutThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks'**
+  String get settingsAboutThanks;
+
+  /// No description provided for @settingsAboutThanksDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source projects and services this build relies on.'**
+  String get settingsAboutThanksDesc;
+
+  /// No description provided for @settingsAboutLegal.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal'**
+  String get settingsAboutLegal;
+
+  /// No description provided for @settingsAboutPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get settingsAboutPrivacy;
+
+  /// No description provided for @settingsAboutSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security policy'**
+  String get settingsAboutSecurity;
+
+  /// No description provided for @settingsAboutThirdParty.
+  ///
+  /// In en, this message translates to:
+  /// **'Third-party licenses'**
+  String get settingsAboutThirdParty;
+
+  /// No description provided for @settingsAboutThirdPartyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source packages bundled with this build.'**
+  String get settingsAboutThirdPartyDesc;
+
+  /// No description provided for @settingsAboutDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.'**
+  String get settingsAboutDisclaimer;
+
+  /// No description provided for @settingsAboutOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link.'**
+  String get settingsAboutOpenFailed;
 }
 
 class _AppLocalizationsDelegate

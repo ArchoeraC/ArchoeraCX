@@ -9,7 +9,7 @@ abstract final class AppInfo {
   static const name = 'ArchoeraCX';
   static const packageName = 'archoera_cx';
   static const applicationId = 'awa.archoera.archoera_cx';
-  static const version = '0.1.0+1';
+  static const version = '0.0.1+1';
 
   /// Flip to false only when the GitHub release is no longer an alpha.
   static const isDevelopmentBuild = true;

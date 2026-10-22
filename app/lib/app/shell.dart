@@ -12,6 +12,7 @@ import '../models/game_instance.dart';
 import '../stores/accounts.dart';
 import '../services/core/build_policy.dart';
 import '../services/launch/launch_action.dart';
+import '../stores/appearance.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
 import '../utils/app_info.dart';
@@ -313,7 +314,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _PageTransition extends StatefulWidget {
+class _PageTransition extends ConsumerStatefulWidget {
   const _PageTransition({
     required this.index,
     required this.child,
@@ -329,16 +330,25 @@ class _PageTransition extends StatefulWidget {
   final ValueChanged<ui.Image> onCoverFinished;
 
   @override
-  State<_PageTransition> createState() => _PageTransitionState();
+  ConsumerState<_PageTransition> createState() => _PageTransitionState();
 }
 
-class _PageTransitionState extends State<_PageTransition>
+class _PageTransitionState extends ConsumerState<_PageTransition>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 320),
-    value: 1,
-  )..addStatusListener(_onStatusChanged);
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final reduceMotion = ref.read(appearanceProvider).reduceMotion;
+    _controller = AnimationController(
+      vsync: this,
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 320),
+      value: 1,
+    )..addStatusListener(_onStatusChanged);
+  }
 
   late final Animation<Offset> _offset = Tween<Offset>(
     begin: const Offset(0, 1),
@@ -412,6 +422,10 @@ class _PageTransitionState extends State<_PageTransition>
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = ref.watch(appearanceProvider).reduceMotion;
+    _controller.duration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 320);
     final current = Material(color: context.tokens.bg, child: widget.child);
     final previous = _previous;
     if (previous == null) return current;
@@ -498,7 +512,7 @@ class _CommandBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: context.tokens.normal,
         curve: Curves.easeOutCubic,
         height: currentIndex == 0
             ? AppLayout.homeBarHeight

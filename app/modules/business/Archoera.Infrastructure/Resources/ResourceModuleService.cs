@@ -367,7 +367,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             {
                 BaseAddress = baseAddress,
                 UserAgent = ModrinthClientOptions.CreateUserAgent(
-                    "0.1.0",
+                    "0.0.1+1",
                     "dev@archoera.local"),
             });
     }

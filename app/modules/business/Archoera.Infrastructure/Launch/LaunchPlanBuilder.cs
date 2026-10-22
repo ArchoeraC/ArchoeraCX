@@ -151,7 +151,7 @@ internal static class LaunchPlanBuilder
             ["classpath"] = string.Join(Path.PathSeparator, classpath),
             ["classpath_separator"] = Path.PathSeparator.ToString(),
             ["launcher_name"] = "ArchoeraCX",
-            ["launcher_version"] = "0.1.0",
+            ["launcher_version"] = "0.0.1+1",
             ["auth_player_name"] = account.DisplayName,
             ["version_name"] = version.Id,
             ["game_directory"] = paths.InstanceRoot,
@@ -177,7 +177,7 @@ internal static class LaunchPlanBuilder
             $"-Xmx{settings.MemoryMaxMb}M",
             "-Dfile.encoding=UTF-8",
             "-Dminecraft.launcher.brand=ArchoeraCX",
-            "-Dminecraft.launcher.version=0.1.0",
+            "-Dminecraft.launcher.version=0.0.1+1",
             "-Djava.library.path=" + paths.NativesRoot,
         };
         var gcFlag = settings.GcMode switch

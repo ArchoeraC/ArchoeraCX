@@ -36,4 +36,36 @@ void main() {
         : 'Run the CMake native build to enable the FFI smoke test.',
     timeout: const Timeout(Duration(seconds: 20)),
   );
+
+  test(
+    'system.appearance returns a typed schema',
+    () async {
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+
+      final appearance = await client.getSystemAppearance();
+      expect(appearance, isNotNull);
+      expect(appearance!.theme, anyOf('light', 'dark', 'unknown'));
+      expect(appearance.source, isNotEmpty);
+    },
+    skip: library.existsSync()
+        ? false
+        : 'Run the CMake native build to enable the FFI smoke test.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
+
+  test(
+    'system.openUrl rejects non-http urls before touching the desktop',
+    () async {
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+
+      expect(await client.openExternalUrl('file:///etc/passwd'), isFalse);
+      expect(await client.openExternalUrl('javascript:alert(1)'), isFalse);
+    },
+    skip: library.existsSync()
+        ? false
+        : 'Run the CMake native build to enable the FFI smoke test.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
 }

@@ -57,7 +57,7 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         if (httpClient is null)
         {
             _http.DefaultRequestHeaders.UserAgent.ParseAdd(
-                "ArchoeraCX/0.1.0 (https://github.com/BetaStudio2/ArchoeraCX)");
+                "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)");
         }
 
         _endpoints = endpoints ?? LoaderVersionEndpoints.Default;

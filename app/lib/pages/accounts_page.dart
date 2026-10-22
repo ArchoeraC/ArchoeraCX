@@ -416,6 +416,13 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
       }
       final account = await widget.client.pollMicrosoftLogin(start.flowId);
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      unawaited(
+        widget.client.showSystemNotification(
+          title: l10n.accountLoginSuccessNotificationTitle,
+          body: l10n.accountLoginSuccessNotificationBody(account.displayName),
+        ),
+      );
       _completed = true;
       Navigator.of(context).pop(account);
     } catch (error) {
@@ -438,12 +445,21 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
     if (authorizationUrl == null || authorizationUrl.isEmpty) return;
     var opened = false;
     try {
-      final uri = Uri.tryParse(authorizationUrl);
-      if (uri != null) {
-        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      opened = await widget.client.openExternalUrl(authorizationUrl);
     } catch (_) {
       opened = false;
+    }
+    if (!opened) {
+      // Older cores or an unavailable desktop portal fall back to Flutter's
+      // system-browser bridge instead of leaving the user without a browser.
+      try {
+        final uri = Uri.tryParse(authorizationUrl);
+        if (uri != null) {
+          opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } catch (_) {
+        opened = false;
+      }
     }
     if (!mounted) return;
     setState(() => _browserLaunchFailed = !opened);

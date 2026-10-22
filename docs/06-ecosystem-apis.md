@@ -279,7 +279,7 @@ params: {
 
 **安全与合规**
 
-- `User-Agent` 统一格式，例如 `ArchoeraCX/0.1.0 (contact@example.com)`。
+- `User-Agent` 统一格式，例如 `ArchoeraCX/0.0.1+1 (contact@example.com)`。
 - 不在客户端做全量抓取/镜像；遵守各平台速率与条款。
 
 **更新检查**

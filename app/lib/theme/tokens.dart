@@ -76,6 +76,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
   final Duration slow;
   final Curve curve;
 
+  /// Brand accent, used when neither the OS nor the user provides a color.
+  static const brandAccent = Color(0xFF4F7CFF);
+
   static const light = AppTokens(
     accent: Color(0xFF4F7CFF),
     accentHover: Color(0xFF6B90FF),
@@ -139,6 +142,65 @@ class AppTokens extends ThemeExtension<AppTokens> {
     slow: Duration(milliseconds: 240),
     curve: Curves.easeOutCubic,
   );
+
+  /// Derives an accent-tinted token set from one seed color.
+  ///
+  /// [brightness] selects the neutral base palette. [tinted] shifts the surface
+  /// family slightly toward the accent (the "global tint" preference) while
+  /// keeping text contrast untouched.
+  AppTokens withAccent(
+    Color seed, {
+    required Brightness brightness,
+    bool tinted = false,
+    bool reduceMotion = false,
+  }) {
+    final base = brightness == Brightness.light ? light : dark;
+    final onAccent = seed.computeLuminance() > 0.55
+        ? const Color(0xFF0B1020)
+        : const Color(0xFFFFFFFF);
+    final hover = Color.lerp(seed, Colors.white, 0.12)!;
+    final pressed = Color.lerp(seed, Colors.black, 0.16)!;
+    final softAlpha = brightness == Brightness.light ? 0.12 : 0.18;
+
+    var result = base.copyWith(
+      accent: seed,
+      accentHover: hover,
+      accentPressed: pressed,
+      accentSoft: seed.withValues(alpha: softAlpha),
+      onAccent: onAccent,
+    );
+
+    if (tinted) {
+      Color blend(Color color, double alpha) =>
+          Color.alphaBlend(seed.withValues(alpha: alpha), color);
+      result = result.copyWith(
+        bg: blend(base.bg, brightness == Brightness.light ? 0.035 : 0.05),
+        surface1: blend(
+          base.surface1,
+          brightness == Brightness.light ? 0.025 : 0.04,
+        ),
+        surface2: blend(
+          base.surface2,
+          brightness == Brightness.light ? 0.035 : 0.045,
+        ),
+        surface3: blend(
+          base.surface3,
+          brightness == Brightness.light ? 0.04 : 0.05,
+        ),
+        border: blend(base.border, 0.06),
+        borderStrong: blend(base.borderStrong, 0.08),
+      );
+    }
+
+    if (reduceMotion) {
+      result = result.copyWith(
+        fast: Duration.zero,
+        normal: Duration.zero,
+        slow: Duration.zero,
+      );
+    }
+    return result;
+  }
 
   @override
   AppTokens copyWith({
