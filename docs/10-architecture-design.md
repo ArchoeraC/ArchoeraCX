@@ -2139,7 +2139,7 @@ C#: 写 .archoera/pack.json → 注册 → 事件
 ### 12.7.1 启动依赖预检与自动修复
 
 ```
-launch.prepare: 账户就绪 + CheckFiles（库/client jar/asset index/asset objects）+ CheckLoaderArtifacts（NeoForge 生成物）
+launch.prepare: 账户就绪 + CheckFiles（全部库 + 原生 classifier/client jar/asset index/逐条 asset object）+ CheckLoaderArtifacts（NeoForge 生成物）
 launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合并
   → 本地修复优先（不联网、不校验下载策略）：
       缺失/未合并 version JSON：从 versions/ 下匹配游戏+加载器+加载器版本的标准 profile
@@ -2151,6 +2151,7 @@ launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合�
   → 重新 CheckFiles → 构建 LaunchPlan
 ```
 
+- `CheckFiles` 是启动前的快速全量扫描：只做存在性检查（不读大文件、不算哈希），一次报告缺失数量与第一个路径；原生库按 `downloads.classifiers` 的本机 classifier 检查，不再漏掉 `lwjgl-*-natives-linux.jar` 之类的文件。原生目录每次启动重新解压，避免旧的残缺 natives 目录让游戏报 `Failed to locate library`。
 - NeoForge 的合并版 profile 不把 `neoforge-*-client.jar` / `-universal.jar` 列入 `libraries`；预检按 Maven 约定检查这两个生成物。存在时直接启动，**不因实例缺少 installer 而触发下载/processor 修复**（从其它启动器导入的实例可直接运行）。Forge 的合并版 profile 已列出这些 jar，由 `CheckFiles` 覆盖。
 - 自动修复只尝试一次；失败返回 `AUTO_REPAIR_FAILED`，下载被策略禁用返回 `AUTO_REPAIR_BLOCKED`。
 - `loader.check` / `loader.autoRepair` 与启动预检覆盖全部五类实例：vanilla、Fabric、Quilt、Forge、NeoForge。
