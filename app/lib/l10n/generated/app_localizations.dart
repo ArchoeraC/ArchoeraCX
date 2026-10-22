@@ -2984,11 +2984,29 @@ abstract class AppLocalizations {
   /// **'No Java matches this filter.'**
   String get javaFilteredEmpty;
 
-  /// Header above the tiled Java runtime list in settings.
+  /// Back navigation button tooltip.
   ///
   /// In en, this message translates to:
-  /// **'Discovered Java'**
-  String get javaDiscovered;
+  /// **'Back'**
+  String get back;
+
+  /// Subtitle under the dedicated Java page title.
+  ///
+  /// In en, this message translates to:
+  /// **'Every Java runtime found on this machine; pick the one used to launch games.'**
+  String get javaPageSubtitle;
+
+  /// Settings row that opens the dedicated Java page.
+  ///
+  /// In en, this message translates to:
+  /// **'Java runtimes'**
+  String get javaPageManage;
+
+  /// Settings row subtitle for the Java page entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse every scan result, add a folder or pick a java executable.'**
+  String get javaPageManageHint;
 }
 
 class _AppLocalizationsDelegate

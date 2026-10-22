@@ -95,7 +95,7 @@ flutter build linux --release
 
 - 界面：AppShell + 6 页面（主页/实例/下载/账户/Wiki/设置）、设计令牌、明暗主题、中英文 i18n、斜切角面板/Toast/页面转场、账户皮肤预览；右上角任务中心为右侧滑入边栏，展示真实进度/速度与具体目标，只记录长任务；实例菜单含游戏日志查看器（`launch.logs` / `launch.log.read` / `launch.log.tail`，运行中经 ABI 进度回调实时跟随，UI 不读文件）。
 - Wiki 页（底栏第 5 项，`/wiki`）：`system.status` 上报 CPU 采样/核数/负载、内存、实例根所在磁盘、启动器进程与系统运行时长；`wiki.feed` 汇总 Mojang 官方新闻、Java 补丁说明与 Minecraft Wiki 最近编辑（逐源独立失败 + 5 分钟缓存）。刷新由用户触发，不做定时轮询。
-- Java 选择：设置页 Java 分区平铺全部扫描结果（版本徽标、使用中标记、搜索、自定义目录/可执行文件），不再是“显示前 5 + 查看全部”弹窗。
+- Java 选择：设置页 Java 分区只保留自动/手动与内存参数，并提供 `/settings/java` 子页入口；子页平铺全部扫描结果（版本徽标、使用中标记、搜索、自定义目录/可执行文件），不再是“显示前 5 + 查看全部”弹窗。
 - 外观设置：C++ `system.appearance`（XDG Portal / Windows 注册表 / AppKit）推送系统深浅色与强调色；“外观”下分“个性化 / 语言与区域”子菜单，个性化收纳主题模式、系统/自定义主题色、全局着色、界面密度、减少动效与重置；关于页含环境信息复制、源码/反馈、许可证/隐私/安全入口。
 - 系统集成：C++ `system.openUrl` / `system.notify` 用系统 API 打开授权浏览器并发送登录成功桌面通知（Linux D-Bus / Windows Shell API / macOS AppKit+UserNotifications）。
 - 核心：C++ Method/Module 注册表、wake 事件泵、C ABI v2 进度回调；C# NativeAOT 模块与 DevHost。

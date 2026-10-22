@@ -1233,7 +1233,7 @@ JavaLocator
 - 探测：`java -XshowSettings:properties -version`，解析 `java.version`/`java.home`/`java.vendor`/`os.arch`；超时 5s。
 - 候选：`JAVA_HOME`、PATH、`/usr/lib/jvm`、`/opt/java`（含 `vendor/jdk` 嵌套）、`/opt`、Windows 注册表、macOS `java_home`；详见 `08/08-java-scan.md`。
 - 缓存：按路径 + mtime + size 缓存版本；PATH 变化时失效。
-- 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；设置页 Java 分区平铺展示全部扫描结果（带搜索与自定义路径管理）。
+- 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；设置页 Java 分区提供 `/settings/java` 子页入口，子页平铺展示全部扫描结果（带搜索与自定义路径管理）。
 - 手动路径：`java.scan {roots, executables, includeDefaults}`；默认扫描为空时 UI 提示“选择目录搜索”，仍为空再提示“选择 JDK 目录 / java 可执行文件”；用户选择后用 `includeDefaults:false` 验证，路径持久化并随扫描带上。
 - 安装：Mojang runtime 优先；Adoptium 作为可选源；校验 SHA-256/签名；不打包 Oracle JDK。
 - 选择：`majorVersion` 必须匹配；Forge/NeoForge processors 用同一 JRE；不匹配时预检失败，不进入 processor。

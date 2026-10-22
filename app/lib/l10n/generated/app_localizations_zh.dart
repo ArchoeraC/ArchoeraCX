@@ -1616,5 +1616,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get javaFilteredEmpty => '没有匹配的 Java。';
 
   @override
-  String get javaDiscovered => '已发现的 Java';
+  String get back => '返回';
+
+  @override
+  String get javaPageSubtitle => '本机扫描到的全部 Java 运行环境，选择启动游戏时使用哪一个。';
+
+  @override
+  String get javaPageManage => 'Java 运行环境';
+
+  @override
+  String get javaPageManageHint => '查看全部扫描结果，添加目录或指定 java 可执行文件。';
 }

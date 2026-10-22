@@ -632,5 +632,8 @@
   "javaSearchHint": "按版本、厂商、架构或路径筛选",
   "javaSelectedBadge": "使用中",
   "javaFilteredEmpty": "没有匹配的 Java。",
-  "javaDiscovered": "已发现的 Java"
+  "back": "返回",
+  "javaPageSubtitle": "本机扫描到的全部 Java 运行环境，选择启动游戏时使用哪一个。",
+  "javaPageManage": "Java 运行环境",
+  "javaPageManageHint": "查看全部扫描结果，添加目录或指定 java 可执行文件。"
 }

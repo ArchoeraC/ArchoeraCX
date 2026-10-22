@@ -1,5 +1,5 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
-import 'package:archoera_cx/widgets/settings/java_runtimes_panel.dart';
+import 'package:archoera_cx/pages/java_page.dart';
 import 'package:archoera_cx/services/core/core_client.dart';
 import 'package:archoera_cx/services/core/java_scan.dart';
 import 'package:archoera_cx/services/java/java_path_store.dart';
@@ -63,14 +63,11 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: JavaRuntimesPanel(
+            body: JavaPage(
               scan: scan,
               pathStore: const JavaPathStore(),
-                pickDirectory: pickDirectory,
-                pickExecutable: pickExecutable,
-              ),
+              pickDirectory: pickDirectory,
+              pickExecutable: pickExecutable,
             ),
           ),
         ),
@@ -167,6 +164,30 @@ void main() {
 
     // Let the success toast timer expire before the test ends.
     await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('auto selection stays available from the page', (tester) async {
+    final container = await pumpPage(
+      tester,
+      scan: _scanOf(
+        scanResult([runtime('/opt/jdk-21/bin/java', '21.0.4', 'amd64')]),
+      ),
+    );
+
+    expect(container.read(appSettingsProvider).value!.javaAuto, isTrue);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(container.read(appSettingsProvider).value!.javaAuto, isFalse);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(container.read(appSettingsProvider).value!.javaAuto, isTrue);
+    expect(find.text('In use'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    // Let the toast timers expire before the test ends.
+    await tester.pump(const Duration(seconds: 8));
   });
 
   testWidgets('offers manual fallbacks when nothing is found', (tester) async {

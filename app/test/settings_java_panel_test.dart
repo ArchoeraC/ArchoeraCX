@@ -29,14 +29,28 @@ void main() {
     await tester.tap(find.text('Java').last);
     await tester.pumpAndSettle();
 
-    // The Java section holds the selection rows, the tiled runtime list and the
-    // memory options; the old "view all" dialog is gone.
-    expect(find.text('Discovered Java'), findsOneWidget);
-    expect(find.text('Scan Java'), findsOneWidget);
+    // The Java section keeps the selection rows and memory options; the runtime
+    // list lives on its own page, so neither the old five-row list nor the
+    // "view all" dialog remains here.
+    expect(find.text('Java runtimes'), findsOneWidget);
+    expect(find.textContaining('Browse every scan result'), findsOneWidget);
+    expect(find.text('Automatic (per game version)'), findsOneWidget);
     expect(find.textContaining('View all'), findsNothing);
+    expect(find.text('Scan Java'), findsNothing);
     expect(find.text('System memory'), findsOneWidget);
     expect(find.text('Minimum memory (MB)'), findsOneWidget);
     expect(find.text('Additional game arguments'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Java runtimes'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Every Java runtime found on this machine'),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.text('System memory'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

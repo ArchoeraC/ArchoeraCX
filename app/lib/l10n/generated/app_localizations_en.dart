@@ -1679,5 +1679,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get javaFilteredEmpty => 'No Java matches this filter.';
 
   @override
-  String get javaDiscovered => 'Discovered Java';
+  String get back => 'Back';
+
+  @override
+  String get javaPageSubtitle =>
+      'Every Java runtime found on this machine; pick the one used to launch games.';
+
+  @override
+  String get javaPageManage => 'Java runtimes';
+
+  @override
+  String get javaPageManageHint =>
+      'Browse every scan result, add a folder or pick a java executable.';
 }
