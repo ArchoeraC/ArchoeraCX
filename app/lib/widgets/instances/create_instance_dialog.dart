@@ -81,6 +81,14 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
 
   void _onNameChanged() => setState(() {});
 
+  /// AlertDialog reserves ~128 px for its insets and content padding; keep a
+  /// little slack so the two columns never overflow by a few pixels.
+  double _dialogWidth(BuildContext context) {
+    final available = MediaQuery.sizeOf(context).width - 140;
+    final wide = available.clamp(360.0, 720.0);
+    return _loader == GameLoader.vanilla ? available.clamp(360.0, 420.0) : wide;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -91,135 +99,141 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         ? _selectedRoot!
         : roots.first;
     final canCreate = _nameController.text.trim().isNotEmpty;
-    final contentWidth = (MediaQuery.sizeOf(context).width - 120).clamp(
-      420.0,
-      600.0,
-    );
-
     return AlertDialog(
       scrollable: true,
       title: Text(l10n.instanceCreateTitle),
-      content: SizedBox(
-        width: contentWidth,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _nameController,
-              autofocus: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: canCreate ? (_) => _create(l10n) : null,
-              decoration: InputDecoration(
-                labelText: l10n.instanceNameLabel,
-                hintText: l10n.instanceNameHint,
+      content: TweenAnimationBuilder<double>(
+        tween: Tween<double>(
+          begin: _dialogWidth(context),
+          end: _dialogWidth(context),
+        ),
+        duration: tokens.normal,
+        curve: tokens.curve,
+        builder: (context, width, _) => SizedBox(
+          width: width,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _nameController,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: canCreate ? (_) => _create(l10n) : null,
+                decoration: InputDecoration(
+                  labelText: l10n.instanceNameLabel,
+                  hintText: l10n.instanceNameHint,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<String>(
-              initialValue: selectedRoot,
-              isExpanded: true,
-              decoration: InputDecoration(labelText: l10n.instanceRootLabel),
-              items: [
-                for (final root in roots)
-                  DropdownMenuItem(
-                    value: root,
-                    child: Text(
-                      root,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                initialValue: selectedRoot,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: l10n.instanceRootLabel),
+                items: [
+                  for (final root in roots)
+                    DropdownMenuItem(
+                      value: root,
+                      child: Text(
+                        root,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _selectedRoot = value);
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _rootController,
+                      decoration: InputDecoration(
+                        labelText: l10n.instanceLocationLabel,
+                        hintText: _versionIsolation
+                            ? '$selectedRoot/versions/${slugForInstance(_nameController.text)}'
+                            : '$selectedRoot/${slugForInstance(_nameController.text)}',
+                        helperText: l10n.instanceLocationHint,
+                      ),
                     ),
                   ),
-              ],
-              onChanged: (value) {
-                if (value != null) setState(() => _selectedRoot = value);
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _rootController,
-                    decoration: InputDecoration(
-                      labelText: l10n.instanceLocationLabel,
-                      hintText: _versionIsolation
-                          ? '$selectedRoot/versions/${slugForInstance(_nameController.text)}'
-                          : '$selectedRoot/${slugForInstance(_nameController.text)}',
-                      helperText: l10n.instanceLocationHint,
-                    ),
+                  const SizedBox(width: AppSpacing.xs),
+                  IconButton(
+                    onPressed: _chooseRoot,
+                    tooltip: l10n.instanceChooseLocation,
+                    icon: const Icon(Icons.folder_open_rounded),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                IconButton(
-                  onPressed: _chooseRoot,
-                  tooltip: l10n.instanceChooseLocation,
-                  icon: const Icon(Icons.folder_open_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _versionIsolation,
-              onChanged: (value) =>
-                  setState(() => _versionIsolation = value ?? false),
-              title: Text(l10n.instanceVersionIsolation),
-              subtitle: Text(l10n.instanceVersionIsolationHint),
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            DropdownButtonFormField<String>(
-              initialValue: _gameVersion,
-              decoration: InputDecoration(
-                labelText: l10n.instanceGameVersionLabel,
+                ],
               ),
-              items: [
-                for (final version in [
-                  if (!_baseGameVersions.contains(_gameVersion)) _gameVersion,
-                  ..._baseGameVersions,
-                ])
-                  DropdownMenuItem(value: version, child: Text(version)),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  _gameVersion = value;
-                  _loaderVersion = '';
-                });
-                _loadLoaderVersions();
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-            LoaderPickerPanel(
-              loaders: _loaders,
-              selectedLoader: _loader,
-              onLoaderSelected: (loader) {
-                if (loader == _loader) return;
-                setState(() {
-                  _loader = loader;
-                  _loaderVersion = '';
-                });
-                _loadLoaderVersions();
-              },
-              versions: _loaderVersions,
-              selectedVersion: _loaderVersion,
-              onVersionSelected: (version) =>
-                  setState(() => _loaderVersion = version),
-              loading: _loadingVersions,
-              error: _versionError,
-              onRetry: _loadLoaderVersions,
-              gameVersion: _gameVersion,
-              width: contentWidth,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              l10n.instanceCreateSummary(_loader.labelFor(l10n), _gameVersion),
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: tokens.textTertiary),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.xs),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _versionIsolation,
+                onChanged: (value) =>
+                    setState(() => _versionIsolation = value ?? false),
+                title: Text(l10n.instanceVersionIsolation),
+                subtitle: Text(l10n.instanceVersionIsolationHint),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                initialValue: _gameVersion,
+                decoration: InputDecoration(
+                  labelText: l10n.instanceGameVersionLabel,
+                ),
+                items: [
+                  for (final version in [
+                    if (!_baseGameVersions.contains(_gameVersion)) _gameVersion,
+                    ..._baseGameVersions,
+                  ])
+                    DropdownMenuItem(value: version, child: Text(version)),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _gameVersion = value;
+                    _loaderVersion = '';
+                  });
+                  _loadLoaderVersions();
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              LoaderPickerPanel(
+                loaders: _loaders,
+                selectedLoader: _loader,
+                onLoaderSelected: (loader) {
+                  if (loader == _loader) return;
+                  setState(() {
+                    _loader = loader;
+                    _loaderVersion = '';
+                  });
+                  _loadLoaderVersions();
+                },
+                versions: _loaderVersions,
+                selectedVersion: _loaderVersion,
+                onVersionSelected: (version) =>
+                    setState(() => _loaderVersion = version),
+                loading: _loadingVersions,
+                error: _versionError,
+                onRetry: _loadLoaderVersions,
+                gameVersion: _gameVersion,
+                width: width,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                l10n.instanceCreateSummary(
+                  _loader.labelFor(l10n),
+                  _gameVersion,
+                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+            ],
+          ),
         ),
       ),
       actions: [

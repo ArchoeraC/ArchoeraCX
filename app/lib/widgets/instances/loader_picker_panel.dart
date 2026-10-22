@@ -28,6 +28,7 @@ class LoaderPickerPanel extends StatefulWidget {
     this.gameVersion,
     this.width = 600,
     this.height = 300,
+    this.expanded,
   });
 
   final List<GameLoader> loaders;
@@ -43,10 +44,13 @@ class LoaderPickerPanel extends StatefulWidget {
   final VoidCallback? onRetry;
   final String? gameVersion;
 
-  /// Total width of the two columns; narrower dialogs pass a smaller value and
-  /// the build column shrinks first.
+  /// Total width of the panel. The caller animates this together with the
+  /// dialog width so the whole window expands, not just one column.
   final double width;
   final double height;
+
+  /// Whether the build column is shown. Defaults to "any loader but vanilla".
+  final bool? expanded;
 
   @override
   State<LoaderPickerPanel> createState() => _LoaderPickerPanelState();
@@ -61,62 +65,46 @@ class _LoaderPickerPanelState extends State<LoaderPickerPanel> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
-    final vanilla = widget.selectedLoader == GameLoader.vanilla;
-    final rightWidth =
-        (widget.width - _leftWidth - _gap).clamp(220.0, 600.0);
+    final expanded =
+        widget.expanded ?? widget.selectedLoader != GameLoader.vanilla;
+    final leftWidth = expanded ? _leftWidth : widget.width;
+    final rightWidth = expanded
+        ? (widget.width - _leftWidth - _gap).clamp(220.0, 600.0)
+        : 0.0;
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: vanilla ? 1 : 0),
-      duration: tokens.normal,
-      curve: tokens.curve,
-      builder: (context, collapse, _) {
-        final leftWidth = _leftWidth + (rightWidth + _gap) * collapse;
-        final visibleRight = rightWidth * (1 - collapse);
-
-        return SizedBox(
-          height: widget.height,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: leftWidth,
-                child: _LoaderColumn(
-                  l10n: l10n,
-                  tokens: tokens,
-                  loaders: widget.loaders,
-                  selectedLoader: widget.selectedLoader,
-                  selectedVersion: widget.selectedVersion,
-                  vanillaProgress: collapse,
-                  onSelected: widget.onLoaderSelected,
-                ),
-              ),
-              SizedBox(width: _gap * (1 - collapse)),
-              if (visibleRight > 0.5)
-                ClipRect(
-                  child: SizedBox(
-                    width: visibleRight,
-                    child: OverflowBox(
-                      alignment: Alignment.centerLeft,
-                      minWidth: rightWidth,
-                      maxWidth: rightWidth,
-                      child: Opacity(
-                        opacity: 1 - collapse,
-                        child: LoaderVersionList(
-                          versions: widget.versions,
-                          selectedVersion: widget.selectedVersion,
-                          onSelected: widget.onVersionSelected,
-                          loading: widget.loading,
-                          error: widget.error,
-                          onRetry: widget.onRetry,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+    return SizedBox(
+      height: widget.height,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: leftWidth,
+            child: _LoaderColumn(
+              l10n: l10n,
+              tokens: tokens,
+              loaders: widget.loaders,
+              selectedLoader: widget.selectedLoader,
+              selectedVersion: widget.selectedVersion,
+              showVanillaHint: !expanded,
+              onSelected: widget.onLoaderSelected,
+            ),
           ),
-        );
-      },
+          if (expanded) ...[
+            const SizedBox(width: _gap),
+            SizedBox(
+              width: rightWidth,
+              child: LoaderVersionList(
+                versions: widget.versions,
+                selectedVersion: widget.selectedVersion,
+                onSelected: widget.onVersionSelected,
+                loading: widget.loading,
+                error: widget.error,
+                onRetry: widget.onRetry,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -128,7 +116,7 @@ class _LoaderColumn extends StatelessWidget {
     required this.loaders,
     required this.selectedLoader,
     required this.selectedVersion,
-    required this.vanillaProgress,
+    required this.showVanillaHint,
     required this.onSelected,
   });
 
@@ -137,7 +125,7 @@ class _LoaderColumn extends StatelessWidget {
   final List<GameLoader> loaders;
   final GameLoader selectedLoader;
   final String selectedVersion;
-  final double vanillaProgress;
+  final bool showVanillaHint;
   final ValueChanged<GameLoader> onSelected;
 
   @override
@@ -175,26 +163,16 @@ class _LoaderColumn extends StatelessWidget {
             ],
           ),
         ),
-        ClipRect(
-          child: Align(
-            alignment: Alignment.topLeft,
-            heightFactor: vanillaProgress,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: 2,
-                top: AppSpacing.xs,
-              ),
-              child: Text(
-                l10n.loaderPickerVanillaHint,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.bodySmall?.copyWith(
-                  color: tokens.textTertiary,
-                ),
-              ),
+        if (showVanillaHint)
+          Padding(
+            padding: const EdgeInsets.only(left: 2, top: AppSpacing.xs),
+            child: Text(
+              l10n.loaderPickerVanillaHint,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
             ),
           ),
-        ),
       ],
     );
   }
