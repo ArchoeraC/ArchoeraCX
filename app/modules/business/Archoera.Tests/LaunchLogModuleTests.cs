@@ -40,6 +40,13 @@ public sealed class LaunchLogModuleTests
             Assert.Equal("launch-20260101-120000.log", logs[1].GetProperty("fileName").GetString());
             Assert.False(data.GetProperty("running").GetBoolean());
             Assert.Equal(logDirectory, data.GetProperty("logDirectory").GetString());
+            Assert.Equal(
+                new FileInfo(older).Length + new FileInfo(newer).Length,
+                data.GetProperty("totalSize").GetInt64());
+            Assert.Equal(10, data.GetProperty("retentionMaxFiles").GetInt32());
+            Assert.Equal(
+                32L * 1024 * 1024,
+                data.GetProperty("retentionMaxBytes").GetInt64());
         }
         finally
         {

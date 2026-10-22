@@ -586,6 +586,7 @@
   "gameLogCopied": "日志已复制到剪贴板。",
   "gameLogFileLabel": "日志文件",
   "gameLogTruncated": "仅显示最后 {count} 行。",
+  "gameLogRetentionInfo": "日志共占用 {size}；只保留最近 {max} 次启动，超出后自动清理最旧的记录。",
   "taskCenterLaunch": "启动",
   "taskCenterTaskWithTarget": "{category} · {target}",
   "navWiki": "Wiki",

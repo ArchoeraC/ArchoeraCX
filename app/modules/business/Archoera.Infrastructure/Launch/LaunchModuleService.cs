@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using Archoera.Application.Accounts;
 using Archoera.Application.Instances;
@@ -811,7 +810,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         string instanceId,
         LaunchPlan plan)
     {
-        Directory.CreateDirectory(plan.LogDirectory);
+        LaunchLogFiles.Prepare(plan.LogDirectory);
         var startInfo = new ProcessStartInfo
         {
             FileName = plan.JavaPath,
@@ -844,26 +843,33 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         }
 
         var pid = process.Id;
-        var stream = new FileStream(logPath, FileMode.Create, FileAccess.Write, FileShare.Read);
-        var log = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
+        var log = new LaunchLogWriter(logPath);
         process.OutputDataReceived += (_, args) =>
         {
-            if (args.Data is not null) lock (log) log.WriteLine(args.Data);
+            if (args.Data is not null) log.WriteLine(args.Data);
         };
         process.ErrorDataReceived += (_, args) =>
         {
-            if (args.Data is not null) lock (log) log.WriteLine(args.Data);
+            if (args.Data is not null) log.WriteLine(args.Data);
         };
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         process.EnableRaisingEvents = true;
         process.Exited += (_, _) =>
         {
-            lock (log)
+            // WaitForExit() also drains the asynchronous output handlers, so the
+            // exit marker is the last line instead of racing the remaining
+            // output.
+            try
             {
-                log.WriteLine($"[exited with code {process.ExitCode}]");
-                log.Dispose();
+                process.WaitForExit();
             }
+            catch (InvalidOperationException)
+            {
+                // Already reaped elsewhere.
+            }
+
+            log.Complete(process.ExitCode);
 
             // The log viewer polls the registry to know when a follow can end.
             LaunchProcessRegistry.Unregister(instanceId, pid);

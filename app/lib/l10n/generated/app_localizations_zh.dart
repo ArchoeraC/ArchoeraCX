@@ -1454,6 +1454,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String gameLogRetentionInfo(String size, int max) {
+    return '日志共占用 $size；只保留最近 $max 次启动，超出后自动清理最旧的记录。';
+  }
+
+  @override
   String get taskCenterLaunch => '启动';
 
   @override
