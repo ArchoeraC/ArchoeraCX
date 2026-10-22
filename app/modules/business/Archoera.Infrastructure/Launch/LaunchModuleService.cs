@@ -466,15 +466,18 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             // Repair is only needed when something is actually missing -- an
             // instance prepared by another launcher must not require an
             // installer download just because its own downloads/ is empty.
+            var filesOk = LaunchPlanBuilder.CheckFiles(version, paths).Ok;
+            var loaderOk = LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths).Ok;
             var needsRepair =
-                !LaunchPlanBuilder.CheckFiles(version, paths).Ok ||
-                !LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths).Ok ||
+                !filesOk ||
+                !loaderOk ||
                 !string.IsNullOrWhiteSpace(version.InheritsFrom);
 
             // Prefer repairing from an installer already on disk before asking
-            // the network for anything. Complete instances are skipped above,
-            // so this only runs for genuinely missing generated artifacts.
-            if (needsRepair && IsForgeInstance(instance))
+            // the network for anything. Only NeoForge hides generated jars from
+            // CheckFiles; if ordinary libraries/assets are missing, processors
+            // cannot help and the download repair takes over.
+            if (needsRepair && IsForgeInstance(instance) && filesOk && !loaderOk)
             {
                 var localRepair = _instanceRepair ?? new PackInstallService(settings: _settings);
                 try

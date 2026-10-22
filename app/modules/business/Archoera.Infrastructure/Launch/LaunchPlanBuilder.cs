@@ -33,11 +33,26 @@ internal static class LaunchPlanBuilder
         {
             if (!MojangRuleEvaluator.IsAllowed(library.Rules, platform)) continue;
             var relative = LibraryRelativePath(library);
-            if (relative is null) continue;
-            if (!File.Exists(Path.Combine(paths.LibrariesRoot, relative)))
+            if (relative is not null &&
+                !File.Exists(Path.Combine(paths.LibrariesRoot, relative)))
             {
                 missing.Add(relative);
-                if (missing.Count >= 3) break;
+            }
+
+            // Native libraries live in downloads.classifiers, not the base
+            // artifact. ExtractNatives() silently skips a missing classifier,
+            // which then fails at runtime with "Failed to locate library".
+            var native = NativeDownload(library, platform, platform.OsName);
+            if (native is null) continue;
+            var nativeRelative = NativeRelativePath(
+                library,
+                platform,
+                platform.OsName,
+                native);
+            if (nativeRelative is not null &&
+                !File.Exists(Path.Combine(paths.LibrariesRoot, nativeRelative)))
+            {
+                missing.Add(nativeRelative);
             }
         }
 
@@ -79,6 +94,8 @@ internal static class LaunchPlanBuilder
                 if (document.RootElement.TryGetProperty("objects", out var objects) &&
                     objects.ValueKind == JsonValueKind.Object)
                 {
+                    var missingAssets = 0;
+                    string? firstMissing = null;
                     foreach (var item in objects.EnumerateObject())
                     {
                         if (item.Value.ValueKind != JsonValueKind.Object ||
@@ -95,13 +112,17 @@ internal static class LaunchPlanBuilder
                             "objects",
                             hash[..2],
                             hash);
-                        if (!File.Exists(objectPath))
-                        {
-                            return new LaunchFileCheck(
-                                false,
-                                "ASSET_MISSING",
-                                $"asset '{item.Name}' is missing");
-                        }
+                        if (File.Exists(objectPath)) continue;
+                        missingAssets++;
+                        firstMissing ??= item.Name;
+                    }
+
+                    if (missingAssets > 0)
+                    {
+                        return new LaunchFileCheck(
+                            false,
+                            "ASSET_MISSING",
+                            $"missing {missingAssets} assets, first: '{firstMissing}'");
                     }
                 }
             }
@@ -430,8 +451,10 @@ internal static class LaunchPlanBuilder
         MojangPlatform platform)
     {
         Directory.CreateDirectory(paths.NativesRoot);
-        if (Directory.EnumerateFiles(paths.NativesRoot).Any()) return;
 
+        // Extract every launch instead of trusting a non-empty folder: a stale
+        // or partially extracted natives directory otherwise keeps failing
+        // with "Failed to locate library". The jars are a few MB at most.
         var osKey = platform.OsName;
         foreach (var library in version.Libraries)
         {
@@ -492,9 +515,41 @@ internal static class LaunchPlanBuilder
         return null;
     }
 
+    private static string? NativeRelativePath(
+        MojangLibrary library,
+        MojangPlatform platform,
+        string osKey,
+        MojangDownload download)
+    {
+        if (!string.IsNullOrWhiteSpace(download.Path))
+        {
+            return download.Path.Replace('\\', '/');
+        }
+
+        if (library.Natives is not null &&
+            library.Natives.TryGetValue(osKey, out var rawClassifier))
+        {
+            return DerivePath(
+                library.Name,
+                rawClassifier.Replace("${arch}", platform.NativeArchBits));
+        }
+
+        return library.Name.Contains(":natives-", StringComparison.OrdinalIgnoreCase)
+            ? DerivePath(library.Name, null)
+            : null;
+    }
+
     private static string? LibraryRelativePath(MojangLibrary library)
     {
         var artifact = library.Downloads?.Artifact;
+        if (artifact is null && library.Downloads?.ClassifierMap.Count > 0)
+        {
+            // Classifier-only entry (typically a legacy native): there is no
+            // base jar to put on the classpath. Natives are verified and
+            // extracted through NativeDownload instead.
+            return null;
+        }
+
         if (artifact is not null && !string.IsNullOrWhiteSpace(artifact.Path))
         {
             return artifact.Path.Replace('\\', '/');
