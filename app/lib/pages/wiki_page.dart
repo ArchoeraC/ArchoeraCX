@@ -89,13 +89,25 @@ class _SystemLoadPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.wikiSystemTitle,
-            style: textTheme.labelSmall?.copyWith(
-              color: tokens.textSecondary,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            children: [
+              Text(
+                l10n.wikiSystemTitle,
+                style: textTheme.labelSmall?.copyWith(
+                  color: tokens.textSecondary,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                l10n.wikiSystemLive,
+                style: textTheme.labelSmall?.copyWith(
+                  color: tokens.textTertiary,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Container(height: 1, color: tokens.border),

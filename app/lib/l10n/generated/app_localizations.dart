@@ -3031,6 +3031,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick a single accent color for the launcher.'**
   String get settingsThemeAccentCustomDesc;
+
+  /// Hint that machine load is pushed by the core every five seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates every 5 s'**
+  String get wikiSystemLive;
 }
 
 class _AppLocalizationsDelegate

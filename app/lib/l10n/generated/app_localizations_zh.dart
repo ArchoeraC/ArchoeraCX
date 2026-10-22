@@ -1638,4 +1638,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsThemeAccentCustomDesc => '为启动器指定单一强调色。';
+
+  @override
+  String get wikiSystemLive => '每 5 秒自动更新';
 }

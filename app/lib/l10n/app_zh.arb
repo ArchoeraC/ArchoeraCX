@@ -639,5 +639,6 @@
   "settingsSectionAccent": "主题色",
   "settingsSectionInterface": "界面",
   "settingsThemeAccentSystemDesc": "跟随桌面强调色。",
-  "settingsThemeAccentCustomDesc": "为启动器指定单一强调色。"
+  "settingsThemeAccentCustomDesc": "为启动器指定单一强调色。",
+  "wikiSystemLive": "每 5 秒自动更新"
 }

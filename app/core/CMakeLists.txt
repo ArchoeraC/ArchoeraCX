@@ -3,13 +3,16 @@ find_package(Threads REQUIRED)
 # System appearance backend: native OS APIs only, no polling in Dart.
 set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_stub.cpp)
 set(ARCHOERA_SYSTEM_SOURCES src/platform_system_stub.cpp)
+set(ARCHOERA_STATUS_SOURCES src/platform_status_stub.cpp)
 if(WIN32)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_windows.cpp)
   set(ARCHOERA_SYSTEM_SOURCES src/platform_system_windows.cpp)
+  set(ARCHOERA_STATUS_SOURCES src/platform_status_windows.cpp)
 elseif(APPLE)
   enable_language(OBJCXX)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_macos.mm)
   set(ARCHOERA_SYSTEM_SOURCES src/platform_system_macos.mm)
+  set(ARCHOERA_STATUS_SOURCES src/platform_status_macos.cpp)
   set_source_files_properties(src/platform_appearance_macos.mm
     src/platform_system_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 else()
@@ -21,6 +24,8 @@ else()
     set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_linux.cpp)
     set(ARCHOERA_SYSTEM_SOURCES src/platform_system_linux.cpp)
   endif()
+  # /proc + statvfs need no extra dependency.
+  set(ARCHOERA_STATUS_SOURCES src/platform_status_linux.cpp)
 endif()
 
 add_library(archoera_core SHARED
@@ -29,8 +34,10 @@ add_library(archoera_core SHARED
   src/module_host.cpp
   src/module_registry.cpp
   src/platform_system_common.cpp
+  src/platform_status_common.cpp
   ${ARCHOERA_APPEARANCE_SOURCES}
   ${ARCHOERA_SYSTEM_SOURCES}
+  ${ARCHOERA_STATUS_SOURCES}
 )
 
 target_compile_features(archoera_core PRIVATE cxx_std_20)

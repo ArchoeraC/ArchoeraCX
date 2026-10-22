@@ -2294,7 +2294,9 @@ public interface IDownloadProvider {
 | `system.log.tail` | C++ | 环形缓冲分页 |
 | `system.log.export` | C++ | 导出诊断日志 |
 | `system.memory` | C# | 上报物理总内存/可用内存 |
-| `system.status` | C# | 机器负载快照：CPU 采样/核数/负载、内存、指定路径所在磁盘、启动器进程与系统运行时长（未知值写 null） |
+| `system.status` | C++ | 机器负载快照（异步任务）：CPU 采样/核数/负载、内存、指定路径所在磁盘、启动器进程与系统运行时长；平台 API 在 `platform_status_*`，未知值写 null |
+| `system.status.watch` | C++ | 启动原生采样线程，按 `intervalMs`（默认 5000，范围 1000–60000）推送 `system.status` 域事件；条件变量等待，不做 Dart 轮询 |
+| `system.status.unwatch` | C++ | 停止采样线程并 join |
 | `wiki.feed` | C# | Wiki 页社区流：Mojang 官方新闻、Java 版本补丁说明、Minecraft Wiki 最近编辑；逐源独立失败 + 5 分钟缓存 |
 | `system.diagnostics` | C++/C# | 生成诊断包 |
 | `system.openPath` | C++ | 打开本地路径（校验） |
