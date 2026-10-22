@@ -42,6 +42,36 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
+    public async Task Create_without_a_root_uses_version_isolation()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var repository = new JsonInstanceRepository(
+                dataRoot,
+                new JsonAppSettingsStore(dataRoot));
+
+            var created = await repository.CreateAsync(
+                "My Instance",
+                "1.21.4",
+                "fabric",
+                "0.16.10",
+                rootPath: null);
+
+            var marker = $"{Path.DirectorySeparatorChar}versions{Path.DirectorySeparatorChar}";
+            Assert.Contains(marker, created.RootPath);
+            Assert.Equal("my-instance", Path.GetFileName(created.RootPath));
+            Assert.True(
+                File.Exists(Path.Combine(created.RootPath, ".archoera", "instance.json")));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Update_and_delete_modify_the_registry_and_instance_file()
     {
         var directory = TempDirectory();

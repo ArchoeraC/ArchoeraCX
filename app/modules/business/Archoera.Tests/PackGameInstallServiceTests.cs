@@ -252,8 +252,15 @@ public sealed class PackGameInstallServiceTests
 
             Assert.Equal("1.20.1", result.VersionId);
             Assert.Equal(1, runner.Calls);
+            // New instances are isolated under versions/<name>, so the shared
+            // versions/ directory lives at the install root.
+            Assert.Contains(
+                $"{Path.DirectorySeparatorChar}versions{Path.DirectorySeparatorChar}",
+                created.RootPath);
+            var installRoot = Archoera.Infrastructure.Launch.LaunchPaths
+                .ResolveInstallRoot(created.RootPath);
             Assert.True(File.Exists(Path.Combine(
-                created.RootPath,
+                installRoot,
                 "versions",
                 "1.20.1",
                 "1.20.1.json")));

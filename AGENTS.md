@@ -100,7 +100,7 @@ flutter build linux --release
 - 系统集成：C++ `system.openUrl` / `system.notify` 用系统 API 打开授权浏览器并发送登录成功桌面通知（Linux D-Bus / Windows Shell API / macOS AppKit+UserNotifications）。
 - 核心：C++ Method/Module 注册表、wake 事件泵、C ABI v2 进度回调；C# NativeAOT 模块与 DevHost。
 - 账户：Microsoft Authorization Code + PKCE（loopback）→ XBL/XSTS → Minecraft；凭据保险库（crypto/file）；离线账户；在线启动。
-- 实例与设置：SQLite 索引 + `instance.json` 权威源；Java 扫描/选择、内存/GC/JVM/游戏参数持久化。
+- 实例与设置：SQLite 索引 + `instance.json` 权威源；新建实例默认版本隔离（`versions/<name>`，整合包安装同样默认隔离；显式 `rootPath` 仍可覆盖）；Java 扫描/选择、内存/GC/JVM/游戏参数持久化。
 - 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消。
 - 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。`loader.versions` 按“自动源”处理：中国大陆网络镜像优先（Fabric fabric-meta、Forge per-game JSON、NeoForge Maven 镜像），其他地区官方优先、失败回退镜像；结果缓存 10 分钟。
 - 启动依赖预检 `launch.prepare` / `launch.start`，缺失时自动下载补全（下载策略关闭返回 `AUTO_REPAIR_BLOCKED`）。
