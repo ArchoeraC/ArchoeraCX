@@ -2390,12 +2390,6 @@ abstract class AppLocalizations {
   /// **'Theme, accent color and interface effects apply immediately.'**
   String get settingsAppearanceNote;
 
-  /// No description provided for @settingsAppearancePersonalization.
-  ///
-  /// In en, this message translates to:
-  /// **'Personalization'**
-  String get settingsAppearancePersonalization;
-
   /// No description provided for @settingsAppearanceLanguage.
   ///
   /// In en, this message translates to:
@@ -3007,6 +3001,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Browse every scan result, add a folder or pick a java executable.'**
   String get javaPageManageHint;
+
+  /// Appearance settings section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsSectionTheme;
+
+  /// Appearance settings section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Accent'**
+  String get settingsSectionAccent;
+
+  /// Appearance settings section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface'**
+  String get settingsSectionInterface;
+
+  /// Accent row subtitle when following the system accent.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the desktop accent color.'**
+  String get settingsThemeAccentSystemDesc;
+
+  /// Accent row subtitle when a custom accent is set.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a single accent color for the launcher.'**
+  String get settingsThemeAccentCustomDesc;
 }
 
 class _AppLocalizationsDelegate

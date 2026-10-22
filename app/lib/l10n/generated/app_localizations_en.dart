@@ -1345,9 +1345,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Theme, accent color and interface effects apply immediately.';
 
   @override
-  String get settingsAppearancePersonalization => 'Personalization';
-
-  @override
   String get settingsAppearanceLanguage => 'Language & region';
 
   @override
@@ -1691,4 +1688,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get javaPageManageHint =>
       'Browse every scan result, add a folder or pick a java executable.';
+
+  @override
+  String get settingsSectionTheme => 'Theme';
+
+  @override
+  String get settingsSectionAccent => 'Accent';
+
+  @override
+  String get settingsSectionInterface => 'Interface';
+
+  @override
+  String get settingsThemeAccentSystemDesc => 'Use the desktop accent color.';
+
+  @override
+  String get settingsThemeAccentCustomDesc =>
+      'Pick a single accent color for the launcher.';
 }
