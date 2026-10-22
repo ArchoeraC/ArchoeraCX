@@ -14,7 +14,7 @@ namespace Archoera.Tests;
 /// </summary>
 internal static class JavaRuntimeTestData
 {
-    public const string UserAgent = "ArchoeraCX/0.1.0 (tests@example.com)";
+    public const string UserAgent = "ArchoeraCX/0.0.1+1 (tests@example.com)";
 
     public const string CatalogUrl =
         "https://launchermeta.mojang.com/v1/products/java-runtime/"

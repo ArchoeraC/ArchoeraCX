@@ -260,7 +260,7 @@ Dart ──compliance.state / download.plan──▶ C++ ──▶ C# Compliance
   "noticeVersion": "2026-10-01", "noticeSha256": "9f2c…",
   "acceptedAt": "2026-10-20T12:34:56Z", "method": "typed_phrase",
   "phraseId": "zh-Hans#1", "locale": "zh-Hans", "channel": "stable",
-  "appVersion": "0.1.0+build.123", "configSha256": "3a71…", "revokedAt": null }
+  "appVersion": "0.0.1+1", "configSha256": "3a71…", "revokedAt": null }
 ```
 
 - `noticeSha256` 运行时由**打包进二进制的声明资源**计算，不读磁盘、不信配置。

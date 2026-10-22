@@ -20,6 +20,9 @@ enum class MethodRouteKind {
   kCorePingAsync,
   kCoreInfo,
   kCoreModules,
+  kCoreAppearance,
+  kCoreOpenUrl,
+  kCoreNotify,
   kModule,
 };
 

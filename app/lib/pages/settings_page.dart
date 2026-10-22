@@ -1,13 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
 import '../services/core/java_scan.dart';
 import '../services/core/system_memory.dart';
+import '../stores/appearance.dart';
 import '../stores/instances.dart';
 import '../stores/locale.dart';
 import '../stores/providers.dart';
@@ -21,6 +26,8 @@ import '../widgets/common/app_page_header.dart';
 
 enum _SettingsSection { appearance, storage, java, about }
 
+enum _AppearanceTab { personalization, language }
+
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
@@ -30,6 +37,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   _SettingsSection _section = _SettingsSection.appearance;
+  _AppearanceTab _appearanceTab = _AppearanceTab.personalization;
 
   @override
   Widget build(BuildContext context) {
@@ -110,34 +118,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AppSettings? settings,
   ) {
     final locale = ref.watch(localeProvider);
+    final appearance = ref.watch(appearanceProvider);
+    final systemAppearance = ref.watch(systemAppearanceProvider).value;
+    final systemAccent = systemAppearance?.accent;
     return switch (_section) {
-      _SettingsSection.appearance => _SettingsCard(
-        children: [
-          _SettingRow(
-            icon: Icons.palette_outlined,
-            title: l10n.settingsTheme,
-            value: l10n.settingsThemeSystem,
-          ),
-          _SettingRow(
-            icon: Icons.translate_rounded,
-            title: l10n.settingsLanguage,
-            value: _languageLabel(l10n, locale),
-            onTap: () => _chooseLanguage(context, l10n),
-          ),
-          _SettingRow(
-            icon: Icons.animation_rounded,
-            title: l10n.settingsMotion,
-            subtitle: l10n.settingsMotionDesc,
-            trailing: Switch(
-              value: false,
-              onChanged: (_) => _notify(
-                context,
-                l10n.commonCoreNotConnected,
-                type: ToastType.error,
-              ),
-            ),
-          ),
-        ],
+      _SettingsSection.appearance => _appearanceContent(
+        context,
+        l10n,
+        appearance,
+        systemAccent,
+        locale,
       ),
       _SettingsSection.storage => _SettingsCard(
         children: [
@@ -196,32 +186,299 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ],
       ),
-      _SettingsSection.about => _SettingsCard(
-        children: [
-          _SettingRow(
-            icon: Icons.info_outline_rounded,
-            title: l10n.settingsVersion,
-            value: AppInfo.version,
+      _SettingsSection.about => _AboutPanel(settings: settings),
+    };
+  }
+
+  Widget _appearanceContent(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppearanceSettings appearance,
+    Color? systemAccent,
+    Locale? locale,
+  ) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SegmentedButton<_AppearanceTab>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: _AppearanceTab.personalization,
+                label: Text(l10n.settingsAppearancePersonalization),
+                icon: const Icon(Icons.person_outline_rounded, size: 17),
+              ),
+              ButtonSegment(
+                value: _AppearanceTab.language,
+                label: Text(l10n.settingsAppearanceLanguage),
+                icon: const Icon(Icons.translate_rounded, size: 17),
+              ),
+            ],
+            selected: {_appearanceTab},
+            onSelectionChanged: (selection) =>
+                setState(() => _appearanceTab = selection.first),
           ),
-          _SettingRow(
-            icon: Icons.gavel_rounded,
-            title: l10n.settingsLicense,
-            value: 'AGPL-3.0-only',
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (_appearanceTab == _AppearanceTab.personalization) ...[
+          _SettingsCard(
+            children: [
+              _SettingControlRow(
+                icon: Icons.contrast_rounded,
+                title: l10n.settingsThemeMode,
+                subtitle: l10n.settingsThemeModeDesc,
+                control: SegmentedButton<ThemeMode>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      label: Text(l10n.settingsThemeLight),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      label: Text(l10n.settingsThemeDark),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      label: Text(l10n.settingsThemeSystem),
+                    ),
+                  ],
+                  selected: {appearance.themeMode},
+                  onSelectionChanged: (selection) => ref
+                      .read(appearanceProvider.notifier)
+                      .setThemeMode(selection.first),
+                ),
+              ),
+              _SettingControlRow(
+                icon: Icons.palette_outlined,
+                title: l10n.settingsThemeAccent,
+                subtitle: l10n.settingsThemeAccentDesc,
+                control: Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xxs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    SegmentedButton<AccentMode>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: AccentMode.system,
+                          label: Text(l10n.settingsThemeAccentSystem),
+                        ),
+                        ButtonSegment(
+                          value: AccentMode.custom,
+                          label: Text(l10n.settingsThemeAccentCustom),
+                        ),
+                      ],
+                      selected: {appearance.accentMode},
+                      onSelectionChanged: (selection) => ref
+                          .read(appearanceProvider.notifier)
+                          .setAccentMode(selection.first),
+                    ),
+                    _AccentSwatch(
+                      color: systemAccent ?? AppTokens.brandAccent,
+                      selected: appearance.accentMode == AccentMode.system,
+                      onTap: () => ref
+                          .read(appearanceProvider.notifier)
+                          .setAccentMode(AccentMode.system),
+                    ),
+                    if (appearance.accentMode == AccentMode.custom)
+                      _AccentSwatch(
+                        color: appearance.accentColor,
+                        selected: true,
+                        onTap: () => _chooseAccent(context, l10n),
+                      ),
+                    if (appearance.accentMode == AccentMode.custom)
+                      TextButton(
+                        onPressed: () => _chooseAccent(context, l10n),
+                        child: Text(l10n.settingsThemeAccentCustom),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          _SettingRow(
-            icon: Icons.code_rounded,
-            title: l10n.settingsSource,
-            value: 'github.com/BetaStudio2/ArchoeraCX',
+          const SizedBox(height: AppSpacing.md),
+          _SettingsCard(
+            children: [
+              _SettingRow(
+                icon: Icons.tonality_rounded,
+                title: l10n.settingsGlobalTint,
+                subtitle: l10n.settingsGlobalTintDesc,
+                trailing: Switch(
+                  value: appearance.globalTint,
+                  onChanged: (value) => ref
+                      .read(appearanceProvider.notifier)
+                      .setGlobalTint(value),
+                ),
+              ),
+              _SettingControlRow(
+                icon: Icons.view_agenda_outlined,
+                title: l10n.settingsDensity,
+                subtitle: l10n.settingsDensityDesc,
+                control: SegmentedButton<UiDensity>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(
+                      value: UiDensity.compact,
+                      label: Text(l10n.settingsDensityCompact),
+                    ),
+                    ButtonSegment(
+                      value: UiDensity.standard,
+                      label: Text(l10n.settingsDensityStandard),
+                    ),
+                    ButtonSegment(
+                      value: UiDensity.comfortable,
+                      label: Text(l10n.settingsDensityComfortable),
+                    ),
+                  ],
+                  selected: {appearance.density},
+                  onSelectionChanged: (selection) => ref
+                      .read(appearanceProvider.notifier)
+                      .setDensity(selection.first),
+                ),
+              ),
+              _SettingRow(
+                icon: Icons.animation_rounded,
+                title: l10n.settingsMotion,
+                subtitle: l10n.settingsMotionDesc,
+                trailing: Switch(
+                  value: appearance.reduceMotion,
+                  onChanged: (value) => ref
+                      .read(appearanceProvider.notifier)
+                      .setReduceMotion(value),
+                ),
+              ),
+              _SettingRow(
+                icon: Icons.restart_alt_rounded,
+                title: l10n.settingsResetAppearance,
+                onTap: () => _resetAppearance(context, l10n),
+              ),
+            ],
           ),
-          _SettingRow(
-            icon: Icons.health_and_safety_outlined,
-            title: l10n.settingsDiagnostics,
-            subtitle: l10n.settingsDiagnosticsDesc,
-            value: l10n.settingsDiagnosticsOpen,
+        ] else ...[
+          _SettingsCard(
+            children: [
+              _SettingRow(
+                icon: Icons.translate_rounded,
+                title: l10n.settingsLanguage,
+                value: _languageLabel(l10n, locale),
+                onTap: () => _chooseLanguage(context, l10n),
+              ),
+            ],
           ),
         ],
+        const SizedBox(height: AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: Text(
+            l10n.settingsAppearanceNote,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: tokens.textTertiary),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _chooseAccent(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    final current = ref.read(appearanceProvider).accentColor;
+    final controller = TextEditingController(text: _hexColor(current));
+    String? error;
+    final chosen = await showDialog<Color>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Color? parsed = _parseHexColor(controller.text);
+          return AlertDialog(
+            title: Text(l10n.settingsThemeAccent),
+            content: SizedBox(
+              width: 340,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      for (final color in _accentPresets)
+                        _AccentSwatch(
+                          color: color,
+                          selected: parsed?.toARGB32() == color.toARGB32(),
+                          size: 30,
+                          onTap: () {
+                            controller.text = _hexColor(color);
+                            setDialogState(() => error = null);
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: l10n.settingsThemeAccentCustomHint,
+                      errorText: error,
+                    ),
+                    onChanged: (value) => setDialogState(() => error = null),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    l10n.settingsThemeAccentCustomHint,
+                    style: Theme.of(dialogContext).textTheme.bodySmall
+                        ?.copyWith(color: context.tokens.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(l10n.commonCancel),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final color = _parseHexColor(controller.text);
+                  if (color == null) {
+                    setDialogState(
+                      () => error = l10n.settingsThemeAccentInvalid,
+                    );
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(color);
+                },
+                child: Text(l10n.commonSave),
+              ),
+            ],
+          );
+        },
       ),
-    };
+    );
+    controller.dispose();
+    if (chosen == null || !context.mounted) return;
+    await ref.read(appearanceProvider.notifier).setAccentColor(chosen);
+  }
+
+  Future<void> _resetAppearance(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    await ref.read(appearanceProvider.notifier).reset();
+    if (context.mounted) {
+      _notify(
+        context,
+        l10n.settingsAppearanceResetDone,
+        type: ToastType.success,
+      );
+    }
   }
 
   String _languageLabel(AppLocalizations l10n, Locale? locale) {
@@ -1118,4 +1375,586 @@ class _SettingRow extends StatelessWidget {
                 )),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Appearance helpers
+// ---------------------------------------------------------------------------
+
+const _accentPresets = <Color>[
+  Color(0xFF4F7CFF),
+  Color(0xFF7A9BFF),
+  Color(0xFF9B8CFF),
+  Color(0xFFFF6B9D),
+  Color(0xFFFF6B61),
+  Color(0xFFFFA24D),
+  Color(0xFF4DDB9B),
+  Color(0xFF4DD8E0),
+];
+
+String _hexColor(Color color) {
+  final value = color.toARGB32() & 0xFFFFFF;
+  return '#${value.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+}
+
+Color? _parseHexColor(String raw) {
+  var text = raw.trim();
+  if (text.startsWith('#')) text = text.substring(1);
+  if (text.length != 6 && text.length != 8) return null;
+  final value = int.tryParse(text, radix: 16);
+  if (value == null) return null;
+  return Color(text.length == 8 ? value : 0xFF000000 | value);
+}
+
+class _SettingControlRow extends StatelessWidget {
+  const _SettingControlRow({
+    required this.icon,
+    required this.title,
+    required this.control,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget control;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xs,
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 20, color: tokens.textSecondary),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.bodyMedium),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      subtitle!,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: tokens.textTertiary),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Align(alignment: Alignment.centerLeft, child: control),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccentSwatch extends StatelessWidget {
+  const _AccentSwatch({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    this.size = 26,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Tooltip(
+      message: _hexColor(color),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(size),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected ? tokens.textPrimary : tokens.border,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: selected
+              ? Icon(
+                  Icons.check_rounded,
+                  size: size * 0.6,
+                  color: color.computeLuminance() > 0.55
+                      ? const Color(0xFF0B1020)
+                      : Colors.white,
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// About
+// ---------------------------------------------------------------------------
+
+const _repoUrl = 'https://github.com/BetaStudio2/ArchoeraCX';
+const _issuesUrl = 'https://github.com/BetaStudio2/ArchoeraCX/issues';
+const _privacyUrl =
+    'https://github.com/BetaStudio2/ArchoeraCX/blob/main/PRIVACY.md';
+const _securityUrl =
+    'https://github.com/BetaStudio2/ArchoeraCX/blob/main/SECURITY.md';
+const _licenseUrl =
+    'https://github.com/BetaStudio2/ArchoeraCX/blob/main/LICENSE';
+
+const _thanks = <(String, String, String)>[
+  ('Flutter', 'flutter.dev', 'https://flutter.dev'),
+  ('.NET', 'dotnet.microsoft.com', 'https://dotnet.microsoft.com'),
+  ('Rust', 'rust-lang.org', 'https://www.rust-lang.org'),
+  ('Modrinth', 'modrinth.com', 'https://modrinth.com'),
+  ('BMCLAPI', 'bmclapi2.bangbang93.com', 'https://bmclapi2.bangbang93.com'),
+  (
+    'Noto Sans SC',
+    'Google Fonts',
+    'https://fonts.google.com/noto/specimen/Noto+Sans+SC',
+  ),
+];
+
+Map<String, Object?>? _parseBuildInfo(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  try {
+    final decoded = jsonDecode(raw);
+    return decoded is Map<String, Object?> ? decoded : null;
+  } on FormatException {
+    return null;
+  }
+}
+
+class _AboutPanel extends ConsumerWidget {
+  const _AboutPanel({this.settings});
+
+  final AppSettings? settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final client = ref.watch(coreClientProvider);
+    final build = _parseBuildInfo(client?.buildInfo);
+    final coreLabel = build == null
+        ? l10n.settingsAboutCoreUnknown
+        : '${build['name'] ?? 'archoera_core'} '
+              '${build['version'] ?? '—'} '
+              '(ABI ${build['abiVersion'] ?? '—'})';
+    final environment = <String>[
+      'ArchoeraCX ${AppInfo.version}',
+      '${l10n.settingsAboutPlatform}: ${Platform.operatingSystem} '
+          '${Platform.operatingSystemVersion}',
+      '${l10n.settingsAboutRuntime}: Dart ${Platform.version.split(' ').first}',
+      '${l10n.settingsAboutCore}: $coreLabel',
+      if (settings?.dataRoot != null)
+        '${l10n.settingsDataRoot}: ${settings!.dataRoot}',
+    ].join('\n');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SettingsCard(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xs,
+                AppSpacing.sm,
+                AppSpacing.xs,
+                AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: tokens.surface2,
+                      borderRadius: BorderRadius.circular(tokens.radiusM),
+                      border: Border.all(color: tokens.border),
+                    ),
+                    padding: const EdgeInsets.all(AppSpacing.xs),
+                    child: Image.asset(
+                      'assets/branding/archoera_icon_256.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ArchoeraCX',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.settingsAboutTagline,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: tokens.textSecondary),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xxs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            _InfoChip(
+                              label: AppInfo.version,
+                              color: tokens.accent,
+                              background: tokens.accentSoft,
+                            ),
+                            if (AppInfo.isDevelopmentBuild)
+                              _InfoChip(
+                                label: l10n.developmentBuildBadge,
+                                color: tokens.warning,
+                                background: tokens.warning.withValues(
+                                  alpha: 0.14,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xs,
+                0,
+                AppSpacing.xs,
+                AppSpacing.sm,
+              ),
+              child: Text(
+                l10n.settingsAboutDesc,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _AboutSectionLabel(text: l10n.settingsAboutEnvironment),
+        const SizedBox(height: AppSpacing.xs),
+        _SettingsCard(
+          children: [
+            _AboutEnvRow(
+              icon: Icons.tag_rounded,
+              label: l10n.settingsVersion,
+              value: AppInfo.version,
+            ),
+            _AboutEnvRow(
+              icon: Icons.devices_rounded,
+              label: l10n.settingsAboutPlatform,
+              value:
+                  '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+            ),
+            _AboutEnvRow(
+              icon: Icons.memory_rounded,
+              label: l10n.settingsAboutRuntime,
+              value: 'Dart ${Platform.version.split(' ').first}',
+            ),
+            _AboutEnvRow(
+              icon: Icons.settings_suggest_rounded,
+              label: l10n.settingsAboutCore,
+              value: coreLabel,
+            ),
+            if (settings?.dataRoot != null)
+              _AboutEnvRow(
+                icon: Icons.storage_rounded,
+                label: l10n.settingsDataRoot,
+                value: settings!.dataRoot,
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xs,
+                AppSpacing.xxs,
+                AppSpacing.xs,
+                AppSpacing.sm,
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: environment));
+                    _notify(
+                      context,
+                      l10n.settingsAboutCopied,
+                      type: ToastType.success,
+                    );
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 17),
+                  label: Text(l10n.settingsAboutCopyEnvironment),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _AboutSectionLabel(text: l10n.settingsAboutCommunity),
+        const SizedBox(height: AppSpacing.xs),
+        _SettingsCard(
+          children: [
+            _AboutLinkRow(
+              icon: Icons.code_rounded,
+              title: l10n.settingsAboutRepository,
+              value: 'github.com/BetaStudio2/ArchoeraCX',
+              onTap: () => _openExternal(context, l10n, _repoUrl),
+            ),
+            _AboutLinkRow(
+              icon: Icons.bug_report_outlined,
+              title: l10n.settingsAboutIssues,
+              value: 'github.com/BetaStudio2/ArchoeraCX/issues',
+              onTap: () => _openExternal(context, l10n, _issuesUrl),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _AboutSectionLabel(text: l10n.settingsAboutThanks),
+        const SizedBox(height: AppSpacing.xs),
+        _SettingsCard(
+          children: [
+            for (final item in _thanks)
+              _AboutLinkRow(
+                icon: Icons.favorite_outline_rounded,
+                title: item.$1,
+                value: item.$2,
+                onTap: () => _openExternal(context, l10n, item.$3),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _AboutSectionLabel(text: l10n.settingsAboutLegal),
+        const SizedBox(height: AppSpacing.xs),
+        _SettingsCard(
+          children: [
+            _AboutLinkRow(
+              icon: Icons.gavel_rounded,
+              title: l10n.settingsLicense,
+              value: 'AGPL-3.0-only',
+              onTap: () => _openExternal(context, l10n, _licenseUrl),
+            ),
+            _AboutLinkRow(
+              icon: Icons.inventory_2_outlined,
+              title: l10n.settingsAboutThirdParty,
+              value: l10n.settingsAboutThirdPartyDesc,
+              onTap: () => showLicensePage(
+                context: context,
+                applicationName: 'ArchoeraCX',
+                applicationVersion: AppInfo.version,
+                applicationLegalese: 'AGPL-3.0-only',
+                applicationIcon: Image.asset(
+                  'assets/branding/archoera_icon_256.png',
+                  width: 48,
+                  height: 48,
+                ),
+              ),
+            ),
+            _AboutLinkRow(
+              icon: Icons.privacy_tip_outlined,
+              title: l10n.settingsAboutPrivacy,
+              value: 'PRIVACY.md',
+              onTap: () => _openExternal(context, l10n, _privacyUrl),
+            ),
+            _AboutLinkRow(
+              icon: Icons.security_rounded,
+              title: l10n.settingsAboutSecurity,
+              value: 'SECURITY.md',
+              onTap: () => _openExternal(context, l10n, _securityUrl),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+          child: Text(
+            l10n.settingsAboutDisclaimer,
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: tokens.textTertiary, letterSpacing: 0.2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openExternal(
+    BuildContext context,
+    AppLocalizations l10n,
+    String url,
+  ) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && context.mounted) {
+      _notify(context, l10n.settingsAboutOpenFailed, type: ToastType.error);
+    }
+  }
+}
+
+class _AboutSectionLabel extends StatelessWidget {
+  const _AboutSectionLabel({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.xxs),
+      child: Text(
+        text.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(letterSpacing: 1.0, color: context.tokens.textTertiary),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.label,
+    required this.color,
+    required this.background,
+  });
+
+  final String label;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(context.tokens.radiusS),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+class _AboutEnvRow extends StatelessWidget {
+  const _AboutEnvRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: tokens.textSecondary),
+          const SizedBox(width: AppSpacing.xs),
+          SizedBox(
+            width: 112,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: tokens.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutLinkRow extends StatelessWidget {
+  const _AboutLinkRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      onTap: onTap,
+      leading: Icon(icon, size: 20, color: tokens.textSecondary),
+      title: Text(title, style: Theme.of(context).textTheme.bodyMedium),
+      subtitle: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: tokens.textTertiary),
+      ),
+      trailing: Icon(
+        Icons.open_in_new_rounded,
+        size: 16,
+        color: tokens.textTertiary,
+      ),
+    );
+  }
+}
+
+void _notify(
+  BuildContext context,
+  String message, {
+  ToastType type = ToastType.info,
+}) {
+  toast(message, type: type);
 }

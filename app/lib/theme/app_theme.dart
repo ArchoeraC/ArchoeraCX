@@ -3,10 +3,50 @@ import 'package:flutter/material.dart';
 import 'tokens.dart';
 
 abstract final class AppTheme {
-  static ThemeData get light => _build(AppTokens.light, Brightness.light);
-  static ThemeData get dark => _build(AppTokens.dark, Brightness.dark);
+  static ThemeData get light => lightWith();
+  static ThemeData get dark => darkWith();
 
-  static ThemeData _build(AppTokens tokens, Brightness brightness) {
+  static ThemeData lightWith({
+    Color? accent,
+    bool globalTint = false,
+    bool reduceMotion = false,
+    VisualDensity density = VisualDensity.standard,
+  }) {
+    return _build(
+      AppTokens.light.withAccent(
+        accent ?? AppTokens.brandAccent,
+        brightness: Brightness.light,
+        tinted: globalTint,
+        reduceMotion: reduceMotion,
+      ),
+      Brightness.light,
+      density,
+    );
+  }
+
+  static ThemeData darkWith({
+    Color? accent,
+    bool globalTint = false,
+    bool reduceMotion = false,
+    VisualDensity density = VisualDensity.standard,
+  }) {
+    return _build(
+      AppTokens.dark.withAccent(
+        accent ?? AppTokens.dark.accent,
+        brightness: Brightness.dark,
+        tinted: globalTint,
+        reduceMotion: reduceMotion,
+      ),
+      Brightness.dark,
+      density,
+    );
+  }
+
+  static ThemeData _build(
+    AppTokens tokens,
+    Brightness brightness,
+    VisualDensity density,
+  ) {
     final scheme =
         ColorScheme.fromSeed(
           seedColor: tokens.accent,
@@ -38,7 +78,7 @@ abstract final class AppTheme {
       fontFamily: 'NotoSansSC',
       colorScheme: scheme,
       scaffoldBackgroundColor: tokens.bg,
-      visualDensity: VisualDensity.standard,
+      visualDensity: density,
       splashFactory: NoSplash.splashFactory,
       extensions: [tokens],
     );

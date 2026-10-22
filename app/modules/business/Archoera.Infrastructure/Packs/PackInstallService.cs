@@ -89,7 +89,7 @@ public sealed class PackInstallService
             new ModrinthClientOptions
             {
                 UserAgent = ModrinthClientOptions.CreateUserAgent(
-                    "0.1.0",
+                    "0.0.1+1",
                     "https://github.com/BetaStudio2/ArchoeraCX"),
             });
     }
@@ -865,7 +865,7 @@ public sealed class PackInstallService
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.UserAgent.ParseAdd(
-            "ArchoeraCX/0.1.0 (https://github.com/BetaStudio2/ArchoeraCX)");
+            "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)");
         using var response = await SharedHttp
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token)
             .ConfigureAwait(false);

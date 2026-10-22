@@ -156,7 +156,7 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 | 详情/版本 | `/project/{id}`、`/project/{id}/version`、`/version/{id}` |
 | 批量 hash | `POST /version_files`、`POST /version_files/update` |
 | 文件 | `files[].url`（CDN/白名单）、`hashes.sha1/sha512`、`size`、`filename`、`primary` |
-| UA | 必须可识别应用，如 `ArchoeraCX/0.1.0 (contact@example.com)`；不要伪装 okhttp |
+| UA | 必须可识别应用，如 `ArchoeraCX/0.0.1+1 (contact@example.com)`；不要伪装 okhttp |
 | 限流 | **300 请求/分钟/IP**；响应头 `X-Ratelimit-Limit/Remaining/Reset`；429 读 `Retry-After` |
 | 缓存 | 搜索 60s、详情 10min、版本 5min、标签 24h、更新检查 6h；有 ETag 用条件请求，没有就 TTL |
 | 镜像 | **不镜像**；CDN 直链；下载必须校验 SHA-1/SHA-512 |

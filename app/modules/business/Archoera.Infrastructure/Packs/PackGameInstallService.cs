@@ -64,14 +64,14 @@ public sealed class PackGameInstallService
             new MojangClientOptions
             {
                 UserAgent = MojangClientOptions.CreateUserAgent(
-                    "0.1.0",
+                    "0.0.1+1",
                     "https://github.com/BetaStudio2/ArchoeraCX"),
             });
         _http = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         if (httpClient is null)
         {
             _http.DefaultRequestHeaders.UserAgent.ParseAdd(
-                "ArchoeraCX/0.1.0 (https://github.com/BetaStudio2/ArchoeraCX)");
+                "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)");
         }
 
         _endpoints = endpoints ?? LoaderProfileEndpoints.Default;
@@ -82,7 +82,7 @@ public sealed class PackGameInstallService
     }
 
     private const string ModrinthUserAgent =
-        "ArchoeraCX/0.1.0 (https://github.com/BetaStudio2/ArchoeraCX)";
+        "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)";
 
     /// <summary>Builds the plan and the version JSON to commit afterwards.</summary>
     /// <param name="instanceRoot">Absolute instance directory (must exist).</param>

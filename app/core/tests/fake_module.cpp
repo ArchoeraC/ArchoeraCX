@@ -186,7 +186,7 @@ void fake_shutdown(void* self) {
 const archoera_module_v1 kModule = {
     ARCHOERA_MODULE_ABI_VERSION,
     "archoera_fake",
-    "0.1.0",
+    "0.0.1+1",
     &fake_init,
     &fake_call,
     &fake_cancel,

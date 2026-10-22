@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing tag to build and publish (for example v0.1.0-alpha.1)
+        description: Existing tag to build and publish (for example v0.0.1-alpha.1)
         required: true
         type: string
 

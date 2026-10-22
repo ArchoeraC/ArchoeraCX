@@ -66,7 +66,7 @@ facets 语法 `{type} {op} {value}`，`:` 等价 `=`，支持 `!= >= > <= <`。�
 
 ### 1.4 UA、限流、缓存
 
-- **User-Agent 必填且必须唯一识别应用**；只写 `okhttp/...` 可能被封。推荐 `ArchoeraCX/0.1.0 (contact@example.com)`；同一 UA 也发给 CF。**[事实]**
+- **User-Agent 必填且必须唯一识别应用**；只写 `okhttp/...` 可能被封。推荐 `ArchoeraCX/0.0.1+1 (contact@example.com)`；同一 UA 也发给 CF。**[事实]**
 - **300 请求/分钟/IP**，带 token 也一样；响应头 `X-Ratelimit-Limit/Remaining/Reset`（Reset 为剩余秒）。**[事实] 文档+实测**
 - 建议 token bucket：稳态 4 req/s、突发 20；`Remaining<20` 主动降速；429 读 `Retry-After`，无则 1/2/4s 退避。每 provider 独立桶。
 - **不要假设有 ETag**：实测 `/v2/search` 与 `/v2/project` 均无 `ETag`，只有 Cloudflare `last-modified/age`，文档也未承诺条件请求。设计为“有 ETag 就用，没有就 TTL”。TTL：搜索 60s、详情 10min、版本 5min、标签 24h、更新检查 6h。**[实测/推断]**

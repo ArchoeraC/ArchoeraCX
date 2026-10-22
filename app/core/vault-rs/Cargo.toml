@@ -1,6 +1,6 @@
 [package]
 name = "archoera-vault"
-version = "0.1.0"
+version = "0.0.1+1"
 edition = "2021"
 description = "ArchoeraCX 凭据保险库（Rust，AGPL-3.0-or-later）"
 license = "AGPL-3.0-or-later"

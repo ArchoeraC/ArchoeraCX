@@ -20,7 +20,7 @@ public sealed class MojangClientTests
     private const string AssetIndexUrl =
         "https://piston-meta.mojang.com/v1/packages/index/5.json";
 
-    private const string UserAgent = "ArchoeraCX/0.1.0 (tests@example.com)";
+    private const string UserAgent = "ArchoeraCX/0.0.1+1 (tests@example.com)";
 
     [Fact]
     public async Task GetManifest_parses_latest_and_versions()

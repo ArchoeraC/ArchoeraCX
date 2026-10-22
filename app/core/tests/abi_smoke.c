@@ -26,6 +26,8 @@ int main(void) {
   uint64_t ping_task = 0;
   uint64_t info_task = 0;
   uint64_t modules_task = 0;
+  uint64_t appearance_task = 0;
+  uint64_t rejected_task = 123;
   uint64_t unknown_task = 123;
   uint64_t first_seq = 0;
   char* json = NULL;
@@ -98,8 +100,7 @@ int main(void) {
 
   /* system.modules is resolved through the same explicit method registry. */
   CHECK(archoera_call(core, "system.modules", "{}", &modules_task, &err) ==
-        ARCHOERA_OK);
-  CHECK(modules_task != 0);
+        ARCHOERA_OK);  CHECK(modules_task != 0);
   count = archoera_poll(core, events, 64);
   CHECK(count == 1);
   CHECK(events[0].task_id == modules_task);
@@ -117,6 +118,54 @@ int main(void) {
   CHECK(strstr(json, "\"system.ping\"") != NULL);
   CHECK(strstr(json, "\"system.modules\"") != NULL);
   archoera_release(core, modules_task);
+
+  /* system.appearance is a core-owned, synchronous method. A native watcher
+   * may also enqueue domain events at any time, so scan by task id. */
+  CHECK(archoera_call(core, "system.appearance", "{}", &appearance_task,
+                      &err) == ARCHOERA_OK);
+  CHECK(appearance_task != 0);
+  {
+    int found = 0;
+    for (int attempt = 0; attempt < 8 && !found; ++attempt) {
+      count = archoera_poll(core, events, 64);
+      if (count < 0) {
+        break;
+      }
+      for (int index = 0; index < count; ++index) {
+        if (events[index].task_id == appearance_task) {
+          CHECK(events[index].state == ARCHOERA_TASK_COMPLETED);
+          found = 1;
+        }
+      }
+      if (!found && count == 0) {
+        break;
+      }
+    }
+    CHECK(found);
+  }
+
+  free(json);
+  json = NULL;
+  len = 0;
+  CHECK(archoera_result(core, appearance_task, NULL, 0, &len, &err) ==
+        ARCHOERA_OK);
+  json = (char*)malloc(len);
+  CHECK(json != NULL);
+  CHECK(archoera_result(core, appearance_task, json, len, &len, &err) ==
+        ARCHOERA_OK);
+  CHECK(strstr(json, "\"theme\":") != NULL);
+  CHECK(strstr(json, "\"source\":") != NULL);
+  archoera_release(core, appearance_task);
+
+  /* Native system actions reject non-http(s) URLs before spawning work. */
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.openUrl", "{\"url\":\"file:///etc/passwd\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.openUrl", "{\"url\":\"javascript:alert(1)\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
 
   /* Cancel is idempotent for terminal tasks. */
   CHECK(archoera_cancel(core, ping_task) == ARCHOERA_OK);

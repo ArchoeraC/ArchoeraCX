@@ -22,6 +22,9 @@ constexpr MethodRoute kRoutes[] = {
     {"system.pingAsync", MethodRouteKind::kCorePingAsync, {}},
     {"system.info", MethodRouteKind::kCoreInfo, {}},
     {"system.modules", MethodRouteKind::kCoreModules, {}},
+    {"system.appearance", MethodRouteKind::kCoreAppearance, {}},
+    {"system.openUrl", MethodRouteKind::kCoreOpenUrl, {}},
+    {"system.notify", MethodRouteKind::kCoreNotify, {}},
 
     {"java.scan", MethodRouteKind::kModule, kCsModule},
     {"java.select", MethodRouteKind::kModule, kCsModule},

@@ -92,6 +92,8 @@ void main() {
 
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Language & region'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Language'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('简体中文'));
@@ -266,6 +268,44 @@ void main() {
 
     expect(find.byIcon(Icons.download_outlined), findsNothing);
     expect(find.text('Download'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings exposes appearance controls and about info', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Color mode'), findsOneWidget);
+    expect(find.text('Accent color'), findsOneWidget);
+    expect(find.text('Global tint'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Dark'));
+    await tester.pumpAndSettle();
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(app.themeMode, ThemeMode.dark);
+
+    await tester.tap(find.text('About'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ENVIRONMENT'), findsOneWidget);
+    expect(find.text('Source code'), findsOneWidget);
+    expect(find.text('Third-party licenses'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

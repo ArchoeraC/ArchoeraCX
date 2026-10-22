@@ -7,7 +7,7 @@ namespace Archoera.Tests;
 
 public sealed class ModrinthClientTests
 {
-    private const string UserAgent = "ArchoeraCX/0.1.0 (test@example.com)";
+    private const string UserAgent = "ArchoeraCX/0.0.1+1 (test@example.com)";
     private static readonly string Sha1 = new('1', 40);
     private static readonly string Sha512 = new('2', 128);
 

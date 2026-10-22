@@ -699,10 +699,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguage => 'Language';
 
   @override
-  String get settingsMotion => 'Motion';
+  String get settingsMotion => 'Reduce motion';
 
   @override
-  String get settingsMotionDesc => 'Reduce transitions and background effects.';
+  String get settingsMotionDesc =>
+      'Limit page transitions and background effects.';
 
   @override
   String get settingsDiagnostics => 'Diagnostics';
@@ -1330,4 +1331,154 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accountVerifiedRequiredNotice =>
       'This launcher requires a verified Microsoft account to start a game. You can still download content and manage instance files, but offline/local accounts stay locked until a verified Minecraft account is present.';
+
+  @override
+  String get accountLoginSuccessNotificationTitle => 'ArchoeraCX signed in';
+
+  @override
+  String accountLoginSuccessNotificationBody(String account) {
+    return 'Signed in as $account.';
+  }
+
+  @override
+  String get settingsAppearanceNote =>
+      'Theme, accent color and interface effects apply immediately.';
+
+  @override
+  String get settingsAppearancePersonalization => 'Personalization';
+
+  @override
+  String get settingsAppearanceLanguage => 'Language & region';
+
+  @override
+  String get settingsDensity => 'Interface density';
+
+  @override
+  String get settingsDensityDesc => 'Adjust control spacing and list height.';
+
+  @override
+  String get settingsDensityCompact => 'Compact';
+
+  @override
+  String get settingsDensityStandard => 'Standard';
+
+  @override
+  String get settingsDensityComfortable => 'Comfortable';
+
+  @override
+  String get settingsThemeMode => 'Color mode';
+
+  @override
+  String get settingsThemeModeDesc =>
+      'Use light, dark, or match the operating system.';
+
+  @override
+  String get settingsThemeLight => 'Light';
+
+  @override
+  String get settingsThemeDark => 'Dark';
+
+  @override
+  String get settingsThemeAccent => 'Accent color';
+
+  @override
+  String get settingsThemeAccentDesc =>
+      'Use the system accent, or pick a color for the launcher.';
+
+  @override
+  String get settingsThemeAccentSystem => 'System';
+
+  @override
+  String get settingsThemeAccentCustom => 'Custom';
+
+  @override
+  String get settingsThemeAccentCustomHint =>
+      'Enter a hex color such as #4F7CFF.';
+
+  @override
+  String get settingsThemeAccentInvalid => 'Enter a valid hex color.';
+
+  @override
+  String get settingsGlobalTint => 'Global tint';
+
+  @override
+  String get settingsGlobalTintDesc =>
+      'Shift panels and backgrounds slightly toward the accent color.';
+
+  @override
+  String get settingsResetAppearance => 'Reset appearance';
+
+  @override
+  String get settingsAppearanceResetDone => 'Appearance reset.';
+
+  @override
+  String get settingsAboutDesc =>
+      'Version, runtime, licenses and community links.';
+
+  @override
+  String get settingsAboutTagline =>
+      'Cross-platform Minecraft: Java Edition launcher';
+
+  @override
+  String get settingsAboutEnvironment => 'Environment';
+
+  @override
+  String get settingsAboutBuildInfo => 'Build';
+
+  @override
+  String get settingsAboutPlatform => 'Platform';
+
+  @override
+  String get settingsAboutRuntime => 'Runtime';
+
+  @override
+  String get settingsAboutCore => 'Native core';
+
+  @override
+  String get settingsAboutCoreUnknown => 'Not connected';
+
+  @override
+  String get settingsAboutCopyEnvironment => 'Copy environment';
+
+  @override
+  String get settingsAboutCopied => 'Environment copied to the clipboard.';
+
+  @override
+  String get settingsAboutCommunity => 'Community & support';
+
+  @override
+  String get settingsAboutRepository => 'Source code';
+
+  @override
+  String get settingsAboutIssues => 'Report an issue';
+
+  @override
+  String get settingsAboutThanks => 'Thanks';
+
+  @override
+  String get settingsAboutThanksDesc =>
+      'Open-source projects and services this build relies on.';
+
+  @override
+  String get settingsAboutLegal => 'Legal';
+
+  @override
+  String get settingsAboutPrivacy => 'Privacy policy';
+
+  @override
+  String get settingsAboutSecurity => 'Security policy';
+
+  @override
+  String get settingsAboutThirdParty => 'Third-party licenses';
+
+  @override
+  String get settingsAboutThirdPartyDesc =>
+      'Open-source packages bundled with this build.';
+
+  @override
+  String get settingsAboutDisclaimer =>
+      'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.';
+
+  @override
+  String get settingsAboutOpenFailed => 'Could not open the link.';
 }

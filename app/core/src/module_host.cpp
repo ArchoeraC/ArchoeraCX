@@ -93,7 +93,7 @@ std::string make_module_config() {
   // The host treats the module config as opaque data. dataDir is currently
   // derived from the environment; an empty value is valid for the smoke
   // tests and for development runs that do not need persistent storage.
-  std::string json = "{\"schemaVersion\":1,\"appVersion\":\"0.1.0\",\"dataDir\":\"";
+  std::string json = "{\"schemaVersion\":1,\"appVersion\":\"0.0.1+1\",\"dataDir\":\"";
   append_json_escaped(json, get_env(kEnvDataDir));
   json.append("\"}");
   return json;

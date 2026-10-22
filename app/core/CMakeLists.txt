@@ -1,10 +1,36 @@
 find_package(Threads REQUIRED)
 
+# System appearance backend: native OS APIs only, no polling in Dart.
+set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_stub.cpp)
+set(ARCHOERA_SYSTEM_SOURCES src/platform_system_stub.cpp)
+if(WIN32)
+  set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_windows.cpp)
+  set(ARCHOERA_SYSTEM_SOURCES src/platform_system_windows.cpp)
+elseif(APPLE)
+  enable_language(OBJCXX)
+  set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_macos.mm)
+  set(ARCHOERA_SYSTEM_SOURCES src/platform_system_macos.mm)
+  set_source_files_properties(src/platform_appearance_macos.mm
+    src/platform_system_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+else()
+  find_package(PkgConfig QUIET)
+  if(PkgConfig_FOUND)
+    pkg_check_modules(DBUS QUIET dbus-1)
+  endif()
+  if(DBUS_FOUND)
+    set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_linux.cpp)
+    set(ARCHOERA_SYSTEM_SOURCES src/platform_system_linux.cpp)
+  endif()
+endif()
+
 add_library(archoera_core SHARED
   src/archoera_core.cpp
   src/method_registry.cpp
   src/module_host.cpp
   src/module_registry.cpp
+  src/platform_system_common.cpp
+  ${ARCHOERA_APPEARANCE_SOURCES}
+  ${ARCHOERA_SYSTEM_SOURCES}
 )
 
 target_compile_features(archoera_core PRIVATE cxx_std_20)
@@ -14,6 +40,18 @@ target_include_directories(archoera_core
 )
 target_compile_definitions(archoera_core PRIVATE ARCHOERA_CORE_EXPORTS)
 target_link_libraries(archoera_core PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+
+if(WIN32)
+  target_link_libraries(archoera_core PRIVATE dwmapi advapi32 shell32)
+elseif(APPLE)
+  target_link_libraries(archoera_core PRIVATE
+    "-framework AppKit" "-framework Foundation" "-framework UserNotifications")
+  set_target_properties(archoera_core PROPERTIES OBJCXX_STANDARD 20)
+elseif(DBUS_FOUND)
+  target_include_directories(archoera_core PRIVATE ${DBUS_INCLUDE_DIRS})
+  target_link_libraries(archoera_core PRIVATE ${DBUS_LINK_LIBRARIES})
+  target_compile_definitions(archoera_core PRIVATE ARCHOERA_HAVE_DBUS=1)
+endif()
 
 # Keep the shared library at the root of the build directory. With the
 # documented configure command this resolves to

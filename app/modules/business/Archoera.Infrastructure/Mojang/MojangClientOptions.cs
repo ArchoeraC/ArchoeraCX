@@ -21,7 +21,7 @@ public sealed record MojangClientOptions
 
     /// <summary>
     /// Identifiable application user agent, for example
-    /// <c>ArchoeraCX/0.1.0 (contact@example.com)</c>. Required.
+    /// <c>ArchoeraCX/0.0.1+1 (contact@example.com)</c>. Required.
     /// </summary>
     public string UserAgent { get; init; } = string.Empty;
 
@@ -117,7 +117,7 @@ public sealed record MojangClientOptions
         {
             throw new ArgumentException(
                 "A non-empty, identifiable UserAgent is required " +
-                "(for example 'ArchoeraCX/0.1.0 (contact@example.com)')",
+                "(for example 'ArchoeraCX/0.0.1+1 (contact@example.com)')",
                 nameof(UserAgent));
         }
 

@@ -676,10 +676,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLanguage => '语言';
 
   @override
-  String get settingsMotion => '动效';
+  String get settingsMotion => '减少动效';
 
   @override
-  String get settingsMotionDesc => '减少页面过渡与背景效果。';
+  String get settingsMotionDesc => '降低页面过渡与背景效果的强度。';
 
   @override
   String get settingsDiagnostics => '诊断';
@@ -1279,4 +1279,145 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get accountVerifiedRequiredNotice =>
       '当前启动器需要已验证的 Microsoft 账户才能启动游戏。你仍然可以下载和管理实例文件；但离线/本地账户不会在未验证正版账户时解锁。';
+
+  @override
+  String get accountLoginSuccessNotificationTitle => 'ArchoeraCX 登录成功';
+
+  @override
+  String accountLoginSuccessNotificationBody(String account) {
+    return '已登录为 $account。';
+  }
+
+  @override
+  String get settingsAppearanceNote => '主题、主题色与界面效果会即时生效。';
+
+  @override
+  String get settingsAppearancePersonalization => '个性化';
+
+  @override
+  String get settingsAppearanceLanguage => '语言与区域';
+
+  @override
+  String get settingsDensity => '界面密度';
+
+  @override
+  String get settingsDensityDesc => '调整控件间距与列表高度。';
+
+  @override
+  String get settingsDensityCompact => '紧凑';
+
+  @override
+  String get settingsDensityStandard => '标准';
+
+  @override
+  String get settingsDensityComfortable => '宽松';
+
+  @override
+  String get settingsThemeMode => '颜色模式';
+
+  @override
+  String get settingsThemeModeDesc => '使用浅色、深色，或跟随系统外观。';
+
+  @override
+  String get settingsThemeLight => '浅色';
+
+  @override
+  String get settingsThemeDark => '深色';
+
+  @override
+  String get settingsThemeAccent => '主题色';
+
+  @override
+  String get settingsThemeAccentDesc => '使用系统强调色，或为启动器选择一种颜色。';
+
+  @override
+  String get settingsThemeAccentSystem => '系统';
+
+  @override
+  String get settingsThemeAccentCustom => '自定义';
+
+  @override
+  String get settingsThemeAccentCustomHint => '输入十六进制颜色，例如 #4F7CFF。';
+
+  @override
+  String get settingsThemeAccentInvalid => '请输入有效的十六进制颜色。';
+
+  @override
+  String get settingsGlobalTint => '全局着色';
+
+  @override
+  String get settingsGlobalTintDesc => '让面板与背景轻微偏向主题色。';
+
+  @override
+  String get settingsResetAppearance => '恢复默认外观';
+
+  @override
+  String get settingsAppearanceResetDone => '已恢复默认外观。';
+
+  @override
+  String get settingsAboutDesc => '版本、运行环境、许可证与社区链接。';
+
+  @override
+  String get settingsAboutTagline => '跨平台 Minecraft: Java Edition 启动器';
+
+  @override
+  String get settingsAboutEnvironment => '环境信息';
+
+  @override
+  String get settingsAboutBuildInfo => '构建';
+
+  @override
+  String get settingsAboutPlatform => '系统';
+
+  @override
+  String get settingsAboutRuntime => '运行时';
+
+  @override
+  String get settingsAboutCore => '原生核心';
+
+  @override
+  String get settingsAboutCoreUnknown => '未连接';
+
+  @override
+  String get settingsAboutCopyEnvironment => '复制环境信息';
+
+  @override
+  String get settingsAboutCopied => '环境信息已复制到剪贴板。';
+
+  @override
+  String get settingsAboutCommunity => '社区与支持';
+
+  @override
+  String get settingsAboutRepository => '源代码';
+
+  @override
+  String get settingsAboutIssues => '问题反馈';
+
+  @override
+  String get settingsAboutThanks => '特别致谢';
+
+  @override
+  String get settingsAboutThanksDesc => '本构建依赖的开源项目与服务。';
+
+  @override
+  String get settingsAboutLegal => '法律与许可';
+
+  @override
+  String get settingsAboutPrivacy => '隐私政策';
+
+  @override
+  String get settingsAboutSecurity => '安全策略';
+
+  @override
+  String get settingsAboutThirdParty => '第三方许可';
+
+  @override
+  String get settingsAboutThirdPartyDesc => '查看随本构建分发的开源组件。';
+
+  @override
+  String get settingsAboutDisclaimer =>
+      'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.';
+
+  @override
+  String get settingsAboutOpenFailed => '无法打开链接。';
 }
