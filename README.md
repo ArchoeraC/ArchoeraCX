@@ -6,7 +6,7 @@
 
 > 开源、多端、面向 Minecraft: Java Edition 的混合架构启动器
 
-> ![WARNING]
+> [!WARNING]
 > **开发版 / Development build**  
 > 本项目目前仅通过 GitHub 发布开发版。功能不完整，可能损坏实例或配置数据；**请勿用于正式环境或重要实例**。不提供稳定性、兼容性或数据安全保证。
 
