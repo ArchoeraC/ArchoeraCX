@@ -208,8 +208,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             var paths = LaunchPaths.Resolve(instance.RootPath);
             var version = LoadVersion(instance, paths);
             var check = LaunchPlanBuilder.CheckFiles(version, paths);
-            filesReady = check.Ok;
-            fileIssue = check.Code;
+            var loaderCheck = LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths);
+            filesReady = check.Ok && loaderCheck.Ok;
+            fileIssue = check.Ok ? loaderCheck.Code : check.Code;
             autoRepairAvailable = !filesReady ||
                                   !string.IsNullOrWhiteSpace(version.InheritsFrom);
         }
@@ -401,20 +402,15 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     .ConfigureAwait(false);
 
             // Forge/NeoForge instances also need generated-artifact checks.
-            // Other loaders are repaired from a fresh merged/profile plan.
+            // Forge lists its generated jars in the merged profile, so
+            // CheckFiles covers them; NeoForge locates them by convention.
+            // Repair is only needed when something is actually missing -- an
+            // instance prepared by another launcher must not require an
+            // installer download just because its own downloads/ is empty.
             var needsRepair =
                 !LaunchPlanBuilder.CheckFiles(version, paths).Ok ||
+                !LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths).Ok ||
                 !string.IsNullOrWhiteSpace(version.InheritsFrom);
-            if (IsForgeInstance(instance) && !needsRepair)
-            {
-                var loaderCheck = _instanceRepair is null
-                    ? new PackInstallService(settings: _settings)
-                    : _instanceRepair;
-                needsRepair = !(await loaderCheck
-                        .CheckForgeInstanceAsync(instance, cancellationToken)
-                        .ConfigureAwait(false))
-                    .Ok;
-            }
 
             if (needsRepair)
             {
@@ -431,6 +427,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 throw new LaunchException(
                     fileCheck.Code ?? "LAUNCH_FILES_MISSING",
                     fileCheck.Message ?? "launch files are missing");
+            }
+
+            var loaderCheck = LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths);
+            if (!loaderCheck.Ok)
+            {
+                throw new LaunchException(
+                    loaderCheck.Code ?? "LAUNCH_FILES_MISSING",
+                    loaderCheck.Message ?? "loader files are missing");
             }
 
             var plan = LaunchPlanBuilder.Build(

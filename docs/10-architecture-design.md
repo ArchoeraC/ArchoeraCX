@@ -2139,14 +2139,15 @@ C#: 写 .archoera/pack.json → 注册 → 事件
 ### 12.7.1 启动依赖预检与自动修复
 
 ```
-launch.prepare: 账户就绪 + CheckFiles（库/client jar/asset index/asset objects）
-launch.start: CheckFiles 失败或 version JSON 未合并
+launch.prepare: 账户就绪 + CheckFiles（库/client jar/asset index/asset objects）+ CheckLoaderArtifacts（NeoForge 生成物）
+launch.start: CheckFiles / CheckLoaderArtifacts 失败或 version JSON 未合并
   → 校验 DownloadPolicy
   → vanilla/Fabric/Quilt: 重新生成 profile/原版计划（Rust 跳过已存在文件）
   → Forge/NeoForge: 组合计划 + loader processors 修复生成物 + 重新提交合并版 JSON
   → 重新 CheckFiles → 构建 LaunchPlan
 ```
 
+- NeoForge 的合并版 profile 不把 `neoforge-*-client.jar` / `-universal.jar` 列入 `libraries`；预检按 Maven 约定检查这两个生成物。存在时直接启动，**不因实例缺少 installer 而触发下载/processor 修复**（从其它启动器导入的实例可直接运行）。Forge 的合并版 profile 已列出这些 jar，由 `CheckFiles` 覆盖。
 - 自动修复只尝试一次；失败返回 `AUTO_REPAIR_FAILED`，下载被策略禁用返回 `AUTO_REPAIR_BLOCKED`。
 - `loader.check` / `loader.autoRepair` 与启动预检覆盖全部五类实例：vanilla、Fabric、Quilt、Forge、NeoForge。
 - `CheckFiles` 是只读的；不写文件、不启动 JVM。

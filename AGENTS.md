@@ -104,7 +104,7 @@ flutter build linux --release
 - 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消。
 - 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。`loader.versions` 按“自动源”处理：中国大陆网络镜像优先（Fabric fabric-meta、Forge per-game JSON、NeoForge Maven 镜像），其他地区官方优先、失败回退镜像；结果缓存 10 分钟。
 - 启动依赖预检 `launch.prepare` / `launch.start`，缺失时自动下载补全（下载策略关闭返回 `AUTO_REPAIR_BLOCKED`）。
-- 加载器实例启动：优先使用实例目录自己的版本 JSON，再回退到游戏版本对应的加载器 profile；自定义整合包名（如 `AutumnTown`、`Radiance`）不再报 `VERSION_JSON_MISSING` 或误用其它实例的 profile。
+- 加载器实例启动：优先使用实例目录自己的版本 JSON，再回退到游戏版本对应的加载器 profile；自定义整合包名（如 `AutumnTown`、`Radiance`）不再报 `VERSION_JSON_MISSING` 或误用其它实例的 profile。NeoForge 的 client/universal 生成物按 Maven 约定预检，齐全时直接启动，不因实例缺少 installer 触发下载修复。
 
 待接：
 
