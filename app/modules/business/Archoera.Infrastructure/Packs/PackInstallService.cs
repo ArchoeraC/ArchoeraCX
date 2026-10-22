@@ -493,6 +493,168 @@ public sealed class PackInstallService
     }
 
     /// <summary>
+    /// Repairs Forge/NeoForge processor outputs using an installer that is
+    /// already on disk, without the download policy or network. Returns false
+    /// when no local installer exists, when a non-regenerable artifact is
+    /// missing, or when processors fail; the caller then falls back to the
+    /// normal download repair.
+    /// </summary>
+    public async Task<bool> TryRepairForgeLocallyAsync(
+        GameInstanceRecord instance,
+        string javaPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+        if (string.IsNullOrWhiteSpace(javaPath)) return false;
+
+        var kind = instance.Loader.Trim().ToLowerInvariant() switch
+        {
+            "forge" => LoaderKind.Forge,
+            "neoforge" => LoaderKind.NeoForge,
+            _ => (LoaderKind?)null,
+        };
+        if (kind is null || string.IsNullOrWhiteSpace(instance.LoaderVersion))
+        {
+            return false;
+        }
+
+        var installer = FindLocalForgeInstaller(instance, kind.Value);
+        if (installer is null) return false;
+
+        var installRoot = LaunchPaths.ResolveInstallRoot(instance.RootPath);
+        try
+        {
+            var manifest = await _forgePlanner
+                .ParseAsync(
+                    installer,
+                    installRoot,
+                    Path.Combine(installRoot, "libraries"),
+                    kind.Value,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            // Generated outputs are exactly what we are about to rebuild.
+            // Anything else (libraries, extracted installer files) must already
+            // be present, otherwise processors cannot run offline.
+            var verification = new LoaderArtifactVerifier().Verify(
+                manifest,
+                installRoot,
+                LoaderVerifyMode.Quick);
+            var blocking = verification.Missing
+                .Where(artifact => artifact.Kind != LoaderArtifactKind.Generated)
+                .Concat(verification.Mismatched.Where(
+                    artifact => artifact.Kind != LoaderArtifactKind.Generated))
+                .ToList();
+            if (blocking.Count > 0 || (verification.Unsafe?.Count ?? 0) > 0)
+            {
+                return false;
+            }
+
+            var repair = await _forgeRepair
+                .RepairAsync(manifest, installRoot, javaPath, cancellationToken)
+                .ConfigureAwait(false);
+            return repair.Ok;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // Corrupt installer or processor failure: download repair decides.
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Finds a Forge/NeoForge installer left by this or another launcher in the
+    /// instance, the shared Maven cache, or a sibling instance's download folder.
+    /// </summary>
+    internal static string? FindLocalForgeInstaller(
+        GameInstanceRecord instance,
+        LoaderKind kind)
+    {
+        if (string.IsNullOrWhiteSpace(instance.LoaderVersion)) return null;
+        var game = instance.GameVersion;
+        var loader = instance.LoaderVersion.Trim();
+        var installRoot = LaunchPaths.ResolveInstallRoot(instance.RootPath);
+        var libraries = Path.Combine(installRoot, "libraries");
+        var token = kind == LoaderKind.Forge ? "forge" : "neoforge";
+        var legacy = loader.StartsWith(game + "-", StringComparison.Ordinal)
+            ? loader
+            : $"{game}-{loader}";
+
+        var names = kind == LoaderKind.Forge
+            ? new[]
+            {
+                $"forge-{game}-{loader}-installer.jar",
+                $"forge-{loader}-installer.jar",
+            }
+            : new[]
+            {
+                $"neoforge-{loader}-installer.jar",
+                $"forge-{legacy}-installer.jar",
+            };
+
+        var directories = new List<string>();
+        if (kind == LoaderKind.Forge)
+        {
+            directories.Add(Path.Combine(
+                libraries, "net", "minecraftforge", "forge", $"{game}-{loader}-installer"));
+            directories.Add(Path.Combine(
+                libraries, "net", "minecraftforge", "forge", $"{loader}-installer"));
+            directories.Add(Path.Combine(
+                libraries, "net", "minecraftforge", "forge", $"{game}-{loader}"));
+        }
+        else
+        {
+            directories.Add(Path.Combine(
+                libraries, "net", "neoforged", "neoforge", $"{loader}-installer"));
+            directories.Add(Path.Combine(
+                libraries, "net", "neoforged", "neoforge", loader));
+            directories.Add(Path.Combine(
+                libraries, "net", "neoforged", "forge", $"{legacy}-installer"));
+            directories.Add(Path.Combine(
+                libraries, "net", "neoforged", "forge", legacy));
+        }
+
+        var candidates = new List<string>();
+        foreach (var directory in directories)
+        {
+            foreach (var name in names)
+            {
+                candidates.Add(Path.Combine(directory, name));
+            }
+        }
+
+        var downloads = Path.Combine(instance.RootPath, "downloads", "loaders", token);
+        candidates.Add(Path.Combine(downloads, $"{game}-{loader}-installer.jar"));
+        foreach (var name in names)
+        {
+            candidates.Add(Path.Combine(downloads, name));
+        }
+
+        // Other instances often keep the installer they were installed with.
+        var versions = Path.Combine(installRoot, "versions");
+        if (Directory.Exists(versions))
+        {
+            foreach (var directory in Directory.EnumerateDirectories(versions))
+            {
+                var sibling = Path.Combine(directory, "downloads", "loaders", token);
+                candidates.Add(Path.Combine(sibling, $"{game}-{loader}-installer.jar"));
+                foreach (var name in names)
+                {
+                    candidates.Add(Path.Combine(sibling, name));
+                }
+            }
+        }
+
+        return candidates
+            .Distinct(StringComparer.Ordinal)
+            .FirstOrDefault(IsZip);
+    }
+
+    /// <summary>
     /// Resolves an instance, selects Java, and repairs its Forge/NeoForge
     /// downloads/processors in place. Used by the dependency-check UI.
     /// </summary>

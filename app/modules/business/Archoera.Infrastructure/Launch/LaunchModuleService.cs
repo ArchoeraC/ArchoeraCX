@@ -72,6 +72,97 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         => instance.Loader.Equals("forge", StringComparison.OrdinalIgnoreCase) ||
            instance.Loader.Equals("neoforge", StringComparison.OrdinalIgnoreCase);
 
+    private async Task<MojangVersion> LoadOrRepairVersionAsync(
+        GameInstanceRecord instance,
+        LaunchPaths paths,
+        CancellationToken cancellationToken)
+    {
+        var folder = Path.GetFileName(paths.InstanceRoot);
+        var own = Path.Combine(paths.InstanceRoot, $"{folder}.json");
+        if (LaunchProfileRecovery.NeedsRecovery(own))
+        {
+            // Rebuild from local profiles before LoadVersion can fall back to a
+            // sibling version and before any download is considered.
+            try
+            {
+                await LaunchProfileRecovery
+                    .TryRecoverAsync(instance, paths, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // Local recovery is best effort; downloads remain the fallback.
+            }
+        }
+
+        try
+        {
+            return LoadVersion(instance, paths);
+        }
+        catch (LaunchException exception) when (
+            exception.Code is "VERSION_JSON_MISSING" or "VERSION_NOT_MERGED")
+        {
+            // First try to rebuild the profile from files already on disk:
+            // imported instances usually still have a sibling loader profile.
+            bool recovered;
+            try
+            {
+                recovered = await LaunchProfileRecovery
+                    .TryRecoverAsync(instance, paths, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                recovered = false;
+            }
+
+            if (recovered)
+            {
+                try
+                {
+                    return LoadVersion(instance, paths);
+                }
+                catch (LaunchException)
+                {
+                    // The recovered profile is not usable; download repair.
+                }
+            }
+
+            // The merged launch profile is missing; rebuild it with downloads.
+            JavaRuntimeInfo? repairJava = null;
+            if (IsForgeInstance(instance))
+            {
+                try
+                {
+                    repairJava = await _javaSelection
+                        .SelectAsync(null, instance.GameVersion, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (JavaSelectionException selectionError)
+                {
+                    throw new LaunchException(
+                        selectionError.Code,
+                        selectionError.Message);
+                }
+            }
+
+            await RepairLaunchAsync(
+                    instance,
+                    repairJava?.Path,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return LoadVersion(instance, paths);
+        }
+    }
+
     private async Task RepairLaunchAsync(
         GameInstanceRecord instance,
         string? javaPath,
@@ -359,40 +450,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             }
 
             var paths = LaunchPaths.Resolve(instance.RootPath);
-            MojangVersion version;
-            try
-            {
-                version = LoadVersion(instance, paths);
-            }
-            catch (LaunchException exception) when (
-                exception.Code is "VERSION_JSON_MISSING" or "VERSION_NOT_MERGED")
-            {
-                // The merged launch profile is missing, but the instance still
-                // records its loader/game versions; rebuild it in place.
-                JavaRuntimeInfo? repairJava = null;
-                if (IsForgeInstance(instance))
-                {
-                    try
-                    {
-                        repairJava = await _javaSelection
-                            .SelectAsync(null, instance.GameVersion, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    catch (JavaSelectionException selectionError)
-                    {
-                        throw new LaunchException(
-                            selectionError.Code,
-                            selectionError.Message);
-                    }
-                }
-
-                await RepairLaunchAsync(
-                        instance,
-                        repairJava?.Path,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-                version = LoadVersion(instance, paths);
-            }
+            var version = await LoadOrRepairVersionAsync(instance, paths, cancellationToken)
+                .ConfigureAwait(false);
 
             var java = !string.IsNullOrWhiteSpace(version.InheritsFrom)
                 ? await _javaSelection
@@ -411,6 +470,35 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 !LaunchPlanBuilder.CheckFiles(version, paths).Ok ||
                 !LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths).Ok ||
                 !string.IsNullOrWhiteSpace(version.InheritsFrom);
+
+            // Prefer repairing from an installer already on disk before asking
+            // the network for anything. Complete instances are skipped above,
+            // so this only runs for genuinely missing generated artifacts.
+            if (needsRepair && IsForgeInstance(instance))
+            {
+                var localRepair = _instanceRepair ?? new PackInstallService(settings: _settings);
+                try
+                {
+                    if (await localRepair
+                            .TryRepairForgeLocallyAsync(instance, java.Path, cancellationToken)
+                            .ConfigureAwait(false))
+                    {
+                        version = LoadVersion(instance, paths);
+                        needsRepair =
+                            !LaunchPlanBuilder.CheckFiles(version, paths).Ok ||
+                            !LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths).Ok;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    // Local installer/processors are best effort; downloads
+                    // remain the fallback.
+                }
+            }
 
             if (needsRepair)
             {
@@ -646,6 +734,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             {
                 var name = Path.GetFileName(directory);
                 if (string.IsNullOrWhiteSpace(name)) continue;
+                // Do not borrow a real instance's merged profile just because
+                // its custom name contains this game and loader.
+                if (LaunchPaths.LooksLikeInstanceDirectory(directory)) continue;
                 candidates.Add(Path.Combine(directory, $"{name}.json"));
             }
         }

@@ -30,9 +30,29 @@ internal sealed record LaunchPaths(
         return root;
     }
 
-    public static LaunchPaths Resolve(string instanceRoot)
+    /// <summary>
+    /// True when a <c>versions/</c> child looks like a game instance (mods,
+    /// configs, saves) rather than a plain loader profile. The launch profile
+    /// fallback must not borrow another instance's version JSON: custom pack
+    /// names can contain the game and loader name too.
+    /// </summary>
+    public static bool LooksLikeInstanceDirectory(string directory)
     {
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instanceRoot));
+        foreach (var name in new[]
+                 {
+                     "mods", "config", "logs", "saves", "resourcepacks",
+                     "shaderpacks", "options.txt", ".archoera",
+                 })
+        {
+            var path = Path.Combine(directory, name);
+            if (File.Exists(path) || Directory.Exists(path)) return true;
+        }
+
+        return false;
+    }
+
+    public static LaunchPaths Resolve(string instanceRoot)
+    {        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instanceRoot));
         var parent = Directory.GetParent(root);
         var shared = root;
 
