@@ -1,3 +1,4 @@
+using Archoera.Application.Downloads;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Resources;
 
@@ -37,7 +38,8 @@ public static class ResourceDownloadPlanBuilder
         ResourceKind kind,
         ResourceTarget target,
         ResourceVersion version,
-        ResourceFile? file = null)
+        ResourceFile? file = null,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto)
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(version);
@@ -89,12 +91,15 @@ public static class ResourceDownloadPlanBuilder
 
         var dest = $"{FolderFor(kind)}/{selected.FileName}";
 
+        var (primary, mirrors) = ModrinthMirror.Resolve(selected.Url, sourceMode);
+
         return new DownloadPlanBuilder(root)
             .AddFile(
-                selected.Url,
+                primary,
                 dest,
                 hash,
                 selected.Size,
+                mirrors: mirrors,
                 mode: DownloadFileMode.Ensure)
             .Build();
     }

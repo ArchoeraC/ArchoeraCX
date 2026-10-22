@@ -6,7 +6,7 @@ platform icon variants are generated from it.
 - Project: ArchoeraCX
 - Author: ArchoeraCX project
 - License: AGPL-3.0-only, distributed with the project
-- Design: a flat geometric viewfinder frame (four corner brackets) around an amber diamond core; badge `#4F7CFF`, frame `#FFFFFF`, core `#FFC24D`; no gradients, shadows, letterform, portal, play button or Mojang/Microsoft/Windows motif
+- Design: a flat geometric viewfinder frame (four corner brackets) around an amber diamond core; badge `#4F7CFF`, frame `#FFFFFF`, core `#FFC24D`; bracket arms are 148 units of the 1024 canvas (24-unit inner radius) so the white frame reads solid without turning heavy at small sizes; no gradients, shadows, letterform, portal, play button or Mojang/Microsoft/Windows motif
 - No Mojang, Microsoft, Microsoft Windows, Minecraft or other third-party logo,
   block, character, font or UI asset is used in this mark
 - This mark is not an official Minecraft asset and does not imply endorsement

@@ -43,7 +43,37 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>" \
   ./build/linux/x64/release/bundle/archoera_cx
 ```
 
-构建脚本会把值生成到 `obj/.../MicrosoftBuildConfig.g.cs`；该文件被 `.gitignore` 忽略，不进入仓库。
+构建脚本不会把明文写进生成代码：`GenerateMicrosoftBuildConfig` 目标用内联
+MSBuild 任务把 client_id 变成**高熵 blob**（16 字节随机 nonce + SHA-256
+keystream 异或 + 位置项，思路参考 PCL-CE 的字符串强熵处理），只把 blob 写进
+`obj/.../MicrosoftBuildConfig.g.cs`；运行时由 `ClientIdObfuscation.Decode` 在
+内存里还原。该文件被 `.gitignore` 忽略，不进入仓库。
+
+覆盖范围：仓库、生成源码、`strings` / 反编译字符表里都不会出现明文 client_id
+（AOT 产物已用 `strings -el` 校验为零命中）。这是**提高抓取成本**，不是密码学
+保密——公共客户端的 id 运行时必须可读，能逆向二进制的人仍然可以还原它；随机
+nonce 让每次构建的 blob 都不同，无法沉淀固定特征串。
+
+### 2.1 官方构建标记（关于页）
+
+官方构建的 client_id 具有唯一性，可用作构建来源标记：
+
+- C# 只对编译期注入的 client_id 计算**域分隔 SHA-256**
+  （`archoeracx/official-client-id/v1:` + id），通过 `system.identity`
+  返回 `channel` / `official` / `clientIdSha256` / `clientIdFingerprint`；
+  **原始 id 不跨 ABI、不写日志、不进仓库**。
+- 仓库里只有官方 client_id 的摘要常量
+  `OfficialBuildIdentity.OfficialClientIdSha256`
+  （`9b8dd8ece4d8bdc8809209640b6800e4b33c40f94c8f57351e3666ab95f5ccf9`）。
+  改 client_id 时必须在同一提交更新该常量。
+- 摘要不可逆：client_id 是 UUIDv4（122 位随机），从摘要反推需要约 2^122 次
+  预映像搜索；域分隔又让它无法在通用 UUID 哈希表里被直接匹配。官方二进制里
+  仍能直接读到 client_id——公共客户端的 id 本身就是公开的，摘要只是让仓库
+  不必提交原值。
+- 目前 UI 不再展示构建标识（`system.identity` 保留给诊断与后续签名方案）。
+  需要说明的是：client_id 是公开信息，任何人把它编进自己的构建都能得到同样的
+  摘要，因此它只能说明构建配置，不构成二进制签名；需要防篡改证明时应另加离线
+  私钥签名（参考 ArchoeraMusic 的 ECDSA watermark 方案）。
 
 ## 3. Authorization Code + PKCE（默认）
 

@@ -18,7 +18,11 @@ public static class DownloadPlanLimits
 
     public const int MinConcurrency = 1;
     public const int MaxConcurrency = 64;
-    public const int DefaultConcurrency = 8;
+    /// <summary>
+    /// Parallel streams: files, or range chunks inside one large file. Mirrors
+    /// the Rust default; 16 keeps small files from being latency bound.
+    /// </summary>
+    public const int DefaultConcurrency = 16;
 
     /// <summary>Maximum length of <c>planId</c>.</summary>
     public const int MaxPlanIdLength = 256;
@@ -35,7 +39,11 @@ public static class DownloadPlanLimits
     public const int MaxHeaderNameLength = 128;
     public const int MaxHeaderValueLength = 8 * 1_024;
 
-    public const long DefaultRangeThreshold = 8L * 1024 * 1024;
-    public const long DefaultChunkSize = 4L * 1024 * 1024;
+    /// <summary>Parallel streams per host; mirrors the Rust default.</summary>
+    public const int DefaultPerHostConcurrency = 16;
+    public const int MaxPerHostConcurrency = 64;
+
+    public const long DefaultRangeThreshold = 1024L * 1024;
+    public const long DefaultChunkSize = 512L * 1024;
     public const int DefaultProgressIntervalMs = 150;
 }

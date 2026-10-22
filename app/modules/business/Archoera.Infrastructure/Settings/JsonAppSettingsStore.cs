@@ -93,6 +93,31 @@ public sealed class JsonAppSettingsStore
                 ? gc
                 : fallback.GcMode;
             var gameArgs = ReadString(root, "gameArgs");
+            var downloadSource = ReadString(root, "downloadSource") is { } source &&
+                                 source is "auto" or "official" or "mirror"
+                ? source
+                : fallback.DownloadSource;
+            var downloadConcurrency = ReadInt(root, "downloadConcurrency") ?? fallback.DownloadConcurrency;
+            if (downloadConcurrency is < 1 or > 64) downloadConcurrency = fallback.DownloadConcurrency;
+            var downloadPerHost = ReadInt(root, "downloadPerHost") ?? fallback.DownloadPerHost;
+            if (downloadPerHost is < 0 or > 64) downloadPerHost = fallback.DownloadPerHost;
+            var downloadProxy = ReadString(root, "downloadProxy")?.Trim();
+            if (!string.IsNullOrEmpty(downloadProxy) &&
+                (!Uri.TryCreate(downloadProxy, UriKind.Absolute, out var proxyUri) ||
+                 proxyUri.Scheme is not ("http" or "https" or "socks4" or "socks4a"
+                     or "socks5" or "socks5h") ||
+                 string.IsNullOrEmpty(proxyUri.Host)))
+            {
+                downloadProxy = null;
+            }
+
+            // Schema 6 stored the old default of 6; raise it to the new default
+            // so existing installs also use the wider per-host budget.
+            var schemaVersion = ReadInt(root, "schemaVersion") ?? 0;
+            if (schemaVersion < 7 && downloadPerHost == 6)
+            {
+                downloadPerHost = fallback.DownloadPerHost;
+            }
 
             return fallback with
             {
@@ -105,6 +130,10 @@ public sealed class JsonAppSettingsStore
                 JvmArgs = string.IsNullOrWhiteSpace(jvmArgs) ? null : jvmArgs,
                 GcMode = gcMode,
                 GameArgs = string.IsNullOrWhiteSpace(gameArgs) ? null : gameArgs,
+                DownloadSource = downloadSource,
+                DownloadConcurrency = downloadConcurrency,
+                DownloadPerHost = downloadPerHost,
+                DownloadProxy = string.IsNullOrEmpty(downloadProxy) ? null : downloadProxy,
             };
         }
         catch (Exception exception) when (
@@ -228,6 +257,14 @@ public sealed class JsonAppSettingsStore
             if (!string.IsNullOrWhiteSpace(settings.GameArgs))
             {
                 writer.WriteString("gameArgs", settings.GameArgs);
+            }
+
+            writer.WriteString("downloadSource", settings.DownloadSource);
+            writer.WriteNumber("downloadConcurrency", settings.DownloadConcurrency);
+            writer.WriteNumber("downloadPerHost", settings.DownloadPerHost);
+            if (!string.IsNullOrWhiteSpace(settings.DownloadProxy))
+            {
+                writer.WriteString("downloadProxy", settings.DownloadProxy);
             }
             writer.WriteString("updatedAt", DateTimeOffset.UtcNow.ToString("O"));
             writer.WriteEndObject();

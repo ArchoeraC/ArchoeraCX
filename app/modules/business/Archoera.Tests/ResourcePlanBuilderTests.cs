@@ -32,9 +32,31 @@ public sealed class ResourcePlanBuilderTests
         Assert.Equal(DownloadFileMode.Ensure, file.Mode);
         Assert.Equal(DownloadHashAlgorithm.Sha512, file.Hash.Algorithm);
         Assert.Equal(Sha512, file.Hash.Hex);
-        Assert.Empty(file.Mirrors);
+        // The MCIM mirror follows the official CDN as a fallback.
+        Assert.Equal(
+            ["https://mod.mcimirror.top/data/AANobbMI/versions/v1/sodium.jar"],
+            file.Mirrors);
         Assert.Empty(file.Headers);
         Assert.False(file.Executable);
+    }
+
+    [Fact]
+    public void Mirror_preference_puts_mcim_first()
+    {
+        var version = Version("v1", ["1.21.1"], ["fabric"], File("sodium.jar", Sha1, Sha512));
+
+        var plan = ResourceDownloadPlanBuilder.Build(
+            Root,
+            ResourceKind.Mod,
+            ResourceTarget.ForMod("1.21.1", "fabric"),
+            version,
+            sourceMode: Archoera.Application.Downloads.DownloadSourceMode.Mirror);
+
+        var file = Assert.Single(plan.Files);
+        Assert.StartsWith("https://mod.mcimirror.top/", file.Url, StringComparison.Ordinal);
+        Assert.Equal(
+            ["https://cdn.modrinth.com/data/AANobbMI/versions/v1/sodium.jar"],
+            file.Mirrors);
     }
 
     [Fact]

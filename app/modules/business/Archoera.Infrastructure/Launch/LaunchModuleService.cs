@@ -104,7 +104,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             return LoadVersion(instance, paths);
         }
         catch (LaunchException exception) when (
-            exception.Code is "VERSION_JSON_MISSING" or "VERSION_NOT_MERGED")
+            exception.Code is "VERSION_JSON_MISSING" or "VERSION_NOT_MERGED"
+                or "LOADER_NOT_INSTALLED")
         {
             // First try to rebuild the profile from files already on disk:
             // imported instances usually still have a sibling loader profile.
@@ -766,6 +767,33 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             return parsed;
         }
 
+        // Loader profiles are named by the installer, not by the instance
+        // folder: Forge writes "<game>-forge-<version>", NeoForge writes
+        // "neoforge-<version>" (no game version), Fabric writes
+        // "fabric-loader-<version>-<game>". Ask for those ids directly before
+        // falling back to the heuristic scan below.
+        if (isLoaderInstance)
+        {
+            var installRoot = LaunchPaths.ResolveInstallRoot(paths.InstanceRoot);
+            foreach (var id in LoaderProfileIds(instance))
+            {
+                foreach (var baseRoot in new[]
+                         {
+                             installRoot,
+                             paths.SharedRoot,
+                             paths.InstanceRoot,
+                         })
+                {
+                    var parsed = TryReadVersion(
+                        Path.Combine(baseRoot, "versions", id, $"{id}.json"));
+                    if (parsed is null) continue;
+                    if (IsVanillaBase(parsed, instance)) continue;
+                    EnsureMerged(parsed);
+                    return parsed;
+                }
+            }
+        }
+
         // Fallback for instances created from a plain version id (the profile
         // keeps the game/loader id rather than the folder name).
         var candidates = new List<string>
@@ -813,18 +841,44 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 score += isLoaderInstance ? 10 : 80;
             }
             else if (isLoaderInstance &&
-                     version.Id.Contains(
-                         instance.GameVersion,
-                         StringComparison.OrdinalIgnoreCase) &&
                      version.Id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase))
             {
                 // Standard loader profile ids: "1.21.1-forge-47.2.0",
-                // "1.21.1-neoforge-21.1.248", "fabric-loader-0.16.14-1.21.1".
-                score += version.Id.StartsWith(
-                    instance.GameVersion + "-",
-                    StringComparison.OrdinalIgnoreCase)
-                    ? 60
-                    : 30;
+                // "fabric-loader-0.16.14-1.21.1", and NeoForge's
+                // "neoforge-21.1.264" (which omits the game version).
+                var hasGame = version.Id.Contains(
+                    instance.GameVersion,
+                    StringComparison.OrdinalIgnoreCase);
+                var hasLoaderVersion =
+                    !string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
+                    version.Id.Contains(
+                        instance.LoaderVersion,
+                        StringComparison.OrdinalIgnoreCase);
+                if (!hasLoaderVersion &&
+                    MentionsLoaderVersion(version.Id, instance.Loader))
+                {
+                    // "neoforge-21.1.248" when the instance wants 21.1.264: a
+                    // profile for another loader build must not be used. Ids
+                    // such as "1.21.1-neoforge" carry no version and remain
+                    // acceptable as a last resort.
+                    continue;
+                }
+
+                if (hasGame)
+                {
+                    score += version.Id.StartsWith(
+                        instance.GameVersion + "-",
+                        StringComparison.OrdinalIgnoreCase)
+                        ? 60
+                        : 30;
+                }
+                else
+                {
+                    // No game version in the id (NeoForge style): still a valid
+                    // loader profile, but behind ids that name both.
+                    score += 20;
+                }
+
                 if (!string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
                     version.Id.Contains(
                         instance.LoaderVersion,
@@ -850,8 +904,65 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             .ThenByDescending(item => item.Modified)
             .First()
             .Version;
+
+        // A loader instance must never launch the plain game: the vanilla base
+        // profile has no loader libraries, so the game would start unmodded.
+        // Report the missing install so launch can repair it (or tell the user
+        // to install the loader) instead of silently booting vanilla.
+        if (isLoaderInstance && IsVanillaBase(selected, instance))
+        {
+            throw new LaunchException(
+                "LOADER_NOT_INSTALLED",
+                $"{instance.Loader} {instance.LoaderVersion} is not installed for instance {instance.Name}");
+        }
+
         EnsureMerged(selected);
         return selected;
+    }
+
+
+    /// <summary>
+    /// True when the id names a concrete loader build, for example
+    /// <c>neoforge-21.1.248</c> or <c>1.21.8-forge-58.1.26</c>.
+    /// </summary>
+    private static bool MentionsLoaderVersion(string id, string loader)
+    {
+        var marker = loader + "-";
+        var index = id.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0) return false;
+        var rest = index + marker.Length;
+        return rest < id.Length && char.IsAsciiDigit(id[rest]);
+    }
+
+    /// <summary>
+    /// Version ids the loader installer uses for this instance, most specific
+    /// first. NeoForge omits the game version; legacy NeoForge (1.20.1) used
+    /// the Forge coordinates.
+    /// </summary>
+    internal static IReadOnlyList<string> LoaderProfileIds(GameInstanceRecord instance)
+    {
+        var game = instance.GameVersion;
+        var loader = instance.LoaderVersion;
+        if (string.IsNullOrWhiteSpace(loader)) return [];
+
+        var loaderKind = instance.Loader.Trim().ToLowerInvariant();
+        return loaderKind switch
+        {
+            "forge" =>
+            [
+                $"{game}-forge-{loader}",
+                $"forge-{loader}",
+            ],
+            "neoforge" =>
+            [
+                $"neoforge-{loader}",
+                $"{game}-neoforge-{loader}",
+                $"{game}-forge-{loader}",
+            ],
+            "fabric" => [$"fabric-loader-{loader}-{game}"],
+            "quilt" => [$"quilt-loader-{loader}-{game}"],
+            _ => [],
+        };
     }
 
     /// <summary>

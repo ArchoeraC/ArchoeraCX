@@ -72,6 +72,11 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         string? gcMode = null;
         string? gameArgs = null;
         var gameArgsPresent = false;
+        string? downloadSource = null;
+        int? downloadConcurrency = null;
+        int? downloadPerHost = null;
+        string? downloadProxy = null;
+        var downloadProxyPresent = false;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -165,6 +170,61 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                         ? gameElement.GetString()
                         : throw new ArgumentException("gameArgs must be a string or null");
             }
+
+            if (root.TryGetProperty("downloadSource", out var sourceElement))
+            {
+                downloadSource = sourceElement.ValueKind == JsonValueKind.String
+                    ? sourceElement.GetString()
+                    : throw new ArgumentException("downloadSource must be a string");
+                if (downloadSource is not ("auto" or "official" or "mirror"))
+                {
+                    return Error("E_INVALID", "unsupported downloadSource");
+                }
+            }
+
+            if (root.TryGetProperty("downloadConcurrency", out var concurrencyElement))
+            {
+                downloadConcurrency = concurrencyElement.ValueKind == JsonValueKind.Number &&
+                                      concurrencyElement.TryGetInt32(out var concurrency)
+                    ? concurrency
+                    : throw new ArgumentException("downloadConcurrency must be an integer");
+                if (downloadConcurrency is < 1 or > 64)
+                {
+                    return Error("E_INVALID", "downloadConcurrency must be within 1..64");
+                }
+            }
+
+            if (root.TryGetProperty("downloadProxy", out var proxyElement))
+            {
+                downloadProxyPresent = true;
+                downloadProxy = proxyElement.ValueKind == JsonValueKind.Null
+                    ? null
+                    : proxyElement.ValueKind == JsonValueKind.String
+                        ? proxyElement.GetString()?.Trim()
+                        : throw new ArgumentException("downloadProxy must be a string or null");
+                if (!string.IsNullOrEmpty(downloadProxy) &&
+                    (!Uri.TryCreate(downloadProxy, UriKind.Absolute, out var proxyUri) ||
+                     proxyUri.Scheme is not ("http" or "https" or "socks4" or "socks4a"
+                         or "socks5" or "socks5h") ||
+                     string.IsNullOrEmpty(proxyUri.Host)))
+                {
+                    return Error(
+                        "E_INVALID",
+                        "downloadProxy must be an http(s) or socks URL with a host");
+                }
+            }
+
+            if (root.TryGetProperty("downloadPerHost", out var perHostElement))
+            {
+                downloadPerHost = perHostElement.ValueKind == JsonValueKind.Number &&
+                                  perHostElement.TryGetInt32(out var perHost)
+                    ? perHost
+                    : throw new ArgumentException("downloadPerHost must be an integer");
+                if (downloadPerHost is < 0 or > 64)
+                {
+                    return Error("E_INVALID", "downloadPerHost must be within 0..64");
+                }
+            }
         }
         catch (JsonException exception)
         {
@@ -239,6 +299,28 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             };
         }
 
+        if (downloadSource is not null ||
+            downloadConcurrency is not null ||
+            downloadPerHost is not null)
+        {
+            current = current with
+            {
+                DownloadSource = downloadSource ?? current.DownloadSource,
+                DownloadConcurrency = downloadConcurrency ?? current.DownloadConcurrency,
+                DownloadPerHost = downloadPerHost ?? current.DownloadPerHost,
+            };
+        }
+
+        if (downloadProxyPresent)
+        {
+            current = current with
+            {
+                DownloadProxy = string.IsNullOrEmpty(downloadProxy)
+                    ? null
+                    : downloadProxy,
+            };
+        }
+
         if (instancesRoots is not { Count: > 0 } &&
             string.IsNullOrWhiteSpace(legacyRoot) &&
             !javaPathPresent &&
@@ -247,7 +329,11 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             memoryMax is null &&
             !jvmArgsPresent &&
             gcMode is null &&
-            !gameArgsPresent)
+            !gameArgsPresent &&
+            downloadSource is null &&
+            downloadConcurrency is null &&
+            downloadPerHost is null &&
+            !downloadProxyPresent)
         {
             return Error("E_INVALID", "settings.set requires at least one field");
         }
@@ -305,6 +391,17 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             else
             {
                 writer.WriteString("gameArgs", settings.GameArgs);
+            }
+            writer.WriteString("downloadSource", settings.DownloadSource);
+            writer.WriteNumber("downloadConcurrency", settings.DownloadConcurrency);
+            writer.WriteNumber("downloadPerHost", settings.DownloadPerHost);
+            if (string.IsNullOrWhiteSpace(settings.DownloadProxy))
+            {
+                writer.WriteNull("downloadProxy");
+            }
+            else
+            {
+                writer.WriteString("downloadProxy", settings.DownloadProxy);
             }
             writer.WriteString("dataRoot", settings.DataRoot);
             writer.WriteString("settingsPath", settings.SettingsPath);

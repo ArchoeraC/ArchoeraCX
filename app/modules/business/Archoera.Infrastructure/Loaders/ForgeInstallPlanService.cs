@@ -83,7 +83,12 @@ public sealed class ForgeInstallPlanService
         ]);
 
         var vanillaPlan = await _vanillaPlan
-            .BuildFromEffectiveAsync(root, effective, platform, cancellationToken)
+            .BuildFromEffectiveAsync(
+                root,
+                effective,
+                platform,
+                DownloadSourceMode.Auto,
+                cancellationToken)
             .ConfigureAwait(false);
 
         var sha1 = await LoaderPaths

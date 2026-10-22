@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Archoera.Application.Instances;
+using Archoera.Application.Downloads;
 using Archoera.Application.Loaders;
 using Archoera.Application.Modules;
 using Archoera.Application.Packs;
@@ -17,6 +18,7 @@ using Archoera.Infrastructure.Launch;
 using Archoera.Infrastructure.Loaders;
 using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Resources.Modrinth;
+using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Packs;
@@ -64,6 +66,7 @@ public sealed class PackInstallService
     private readonly JavaRuntimeSelectionService _java;
     private readonly IForgeArtifactPlanner _forgePlanner;
     private readonly IForgeRepairService _forgeRepair;
+    private readonly RegionPolicy _regionPolicy;
 
     public PackInstallService(
         IInstanceRepository? repository = null,
@@ -73,7 +76,8 @@ public sealed class PackInstallService
         ModrinthClient? modrinth = null,
         JavaRuntimeSelectionService? java = null,
         IForgeArtifactPlanner? forgePlanner = null,
-        IForgeRepairService? forgeRepair = null)
+        IForgeRepairService? forgeRepair = null,
+        RegionPolicy? regionPolicy = null)
     {
         _settings = settings ?? new JsonAppSettingsStore();
         _repository = repository ?? new SqliteInstanceRepository(settings: _settings);
@@ -81,6 +85,7 @@ public sealed class PackInstallService
         _gameInstall = gameInstall ?? new PackGameInstallService();
         _java = java ?? new JavaRuntimeSelectionService(settings: _settings);
         _forgePlanner = forgePlanner ?? new ForgeArtifactPlanner();
+        _regionPolicy = regionPolicy ?? new RegionPolicy();
         _forgeRepair = forgeRepair ?? new ForgeRepairService(
             new ForgeProcessorRunner(),
             new LoaderArtifactVerifier());
@@ -293,6 +298,7 @@ public sealed class PackInstallService
                     index.Loader.Kind,
                     index.Loader.Version,
                     platform,
+                    await ResolveSourceModeAsync(cancellationToken).ConfigureAwait(false),
                     cancellationToken)
                 .ConfigureAwait(false);
 
@@ -335,7 +341,9 @@ public sealed class PackInstallService
             instance.RootPath,
             index,
             overridePaths,
-            clientSide: true);
+            clientSide: true,
+            sourceMode: await ResolveSourceModeAsync(cancellationToken)
+                .ConfigureAwait(false));
 
         // Overrides are extracted while index downloads run. They never target
         // the same destination: conflicts were removed from the plan above.
@@ -726,6 +734,7 @@ public sealed class PackInstallService
                 loader,
                 instance.LoaderVersion,
                 MojangPlatform.Current(),
+                await ResolveSourceModeAsync(cancellationToken).ConfigureAwait(false),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -755,6 +764,42 @@ public sealed class PackInstallService
             game.VersionId,
             game.VersionJson);
         return new PackRepairResult(instance, game.VersionId);
+    }
+
+    /// <summary>
+    /// User preference: `official` keeps the official hosts first, `mirror`
+    /// prefers BMCLAPI, and `auto` keeps the mirror-first behaviour used for
+    /// installer bootstrapping on slow international links.
+    /// </summary>
+    private async Task<bool> PreferMirrorAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            return DownloadSourceModes.Parse(settings.DownloadSource) != DownloadSourceMode.Official;
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    private async Task<DownloadSourceMode> ResolveSourceModeAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            return await DownloadSourceResolver
+                .ResolveAsync(settings.DownloadSource, _regionPolicy, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            return DownloadSourceMode.Auto;
+        }
     }
 
     /// <summary>
@@ -822,7 +867,8 @@ public sealed class PackInstallService
                 instance.LoaderVersion,
                 installerPath,
                 platform,
-                preferMavenMirror: true,
+                preferMavenMirror: await PreferMirrorAsync(cancellationToken)
+                    .ConfigureAwait(false),
                 cancellationToken)
             .ConfigureAwait(false);
 

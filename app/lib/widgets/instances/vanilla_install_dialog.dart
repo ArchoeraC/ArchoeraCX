@@ -5,6 +5,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
 import '../../stores/instances.dart';
 import '../../theme/tokens.dart';
+import '../common/app_progress_bar.dart';
 
 Future<void> showVanillaInstallDialog(
   BuildContext context,
@@ -115,7 +116,7 @@ class _VanillaInstallDialogState extends ConsumerState<VanillaInstallDialog> {
             ),
             if (_running) ...[
               const SizedBox(height: AppSpacing.md),
-              LinearProgressIndicator(value: progress),
+              AppProgressBar(value: progress),
               const SizedBox(height: AppSpacing.xs),
               Row(
                 children: [

@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Archoera.Application.Downloads;
 using Archoera.Application.Loaders;
 using Archoera.Application.Mojang;
 using Archoera.Application.Packs;
@@ -96,6 +97,7 @@ public sealed class PackGameInstallService
         string loaderKind,
         string loaderVersion,
         MojangPlatform platform,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(platform);
@@ -108,7 +110,12 @@ public sealed class PackGameInstallService
         if (kind == "vanilla")
         {
             var vanillaPlan = await _planService
-                .BuildForVersionAsync(installRoot, gameVersion, platform, cancellationToken)
+                .BuildForVersionAsync(
+                    installRoot,
+                    gameVersion,
+                    platform,
+                    sourceMode,
+                    cancellationToken)
                 .ConfigureAwait(false);
             var json = await _mojang
                 .GetVersionJsonAsync(gameVersion, cancellationToken)
@@ -190,7 +197,12 @@ public sealed class PackGameInstallService
             .ConfigureAwait(false);
 
         var plan = await _planService
-            .BuildFromEffectiveAsync(installRoot, effective, platform, cancellationToken)
+            .BuildFromEffectiveAsync(
+                installRoot,
+                effective,
+                platform,
+                sourceMode,
+                cancellationToken)
             .ConfigureAwait(false);
 
         return new PackGameInstallPlan(

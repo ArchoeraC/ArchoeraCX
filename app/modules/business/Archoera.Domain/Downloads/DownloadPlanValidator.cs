@@ -58,6 +58,34 @@ public static class DownloadPlanValidator
                 "bandwidthLimit must not be negative");
         }
 
+        if (plan.Options.PerHostConcurrency is < 0 or > DownloadPlanLimits.MaxPerHostConcurrency)
+        {
+            return new DownloadPlanIssue(
+                DownloadPlanErrorCode.InvalidPlan,
+                $"options.perHostConcurrency {plan.Options.PerHostConcurrency} is outside " +
+                $"0..={DownloadPlanLimits.MaxPerHostConcurrency}");
+        }
+
+        if (plan.Options.Proxy is { } proxy)
+        {
+            if (!Uri.TryCreate(proxy.Url, UriKind.Absolute, out var proxyUri) ||
+                proxyUri.Scheme is not ("http" or "https" or "socks4" or "socks4a"
+                    or "socks5" or "socks5h") ||
+                string.IsNullOrEmpty(proxyUri.Host))
+            {
+                return new DownloadPlanIssue(
+                    DownloadPlanErrorCode.InvalidPlan,
+                    "options.proxy.url must be an http(s)/socks URL with a host");
+            }
+
+            if (proxy.NoProxy.Count > 256 || proxy.NoProxy.Any(entry => entry.Length > 255))
+            {
+                return new DownloadPlanIssue(
+                    DownloadPlanErrorCode.InvalidPlan,
+                    "options.proxy.noProxy entries are too long or too many");
+            }
+        }
+
         var rootIssue = DownloadPlanPaths.ValidateRoot(plan.Root);
         if (rootIssue is not null)
         {

@@ -59,6 +59,7 @@ constexpr MethodRoute kRoutes[] = {
     {"loader.autoRepair", MethodRouteKind::kModule, kCsModule},
 
     {"system.memory", MethodRouteKind::kModule, kCsModule},
+    {"system.identity", MethodRouteKind::kModule, kCsModule},
     {"wiki.feed", MethodRouteKind::kModule, kCsModule},
     {"settings.get", MethodRouteKind::kModule, kCsModule},
     {"settings.set", MethodRouteKind::kModule, kCsModule},

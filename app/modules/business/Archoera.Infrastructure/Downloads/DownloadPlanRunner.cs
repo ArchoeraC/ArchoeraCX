@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Archoera.Application.Downloads;
+using Archoera.Domain.Settings;
+using Archoera.Infrastructure.Settings;
 using Archoera.Application.Modules;
 using Archoera.Domain.Downloads;
 
@@ -70,6 +72,33 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             throw new DownloadRunnerException(
                 "DOWNLOADER_MISSING",
                 "archoera-dl was not found; build app/modules/downloader and set ARCHOERACX_DL_BIN");
+        }
+
+        // User tuning wins over producer defaults (docs/10 §9.4).
+        DownloadProxyOptions? manualProxy = null;
+        try
+        {
+            var settings = await new JsonAppSettingsStore()
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false);
+            plan = ApplyTuning(plan, settings);
+            manualProxy = DownloadProxyResolver.FromSettings(settings.DownloadProxy);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            // Keep the producer defaults when settings cannot be read.
+        }
+
+        // The host resolves the proxy; the executor never reads environment
+        // proxies itself, so both HTTP stacks route identically.
+        if (plan.Options.Proxy is null)
+        {
+            var proxy = manualProxy ?? DownloadProxyResolver.Current;
+            if (proxy is not null)
+            {
+                plan = plan with { Options = plan.Options with { Proxy = proxy } };
+            }
         }
 
         var planJson = DownloadPlanJson.Build(plan);
@@ -213,6 +242,30 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
     /// Locates the Rust executor. Explicit env override wins; packaged and
     /// development locations are probed next.
     /// </summary>
+    /// <summary>
+    /// Applies the user's download tuning (concurrency, per-host cap) to a
+    /// plan that was produced elsewhere. Plans stay declarative; the runner is
+    /// the single place where runtime preferences win over producer defaults.
+    /// </summary>
+    public static DownloadPlan ApplyTuning(DownloadPlan plan, AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(settings);
+        var concurrency = Math.Clamp(
+            settings.DownloadConcurrency,
+            DownloadPlanLimits.MinConcurrency,
+            DownloadPlanLimits.MaxConcurrency);
+        var perHost = Math.Clamp(
+            settings.DownloadPerHost,
+            0,
+            DownloadPlanLimits.MaxPerHostConcurrency);
+        return plan with
+        {
+            Concurrency = concurrency,
+            Options = plan.Options with { PerHostConcurrency = perHost },
+        };
+    }
+
     public static string ResolveDownloaderPath()
     {
         var configured = Environment.GetEnvironmentVariable("ARCHOERACX_DL_BIN");

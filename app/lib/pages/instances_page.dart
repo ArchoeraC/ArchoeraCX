@@ -14,6 +14,7 @@ import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../stores/tasks.dart';
 import '../theme/tokens.dart';
+import '../widgets/common/app_progress_bar.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/common/loader_mark.dart';
@@ -303,28 +304,75 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   }
 
   Future<void> _delete(GameInstance instance, AppLocalizations l10n) async {
-    final confirmed = await showDialog<bool>(
+    final deleteFiles = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.instanceDelete),
-        content: Text(l10n.instanceDeleteConfirm(instance.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.commonDelete),
-          ),
-        ],
-      ),
+      builder: (context) =>
+          _InstanceDeleteDialog(l10n: l10n, instance: instance),
     );
+    if (deleteFiles == null || !mounted) return;
 
-    if (confirmed == true && mounted) {
-      await ref.read(instancesProvider.notifier).delete(instance.id);
+    // Removing files is irreversible, so it needs its own confirmation that
+    // spells out the folder being deleted.
+    if (deleteFiles) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          final tokens = context.tokens;
+          return AlertDialog(
+            icon: Icon(Icons.warning_amber_rounded, color: tokens.danger),
+            title: Text(l10n.instanceDeleteFilesConfirmTitle),
+            content: Text(
+              l10n.instanceDeleteFilesConfirmBody(instance.rootPath),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(l10n.commonCancel),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: tokens.danger,
+                  foregroundColor: tokens.onAccent,
+                ),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l10n.instanceDeleteFilesConfirmAction),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true || !mounted) return;
     }
+
+    final outcome = await ref
+        .read(instancesProvider.notifier)
+        .delete(instance.id, deleteFiles: deleteFiles);
+    if (!mounted) return;
+
+    if (!deleteFiles) {
+      _notify(context, l10n.instanceDeleteDone, type: ToastType.success);
+      return;
+    }
+    if (outcome?.filesDeleted == true) {
+      _notify(context, l10n.instanceDeleteDoneFiles, type: ToastType.success);
+      return;
+    }
+    _notify(
+      context,
+      _filesKeptMessage(l10n, outcome?.filesSkippedReason),
+      type: ToastType.warning,
+    );
   }
+
+  String _filesKeptMessage(AppLocalizations l10n, String? reason) =>
+      switch (reason) {
+        'missing' => l10n.instanceDeleteFilesKeptMissing,
+        'shared_root' ||
+        'nested_instance' ||
+        'not_managed' => l10n.instanceDeleteFilesKeptShared,
+        'symlink' || 'unsafe_path' => l10n.instanceDeleteFilesKeptUnsafe,
+        _ => l10n.instanceDeleteFilesKeptFailed,
+      };
 
   Future<void> _check(
     GameInstance instance,
@@ -900,7 +948,7 @@ class _DependencyCheckDialogState
             ],
             if (_busy) ...[
               const SizedBox(height: AppSpacing.md),
-              LinearProgressIndicator(value: progress),
+              AppProgressBar(value: progress),
               const SizedBox(height: AppSpacing.xxs),
               Text(
                 _phase ?? l10n.instanceCheckRepairing,
@@ -1105,7 +1153,12 @@ class _InstanceMenu extends StatelessWidget {
               children: [
                 const Icon(Icons.build_circle_outlined, size: 20),
                 const SizedBox(width: AppSpacing.xs),
-                Text(l10n.instanceManageLoader),
+                Flexible(
+                  child: Text(
+                    l10n.instanceManageLoader,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1115,7 +1168,12 @@ class _InstanceMenu extends StatelessWidget {
               children: [
                 const Icon(Icons.download_rounded, size: 20),
                 const SizedBox(width: AppSpacing.xs),
-                Text(l10n.instanceInstallGame),
+                Flexible(
+                  child: Text(
+                    l10n.instanceInstallGame,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1126,7 +1184,12 @@ class _InstanceMenu extends StatelessWidget {
             children: [
               const Icon(Icons.extension_rounded, size: 20),
               const SizedBox(width: AppSpacing.xs),
-              Text(l10n.instanceManageMods),
+              Flexible(
+                child: Text(
+                  l10n.instanceManageMods,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -1136,7 +1199,12 @@ class _InstanceMenu extends StatelessWidget {
             children: [
               const Icon(Icons.article_outlined, size: 20),
               const SizedBox(width: AppSpacing.xs),
-              Text(l10n.instanceViewLogs),
+              Flexible(
+                child: Text(
+                  l10n.instanceViewLogs,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -1146,7 +1214,12 @@ class _InstanceMenu extends StatelessWidget {
             children: [
               const Icon(Icons.bolt_rounded, size: 20),
               const SizedBox(width: AppSpacing.xs),
-              Text(l10n.instanceCheckQuick),
+              Flexible(
+                child: Text(
+                  l10n.instanceCheckQuick,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -1156,7 +1229,12 @@ class _InstanceMenu extends StatelessWidget {
             children: [
               const Icon(Icons.fact_check_outlined, size: 20),
               const SizedBox(width: AppSpacing.xs),
-              Text(l10n.instanceCheckFull),
+              Flexible(
+                child: Text(
+                  l10n.instanceCheckFull,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -1166,7 +1244,12 @@ class _InstanceMenu extends StatelessWidget {
             children: [
               Icon(Icons.delete_outline_rounded, color: tokens.danger),
               const SizedBox(width: AppSpacing.xs),
-              Text(l10n.instanceDelete),
+              Flexible(
+                child: Text(
+                  l10n.instanceDelete,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -1291,6 +1374,82 @@ class _InstanceCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// First confirmation before deleting an instance. Pops `true` when the user
+/// also wants the local files removed, `false` for registry-only deletion and
+/// `null` on cancel.
+class _InstanceDeleteDialog extends StatefulWidget {
+  const _InstanceDeleteDialog({required this.l10n, required this.instance});
+
+  final AppLocalizations l10n;
+  final GameInstance instance;
+
+  @override
+  State<_InstanceDeleteDialog> createState() => _InstanceDeleteDialogState();
+}
+
+class _InstanceDeleteDialogState extends State<_InstanceDeleteDialog> {
+  // Off by default: deleting files is the irreversible part of this action.
+  bool _deleteFiles = false;
+
+  bool get _canDeleteFiles =>
+      !widget.instance.missing && widget.instance.rootPath.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    final tokens = context.tokens;
+    final instance = widget.instance;
+
+    return AlertDialog(
+      title: Text(l10n.instanceDeleteConfirm(instance.name)),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.instanceDeleteBody),
+            const SizedBox(height: AppSpacing.sm),
+            CheckboxListTile(
+              value: _deleteFiles,
+              onChanged: _canDeleteFiles
+                  ? (value) => setState(() => _deleteFiles = value ?? false)
+                  : null,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              dense: true,
+              title: Text(l10n.instanceDeleteFiles),
+              subtitle: Text(l10n.instanceDeleteFilesHint),
+            ),
+            if (instance.rootPath.isNotEmpty)
+              Text(
+                instance.rootPath,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: tokens.danger,
+            foregroundColor: tokens.onAccent,
+          ),
+          onPressed: () => Navigator.of(context).pop(_deleteFiles),
+          child: Text(l10n.commonDelete),
+        ),
+      ],
     );
   }
 }

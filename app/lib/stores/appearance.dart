@@ -192,11 +192,17 @@ final systemAppearanceProvider = StreamProvider<SystemAppearance?>((ref) {
 
   final controller = StreamController<SystemAppearance?>();
   var closed = false;
+  SystemAppearance? latest;
+
+  void emit(SystemAppearance appearance) {
+    latest = appearance.merge(latest);
+    if (!closed) controller.add(latest);
+  }
 
   Future<void> load() async {
     try {
       final appearance = await client.getSystemAppearance();
-      if (!closed && appearance != null) controller.add(appearance);
+      if (appearance != null) emit(appearance);
     } catch (_) {
       // Older cores do not implement system.appearance; Flutter's platform
       // brightness remains the fallback.
@@ -211,7 +217,7 @@ final systemAppearanceProvider = StreamProvider<SystemAppearance?>((ref) {
       )
       .listen((event) {
         final appearance = SystemAppearance.tryParse(event.payload);
-        if (!closed && appearance != null) controller.add(appearance);
+        if (appearance != null) emit(appearance);
       });
 
   unawaited(load());

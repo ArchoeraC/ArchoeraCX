@@ -132,11 +132,17 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
     await reload();
   }
 
-  Future<void> delete(String id) async {
+  /// Remove an instance. When [deleteFiles] is set the C# owner also deletes
+  /// the instance directory, unless it is shared with another instance.
+  Future<InstanceDeleteOutcome?> delete(
+    String id, {
+    bool deleteFiles = false,
+  }) async {
     final client = ref.read(coreClientProvider);
+    InstanceDeleteOutcome? outcome;
     if (client != null) {
       try {
-        await client.deleteInstance(id);
+        outcome = await client.deleteInstance(id, deleteFiles: deleteFiles);
       } catch (_) {
         // Keep the local mirror consistent even if the registry is busy.
       }
@@ -151,6 +157,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
           .read(selectedInstanceIdProvider.notifier)
           .select(remaining.isEmpty ? null : remaining.first.id);
     }
+    return outcome;
   }
 
   Future<void> markPlayed(String id) async {

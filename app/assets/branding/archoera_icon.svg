@@ -3,10 +3,10 @@
   <desc>Flat geometric viewfinder frame with an amber diamond core. Two colors only, no gradients or shadows.</desc>
   <rect width="1024" height="1024" rx="232" fill="#4F7CFF"/>
   <g fill="#FFFFFF">
-    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z"/>
-    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z" transform="translate(1024 0) scale(-1 1)"/>
-    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z" transform="translate(1024 1024) scale(-1 -1)"/>
-    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z" transform="translate(0 1024) scale(1 -1)"/>
-    <rect x="414" y="414" width="196" height="196" rx="44" fill="#FFC24D" transform="rotate(45 512 512)"/>
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 336 L360 336 A24 24 0 0 0 336 360 L336 448 Z"/>
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 336 L360 336 A24 24 0 0 0 336 360 L336 448 Z" transform="translate(1024 0) scale(-1 1)"/>
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 336 L360 336 A24 24 0 0 0 336 360 L336 448 Z" transform="translate(1024 1024) scale(-1 -1)"/>
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 336 L360 336 A24 24 0 0 0 336 360 L336 448 Z" transform="translate(0 1024) scale(1 -1)"/>
   </g>
+  <rect x="414" y="414" width="196" height="196" rx="44" fill="#FFC24D" transform="rotate(45 512 512)"/>
 </svg>

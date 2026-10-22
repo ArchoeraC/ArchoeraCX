@@ -1365,9 +1365,11 @@ JavaLocator
     "dedup": true,
     "verifyExisting": "size",
     "durability": "normal",
-    "rangeThreshold": 8388608,
-    "chunkSize": 4194304,
-    "progressIntervalMs": 150
+    "rangeThreshold": 1048576,
+    "chunkSize": 524288,
+    "progressIntervalMs": 150,
+    "perHostConcurrency": 6,
+    "proxy": { "url": "http://127.0.0.1:7890", "noProxy": ["localhost", ".lan"] }
   },
   "files": [
     {
@@ -1388,7 +1390,9 @@ JavaLocator
 
 > `post` 只是兼容字段；需要解压的 `extract_natives` 由 C# 在下载完成后的 continuation 中执行，避免第二套 Zip 安全实现。
 >
-> 当前 `archoera_dl` MVP 已实现单流 GET、hash/size 校验、`.part` + 原子 rename、进度/取消；Range 分片、全局配额、代理显式下发和 `post` 执行排在接入 C++ ModuleRegistry 之后。生成物（`PATCHED` 等）**永远不进** `files[]`。
+> **边缘节点优选**：`cdn.modrinth.com` 由 Fastly anycast 承载，不同 anycast 地址的跨境链路差异可达两个数量级（实测同刻 30 KB/s ↔ 3 MB/s，个别地址直接不可用）。Rust 在无代理时用 128 KiB Range 探测若干 Fastly anycast 地址与 DNS 结果，按实测吞吐排序后通过 `resolve_to_addrs` 交给 HTTP 客户端（`ARCHOERACX_DL_NO_EDGE=1` 可关闭）；全部探测失败则完全退回 DNS。
+>
+> `archoera_dl` 已实现单流 GET、**大文件 Range 分片并发**（阈值 `rangeThreshold`、分片 `chunkSize`，服务端不认 Range 时退回单流）、**分片级断点续传**（`<dest>.part.meta` 记录完成分片 + ETag/Last-Modified，命中 `If-Range` 才续传，validator 变化或任一 200 则丢弃重下）、**每 host 连接上限**（`options.perHostConcurrency`，默认 16，0 表示不限）、**显式代理**（`options.proxy`，由 C# 解析后下发）、按 chunk 重试、hash/size 校验、`.part` + 原子 rename、进度/取消。全局连接预算 = `plan.concurrency`（默认 16，1–64），分片与单流共用；先取全局许可再取 host 许可，避免锁序反转。`post[]` 仍是兼容字段（不执行；natives/overrides 由 C# continuation 处理）。生成物（`PATCHED` 等）**永远不进** `files[]`。
 
 | 字段 | 规则 |
 |---|---|
@@ -1429,9 +1433,10 @@ JavaLocator
 
 | 层 | 默认 | 说明 |
 |---|---|---|
-| 全局 streams | 16（1–64） | 所有 plan 共享 |
-| 每 host streams | 6（CDN）/4（源站） | host = 小写 hostname |
-| 每文件 streams | 1 或 2–8 | 仅大文件且服务端支持 Range |
+| 全局 streams | 16（1–64，设置页可调；>32 需显式确认） | 一个 plan 内所有流共享同一信号量；`DownloadPlanRunner` 执行前按 `settings.downloadConcurrency` 覆盖 |
+| 来源优先 | 自动 / 官方 / 镜像 | `settings.downloadSource`；自动按 `region.policy` 解析（中国大陆镜像优先），设置页把解析结果显示在「自动」行内。影响原版 client/库/资源、Forge/NeoForge installer、加载器元数据、Modrinth 文件（`cdn.modrinth.com` → `mod.mcimirror.top`）；另一侧始终作为回退 |
+| 每 host streams | 16（0–64，设置页可调，`options.perHostConcurrency`） | host = 小写 hostname；先全局后 host 取许可；`DownloadPlanRunner` 按 `settings.downloadPerHost` 覆盖 |
+| 每文件 streams | 1 或 ⌈size/chunkSize⌉（受全局与 host 预算约束） | 默认 `rangeThreshold` 1 MiB、`chunkSize` 512 KiB，服务端返回 206 才分片；跨境链路常见“每流限速”，连接数比单流峰值更重要 |
 
 - 用单一 `Mutex<SchedState> + Notify` 的 permit broker，避免嵌套 Semaphore 持锁等待。
 - plan 间按 `priority` + 轮转；文件 `priority` 只在 plan 内排序。
@@ -1443,19 +1448,19 @@ JavaLocator
 
 | 项 | 策略 |
 |---|---|
-| 协议 | HTTPS；测试允许 `http://127.0.0.1` |
+| 协议 | HTTPS；测试允许 `http://127.0.0.1`；下载固定 HTTP/1.1（每流独立连接，避开 h2 单连接流控） |
 | HTTP 版本 | 默认 ALPN 协商 h2；小文件靠多路复用，大文件按阈值分片 |
 | Range | `GET Range: bytes=0-0` 探测；仅 `206 + Content-Range` 认为支持 |
 | 压缩 | 固定 `Accept-Encoding: identity`；禁用 gzip/brotli/zstd；响应仍带编码则 `ENCODING_UNSUPPORTED` |
 | 重定向 | 最多 5 跳；逐跳校验 scheme；拒绝降级到 http |
 | 超时 | connect 10s、TTFB 20s、读空闲 30s、单 chunk 5min、整 attempt 30min |
 | 重试 | 指数退避 + jitter；429/503 尊重 `Retry-After`；TLS 证书错误不重试 |
-| 代理 | **由 C# 解析后显式传入**；Rust 不重复读系统代理；支持 `noProxy`、代理认证 |
+| 代理 | **由 C# 解析后写入 `options.proxy`**：设置页手工代理优先，其次 `HTTPS_PROXY`/`ALL_PROXY`，再 Linux 桌面配置（KDE `kioslaverc`、GNOME `gsettings`、PAC 脚本首个 `PROXY`/`SOCKS5`），最后 .NET 系统代理；支持 `http(s)://` 与 `socks5(h)://`（设置页可填），`NO_PROXY`/`NoProxyFor` 为绕过列表；Rust 只消费，不读环境代理 |
 | TLS | Windows/macOS 用系统证书（native-tls）；Linux 用 rustls + 系统根；企业根需实测 |
 | UA | `ArchoeraCX/<ver> (+https://...; contact)`；Rust 与 C# 同一格式 |
 
 > 两套 HTTP 栈的差异是已接受的成本；代理/证书/UA/超时由 C# 统一下发，避免“C# 能搜、Rust 装不上”。
-> **[待验证]** 系统代理（PAC/WPAD）、企业根证书、代理认证在三平台的实际行为，P1 必须用真实环境测试。
+> **[待验证]** PAC 目前只解析脚本里第一个 `PROXY`/`SOCKS5`（Linux，已用 Clash Verge 实测）；WPAD、复杂 PAC 规则、企业根证书与代理认证在三平台的实际行为仍需真实环境验证。
 
 ### 9.6 落盘、续传与原子提交
 
@@ -1470,6 +1475,7 @@ JavaLocator
 - 提交：`sync_all` → 顺序 hash → `rename(.part, dest)` → 父目录 fsync（Unix）→ 删 lock/meta。
 - 断点：强 ETag 优先；弱 ETag 不能用于 `If-Range`；无 ETag 用 `Last-Modified`；validator 变化则丢弃重下。
 - 分片：未完成 chunk 整块重下；响应必须 206 且 `Content-Range` 精确；任一 200 则退回单流。
+- 续传（已实现于分片模式）：`<dest>.part.meta` 存 `{size, hashAlgo, hashHex, chunkSize, etag, lastModified, completed[]}`；仅当 size/hash/chunkSize 一致且 `.part` 长度正确时续传，请求带 `If-Range`；每完成一个分片原子更新 meta；提交或取消时删除。单流（小文件）失败仍整体丢弃。
 - Windows：`MoveFileExW`/`FileRenameInfoEx`；占用时重试 5 次；仍失败 `FILE_LOCKED`，保留 `.part`。
 - macOS：真正落盘需 `F_FULLFSYNC`（可选增强）。
 
@@ -2142,7 +2148,10 @@ C#: 写 .archoera/pack.json → 注册 → 事件
 
 ```
 launch.prepare: 账户就绪 + CheckFiles（全部库 + 原生 classifier/client jar/asset index/逐条 asset object）+ CheckLoaderArtifacts（NeoForge 生成物）
-launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合并
+launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合并、加载器未安装（LOADER_NOT_INSTALLED）
+  加载器 profile 解析：先按安装器 id 精确查找（Forge `<game>-forge-<ver>`、NeoForge `neoforge-<ver>`、
+    Fabric/Quilt `*-loader-<ver>-<game>`，位于 installRoot/versions 下），再回退扫描；
+    加载器实例绝不允许回退到原版 profile 启动（会静默跑成原版），必须报 LOADER_NOT_INSTALLED 并安装
   → 本地修复优先（不联网、不校验下载策略）：
       缺失/未合并 version JSON：从 versions/ 下匹配游戏+加载器+加载器版本的标准 profile
         与基础版本 JSON 本地合并，原子写回 <实例>/<文件夹>.json
@@ -2294,13 +2303,14 @@ public interface IDownloadProvider {
 | `system.ping` | C++ | 健康检查 |
 | `system.info` | C++ | 应用/ABI/模块版本 |
 | `system.modules` | C++ | 已加载模块名称/版本/状态 |
-| `system.appearance` | C++ | 系统深浅色与强调色；变化以 `system.appearance` domain 事件推送 |
+| `system.appearance` | C++ | 系统深浅色与强调色；Linux 强调色优先读 DE 配置（`kdeglobals [General] AccentColor` → GNOME `accent-color`），再回退 XDG Portal `accent-color`；Portal 读取为非阻塞（异步 DBus + 缓存），变化以 `system.appearance` domain 事件推送；Dart 侧对快照做合并（known 字段覆盖 unknown），避免“首次读取的空值”晚于事件到达时把已知主题色冲掉 |
 | `system.openUrl` | C++ | 用系统 API 打开 http(s) 链接（默认浏览器） |
 | `system.notify` | C++ | 发送系统桌面通知（登录成功等） |
 | `system.snapshot` | C++ | 活跃任务 + 事件 seq |
 | `system.log.tail` | C++ | 环形缓冲分页 |
 | `system.log.export` | C++ | 导出诊断日志 |
 | `system.memory` | C# | 上报物理总内存/可用内存 |
+| `system.identity` | C# | 构建来源标记：编译期 client_id 的域分隔 SHA-256、`channel`（official/custom/unconfigured）；**原始 id 不跨 ABI** |
 | `system.status` | C++ | 机器负载快照（异步任务）：CPU 采样/核数/负载、内存、指定路径所在磁盘、启动器进程与系统运行时长；平台 API 在 `platform_status_*`，未知值写 null |
 | `system.status.watch` | C++ | 启动原生采样线程，按 `intervalMs`（默认 5000，范围 1000–60000）推送 `system.status` 域事件；条件变量等待，不做 Dart 轮询 |
 | `system.status.unwatch` | C++ | 停止采样线程并 join |
@@ -2316,7 +2326,7 @@ public interface IDownloadProvider {
 | `instance.get` | C# | 详情 |
 | `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离） |
 | `instance.update` | C# | 名称/内存/Java/参数 |
-| `instance.delete` | C# | 移入 trash |
+| `instance.delete` | C# | 移除索引；`deleteFiles: true` 时同时删除实例目录（需 `.archoera/instance.json` 标记，且不与实例根或其它实例重叠，否则保留并在 `filesSkippedReason` 返回原因） |
 | `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |
 | `instance.mods.list` | C# | 列出实例 `mods/` 中的 jar 与 `.disabled` 文件 |
 | `instance.mods.setEnabled` | C# | 通过 `.disabled` 后缀启停 Mod |

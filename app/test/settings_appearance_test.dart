@@ -88,6 +88,27 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
   });
 
+  testWidgets('appearance groups stack in one column on wide windows', (
+    tester,
+  ) async {
+    await pumpSettings(tester);
+
+    // Wide windows used to split the section into two columns; the groups now
+    // follow the same single-column rhythm as storage/java/about.
+    final theme = tester.getTopLeft(find.text('Theme'));
+    final accent = tester.getTopLeft(find.text('Accent'));
+    final interface = tester.getTopLeft(find.text('Interface'));
+    final language = tester.getTopLeft(find.text('Language & region'));
+
+    expect(accent.dy, greaterThan(theme.dy));
+    expect(interface.dy, greaterThan(accent.dy));
+    expect(language.dy, greaterThan(interface.dy));
+    expect(accent.dx, theme.dx);
+    expect(interface.dx, theme.dx);
+    expect(language.dx, theme.dx);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('appearance options fit a narrow window', (tester) async {
     await pumpSettings(tester, size: const Size(720, 800));
 

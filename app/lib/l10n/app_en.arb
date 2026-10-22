@@ -19,6 +19,7 @@
   "accountOffline": "Offline",
   "accountLocal": "Local account",
   "launch": "Launch",
+  "launchWithInstance": "Launch “{name}”",
   "selectInstance": "Select an instance first",
   "commonMockData": "Mock data · UI shell",
   "commonCoreNotConnected": "The native core is not connected yet.",
@@ -179,6 +180,18 @@
   "instanceNoMatches": "No instances match your search.",
   "instanceDelete": "Delete instance",
   "instanceDeleteConfirm": "Delete “{name}”?",
+  "instanceDeleteBody": "The instance is removed from the launcher list.",
+  "instanceDeleteFiles": "Also delete local files",
+  "instanceDeleteFilesHint": "Removes game files, mods, logs and configs in the instance folder. This cannot be undone.",
+  "instanceDeleteFilesConfirmTitle": "Delete local files?",
+  "instanceDeleteFilesConfirmBody": "This permanently deletes the folder and everything inside it:\n{path}",
+  "instanceDeleteFilesConfirmAction": "Delete permanently",
+  "instanceDeleteDone": "Instance deleted.",
+  "instanceDeleteDoneFiles": "Instance and local files deleted.",
+  "instanceDeleteFilesKeptMissing": "Instance deleted; the local folder was already gone.",
+  "instanceDeleteFilesKeptShared": "Instance deleted, but the folder is shared with another instance or instance root, so it was kept.",
+  "instanceDeleteFilesKeptUnsafe": "Instance deleted, but the folder path is unsafe, so it was kept.",
+  "instanceDeleteFilesKeptFailed": "Instance deleted, but the local files could not be removed. Clean them up manually.",
   "instanceCheckQuick": "Quick check",
   "instanceCheckFull": "Full check",
   "instanceCheckTitle": "Dependency check",
@@ -196,6 +209,14 @@
     }
   },
   "instanceCheckRepair": "Repair dependencies",
+  "@launchWithInstance": {
+    "description": "Tooltip on the command bar launch button naming the selected instance.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "@instanceCheckRepair": {
     "description": "Button that restores missing loader files and reruns processors."
   },
@@ -238,6 +259,14 @@
       }
     }
   },
+  "@instanceDeleteFilesConfirmBody": {
+    "description": "Second confirmation showing the instance folder that will be deleted.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "instanceLaunchNotReady": "Launch flow is not wired yet.",
   "launchStarted": "Game started (PID {pid}).",
   "launchFailed": "Launch failed.",
@@ -253,6 +282,7 @@
     "description": "Launch error when auto-repair needs downloads but the local policy blocks them."
   },
   "launchJavaMissing": "No suitable Java runtime found.",
+  "launchLoaderNotInstalled": "This instance has no loader installed. Install Forge/NeoForge from the instance menu, then launch again.",
   "launchLog": "Log: {path}",
   "@launchStarted": {
     "placeholders": {
@@ -340,6 +370,40 @@
   "settingsGeneral": "General",
   "settingsAppearance": "Appearance",
   "settingsStorage": "Storage",
+  "settingsDownload": "Downloads",
+  "settingsDownloadSource": "Source priority",
+  "settingsDownloadTuning": "Concurrency and connections",
+  "settingsDownloadSourceDesc": "Which host is tried first. The other side stays as a fallback.",
+  "settingsDownloadSourceAuto": "Automatic",
+  "settingsDownloadSourceAutoDesc": "Follows the detected region; mirrors are used when the official host is slow or blocked.",
+  "settingsDownloadSourceOfficial": "Official first",
+  "settingsDownloadAutoResolvedMirror": "Automatic · using mirrors now (mainland China)",
+  "settingsDownloadAutoResolvedOfficial": "Automatic · using official hosts now",
+  "settingsDownloadAutoDetecting": "Automatic · detecting the region…",
+  "settingsDownloadSourceMirror": "Mirror first",
+  "settingsDownloadConcurrency": "Parallel downloads",
+  "settingsDownloadConcurrencyDesc": "Files (and large-file chunks) fetched at the same time, 1–64.",
+  "settingsDownloadPerHost": "Connections per host",
+  "settingsDownloadPerHostDesc": "Caps how many streams one host may use, 0 = unlimited.",
+  "settingsDownloadHighConcurrencyTitle": "Enable very high concurrency?",
+  "settingsDownloadHighConcurrencyWarning": "Unless you know what you are doing, do not do this: more than 32 streams sharply increases CPU, memory and network usage, and heavy chunking accelerates disk wear.",
+  "settingsDownloadHighConcurrencyContinue": "Enable anyway",
+  "settingsDownloadHighConcurrencyActive": "High concurrency enabled ({streams} streams, {perHost} per host): expect much higher resource usage and disk wear.",
+  "@settingsDownloadHighConcurrencyActive": {
+    "placeholders": {
+      "streams": {
+        "type": "int"
+      },
+      "perHost": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsDownloadProxy": "Download proxy",
+  "settingsDownloadProxySystem": "Follow the system proxy",
+  "settingsDownloadProxyHint": "http://host:port or socks5h://host:port. Leave empty to follow the system proxy.",
+  "settingsDownloadProxyInvalid": "Enter an http(s) or socks5 proxy URL, e.g. http://127.0.0.1:7890.",
+  "settingsDownloadNote": "Higher values finish faster on fast links but use more bandwidth and connections; lower them on metered or unstable networks.",
   "settingsInstancesRoot": "Instances folder",
   "settingsInstanceRoots": "Instance storage",
   "settingsAddRoot": "Add folder",
@@ -355,7 +419,6 @@
   "settingsJavaAutoHint": "Choose a Java runtime that matches the game version.",
   "settingsJavaCurrent": "Current Java",
   "settingsJavaAutoValue": "Automatic (per game version)",
-  "settingsJavaUseAuto": "Use automatic selection",
   "settingsJavaSelected": "Java selection saved.",
   "settingsMemory": "Memory",
   "settingsJvmArgs": "JVM arguments",
@@ -1146,6 +1209,9 @@
   "settingsAboutRuntime": "Runtime",
   "settingsAboutCore": "Native core",
   "settingsAboutCoreUnknown": "Not connected",
+
+
+
   "settingsAboutCopyEnvironment": "Copy environment",
   "settingsAboutCopied": "Environment copied to the clipboard.",
   "settingsAboutCommunity": "Community & support",

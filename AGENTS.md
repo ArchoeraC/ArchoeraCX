@@ -73,6 +73,7 @@ ARCHOERACX_INSTANCE_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-instance flutter t
 ARCHOERACX_ACCOUNT_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-account flutter test test/account_integration_test.dart
 ARCHOERACX_WIKI_TESTS=1 flutter test test/wiki_integration_test.dart
 flutter build linux --release
+python3 tool/check_icons.py
 ```
 
 ## 协作约定
@@ -95,16 +96,17 @@ flutter build linux --release
 
 - 界面：AppShell + 6 页面（主页/实例/下载/账户/Wiki/设置）、设计令牌、明暗主题、中英文 i18n、斜切角面板/Toast/页面转场、账户皮肤预览；右上角任务中心为右侧滑入边栏，展示真实进度/速度与具体目标，只记录长任务；实例菜单含游戏日志查看器（`launch.logs` / `launch.log.read` / `launch.log.tail`，运行中经 ABI 进度回调实时跟随，UI 不读文件；每实例保留最近 10 次、≤32 MiB，单文件 64 MiB 截断）。
 - Wiki 页（底栏第 5 项，`/wiki`）：C++ `system.status` 用平台 API 采样 CPU/核数/负载、内存、实例根所在磁盘、启动器进程与系统运行时长，`system.status.watch` 用条件变量每 5 秒推送域事件（Dart 只 drain，不轮询）；`wiki.feed` 汇总 Mojang 官方新闻、Java 补丁说明与 Minecraft Wiki 最近编辑（逐源独立失败 + 5 分钟缓存）。负载由核心推送更新，社区动态只在用户刷新或进入页面时拉取，Dart 不做定时轮询。
-- Java 选择：设置页 Java 分区只保留自动/手动与内存参数，并提供 `/settings/java` 子页入口；子页平铺全部扫描结果（版本徽标、使用中标记、搜索、自定义目录/可执行文件），不再是“显示前 5 + 查看全部”弹窗。
-- 外观设置：C++ `system.appearance`（XDG Portal / Windows 注册表 / AppKit）推送系统深浅色与强调色；“外观”改为单列分组平铺（主题 / 主题色 / 界面 / 语言与区域，无二级页签，行外不套卡片），含主题模式、系统/自定义主题色、全局着色、界面密度、减少动效与重置；关于页含环境信息复制、源码/反馈、许可证/隐私/安全入口。
+- 下载设置：设置页新增“下载”分区（来源优先 auto/official/mirror，auto 行内显示按地区解析出的实际来源；并发下载数 1–64、每站点连接数 0–64（默认 16）、下载代理（手工 http(s)/socks5，留空跟随系统；Linux 自动读 KDE/GNOME/PAC）；任一并发值超过 32 需二次确认并常驻警告），执行前由 `DownloadPlanRunner` 覆盖计划默认值；镜像优先会影响原版 client/库/资源、Forge/NeoForge installer 与加载器元数据，另一侧保留为回退。
+- Java 选择：设置页 Java 分区只保留 `/settings/java` 子页入口与内存参数（自动/手动与当前 Java 只在子页）；子页平铺全部扫描结果（版本徽标、使用中标记、搜索、自定义目录/可执行文件），不再是“显示前 5 + 查看全部”弹窗。
+- 外观设置：C++ `system.appearance`（Linux：KDE/GNOME 配置优先 + XDG Portal 异步兜底；Windows 注册表；AppKit）推送系统深浅色与强调色；“外观”改为单列分组平铺（主题 / 主题色 / 界面 / 语言与区域，无二级页签，行外不套卡片），含主题模式、系统/自定义主题色、全局着色、界面密度、减少动效与重置；关于页含环境信息复制、源码/反馈、许可证/隐私/安全入口；顶栏应用名使用当前主题强调色；C# `system.identity` 仍只返回编译期 client_id 的域分隔 SHA-256（原始 id 不跨 ABI），当前 UI 不展示构建标识。
 - 系统集成：C++ `system.openUrl` / `system.notify` 用系统 API 打开授权浏览器并发送登录成功桌面通知（Linux D-Bus / Windows Shell API / macOS AppKit+UserNotifications）。
 - 核心：C++ Method/Module 注册表、wake 事件泵、C ABI v2 进度回调；C# NativeAOT 模块与 DevHost。
 - 账户：Microsoft Authorization Code + PKCE（loopback）→ XBL/XSTS → Minecraft；凭据保险库（crypto/file）；离线账户；在线启动。
 - 实例与设置：SQLite 索引 + `instance.json` 权威源；新建实例默认版本隔离（`versions/<name>`，整合包安装同样默认隔离；显式 `rootPath` 仍可覆盖）；Java 扫描/选择、内存/GC/JVM/游戏参数持久化。
-- 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消。
+- 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消；大文件按 `rangeThreshold`（默认 1 MiB）/`chunkSize`（默认 512 KiB）走 Range 分片并发（服务端不支持则退回单流），单流与分片共用 `concurrency`（默认 16）连接预算并受 `perHostConcurrency`（默认 16）host 上限约束；无代理时对 `cdn.modrinth.com` 做 Fastly 边缘节点探测并按实测吞吐排序（`ARCHOERACX_DL_NO_EDGE=1` 关闭）；分片支持断点续传（`.part.meta` + `If-Range`），分片失败按 chunk 重试；代理由 C# `DownloadProxyResolver` 解析后写入 `options.proxy`，Rust 只消费。
 - 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。`loader.versions` 按“自动源”处理：中国大陆网络镜像优先（Fabric fabric-meta、Forge per-game JSON、NeoForge Maven 镜像），其他地区官方优先、失败回退镜像；结果缓存 10 分钟。
 - 启动依赖预检 `launch.prepare` / `launch.start`：启动前快速扫描全部库（含原生 classifier）、client jar、asset index 与逐条 asset object；先本地修复（缺失/未合并 profile 从 `versions/` 本地 profile 合并，缺失库/原生/资源从其它实例根或配置游戏根按 SHA-1+大小校验后复制，Forge/NeoForge 复用已有 installer 跑 processors），本地修复失败才自动下载补全（下载策略关闭返回 `AUTO_REPAIR_BLOCKED`）。
-- 加载器实例启动：优先使用实例目录自己的版本 JSON，再回退到游戏版本对应的加载器 profile；自定义整合包名（如 `AutumnTown`、`Radiance`）不再报 `VERSION_JSON_MISSING` 或误用其它实例的 profile。NeoForge 的 client/universal 生成物按 Maven 约定预检，齐全时直接启动，不因实例缺少 installer 触发下载修复。
+- 加载器实例启动：缺加载器时返回 `LOADER_NOT_INSTALLED` 并走自动安装（禁止回退到原版启动）；profile 解析先按安装器 id（Forge `<game>-forge-<ver>`、NeoForge `neoforge-<ver>`、Fabric/Quilt `*-loader-<ver>-<game>`）精确查找，再回退扫描；优先使用实例目录自己的版本 JSON，再回退到游戏版本对应的加载器 profile；自定义整合包名（如 `AutumnTown`、`Radiance`）不再报 `VERSION_JSON_MISSING` 或误用其它实例的 profile。NeoForge 的 client/universal 生成物按 Maven 约定预检，齐全时直接启动，不因实例缺少 installer 触发下载修复。
 
 待接：
 

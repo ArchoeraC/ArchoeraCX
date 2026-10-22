@@ -23,6 +23,12 @@ public sealed record DownloadPlanOptions
     /// <summary>Progress aggregation interval hint in milliseconds.</summary>
     public int ProgressIntervalMs { get; init; } = DownloadPlanLimits.DefaultProgressIntervalMs;
 
+    /// <summary>Streams allowed per host name; 0 disables the per-host cap.</summary>
+    public int PerHostConcurrency { get; init; } = DownloadPlanLimits.DefaultPerHostConcurrency;
+
+    /// <summary>Explicit proxy resolved by the host, or null for direct connections.</summary>
+    public DownloadProxyOptions? Proxy { get; init; }
+
     /// <summary>Defaults matching the Rust implementation.</summary>
     public static DownloadPlanOptions Default { get; } = new();
 }

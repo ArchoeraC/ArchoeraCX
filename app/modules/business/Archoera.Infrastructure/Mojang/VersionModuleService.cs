@@ -6,7 +6,9 @@ using Archoera.Application.Mojang;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Mojang;
 using Archoera.Infrastructure.Launch;
+using Archoera.Infrastructure.Downloads;
 using Archoera.Infrastructure.Modules;
+using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Mojang;
 
@@ -17,13 +19,19 @@ public sealed class VersionModuleService : IModuleMethodHandler
     private readonly IMojangMetadataClient _client;
     private readonly MojangPlanService _planService;
     private readonly DownloadPolicy _policy;
+    private readonly JsonAppSettingsStore _settings;
+    private readonly RegionPolicy _regionPolicy;
 
     public VersionModuleService(
         IMojangMetadataClient? client = null,
         bool enableDownloads = true,
-        DownloadPolicy? policy = null)
+        DownloadPolicy? policy = null,
+        JsonAppSettingsStore? settings = null,
+        RegionPolicy? regionPolicy = null)
     {
         _policy = policy ?? new DownloadPolicy();
+        _settings = settings ?? new JsonAppSettingsStore();
+        _regionPolicy = regionPolicy ?? new RegionPolicy();
         _supportedMethods = enableDownloads
             ? ["version.list", "version.plan", "version.commit"]
             : ["version.list"];
@@ -50,11 +58,15 @@ public sealed class VersionModuleService : IModuleMethodHandler
             var root = ReadRequired(document.RootElement, "root");
             var versionId = ReadRequired(document.RootElement, "versionId");
             var installRoot = LaunchPaths.ResolveInstallRoot(root);
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
             var plan = await _planService
                 .BuildForVersionAsync(
                     installRoot,
                     versionId,
                     MojangPlatform.Current(),
+                    await DownloadSourceResolver
+                        .ResolveAsync(settings.DownloadSource, _regionPolicy, cancellationToken)
+                        .ConfigureAwait(false),
                     cancellationToken)
                 .ConfigureAwait(false);
             var versionJson = await _client

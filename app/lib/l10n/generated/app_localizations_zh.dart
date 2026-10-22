@@ -49,6 +49,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get launch => '启动';
 
   @override
+  String launchWithInstance(String name) {
+    return '启动“$name”';
+  }
+
+  @override
   String get selectInstance => '请先选择实例';
 
   @override
@@ -280,6 +285,44 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get instanceDeleteBody => '实例将从启动器列表中移除。';
+
+  @override
+  String get instanceDeleteFiles => '同时删除本地文件';
+
+  @override
+  String get instanceDeleteFilesHint => '删除实例目录中的游戏文件、Mod、日志与配置，无法恢复。';
+
+  @override
+  String get instanceDeleteFilesConfirmTitle => '确认删除本地文件？';
+
+  @override
+  String instanceDeleteFilesConfirmBody(String path) {
+    return '将永久删除以下目录及其全部内容：\n$path';
+  }
+
+  @override
+  String get instanceDeleteFilesConfirmAction => '永久删除';
+
+  @override
+  String get instanceDeleteDone => '实例已删除。';
+
+  @override
+  String get instanceDeleteDoneFiles => '实例及其本地文件已删除。';
+
+  @override
+  String get instanceDeleteFilesKeptMissing => '实例已删除，但本地目录已不存在。';
+
+  @override
+  String get instanceDeleteFilesKeptShared => '实例已删除，但目录与其它实例或实例根共用，已保留。';
+
+  @override
+  String get instanceDeleteFilesKeptUnsafe => '实例已删除，但目录路径不安全，已保留。';
+
+  @override
+  String get instanceDeleteFilesKeptFailed => '实例已删除，但本地文件删除失败，请手动清理。';
+
+  @override
   String get instanceCheckQuick => '快速检查';
 
   @override
@@ -355,6 +398,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get launchJavaMissing => '没有找到合适的 Java 运行时。';
+
+  @override
+  String get launchLoaderNotInstalled =>
+      '该实例尚未安装加载器：请先在实例菜单中安装 Forge/NeoForge，再启动。';
 
   @override
   String launchLog(String path) {
@@ -556,6 +603,83 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsStorage => '存储';
 
   @override
+  String get settingsDownload => '下载';
+
+  @override
+  String get settingsDownloadSource => '来源优先';
+
+  @override
+  String get settingsDownloadTuning => '并发与连接';
+
+  @override
+  String get settingsDownloadSourceDesc => '优先尝试的下载源；另一侧保留为回退。';
+
+  @override
+  String get settingsDownloadSourceAuto => '自动';
+
+  @override
+  String get settingsDownloadSourceAutoDesc => '按当前地区判断：官方源慢或被阻断时使用镜像。';
+
+  @override
+  String get settingsDownloadSourceOfficial => '官方源优先';
+
+  @override
+  String get settingsDownloadAutoResolvedMirror => '自动 · 当前使用镜像源（中国大陆）';
+
+  @override
+  String get settingsDownloadAutoResolvedOfficial => '自动 · 当前使用官方源';
+
+  @override
+  String get settingsDownloadAutoDetecting => '自动 · 正在判断地区…';
+
+  @override
+  String get settingsDownloadSourceMirror => '镜像源优先';
+
+  @override
+  String get settingsDownloadConcurrency => '并发下载数';
+
+  @override
+  String get settingsDownloadConcurrencyDesc => '同时下载的文件（以及大文件分片）数量，1–64。';
+
+  @override
+  String get settingsDownloadPerHost => '每站点连接数';
+
+  @override
+  String get settingsDownloadPerHostDesc => '单个站点允许的并发流数量，0 表示不限。';
+
+  @override
+  String get settingsDownloadHighConcurrencyTitle => '确认启用超高并发？';
+
+  @override
+  String get settingsDownloadHighConcurrencyWarning =>
+      '除非你知道自己在做什么，否则请不要这样做：超过 32 线程会大幅提高 CPU、内存与网络占用，大量分片还会加速硬盘磨损。';
+
+  @override
+  String get settingsDownloadHighConcurrencyContinue => '仍然启用';
+
+  @override
+  String settingsDownloadHighConcurrencyActive(int streams, int perHost) {
+    return '已启用超高并发（并发 $streams / 每站点 $perHost）：资源占用与硬盘磨损会明显上升。';
+  }
+
+  @override
+  String get settingsDownloadProxy => '下载代理';
+
+  @override
+  String get settingsDownloadProxySystem => '跟随系统代理';
+
+  @override
+  String get settingsDownloadProxyHint =>
+      'http://主机:端口 或 socks5h://主机:端口；留空则跟随系统代理。';
+
+  @override
+  String get settingsDownloadProxyInvalid =>
+      '请输入 http(s) 或 socks5 代理地址，例如 http://127.0.0.1:7890。';
+
+  @override
+  String get settingsDownloadNote => '数值越大在线路良好时越快，但会占用更多带宽与连接；计费网络或不稳定网络建议调低。';
+
+  @override
   String get settingsInstancesRoot => '实例目录';
 
   @override
@@ -599,9 +723,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsJavaAutoValue => '自动（按游戏版本）';
-
-  @override
-  String get settingsJavaUseAuto => '改用自动选择';
 
   @override
   String get settingsJavaSelected => 'Java 选择已保存。';

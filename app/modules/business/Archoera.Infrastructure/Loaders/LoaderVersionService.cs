@@ -3,8 +3,10 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Xml.Linq;
+using Archoera.Application.Downloads;
 using Archoera.Application.Modules;
 using Archoera.Infrastructure.Modules;
+using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Loaders;
 
@@ -70,6 +72,7 @@ public sealed class LoaderVersionService : IModuleMethodHandler
     private readonly HttpClient _http;
     private readonly LoaderVersionEndpoints _endpoints;
     private readonly DownloadPolicy _policy;
+    private readonly JsonAppSettingsStore _settings;
     private readonly RegionPolicy? _regionPolicy;
 
     // Sticky mirror preference: once the official Maven had to be skipped,
@@ -98,6 +101,21 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         if (sticky) return true;
+
+        // An explicit user choice wins over the detected region.
+        try
+        {
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            var mode = DownloadSourceModes.Parse(settings.DownloadSource);
+            if (mode == DownloadSourceMode.Mirror) return true;
+            if (mode == DownloadSourceMode.Official) return false;
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // Fall through to the region policy.
+        }
+
         if (_regionPolicy is null) return false;
         try
         {
@@ -115,9 +133,11 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         HttpClient? httpClient = null,
         LoaderVersionEndpoints? endpoints = null,
         DownloadPolicy? policy = null,
-        RegionPolicy? regionPolicy = null)
+        RegionPolicy? regionPolicy = null,
+        JsonAppSettingsStore? settings = null)
     {
         _policy = policy ?? new DownloadPolicy();
+        _settings = settings ?? new JsonAppSettingsStore();
         _regionPolicy = regionPolicy;
         _http = httpClient ?? new HttpClient
         {

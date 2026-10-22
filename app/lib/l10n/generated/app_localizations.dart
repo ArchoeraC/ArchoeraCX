@@ -176,6 +176,12 @@ abstract class AppLocalizations {
   /// **'Launch'**
   String get launch;
 
+  /// Tooltip on the command bar launch button naming the selected instance.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch “{name}”'**
+  String launchWithInstance(String name);
+
   /// No description provided for @selectInstance.
   ///
   /// In en, this message translates to:
@@ -572,6 +578,78 @@ abstract class AppLocalizations {
   /// **'Delete “{name}”?'**
   String instanceDeleteConfirm(String name);
 
+  /// No description provided for @instanceDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The instance is removed from the launcher list.'**
+  String get instanceDeleteBody;
+
+  /// No description provided for @instanceDeleteFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Also delete local files'**
+  String get instanceDeleteFiles;
+
+  /// No description provided for @instanceDeleteFilesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes game files, mods, logs and configs in the instance folder. This cannot be undone.'**
+  String get instanceDeleteFilesHint;
+
+  /// No description provided for @instanceDeleteFilesConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete local files?'**
+  String get instanceDeleteFilesConfirmTitle;
+
+  /// Second confirmation showing the instance folder that will be deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes the folder and everything inside it:\n{path}'**
+  String instanceDeleteFilesConfirmBody(String path);
+
+  /// No description provided for @instanceDeleteFilesConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get instanceDeleteFilesConfirmAction;
+
+  /// No description provided for @instanceDeleteDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance deleted.'**
+  String get instanceDeleteDone;
+
+  /// No description provided for @instanceDeleteDoneFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance and local files deleted.'**
+  String get instanceDeleteDoneFiles;
+
+  /// No description provided for @instanceDeleteFilesKeptMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance deleted; the local folder was already gone.'**
+  String get instanceDeleteFilesKeptMissing;
+
+  /// No description provided for @instanceDeleteFilesKeptShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance deleted, but the folder is shared with another instance or instance root, so it was kept.'**
+  String get instanceDeleteFilesKeptShared;
+
+  /// No description provided for @instanceDeleteFilesKeptUnsafe.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance deleted, but the folder path is unsafe, so it was kept.'**
+  String get instanceDeleteFilesKeptUnsafe;
+
+  /// No description provided for @instanceDeleteFilesKeptFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance deleted, but the local files could not be removed. Clean them up manually.'**
+  String get instanceDeleteFilesKeptFailed;
+
   /// No description provided for @instanceCheckQuick.
   ///
   /// In en, this message translates to:
@@ -709,6 +787,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No suitable Java runtime found.'**
   String get launchJavaMissing;
+
+  /// No description provided for @launchLoaderNotInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'This instance has no loader installed. Install Forge/NeoForge from the instance menu, then launch again.'**
+  String get launchLoaderNotInstalled;
 
   /// No description provided for @launchLog.
   ///
@@ -1100,6 +1184,150 @@ abstract class AppLocalizations {
   /// **'Storage'**
   String get settingsStorage;
 
+  /// No description provided for @settingsDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get settingsDownload;
+
+  /// No description provided for @settingsDownloadSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source priority'**
+  String get settingsDownloadSource;
+
+  /// No description provided for @settingsDownloadTuning.
+  ///
+  /// In en, this message translates to:
+  /// **'Concurrency and connections'**
+  String get settingsDownloadTuning;
+
+  /// No description provided for @settingsDownloadSourceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Which host is tried first. The other side stays as a fallback.'**
+  String get settingsDownloadSourceDesc;
+
+  /// No description provided for @settingsDownloadSourceAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get settingsDownloadSourceAuto;
+
+  /// No description provided for @settingsDownloadSourceAutoDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows the detected region; mirrors are used when the official host is slow or blocked.'**
+  String get settingsDownloadSourceAutoDesc;
+
+  /// No description provided for @settingsDownloadSourceOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Official first'**
+  String get settingsDownloadSourceOfficial;
+
+  /// No description provided for @settingsDownloadAutoResolvedMirror.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic · using mirrors now (mainland China)'**
+  String get settingsDownloadAutoResolvedMirror;
+
+  /// No description provided for @settingsDownloadAutoResolvedOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic · using official hosts now'**
+  String get settingsDownloadAutoResolvedOfficial;
+
+  /// No description provided for @settingsDownloadAutoDetecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic · detecting the region…'**
+  String get settingsDownloadAutoDetecting;
+
+  /// No description provided for @settingsDownloadSourceMirror.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirror first'**
+  String get settingsDownloadSourceMirror;
+
+  /// No description provided for @settingsDownloadConcurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel downloads'**
+  String get settingsDownloadConcurrency;
+
+  /// No description provided for @settingsDownloadConcurrencyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Files (and large-file chunks) fetched at the same time, 1–64.'**
+  String get settingsDownloadConcurrencyDesc;
+
+  /// No description provided for @settingsDownloadPerHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Connections per host'**
+  String get settingsDownloadPerHost;
+
+  /// No description provided for @settingsDownloadPerHostDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Caps how many streams one host may use, 0 = unlimited.'**
+  String get settingsDownloadPerHostDesc;
+
+  /// No description provided for @settingsDownloadHighConcurrencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable very high concurrency?'**
+  String get settingsDownloadHighConcurrencyTitle;
+
+  /// No description provided for @settingsDownloadHighConcurrencyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Unless you know what you are doing, do not do this: more than 32 streams sharply increases CPU, memory and network usage, and heavy chunking accelerates disk wear.'**
+  String get settingsDownloadHighConcurrencyWarning;
+
+  /// No description provided for @settingsDownloadHighConcurrencyContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable anyway'**
+  String get settingsDownloadHighConcurrencyContinue;
+
+  /// No description provided for @settingsDownloadHighConcurrencyActive.
+  ///
+  /// In en, this message translates to:
+  /// **'High concurrency enabled ({streams} streams, {perHost} per host): expect much higher resource usage and disk wear.'**
+  String settingsDownloadHighConcurrencyActive(int streams, int perHost);
+
+  /// No description provided for @settingsDownloadProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Download proxy'**
+  String get settingsDownloadProxy;
+
+  /// No description provided for @settingsDownloadProxySystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the system proxy'**
+  String get settingsDownloadProxySystem;
+
+  /// No description provided for @settingsDownloadProxyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'http://host:port or socks5h://host:port. Leave empty to follow the system proxy.'**
+  String get settingsDownloadProxyHint;
+
+  /// No description provided for @settingsDownloadProxyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an http(s) or socks5 proxy URL, e.g. http://127.0.0.1:7890.'**
+  String get settingsDownloadProxyInvalid;
+
+  /// No description provided for @settingsDownloadNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Higher values finish faster on fast links but use more bandwidth and connections; lower them on metered or unstable networks.'**
+  String get settingsDownloadNote;
+
   /// No description provided for @settingsInstancesRoot.
   ///
   /// In en, this message translates to:
@@ -1189,12 +1417,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Automatic (per game version)'**
   String get settingsJavaAutoValue;
-
-  /// No description provided for @settingsJavaUseAuto.
-  ///
-  /// In en, this message translates to:
-  /// **'Use automatic selection'**
-  String get settingsJavaUseAuto;
 
   /// No description provided for @settingsJavaSelected.
   ///

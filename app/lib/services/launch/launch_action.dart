@@ -66,6 +66,8 @@ Future<void> launchInstance(
         l10n.accountPremiumRequired,
       CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
         l10n.launchJavaMissing,
+      CoreException(code: 'LOADER_NOT_INSTALLED') =>
+        l10n.launchLoaderNotInstalled,
       CoreException(code: 'AUTO_REPAIR_FAILED') => l10n.launchAutoRepairFailed,
       CoreException(code: 'AUTO_REPAIR_BLOCKED') =>
         l10n.launchAutoRepairBlocked,

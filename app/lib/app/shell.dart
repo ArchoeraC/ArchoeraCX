@@ -335,8 +335,11 @@ class _TopBar extends StatelessWidget {
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   l10n.appName,
+                  // Brand text follows the theme accent so the shell picks up
+                  // custom/system accent colors instead of a fixed foreground.
                   style: textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w500,
+                    color: tokens.accent,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Spacer(),
@@ -606,22 +609,54 @@ class _CommandBar extends StatelessWidget {
                           compact: compactAccount,
                           onTap: onAccount,
                         ),
-                        if (currentIndex != 0) ...[
-                          const SizedBox(width: AppSpacing.sm),
-                          _LaunchButton(
-                            compact: compactLaunch,
-                            hasInstance: selectedInstance != null,
-                            onPressed: selectedInstance == null
-                                ? onChooseInstance
-                                : onLaunch,
-                            label: selectedInstance == null
-                                ? l10n.selectInstance
-                                : l10n.launch,
-                            tooltip: selectedInstance == null
-                                ? l10n.selectInstance
-                                : l10n.launch,
-                          ),
-                        ],
+                        // The launch action only belongs to the non-home bar;
+                        // slide + fade it so switching pages does not pop it in.
+                        AnimatedSwitcher(
+                          duration: tokens.normal,
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, animation) =>
+                              SizeTransition(
+                                sizeFactor: animation,
+                                axis: Axis.horizontal,
+                                alignment: Alignment.centerLeft,
+                                child: FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                ),
+                              ),
+                          layoutBuilder: (currentChild, previousChildren) =>
+                              Stack(
+                                alignment: Alignment.centerRight,
+                                children: [...previousChildren, ?currentChild],
+                              ),
+                          child: currentIndex == 0
+                              ? const SizedBox.shrink(
+                                  key: ValueKey('launch-action-hidden'),
+                                )
+                              : Padding(
+                                  key: const ValueKey('launch-action'),
+                                  padding: const EdgeInsets.only(
+                                    left: AppSpacing.sm,
+                                  ),
+                                  child: _LaunchButton(
+                                    key: const ValueKey('command-bar-launch'),
+                                    compact: compactLaunch,
+                                    hasInstance: selectedInstance != null,
+                                    onPressed: selectedInstance == null
+                                        ? onChooseInstance
+                                        : onLaunch,
+                                    label: selectedInstance == null
+                                        ? l10n.selectInstance
+                                        : l10n.launch,
+                                    tooltip: selectedInstance == null
+                                        ? l10n.selectInstance
+                                        : l10n.launchWithInstance(
+                                            selectedInstance!.name,
+                                          ),
+                                  ),
+                                ),
+                        ),
                       ],
                     ),
                   );
@@ -784,6 +819,7 @@ class _AccountButton extends StatelessWidget {
 
 class _LaunchButton extends StatelessWidget {
   const _LaunchButton({
+    super.key,
     required this.compact,
     required this.hasInstance,
     required this.onPressed,

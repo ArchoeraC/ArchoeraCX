@@ -1,3 +1,4 @@
+using Archoera.Application.Downloads;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Mojang;
 
@@ -55,7 +56,8 @@ public static class VanillaDownloadPlanBuilder
         MojangVersion version,
         MojangAssetIndex? assetIndex,
         MojangPlatform platform,
-        MojangAssetIndexRef? assetIndexDownload = null)
+        MojangAssetIndexRef? assetIndexDownload = null,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto)
     {
         ArgumentNullException.ThrowIfNull(version);
         ArgumentNullException.ThrowIfNull(platform);
@@ -126,9 +128,9 @@ public static class VanillaDownloadPlanBuilder
                     $"{what}: duplicate destination '{dest}'");
             }
 
-            var mirrors = BuildMirrors(version, dest, url);
+            var (primary, mirrors) = ResolveSource(version, dest, url, sourceMode);
             builder.AddFile(
-                url,
+                primary,
                 dest,
                 DownloadHashAlgorithm.Sha1,
                 sha1,
@@ -136,7 +138,29 @@ public static class VanillaDownloadPlanBuilder
                 mirrors: mirrors);
         }
 
-        static IReadOnlyList<string>? BuildMirrors(
+        static (string Primary, IReadOnlyList<string>? Mirrors) ResolveSource(
+            MojangVersion version,
+            string dest,
+            string officialUrl,
+            DownloadSourceMode sourceMode)
+        {
+            var mirror = MirrorFor(version, dest, officialUrl);
+            if (mirror is null)
+            {
+                return (officialUrl, null);
+            }
+
+            return sourceMode switch
+            {
+                // Mirror first, official as the fallback.
+                DownloadSourceMode.Mirror => (mirror, [officialUrl]),
+                // Explicit "official" and "auto" both put the official host
+                // first; the mirror stays available as a fallback.
+                _ => (officialUrl, [mirror]),
+            };
+        }
+
+        static string? MirrorFor(
             MojangVersion version,
             string dest,
             string officialUrl)
@@ -151,17 +175,17 @@ public static class VanillaDownloadPlanBuilder
                     $"versions/{version.Id}/{version.Id}.jar",
                     StringComparison.OrdinalIgnoreCase))
             {
-                return [$"{BmclApiBase}version/{Uri.EscapeDataString(version.Id)}/client"];
+                return $"{BmclApiBase}version/{Uri.EscapeDataString(version.Id)}/client";
             }
 
             if (dest.StartsWith(LibrariesPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                return [$"{BmclApiBase}libraries/{dest[LibrariesPrefix.Length..]}"];
+                return $"{BmclApiBase}libraries/{dest[LibrariesPrefix.Length..]}";
             }
 
             if (dest.StartsWith(AssetsPrefix + "objects/", StringComparison.OrdinalIgnoreCase))
             {
-                return [$"{BmclApiBase}assets/{dest[(AssetsPrefix + "objects/").Length..]}"];
+                return $"{BmclApiBase}assets/{dest[(AssetsPrefix + "objects/").Length..]}";
             }
 
             return null;

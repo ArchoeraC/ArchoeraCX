@@ -5,6 +5,7 @@ using Archoera.Application.Resources;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Resources;
 using Archoera.Infrastructure.Downloads;
+using Archoera.Infrastructure.Settings;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Resources.Modrinth;
 
@@ -32,13 +33,35 @@ public sealed class ResourceModuleService : IModuleMethodHandler
 
     private readonly DownloadPlanRunner _runner;
     private readonly DownloadPolicy _policy;
+    private readonly JsonAppSettingsStore _settings;
+    private readonly RegionPolicy _regionPolicy;
 
     public ResourceModuleService(
         string? downloaderPath = null,
-        DownloadPolicy? policy = null)
+        DownloadPolicy? policy = null,
+        JsonAppSettingsStore? settings = null,
+        RegionPolicy? regionPolicy = null)
     {
         _runner = new DownloadPlanRunner(downloaderPath);
         _policy = policy ?? new DownloadPolicy();
+        _settings = settings ?? new JsonAppSettingsStore();
+        _regionPolicy = regionPolicy ?? new RegionPolicy();
+    }
+
+    private async Task<DownloadSourceMode> SourceModeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            return await DownloadSourceResolver
+                .ResolveAsync(settings.DownloadSource, _regionPolicy, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            return DownloadSourceMode.Auto;
+        }
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -208,9 +231,10 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                 .ConfigureAwait(false);
         }
 
+        var sourceMode = await SourceModeAsync(cancellationToken).ConfigureAwait(false);
         var plans = new List<DownloadPlan>
         {
-            ResourceDownloadPlanBuilder.Build(rootPath, kind, target, version),
+            ResourceDownloadPlanBuilder.Build(rootPath, kind, target, version, sourceMode: sourceMode),
         };
         var warnings = new List<string>();
         if (includeDependencies && version.DependencyList.Count > 0)
@@ -232,7 +256,8 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                         rootPath,
                         dependency.Kind,
                         dependency.Target,
-                        dependency.Version));
+                        dependency.Version,
+                        sourceMode: sourceMode));
             }
         }
 

@@ -19,9 +19,14 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const MAX_PLAN_JSON_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_FILES: usize = 200_000;
 pub const MAX_FILE_BYTES: u64 = 1 << 40; // 1 TiB
-pub const DEFAULT_CONCURRENCY: u32 = 8;
+/// Parallel streams (files, or range chunks within one large file).
+/// 16 keeps many small files latency-bound-free without flooding a link.
+pub const DEFAULT_CONCURRENCY: u32 = 16;
 pub const MIN_CONCURRENCY: u32 = 1;
 pub const MAX_CONCURRENCY: u32 = 64;
+/// Default per-host stream cap (docs/10 §9.4: CDN 6 / origin 4).
+pub const DEFAULT_PER_HOST_CONCURRENCY: u32 = 16;
+pub const MAX_PER_HOST_CONCURRENCY: u32 = 64;
 const MAX_DEST_BYTES: usize = 4_096;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +85,22 @@ pub struct PlanOptions {
     pub chunk_size: u64,
     #[serde(default = "default_progress_interval_ms")]
     pub progress_interval_ms: u64,
+    /// Streams allowed per host name; 0 disables the per-host cap.
+    #[serde(default = "default_per_host_concurrency")]
+    pub per_host_concurrency: u32,
+    /// Explicit proxy resolved by the host (C#); the executor never guesses.
+    #[serde(default)]
+    pub proxy: Option<ProxySpec>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProxySpec {
+    /// `http(s)://` or `socks5(h)://` proxy URL, optionally with userinfo.
+    pub url: String,
+    /// Host suffixes that bypass the proxy.
+    #[serde(default)]
+    pub no_proxy: Vec<String>,
 }
 
 impl Default for PlanOptions {
@@ -91,6 +112,8 @@ impl Default for PlanOptions {
             range_threshold: default_range_threshold(),
             chunk_size: default_chunk_size(),
             progress_interval_ms: default_progress_interval_ms(),
+            per_host_concurrency: default_per_host_concurrency(),
+            proxy: None,
         }
     }
 }
@@ -212,6 +235,38 @@ pub(crate) fn validate_plan_inner(plan: DownloadPlan) -> Result<ValidatedPlan, D
             plan.concurrency
         )));
     }
+    if plan.options.per_host_concurrency > MAX_PER_HOST_CONCURRENCY {
+        return Err(DownloadError::InvalidPlan(format!(
+            "options.perHostConcurrency {} exceeds {MAX_PER_HOST_CONCURRENCY}",
+            plan.options.per_host_concurrency
+        )));
+    }
+    if let Some(proxy) = &plan.options.proxy {
+        let url = Url::parse(proxy.url.trim())
+            .map_err(|err| DownloadError::InvalidPlan(format!("proxy url is invalid: {err}")))?;
+        if !matches!(
+            url.scheme(),
+            "http" | "https" | "socks4" | "socks4a" | "socks5" | "socks5h"
+        ) || url.host_str().is_none()
+        {
+            return Err(DownloadError::InvalidPlan(
+                "proxy url must be http(s)/socks with a host".into(),
+            ));
+        }
+        if proxy.no_proxy.len() > 256 {
+            return Err(DownloadError::InvalidPlan(
+                "options.proxy.noProxy has too many entries".into(),
+            ));
+        }
+        for entry in &proxy.no_proxy {
+            if entry.len() > 255 {
+                return Err(DownloadError::InvalidPlan(
+                    "options.proxy.noProxy entry is too long".into(),
+                ));
+            }
+        }
+    }
+
     if plan.files.len() > MAX_FILES {
         return Err(DownloadError::PlanTooLarge(format!(
             "{} files exceeds limit {MAX_FILES}",
@@ -593,11 +648,15 @@ const fn default_concurrency() -> u32 {
 }
 
 const fn default_range_threshold() -> u64 {
-    8 * 1024 * 1024
+    1024 * 1024
 }
 
 const fn default_chunk_size() -> u64 {
-    4 * 1024 * 1024
+    512 * 1024
+}
+
+const fn default_per_host_concurrency() -> u32 {
+    DEFAULT_PER_HOST_CONCURRENCY
 }
 
 const fn default_progress_interval_ms() -> u64 {
@@ -636,6 +695,70 @@ mod tests {
         assert!(normalize_dest("mods/aux").is_err());
         assert!(normalize_dest("mods/COM1.txt").is_err());
         assert!(normalize_dest("mods/COM0.txt").is_ok());
+    }
+
+    fn minimal_plan() -> DownloadPlan {
+        // Validation canonicalizes the root, so the directory must exist.
+        let root = std::env::temp_dir().join("archoera-dl-plan-tests");
+        let _ = std::fs::create_dir_all(&root);
+        DownloadPlan {
+            schema_version: SCHEMA_VERSION,
+            plan_id: "test".into(),
+            root: root.display().to_string(),
+            concurrency: DEFAULT_CONCURRENCY,
+            priority: 0,
+            bandwidth_limit: 0,
+            total_bytes: 0,
+            options: PlanOptions::default(),
+            files: Vec::new(),
+            post: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn accepts_per_host_caps_and_http_proxies() {
+        let mut plan = minimal_plan();
+        plan.options.per_host_concurrency = 0;
+        plan.options.proxy = Some(ProxySpec {
+            url: "http://user:secret@127.0.0.1:7890".into(),
+            no_proxy: vec!["localhost".into(), ".lan".into()],
+        });
+        let outcome = validate_plan(&plan);
+        assert!(outcome.is_ok(), "{outcome:?}");
+    }
+
+    #[test]
+    fn rejects_per_host_caps_above_the_limit() {
+        let mut plan = minimal_plan();
+        plan.options.per_host_concurrency = MAX_PER_HOST_CONCURRENCY + 1;
+        let error = validate_plan(&plan).expect_err("must reject");
+        assert_eq!(error.code().as_str(), "INVALID_PLAN");
+    }
+
+    #[test]
+    fn accepts_socks_proxies() {
+        for url in ["socks5://127.0.0.1:1080", "socks5h://127.0.0.1:1080"] {
+            let mut plan = minimal_plan();
+            plan.options.proxy = Some(ProxySpec {
+                url: url.into(),
+                no_proxy: Vec::new(),
+            });
+            let outcome = validate_plan(&plan);
+            assert!(outcome.is_ok(), "{url}: {outcome:?}");
+        }
+    }
+
+    #[test]
+    fn rejects_non_http_proxies() {
+        for url in ["ftp://proxy", "not a url"] {
+            let mut plan = minimal_plan();
+            plan.options.proxy = Some(ProxySpec {
+                url: url.into(),
+                no_proxy: Vec::new(),
+            });
+            let error = validate_plan(&plan).expect_err("must reject");
+            assert_eq!(error.code().as_str(), "INVALID_PLAN");
+        }
     }
 
     #[test]

@@ -1,3 +1,5 @@
+using Archoera.Application.Downloads;
+using Archoera.Application.Resources;
 using Archoera.Domain.Downloads;
 
 namespace Archoera.Application.Packs;
@@ -32,7 +34,8 @@ public static class ModpackPlanBuilder
         ModpackIndex index,
         IEnumerable<string>? overridePaths = null,
         bool clientSide = true,
-        string? planId = null)
+        string? planId = null,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto)
     {
         ArgumentNullException.ThrowIfNull(index);
 
@@ -51,12 +54,15 @@ public static class ModpackPlanBuilder
             if (!file.AppliesTo(clientSide)) continue;
             if (excluded.Contains(file.Path)) continue;
 
-            builder.AddFile(
+            var (primary, sourceMirrors) = ModrinthMirror.Resolve(
                 file.Downloads[0],
+                sourceMode);
+            builder.AddFile(
+                primary,
                 file.Path,
                 file.Hash,
                 file.Size,
-                mirrors: file.Downloads.Skip(1).ToArray(),
+                mirrors: [.. sourceMirrors, .. file.Downloads.Skip(1)],
                 mode: DownloadFileMode.Ensure);
         }
 

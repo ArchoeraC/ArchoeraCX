@@ -10,6 +10,7 @@ import '../services/java/java_path_store.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../theme/tokens.dart';
+import '../widgets/common/app_progress_bar.dart';
 import '../widgets/common/app_empty_state.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/app_panel.dart';
@@ -455,13 +456,11 @@ class _JavaPageState extends ConsumerState<JavaPage> {
               style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
             ),
             const SizedBox(height: AppSpacing.xs),
-            LinearProgressIndicator(
+            AppProgressBar(
               value: _progressTotal > 0
                   ? (_progressDone / _progressTotal).clamp(0.0, 1.0)
                   : null,
-              minHeight: 3,
-              backgroundColor: tokens.surface2,
-              color: tokens.accent,
+              height: 4,
             ),
             const SizedBox(height: AppSpacing.md),
           ],

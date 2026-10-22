@@ -512,6 +512,164 @@ public sealed class InstanceRepositoryTests
         }
     }
 
+    [Fact]
+    public async Task Delete_with_files_removes_the_instance_directory()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            var service = new InstanceModuleService(
+                new SqliteInstanceRepository(dataRoot, settings),
+                settings);
+
+            var root = Path.Combine(directory, "isolated-instance");
+            var id = await CreateAsync(service, root, "With Files");
+            await File.WriteAllTextAsync(Path.Combine(root, "options.txt"), "fov:70");
+            Assert.True(Directory.Exists(root));
+
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.delete",
+                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    CancellationToken.None));
+            var data = document.RootElement.GetProperty("data");
+            Assert.True(data.GetProperty("deleted").GetBoolean());
+            Assert.True(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.False(Directory.Exists(root));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Delete_keeps_a_shared_instance_root()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var sharedRoot = Path.Combine(directory, "shared");
+            Directory.CreateDirectory(sharedRoot);
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootsAsync([sharedRoot]);
+            var service = new InstanceModuleService(
+                new SqliteInstanceRepository(dataRoot, settings),
+                settings);
+
+            var id = await CreateAsync(service, sharedRoot, "Shared Root");
+            Assert.True(File.Exists(Path.Combine(sharedRoot, ".archoera", "instance.json")));
+
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.delete",
+                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    CancellationToken.None));
+            var data = document.RootElement.GetProperty("data");
+            Assert.True(data.GetProperty("deleted").GetBoolean());
+            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.Equal(
+                "shared_root",
+                data.GetProperty("filesSkippedReason").GetString());
+            Assert.True(Directory.Exists(sharedRoot));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Delete_keeps_a_folder_without_the_instance_marker()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            var service = new InstanceModuleService(
+                new SqliteInstanceRepository(dataRoot, settings),
+                settings);
+
+            var root = Path.Combine(directory, "unmanaged");
+            var id = await CreateAsync(service, root, "Unmanaged");
+            File.Delete(Path.Combine(root, ".archoera", "instance.json"));
+
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.delete",
+                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    CancellationToken.None));
+            var data = document.RootElement.GetProperty("data");
+            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.Equal(
+                "not_managed",
+                data.GetProperty("filesSkippedReason").GetString());
+            Assert.True(Directory.Exists(root));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Delete_keeps_files_unless_requested()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            var service = new InstanceModuleService(
+                new SqliteInstanceRepository(dataRoot, settings),
+                settings);
+
+            var root = Path.Combine(directory, "keep-me");
+            var id = await CreateAsync(service, root, "Keep Files");
+
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.delete",
+                    $$"""{"id":"{{id}}"}""",
+                    CancellationToken.None));
+            var data = document.RootElement.GetProperty("data");
+            Assert.True(data.GetProperty("deleted").GetBoolean());
+            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.True(Directory.Exists(root));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    private static async Task<string> CreateAsync(
+        InstanceModuleService service,
+        string rootPath,
+        string name)
+    {
+        using var document = JsonDocument.Parse(
+            await service.HandleAsync(
+                "instance.create",
+                $$"""
+                  {"name":"{{name}}","gameVersion":"1.21.4",
+                   "loader":"vanilla","loaderVersion":"",
+                   "rootPath":"{{rootPath}}"}
+                  """,
+                CancellationToken.None));
+        var id = document.RootElement
+            .GetProperty("data")
+            .GetProperty("instance")
+            .GetProperty("id")
+            .GetString();
+        Assert.NotNull(id);
+        return id!;
+    }
+
     private static string TempDirectory()
     {
         var path = Path.Combine(
