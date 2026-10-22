@@ -102,7 +102,7 @@ flutter build linux --release
 - 账户：Microsoft Authorization Code + PKCE（loopback）→ XBL/XSTS → Minecraft；凭据保险库（crypto/file）；离线账户；在线启动。
 - 实例与设置：SQLite 索引 + `instance.json` 权威源；Java 扫描/选择、内存/GC/JVM/游戏参数持久化。
 - 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消。
-- 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。
+- 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。`loader.versions` 对 Forge/NeoForge 使用官方 Maven + BMCLAPI 兜底（中国大陆网络镜像优先），结果缓存 10 分钟。
 - 启动依赖预检 `launch.prepare` / `launch.start`，缺失时自动下载补全（下载策略关闭返回 `AUTO_REPAIR_BLOCKED`）。
 - 加载器实例启动：优先使用实例目录自己的版本 JSON，再回退到游戏版本对应的加载器 profile；自定义整合包名（如 `AutumnTown`、`Radiance`）不再报 `VERSION_JSON_MISSING` 或误用其它实例的 profile。
 

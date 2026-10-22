@@ -47,7 +47,7 @@ public static class BusinessModuleRegistry
                 credentials: credentials,
                 auth: auth),
             new LaunchLogModuleService(instances),
-            new LoaderVersionService(policy: policy),
+            new LoaderVersionService(policy: policy, regionPolicy: region),
             new LoaderModuleService(policy: policy),
             new ResourceModuleService(policy: policy),
             new DownloadPolicyModuleService(policy),
