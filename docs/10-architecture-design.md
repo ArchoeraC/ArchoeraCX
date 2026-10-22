@@ -2333,7 +2333,7 @@ public interface IDownloadProvider {
 | `loader.catalog` | C# | 加载器版本/兼容矩阵 |
 | `loader.install` | C# | 安装/切换加载器 |
 | `loader.verify` | C# | `quick`/`full` 两种深度校验生成物与空 URL 库（不写文件） |
-| `loader.versions` | C# | 按游戏版本列出 Fabric/Quilt/Forge/NeoForge 加载器版本；Maven 不可达或中国大陆网络时优先/回退 BMCLAPI 镜像，结果缓存 10 分钟 |
+| `loader.versions` | C# | 按游戏版本列出 Fabric/Quilt/Forge/NeoForge 加载器版本；中国大陆网络镜像优先（Fabric 用 fabric-meta、Forge 用 per-game JSON、NeoForge 用 Maven 镜像），其他地区官方优先失败回退，结果缓存 10 分钟 |
 | `loader.check` | C# | 从实例安装目录定位 installer 后执行 quick/full 校验 |
 | `loader.plan` | C# | 从本地 installer 生成原版 + 加载器依赖 + installer 组合计划 |
 | `loader.commit` | C# | 原子写入合并后的 `versions/<id>/<id>.json` |

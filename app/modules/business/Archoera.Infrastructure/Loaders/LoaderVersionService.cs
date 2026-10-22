@@ -23,7 +23,7 @@ public sealed record LoaderVersionEndpoints(
     Uri ForgePromotions,
     Uri NeoForgeMetadata,
     Uri? FabricMirror = null,
-    Uri? ForgeMetadataMirror = null,
+    Uri? ForgeMetaMirrorBase = null,
     Uri? ForgePromotionsMirror = null,
     Uri? NeoForgeMetadataMirror = null)
 {
@@ -39,8 +39,8 @@ public sealed record LoaderVersionEndpoints(
         new Uri("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"),
         new Uri("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml"),
         FabricMirror: new Uri("https://bmclapi2.bangbang93.com/fabric-meta/v2/"),
-        ForgeMetadataMirror: new Uri(
-            "https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/maven-metadata.xml"),
+        ForgeMetaMirrorBase: new Uri(
+            "https://bmclapi2.bangbang93.com/forge/minecraft/"),
         ForgePromotionsMirror: new Uri(
             "https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/promotions_slim.json"),
         NeoForgeMetadataMirror: new Uri(
@@ -77,6 +77,7 @@ public sealed class LoaderVersionService : IModuleMethodHandler
     // of waiting for another timeout.
     private bool _preferNeoForgeMirror;
     private bool _preferForgeMirror;
+    private bool _preferFabricMirror;
 
     /// <summary>
     /// Build lists change rarely; caching for a few minutes keeps the picker
@@ -258,12 +259,26 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         var relative = $"versions/loader/{Uri.EscapeDataString(gameVersion)}";
         var endpoint = new Uri(baseAddress, relative);
         var mirror = mirrorBase is null ? null : new Uri(mirrorBase, relative);
-        var (document, _) = await WithMirrorAsync(
-                endpoint,
-                mirror,
-                cancellationToken,
-                GetJsonAsync)
-            .ConfigureAwait(false);
+
+        var preferMirror =
+            mirror is not null &&
+            await PreferMirrorAsync(_preferFabricMirror, cancellationToken)
+                .ConfigureAwait(false);
+        var (document, usedMirror) = preferMirror
+            ? await WithMirrorAsync(mirror!, endpoint, cancellationToken, GetJsonAsync)
+                .ConfigureAwait(false)
+            : await WithMirrorAsync(
+                    endpoint,
+                    mirror,
+                    cancellationToken,
+                    GetJsonAsync,
+                    PrimaryTimeout)
+                .ConfigureAwait(false);
+        if (usedMirror && mirror is not null)
+        {
+            _preferFabricMirror = !preferMirror;
+        }
+
         using var json = document;
         if (document.RootElement.ValueKind != JsonValueKind.Array)
         {
@@ -294,29 +309,96 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         string gameVersion,
         CancellationToken cancellationToken)
     {
-        var preferForgeMirror =
-            _endpoints.ForgeMetadataMirror is not null &&
+        var mirrorAvailable = _endpoints.ForgeMetaMirrorBase is not null;
+        var preferMirror =
+            mirrorAvailable &&
             await PreferMirrorAsync(_preferForgeMirror, cancellationToken)
                 .ConfigureAwait(false);
-        var (metadata, usedForgeMirror) = preferForgeMirror
-            ? await WithMirrorAsync(
-                    _endpoints.ForgeMetadataMirror!,
-                    _endpoints.ForgeMetadata,
-                    cancellationToken,
-                    GetStringAsync)
-                .ConfigureAwait(false)
-            : await WithMirrorAsync(
-                    _endpoints.ForgeMetadata,
-                    _endpoints.ForgeMetadataMirror,
-                    cancellationToken,
-                    GetStringAsync)
-                .ConfigureAwait(false);
-        if (usedForgeMirror)
+
+        if (preferMirror)
         {
-            // Mirror-first fell back to the official host: clear the sticky
-            // choice. Official-first fell back: remember the mirror instead.
-            _preferForgeMirror = !preferForgeMirror;
+            var mirrored = await TryForgeFromMirrorAsync(gameVersion, cancellationToken)
+                .ConfigureAwait(false);
+            if (mirrored is { Count: > 0 }) return mirrored;
+            // The mirror is unreachable or has no builds for this game version;
+            // fall through to the official metadata.
         }
+
+        try
+        {
+            var official = await ForgeFromOfficialAsync(gameVersion, cancellationToken)
+                .ConfigureAwait(false);
+            if (preferMirror) _preferForgeMirror = false;
+            return official;
+        }
+        catch (Exception exception) when (
+            mirrorAvailable &&
+            !cancellationToken.IsCancellationRequested &&
+            exception is HttpRequestException or IOException or TaskCanceledException
+                or System.Xml.XmlException)
+        {
+            _preferForgeMirror = true;
+            var mirrored = await TryForgeFromMirrorAsync(gameVersion, cancellationToken)
+                .ConfigureAwait(false);
+            if (mirrored is not null) return mirrored;
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// BMCLAPI publishes the Forge build list as JSON per game version
+    /// (`/forge/minecraft/&lt;game&gt;`). Its mirrored Maven
+    /// <c>maven-metadata.xml</c> is stale, so it must not be used here.
+    /// </summary>
+    private async Task<IReadOnlyList<LoaderVersionInfo>?> TryForgeFromMirrorAsync(
+        string gameVersion,
+        CancellationToken cancellationToken)
+    {
+        var baseAddress = _endpoints.ForgeMetaMirrorBase;
+        if (baseAddress is null) return null;
+
+        JsonDocument document;
+        try
+        {
+            document = await GetJsonAsync(
+                    new Uri(baseAddress, Uri.EscapeDataString(gameVersion)),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (
+            !cancellationToken.IsCancellationRequested &&
+            exception is HttpRequestException or IOException or TaskCanceledException
+                or JsonException)
+        {
+            return null;
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Array) return [];
+
+            var versions = new List<(string Version, bool Stable)>();
+            foreach (var item in document.RootElement.EnumerateArray())
+            {
+                var version = ReadString(item, "version")?.Trim();
+                if (string.IsNullOrWhiteSpace(version)) continue;
+                // BMCLAPI uses the bare loader version (52.0.1), not 1.21.1-52.0.1.
+                versions.Add((version, !version.Contains('-')));
+            }
+
+            return BuildItems(versions);
+        }
+    }
+
+    private async Task<IReadOnlyList<LoaderVersionInfo>> ForgeFromOfficialAsync(
+        string gameVersion,
+        CancellationToken cancellationToken)
+    {
+        var metadata = await GetStringAsync(
+                _endpoints.ForgeMetadata,
+                cancellationToken,
+                PrimaryTimeout)
+            .ConfigureAwait(false);
         var document = XDocument.Parse(metadata);
         var prefix = gameVersion + "-";
         var versions = document
@@ -334,27 +416,19 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         string? recommended = null;
         try
         {
-            var promotionPrimary = preferForgeMirror
-                ? _endpoints.ForgePromotionsMirror
-                : _endpoints.ForgePromotions;
-            var promotionFallback = preferForgeMirror
-                ? _endpoints.ForgePromotions
-                : _endpoints.ForgePromotionsMirror;
-            if (promotionPrimary is not null)
+            var (promotionDocument, _) = await WithMirrorAsync(
+                    _endpoints.ForgePromotions,
+                    _endpoints.ForgePromotionsMirror,
+                    cancellationToken,
+                    GetJsonAsync,
+                    PrimaryTimeout)
+                .ConfigureAwait(false);
+            using var promotions = promotionDocument;
+            if (promotions.RootElement.TryGetProperty("promos", out var promos) &&
+                promos.ValueKind == JsonValueKind.Object)
             {
-                var (promotionDocument, _) = await WithMirrorAsync(
-                        promotionPrimary,
-                        promotionFallback,
-                        cancellationToken,
-                        GetJsonAsync)
-                    .ConfigureAwait(false);
-                using var promotions = promotionDocument;
-                if (promotions.RootElement.TryGetProperty("promos", out var promos) &&
-                    promos.ValueKind == JsonValueKind.Object)
-                {
-                    latest = ReadString(promos, $"{gameVersion}-latest");
-                    recommended = ReadString(promos, $"{gameVersion}-recommended");
-                }
+                latest = ReadString(promos, $"{gameVersion}-latest");
+                recommended = ReadString(promos, $"{gameVersion}-recommended");
             }
         }
         catch (Exception exception) when (
@@ -385,7 +459,8 @@ public sealed class LoaderVersionService : IModuleMethodHandler
                     _endpoints.NeoForgeMetadata,
                     _endpoints.NeoForgeMetadataMirror,
                     cancellationToken,
-                    GetStringAsync)
+                    GetStringAsync,
+                    PrimaryTimeout)
                 .ConfigureAwait(false);
         if (usedNeoForgeMirror)
         {
@@ -430,7 +505,8 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         Uri primary,
         Uri? mirror,
         CancellationToken cancellationToken,
-        Func<Uri, CancellationToken, TimeSpan?, Task<T>> fetch)
+        Func<Uri, CancellationToken, TimeSpan?, Task<T>> fetch,
+        TimeSpan? primaryTimeout = null)
     {
         if (mirror is null)
         {
@@ -440,7 +516,7 @@ public sealed class LoaderVersionService : IModuleMethodHandler
         try
         {
             return (
-                await fetch(primary, cancellationToken, PrimaryTimeout).ConfigureAwait(false),
+                await fetch(primary, cancellationToken, primaryTimeout).ConfigureAwait(false),
                 false);
         }
         catch (Exception exception) when (

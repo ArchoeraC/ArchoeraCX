@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Archoera.Infrastructure.Loaders;
+using Archoera.Infrastructure.Modules;
 
 namespace Archoera.Tests;
 
@@ -103,21 +104,78 @@ public sealed class LoaderVersionServiceTests
     {
         var handler = new RoutingHandler()
             .Route(
-                "mirror.local/forge",
-                () => TextResponse("""
-                    <metadata><versioning><versions>
-                      <version>1.21.1-52.0.1</version>
-                      <version>1.20.1-47.2.0</version>
-                    </versions></versioning></metadata>
-                    """));
+                "mirror.local/forge/minecraft/1.21.1",
+                () => new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """
+                        [
+                          { "version": "52.0.1", "build": 52000001 },
+                          { "version": "52.0.0", "build": 52000000 }
+                        ]
+                        """,
+                        Encoding.UTF8,
+                        "application/json"),
+                });
         var service = CreateService(
             new HttpClient(handler),
-            forgeMetadataMirror: new Uri("https://mirror.local/forge/maven-metadata.xml"));
+            forgeMetaMirror: new Uri("https://mirror.local/forge/minecraft/"));
 
         var versions = await service.ListAsync("forge", "1.21.1");
 
-        Assert.Equal(["52.0.1"], versions.Select(item => item.Version));
+        Assert.Equal(["52.0.1", "52.0.0"], versions.Select(item => item.Version));
         Assert.Contains(handler.Requests, uri => uri.Host == "mirror.local");
+    }
+
+    [Fact]
+    public async Task Fabric_prefers_the_mirror_in_mainland_china()
+    {
+        var handler = new RoutingHandler()
+            .Route(
+                "mirror.local/fabric",
+                () => new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """[{ "loader": { "version": "0.19.5", "stable": true } }]""",
+                        Encoding.UTF8,
+                        "application/json"),
+                });
+        var service = CreateService(
+            new HttpClient(handler),
+            fabricMirror: new Uri("https://mirror.local/fabric/"),
+            regionOverride: "CN");
+
+        var versions = await service.ListAsync("fabric", "1.21.1");
+
+        Assert.Equal(["0.19.5"], versions.Select(item => item.Version));
+        Assert.Contains(handler.Requests, uri => uri.Host == "mirror.local");
+        // Mirror-first: the dead official host is skipped entirely.
+        Assert.DoesNotContain(handler.Requests, uri => uri.Host == "test.local");
+    }
+
+    [Fact]
+    public async Task Fabric_uses_the_official_host_first_outside_china()
+    {
+        var handler = new RoutingHandler()
+            .Route(
+                "test.local/v2/versions/loader",
+                () => new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """[{ "loader": { "version": "0.19.5", "stable": true } }]""",
+                        Encoding.UTF8,
+                        "application/json"),
+                });
+        var service = CreateService(
+            new HttpClient(handler),
+            fabricMirror: new Uri("https://mirror.local/fabric/"),
+            regionOverride: "GLOBAL");
+
+        var versions = await service.ListAsync("fabric", "1.21.1");
+
+        Assert.Equal(["0.19.5"], versions.Select(item => item.Version));
+        Assert.Contains(handler.Requests, uri => uri.Host == "test.local");
+        Assert.DoesNotContain(handler.Requests, uri => uri.Host == "mirror.local");
     }
 
     [Fact]
@@ -134,8 +192,10 @@ public sealed class LoaderVersionServiceTests
 
     private static LoaderVersionService CreateService(
         HttpClient client,
-        Uri? forgeMetadataMirror = null,
-        Uri? neoForgeMirror = null)
+        Uri? forgeMetaMirror = null,
+        Uri? neoForgeMirror = null,
+        Uri? fabricMirror = null,
+        string? regionOverride = null)
         => new(
             client,
             new LoaderVersionEndpoints(
@@ -144,8 +204,12 @@ public sealed class LoaderVersionServiceTests
                 new Uri("https://test.local/forge/maven-metadata.xml"),
                 new Uri("https://test.local/forge/promotions.json"),
                 new Uri("https://test.local/neoforge/maven-metadata.xml"),
-                ForgeMetadataMirror: forgeMetadataMirror,
-                NeoForgeMetadataMirror: neoForgeMirror));
+                FabricMirror: fabricMirror,
+                ForgeMetaMirrorBase: forgeMetaMirror,
+                NeoForgeMetadataMirror: neoForgeMirror),
+            regionPolicy: regionOverride is null
+                ? null
+                : new RegionPolicy(regionOverride: regionOverride));
 
     /// <summary>
     /// Routes by URL fragment. Unknown hosts throw as if the connection was
