@@ -38,6 +38,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Create instance'), findsOneWidget);
 
+    // Downloads default to version isolation (versions/<name>).
+    final isolation = tester.widget<CheckboxListTile>(
+      find.byType(CheckboxListTile),
+    );
+    expect(isolation.value, isTrue);
+
     await tester.enterText(find.byType(TextField).first, 'My Test Instance');
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Create'));
