@@ -1,26 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#08111F"/><stop offset="0.5" stop-color="#112640"/><stop offset="1" stop-color="#0A1323"/></linearGradient>
-    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.56"><stop offset="0" stop-color="#6DF4EA" stop-opacity="0.26"/><stop offset="0.55" stop-color="#4D8BFF" stop-opacity="0.08"/><stop offset="1" stop-color="#4D8BFF" stop-opacity="0"/></radialGradient>
-    <linearGradient id="v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D6FFF9"/><stop offset="0.3" stop-color="#63E7E3"/><stop offset="0.72" stop-color="#4197EC"/><stop offset="1" stop-color="#7046D6"/></linearGradient>
-    <linearGradient id="h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6BAAFF"/><stop offset="0.55" stop-color="#5C71E2"/><stop offset="1" stop-color="#6C43D2"/></linearGradient>
-    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1C9"/><stop offset="0.5" stop-color="#F5BE67"/><stop offset="1" stop-color="#D77A25"/></linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="145%" height="160%"><feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000" flood-opacity="0.55"/></filter>
-  </defs>
-  <rect x="24" y="24" width="976" height="976" rx="232" fill="url(#bg)"/>
-  <rect x="24" y="24" width="976" height="976" rx="232" fill="url(#halo)"/>
-  <path d="M188 112 H836 L912 188 V836 L836 912 H188 L112 836 V188 Z" fill="none" stroke="#7DEBE8" stroke-opacity="0.12" stroke-width="6"/>
-  <g filter="url(#shadow)">
-    <!-- four separated shards: modular core, no letter or portal -->
-    <path d="M512 142 L606 380 L556 438 L512 398 L468 438 L418 380 Z" fill="url(#v)"/>
-    <path d="M512 142 L548 392 L512 398 L476 392 Z" fill="#E4FFFB" opacity="0.30"/>
-    <path d="M882 512 L644 606 L586 556 L626 512 L586 468 L644 418 Z" fill="url(#h)"/>
-    <path d="M882 512 L632 548 L626 512 L632 476 Z" fill="#E0E9FF" opacity="0.24"/>
-    <path d="M512 882 L418 644 L468 586 L512 626 L556 586 L606 644 Z" fill="url(#v)" opacity="0.78"/>
-    <path d="M142 512 L380 418 L438 468 L398 512 L438 556 L380 606 Z" fill="url(#h)"/>
-    <path d="M142 512 L392 476 L398 512 L392 548 Z" fill="#D9FFF9" opacity="0.22"/>
-    <!-- central amber core -->
-    <path d="M512 462 L562 512 L512 562 L462 512 Z" fill="url(#amber)"/>
-    <path d="M512 478 L538 512 L512 546 L486 512 Z" fill="#FFF8E6" opacity="0.9"/>
+  <title>ArchoeraCX application icon</title>
+  <desc>Flat geometric viewfinder frame with an amber diamond core. Two colors only, no gradients or shadows.</desc>
+  <rect width="1024" height="1024" rx="232" fill="#4F7CFF"/>
+  <g fill="#FFFFFF">
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z"/>
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z" transform="translate(1024 0) scale(-1 1)"/>
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z" transform="translate(1024 1024) scale(-1 -1)"/>
+    <path d="M188 448 L188 384 A196 196 0 0 1 384 188 L448 188 L448 360 L384 360 A24 24 0 0 0 360 384 L360 448 Z" transform="translate(0 1024) scale(1 -1)"/>
+    <rect x="414" y="414" width="196" height="196" rx="44" fill="#FFC24D" transform="rotate(45 512 512)"/>
   </g>
 </svg>
