@@ -4,7 +4,7 @@
 > 范围：Forge 1.20.1 / 1.21.1、NeoForge 21.1（客户端为主，服务端差异单独标注）。
 > 标记：**[事实]** 有官方文件/源码/实测；**[推断]** 基于实现与生态行为的判断；**[未验证]** 写代码前必须用真实样本确认。
 > 说明：表格为压缩清单，未逐格重复标记；关键结论、推断和风险项在正文/§9 标注。
-> 实测日期 **2026-10-21**。Forge 样本通过代理从官方 Maven 下载；NeoForge 样本来自 BMCLAPI 镜像路径。installer 的 SHA-1 是本机实测字节，复核情况见 §9。样本缓存在 `.local/forge-samples/`（不提交）。
+> 实测日期 **2026-10-21**。Forge 样本通过代理从官方 Maven 下载；NeoForge 样本来自 BMCLAPI 镜像路径。installer 的 SHA-1 是本机实测字节，复核情况见 §9。样本缓存在 `Reference/local/forge-samples/`（不提交）。
 > 配套：[02-loader-install.md](02-loader-install.md)（processors 与 Java 边界）、[05-download-engine.md](05-download-engine.md)（下载与原子落盘）、[10-download-sources.md](10-download-sources.md)（下载源）。
 >
 > **实现状态（2026-10-21）**：`ForgeArtifactPlanner` / `LoaderArtifactVerifier` / `ForgeRepairService` 已落地；`loader.verify` / `loader.repair` 已通过 C++ ModuleHost + C# NativeAOT + Dart `CoreClient` 端到端验证（真实 installer 清单）。`ForgeInstallPlanService` 已能把原版 + 加载器依赖 + installer 合并成下载计划；生成物仍只由修复流程产生。真实 Java processors 全链路和 `launch.prepare` 尚未接线。

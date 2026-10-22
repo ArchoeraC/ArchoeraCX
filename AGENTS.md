@@ -12,7 +12,8 @@
 
 ## 边界
 
-- 只改本仓库；不要动仓库之外的目录。本地草稿、样本与反编译产物放 `.local/`。
+- 只改本仓库；不要动仓库之外的目录。本地草稿、样本与反编译产物放 `Reference/local/`（忽略，不提交）。
+- `.gitignore` 规则要收窄：不要用 `**/bin/`、`**/build/` 这类宽规则，它会把 Rust `src/bin/` 之类的源码一起隐藏。
 - 不复制 LauncherX / HMCL / Prism / Modrinth 的代码、XAML、图标、插画、文案或字体；新资产必须登记来源与许可证。
 - 不接受外部代码贡献，政策见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 - 代码、注释、提交信息用英文；面向用户的文档与 UI 文案用中文，UI 文案走 ARB（`en` / `zh`）。
@@ -70,6 +71,7 @@ ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
 ARCHOERACX_SETTINGS_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-settings flutter test test/settings_integration_test.dart
 ARCHOERACX_INSTANCE_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-instance flutter test test/instance_integration_test.dart
 ARCHOERACX_ACCOUNT_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-account flutter test test/account_integration_test.dart
+ARCHOERACX_WIKI_TESTS=1 flutter test test/wiki_integration_test.dart
 flutter build linux --release
 ```
 
@@ -91,7 +93,9 @@ flutter build linux --release
 
 已完成：
 
-- 界面：AppShell + 5 页面、设计令牌、明暗主题、中英文 i18n、斜切角面板/Toast/页面转场、账户皮肤预览。
+- 界面：AppShell + 6 页面（主页/实例/下载/账户/Wiki/设置）、设计令牌、明暗主题、中英文 i18n、斜切角面板/Toast/页面转场、账户皮肤预览；右上角任务中心为右侧滑入边栏，展示真实进度/速度与具体目标，只记录长任务；实例菜单含游戏日志查看器（`launch.logs` / `launch.log.read` / `launch.log.tail`，运行中经 ABI 进度回调实时跟随，UI 不读文件）。
+- Wiki 页（底栏第 5 项，`/wiki`）：`system.status` 上报 CPU 采样/核数/负载、内存、实例根所在磁盘、启动器进程与系统运行时长；`wiki.feed` 汇总 Mojang 官方新闻、Java 补丁说明与 Minecraft Wiki 最近编辑（逐源独立失败 + 5 分钟缓存）。刷新由用户触发，不做定时轮询。
+- Java 选择：设置页 Java 分区平铺全部扫描结果（版本徽标、使用中标记、搜索、自定义目录/可执行文件），不再是“显示前 5 + 查看全部”弹窗。
 - 外观设置：C++ `system.appearance`（XDG Portal / Windows 注册表 / AppKit）推送系统深浅色与强调色；“外观”下分“个性化 / 语言与区域”子菜单，个性化收纳主题模式、系统/自定义主题色、全局着色、界面密度、减少动效与重置；关于页含环境信息复制、源码/反馈、许可证/隐私/安全入口。
 - 系统集成：C++ `system.openUrl` / `system.notify` 用系统 API 打开授权浏览器并发送登录成功桌面通知（Linux D-Bus / Windows Shell API / macOS AppKit+UserNotifications）。
 - 核心：C++ Method/Module 注册表、wake 事件泵、C ABI v2 进度回调；C# NativeAOT 模块与 DevHost。
@@ -100,9 +104,10 @@ flutter build linux --release
 - 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消。
 - 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。
 - 启动依赖预检 `launch.prepare` / `launch.start`，缺失时自动下载补全（下载策略关闭返回 `AUTO_REPAIR_BLOCKED`）。
+- 加载器实例启动：优先使用实例目录自己的版本 JSON，再回退到游戏版本对应的加载器 profile；自定义整合包名（如 `AutumnTown`、`Radiance`）不再报 `VERSION_JSON_MISSING` 或误用其它实例的 profile。
 
 待接：
 
-- 正式 C++ DownloadManager、原版安装入口；进程状态/停止/日志流。
+- 正式 C++ DownloadManager、原版安装入口；游戏进程状态与停止（`launch.status` / `launch.stop`）。
 - Fabric/Quilt 安装器（无 Java 依赖）与 CurseForge provider（需 key）。
 - 真实 Entra / Minecraft Services client_id 审核；更新器、签名与安装包。

@@ -2647,6 +2647,348 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open the link.'**
   String get settingsAboutOpenFailed;
+
+  /// No description provided for @instanceViewLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'View logs'**
+  String get instanceViewLogs;
+
+  /// No description provided for @gameLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game log'**
+  String get gameLogTitle;
+
+  /// No description provided for @gameLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No log yet. Launch this instance once and its output will appear here.'**
+  String get gameLogEmpty;
+
+  /// No description provided for @gameLogNoOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'This log is empty.'**
+  String get gameLogNoOutput;
+
+  /// No description provided for @gameLogLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the game log.'**
+  String get gameLogLoadFailed;
+
+  /// No description provided for @gameLogRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get gameLogRunning;
+
+  /// No description provided for @gameLogStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get gameLogStopped;
+
+  /// No description provided for @gameLogFollow.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow'**
+  String get gameLogFollow;
+
+  /// No description provided for @gameLogFollowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream new lines while the game is running.'**
+  String get gameLogFollowHint;
+
+  /// No description provided for @gameLogCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy all'**
+  String get gameLogCopy;
+
+  /// No description provided for @gameLogCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Log copied to the clipboard.'**
+  String get gameLogCopied;
+
+  /// No description provided for @gameLogFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Log file'**
+  String get gameLogFileLabel;
+
+  /// Shown when the log is larger than the read window.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the last {count} lines.'**
+  String gameLogTruncated(int count);
+
+  /// Launch task label.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch'**
+  String get taskCenterLaunch;
+
+  /// Task row title combining the category and the specific target (pack, version, instance).
+  ///
+  /// In en, this message translates to:
+  /// **'{category} · {target}'**
+  String taskCenterTaskWithTarget(String category, String target);
+
+  /// Bottom navigation entry for the community/wiki page.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiki'**
+  String get navWiki;
+
+  /// Subtitle under the Wiki page title.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft community news and machine load.'**
+  String get wikiSubtitle;
+
+  /// Section title for the machine load block.
+  ///
+  /// In en, this message translates to:
+  /// **'System load'**
+  String get wikiSystemTitle;
+
+  /// Section title for the community feed.
+  ///
+  /// In en, this message translates to:
+  /// **'Community'**
+  String get wikiFeedTitle;
+
+  /// Subtitle for the community feed section.
+  ///
+  /// In en, this message translates to:
+  /// **'Official news, Java versions and wiki edits.'**
+  String get wikiFeedSubtitle;
+
+  /// Refresh button on the Wiki page.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get wikiRefresh;
+
+  /// Last refresh time.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {time}'**
+  String wikiUpdatedAt(String time);
+
+  /// Feed source label: official Minecraft news.
+  ///
+  /// In en, this message translates to:
+  /// **'Official news'**
+  String get wikiSourceNews;
+
+  /// Feed source label: Java patch notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Java versions'**
+  String get wikiSourceJava;
+
+  /// Feed source label: Minecraft Wiki recent changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiki edits'**
+  String get wikiSourceWiki;
+
+  /// Feed item kind chip.
+  ///
+  /// In en, this message translates to:
+  /// **'News'**
+  String get wikiKindNews;
+
+  /// Feed item kind chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Release'**
+  String get wikiKindRelease;
+
+  /// Feed item kind chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Snapshot'**
+  String get wikiKindSnapshot;
+
+  /// Feed item kind chip for a wiki edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get wikiKindEdit;
+
+  /// Feed item kind chip for a new wiki page.
+  ///
+  /// In en, this message translates to:
+  /// **'New page'**
+  String get wikiKindNew;
+
+  /// Empty state for the community feed.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to show right now.'**
+  String get wikiFeedEmpty;
+
+  /// Community feed request failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the community feed'**
+  String get wikiFeedFailed;
+
+  /// System status request failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read system load'**
+  String get wikiStatusFailed;
+
+  /// Metric value when the platform cannot report it.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get wikiUnavailable;
+
+  /// System load metric label.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU'**
+  String get wikiCpuLabel;
+
+  /// System load metric label.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get wikiMemoryLabel;
+
+  /// System load metric label.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk'**
+  String get wikiDiskLabel;
+
+  /// System load metric label for the launcher process.
+  ///
+  /// In en, this message translates to:
+  /// **'Launcher'**
+  String get wikiLauncherLabel;
+
+  /// CPU caption.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} threads'**
+  String wikiCoresCount(int count);
+
+  /// Load average caption.
+  ///
+  /// In en, this message translates to:
+  /// **'load {value}'**
+  String wikiLoadAverage(String value);
+
+  /// Memory caption in gigabytes.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} / {total} GB'**
+  String wikiMemoryUsage(String used, String total);
+
+  /// Disk caption.
+  ///
+  /// In en, this message translates to:
+  /// **'{free} free'**
+  String wikiDiskFree(String free);
+
+  /// Launcher uptime caption.
+  ///
+  /// In en, this message translates to:
+  /// **'up {duration}'**
+  String wikiUptime(String duration);
+
+  /// System uptime caption.
+  ///
+  /// In en, this message translates to:
+  /// **'System up {duration}'**
+  String wikiSystemUptime(String duration);
+
+  /// Relative timestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get wikiTimeJustNow;
+
+  /// Relative timestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min ago'**
+  String wikiTimeMinutesAgo(int count);
+
+  /// Relative timestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h ago'**
+  String wikiTimeHoursAgo(int count);
+
+  /// Relative timestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d ago'**
+  String wikiTimeDaysAgo(int count);
+
+  /// Snackbar when a feed link cannot be opened.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link'**
+  String get wikiOpenLinkFailed;
+
+  /// Per-source failure shown next to a source chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch failed: {error}'**
+  String wikiSourceError(String error);
+
+  /// Retry action for a failed request.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get wikiRetry;
+
+  /// Shown when a source returned zero items.
+  ///
+  /// In en, this message translates to:
+  /// **'No items from this source'**
+  String get wikiNoSourceData;
+
+  /// Tooltip for opening a feed item externally.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in browser'**
+  String get wikiOpenInBrowser;
+
+  /// Search field hint on the Java page.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by version, vendor, architecture or path'**
+  String get javaSearchHint;
+
+  /// Badge on the selected Java runtime tile.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get javaSelectedBadge;
+
+  /// Empty state when the Java filter matches nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No Java matches this filter.'**
+  String get javaFilteredEmpty;
+
+  /// Header above the tiled Java runtime list in settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovered Java'**
+  String get javaDiscovered;
 }
 
 class _AppLocalizationsDelegate

@@ -86,6 +86,64 @@ public sealed class LaunchVersionResolutionTests
         }
     }
 
+    [Fact]
+    public void Ignores_non_version_json_in_version_directories()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.8");
+            Directory.CreateDirectory(instanceRoot);
+            File.WriteAllText(
+                Path.Combine(instanceRoot, "1.21.8.json"),
+                MinimalVersionJson("1.21.8"));
+
+            // Real version directories double as game directories.
+            foreach (var (name, content) in new[]
+                     {
+                         ("usercache.json", "[{\"name\":\"Steve\",\"uuid\":\"x\"}]"),
+                         ("ops.json", "[{\"uuid\":\"x\",\"name\":\"Steve\",\"level\":4}]"),
+                         ("sjmclcfg.json", "{\"gameDir\":\".\"}"),
+                         ("install_profile.json", "{\"spec\":1,\"version\":\"1.21.8\"}"),
+                     })
+            {
+                File.WriteAllText(Path.Combine(instanceRoot, name), content);
+            }
+
+            // A second version directory whose stray JSON has no profile.
+            var otherVersion = Path.Combine(gameRoot, "versions", "AutumnTown");
+            Directory.CreateDirectory(otherVersion);
+            File.WriteAllText(
+                Path.Combine(otherVersion, "AutumnTown.json"),
+                MinimalVersionJson("AutumnTown"));
+            File.WriteAllText(
+                Path.Combine(otherVersion, "LxModCache.json"),
+                "{\"files\":[]}");
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "1.21.8",
+                "1.21.8",
+                "vanilla",
+                string.Empty,
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+            var paths = LaunchPaths.Resolve(instanceRoot);
+
+            var version = LaunchModuleService.LoadVersion(instance, paths);
+
+            Assert.Equal("1.21.8", version.Id);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
     private static string MinimalVersionJson(string id)
         => JsonSerializer.Serialize(new
         {

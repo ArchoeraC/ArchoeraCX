@@ -301,7 +301,10 @@ public static unsafe class ModuleExports
             return;
         }
 
-        var bytes = System.Text.Encoding.UTF8.GetBytes(message);
+        // The module ABI documents `json` as a UTF-8 object, so a plain status
+        // string is wrapped instead of passed through raw. Dart reads the
+        // `current` field for both task-center text and streamed log lines.
+        var bytes = EncodeProgressPayload(message);
         var buffer = (byte*)NativeMemory.Alloc((nuint)(bytes.Length + 1));
         try
         {
@@ -313,6 +316,19 @@ public static unsafe class ModuleExports
         {
             NativeMemory.Free(buffer);
         }
+    }
+
+    private static byte[] EncodeProgressPayload(string message)
+    {
+        using var memory = new MemoryStream();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(memory))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("current", message);
+            writer.WriteEndObject();
+        }
+
+        return memory.ToArray();
     }
 
     private static IntPtr CreateModuleTable()

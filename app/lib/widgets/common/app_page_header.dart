@@ -8,18 +8,22 @@ class AppPageHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.actions = const [],
+    this.leading,
   });
 
   final String title;
   final String? subtitle;
   final List<Widget> actions;
 
+  /// Optional control placed before the title, such as a back button.
+  final Widget? leading;
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
 
-    final titleBlock = Column(
+    Widget titleBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -33,6 +37,18 @@ class AppPageHeader extends StatelessWidget {
         ],
       ],
     );
+
+    final leadingWidget = leading;
+    if (leadingWidget != null) {
+      titleBlock = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          leadingWidget,
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: titleBlock),
+        ],
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {

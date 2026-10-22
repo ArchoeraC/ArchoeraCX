@@ -33,6 +33,9 @@ constexpr MethodRoute kRoutes[] = {
     {"version.commit", MethodRouteKind::kModule, kCsModule},
     {"launch.start", MethodRouteKind::kModule, kCsModule},
     {"launch.prepare", MethodRouteKind::kModule, kCsModule},
+    {"launch.logs", MethodRouteKind::kModule, kCsModule},
+    {"launch.log.read", MethodRouteKind::kModule, kCsModule},
+    {"launch.log.tail", MethodRouteKind::kModule, kCsModule},
     {"loader.verify", MethodRouteKind::kModule, kCsModule},
     {"loader.repair", MethodRouteKind::kModule, kCsModule},
     {"loader.check", MethodRouteKind::kModule, kCsModule},
@@ -53,6 +56,8 @@ constexpr MethodRoute kRoutes[] = {
     {"loader.autoRepair", MethodRouteKind::kModule, kCsModule},
 
     {"system.memory", MethodRouteKind::kModule, kCsModule},
+    {"system.status", MethodRouteKind::kModule, kCsModule},
+    {"wiki.feed", MethodRouteKind::kModule, kCsModule},
     {"settings.get", MethodRouteKind::kModule, kCsModule},
     {"settings.set", MethodRouteKind::kModule, kCsModule},
 

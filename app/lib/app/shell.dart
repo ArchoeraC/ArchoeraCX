@@ -16,6 +16,7 @@ import '../stores/appearance.dart';
 import '../stores/instances.dart';
 import '../theme/tokens.dart';
 import '../utils/app_info.dart';
+import '../widgets/accounts/account_avatar.dart';
 import '../widgets/common/task_center_button.dart';
 import '../widgets/layout/app_background.dart';
 
@@ -126,8 +127,15 @@ class _AppShellState extends ConsumerState<AppShell> {
         selectedIcon: Icons.person_rounded,
       ),
       AppDestination(
-        path: '/settings',
+        path: '/wiki',
         branchIndex: 4,
+        label: l10n.navWiki,
+        icon: Icons.menu_book_outlined,
+        selectedIcon: Icons.menu_book_rounded,
+      ),
+      AppDestination(
+        path: '/settings',
+        branchIndex: 5,
         label: l10n.navSettings,
         icon: Icons.tune_outlined,
         selectedIcon: Icons.tune_rounded,
@@ -524,7 +532,7 @@ class _CommandBar extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final compactNav = constraints.maxWidth < 620;
+            final compactNav = constraints.maxWidth < 820;
             final compactAccount = constraints.maxWidth < 900;
             final compactLaunch = constraints.maxWidth < 680;
 
@@ -686,18 +694,21 @@ class _AccountButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 15,
-                backgroundColor: tokens.accentSoft,
-                child: Text(
-                  initial,
-                  style: TextStyle(
-                    color: tokens.accent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+              if (current != null)
+                AccountAvatar(account: current, size: 30)
+              else
+                CircleAvatar(
+                  radius: 15,
+                  backgroundColor: tokens.accentSoft,
+                  child: Text(
+                    initial,
+                    style: TextStyle(
+                      color: tokens.accent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
               if (!compact) ...[
                 const SizedBox(width: AppSpacing.xs),
                 ConstrainedBox(

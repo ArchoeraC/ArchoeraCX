@@ -76,17 +76,27 @@
   "@packInspectMeta": {
     "description": "Pack details line: Minecraft version and loader build.",
     "placeholders": {
-      "game": {"type": "String"},
-      "loader": {"type": "String"},
-      "loaderVersion": {"type": "String"}
+      "game": {
+        "type": "String"
+      },
+      "loader": {
+        "type": "String"
+      },
+      "loaderVersion": {
+        "type": "String"
+      }
     }
   },
   "packInspectFiles": "{count} index files · {overrides} bundled overrides",
   "@packInspectFiles": {
     "description": "Pack details line: download count and bundled override count.",
     "placeholders": {
-      "count": {"type": "int"},
-      "overrides": {"type": "int"}
+      "count": {
+        "type": "int"
+      },
+      "overrides": {
+        "type": "int"
+      }
     }
   },
   "packInspectFailed": "This file is not a valid Modrinth modpack.",
@@ -117,8 +127,12 @@
   "@packResultSummary": {
     "description": "Success summary after a pack install.",
     "placeholders": {
-      "downloaded": {"type": "int"},
-      "bundled": {"type": "int"}
+      "downloaded": {
+        "type": "int"
+      },
+      "bundled": {
+        "type": "int"
+      }
     }
   },
   "instanceCreateTitle": "Create instance",
@@ -178,7 +192,9 @@
   "@instanceCheckLaunchFiles": {
     "description": "Dependency check line for missing libraries/client/assets.",
     "placeholders": {
-      "issue": {"type": "String"}
+      "issue": {
+        "type": "String"
+      }
     }
   },
   "instanceCheckRepair": "Repair dependencies",
@@ -1146,5 +1162,268 @@
   "settingsAboutThirdParty": "Third-party licenses",
   "settingsAboutThirdPartyDesc": "Open-source packages bundled with this build.",
   "settingsAboutDisclaimer": "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
-  "settingsAboutOpenFailed": "Could not open the link."
+  "settingsAboutOpenFailed": "Could not open the link.",
+  "instanceViewLogs": "View logs",
+  "gameLogTitle": "Game log",
+  "gameLogEmpty": "No log yet. Launch this instance once and its output will appear here.",
+  "gameLogNoOutput": "This log is empty.",
+  "gameLogLoadFailed": "Could not read the game log.",
+  "gameLogRunning": "Running",
+  "gameLogStopped": "Stopped",
+  "gameLogFollow": "Follow",
+  "gameLogFollowHint": "Stream new lines while the game is running.",
+  "gameLogCopy": "Copy all",
+  "gameLogCopied": "Log copied to the clipboard.",
+  "gameLogFileLabel": "Log file",
+  "gameLogTruncated": "Showing the last {count} lines.",
+  "@gameLogTruncated": {
+    "description": "Shown when the log is larger than the read window.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "taskCenterLaunch": "Launch",
+  "@taskCenterLaunch": {
+    "description": "Launch task label."
+  },
+  "taskCenterTaskWithTarget": "{category} · {target}",
+  "@taskCenterTaskWithTarget": {
+    "description": "Task row title combining the category and the specific target (pack, version, instance).",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "navWiki": "Wiki",
+  "@navWiki": {
+    "description": "Bottom navigation entry for the community/wiki page."
+  },
+  "wikiSubtitle": "Minecraft community news and machine load.",
+  "@wikiSubtitle": {
+    "description": "Subtitle under the Wiki page title."
+  },
+  "wikiSystemTitle": "System load",
+  "@wikiSystemTitle": {
+    "description": "Section title for the machine load block."
+  },
+  "wikiFeedTitle": "Community",
+  "@wikiFeedTitle": {
+    "description": "Section title for the community feed."
+  },
+  "wikiFeedSubtitle": "Official news, Java versions and wiki edits.",
+  "@wikiFeedSubtitle": {
+    "description": "Subtitle for the community feed section."
+  },
+  "wikiRefresh": "Refresh",
+  "@wikiRefresh": {
+    "description": "Refresh button on the Wiki page."
+  },
+  "wikiUpdatedAt": "Updated {time}",
+  "@wikiUpdatedAt": {
+    "description": "Last refresh time.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "wikiSourceNews": "Official news",
+  "@wikiSourceNews": {
+    "description": "Feed source label: official Minecraft news."
+  },
+  "wikiSourceJava": "Java versions",
+  "@wikiSourceJava": {
+    "description": "Feed source label: Java patch notes."
+  },
+  "wikiSourceWiki": "Wiki edits",
+  "@wikiSourceWiki": {
+    "description": "Feed source label: Minecraft Wiki recent changes."
+  },
+  "wikiKindNews": "News",
+  "@wikiKindNews": {
+    "description": "Feed item kind chip."
+  },
+  "wikiKindRelease": "Release",
+  "@wikiKindRelease": {
+    "description": "Feed item kind chip."
+  },
+  "wikiKindSnapshot": "Snapshot",
+  "@wikiKindSnapshot": {
+    "description": "Feed item kind chip."
+  },
+  "wikiKindEdit": "Edit",
+  "@wikiKindEdit": {
+    "description": "Feed item kind chip for a wiki edit."
+  },
+  "wikiKindNew": "New page",
+  "@wikiKindNew": {
+    "description": "Feed item kind chip for a new wiki page."
+  },
+  "wikiFeedEmpty": "Nothing to show right now.",
+  "@wikiFeedEmpty": {
+    "description": "Empty state for the community feed."
+  },
+  "wikiFeedFailed": "Could not load the community feed",
+  "@wikiFeedFailed": {
+    "description": "Community feed request failed."
+  },
+  "wikiStatusFailed": "Could not read system load",
+  "@wikiStatusFailed": {
+    "description": "System status request failed."
+  },
+  "wikiUnavailable": "Unavailable",
+  "@wikiUnavailable": {
+    "description": "Metric value when the platform cannot report it."
+  },
+  "wikiCpuLabel": "CPU",
+  "@wikiCpuLabel": {
+    "description": "System load metric label."
+  },
+  "wikiMemoryLabel": "Memory",
+  "@wikiMemoryLabel": {
+    "description": "System load metric label."
+  },
+  "wikiDiskLabel": "Disk",
+  "@wikiDiskLabel": {
+    "description": "System load metric label."
+  },
+  "wikiLauncherLabel": "Launcher",
+  "@wikiLauncherLabel": {
+    "description": "System load metric label for the launcher process."
+  },
+  "wikiCoresCount": "{count} threads",
+  "@wikiCoresCount": {
+    "description": "CPU caption.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wikiLoadAverage": "load {value}",
+  "@wikiLoadAverage": {
+    "description": "Load average caption.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "wikiMemoryUsage": "{used} / {total} GB",
+  "@wikiMemoryUsage": {
+    "description": "Memory caption in gigabytes.",
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "wikiDiskFree": "{free} free",
+  "@wikiDiskFree": {
+    "description": "Disk caption.",
+    "placeholders": {
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "wikiUptime": "up {duration}",
+  "@wikiUptime": {
+    "description": "Launcher uptime caption.",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "wikiSystemUptime": "System up {duration}",
+  "@wikiSystemUptime": {
+    "description": "System uptime caption.",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "wikiTimeJustNow": "just now",
+  "@wikiTimeJustNow": {
+    "description": "Relative timestamp."
+  },
+  "wikiTimeMinutesAgo": "{count} min ago",
+  "@wikiTimeMinutesAgo": {
+    "description": "Relative timestamp.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wikiTimeHoursAgo": "{count} h ago",
+  "@wikiTimeHoursAgo": {
+    "description": "Relative timestamp.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wikiTimeDaysAgo": "{count} d ago",
+  "@wikiTimeDaysAgo": {
+    "description": "Relative timestamp.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wikiOpenLinkFailed": "Could not open the link",
+  "@wikiOpenLinkFailed": {
+    "description": "Snackbar when a feed link cannot be opened."
+  },
+  "wikiSourceError": "Fetch failed: {error}",
+  "@wikiSourceError": {
+    "description": "Per-source failure shown next to a source chip.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "wikiRetry": "Retry",
+  "@wikiRetry": {
+    "description": "Retry action for a failed request."
+  },
+  "wikiNoSourceData": "No items from this source",
+  "@wikiNoSourceData": {
+    "description": "Shown when a source returned zero items."
+  },
+  "wikiOpenInBrowser": "Open in browser",
+  "@wikiOpenInBrowser": {
+    "description": "Tooltip for opening a feed item externally."
+  },
+  "javaSearchHint": "Filter by version, vendor, architecture or path",
+  "@javaSearchHint": {
+    "description": "Search field hint on the Java page."
+  },
+  "javaSelectedBadge": "In use",
+  "@javaSelectedBadge": {
+    "description": "Badge on the selected Java runtime tile."
+  },
+  "javaFilteredEmpty": "No Java matches this filter.",
+  "@javaFilteredEmpty": {
+    "description": "Empty state when the Java filter matches nothing."
+  },
+  "javaDiscovered": "Discovered Java",
+  "@javaDiscovered": {
+    "description": "Header above the tiled Java runtime list in settings."
+  }
 }

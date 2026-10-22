@@ -1,5 +1,6 @@
 using Archoera.Application.Modules;
 using Archoera.Infrastructure.Accounts;
+using Archoera.Infrastructure.Community;
 using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Launch;
@@ -45,6 +46,7 @@ public static class BusinessModuleRegistry
                 accounts: accounts,
                 credentials: credentials,
                 auth: auth),
+            new LaunchLogModuleService(instances),
             new LoaderVersionService(policy: policy),
             new LoaderModuleService(policy: policy),
             new ResourceModuleService(policy: policy),
@@ -56,6 +58,7 @@ public static class BusinessModuleRegistry
                 auth: auth,
                 dataRoot: dataRoot),
             new SystemModuleService(),
+            new CommunityModuleService(),
             new SettingsModuleService(
                 dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new InstanceModuleService(

@@ -203,14 +203,18 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
       // Forge/NeoForge processors need a JVM; fail before the large download
       // if no suitable runtime is installed.
       final java = await client.selectJava(gameVersion: game);
+      final label =
+          '${_kind[0].toUpperCase()}${_kind.substring(1)} '
+          '$loaderVersion';
       final plan = await client.planLoaderInstall(
         root: root,
         installerPath: installer,
         kind: _kind,
         gameVersion: game,
         loaderVersion: loaderVersion,
+        label: label,
       );
-      final result = await client.executeDownload(plan.plan);
+      final result = await client.executeDownload(plan.plan, label: label);
       if (!result.ok) {
         if (!mounted) return;
         setState(() {
@@ -225,6 +229,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
         root: root,
         versionId: plan.versionId,
         versionJson: plan.versionJson,
+        label: label,
       );
       if (plan.requiresJava) {
         final installerPath = plan.installerPath;
@@ -236,6 +241,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
           root: root,
           kind: _kind,
           javaPath: java.path,
+          label: label,
         );
         if (repair['ok'] != true) {
           final error = repair['error'];

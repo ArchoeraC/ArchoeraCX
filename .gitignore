@@ -1,26 +1,32 @@
-# Flutter / Dart
+# ArchoeraCX ignore rules
+#
+# Keep the patterns narrow: a rule that hides a directory name also hides real
+# source. `**/bin/` used to swallow `app/modules/downloader/src/bin/`, which
+# made a fresh clone unable to build the Rust downloader CLI.
+
+# --- Flutter / Dart -------------------------------------------------------
 app/.dart_tool/
 app/build/
 app/.flutter-plugins
 app/.flutter-plugins-dependencies
 app/.packages
 app/coverage/
+**/ephemeral/
 
-# .NET
-**/bin/
-**/obj/
+# --- .NET (business modules only) ----------------------------------------
+app/modules/business/**/bin/
+app/modules/business/**/obj/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
 **/MicrosoftBuildConfig.g.cs
 
-# Rust
+# --- Rust ----------------------------------------------------------------
 app/modules/downloader/target/
 app/core/vault-rs/target/
-app/core/vault-rs/build/
 
-# Native / CMake
+# --- Native / CMake ------------------------------------------------------
 build/
 out/
 dist/
@@ -28,26 +34,27 @@ dist/
 *.pdb
 *.ilk
 
-# IDE
+# --- Local material ------------------------------------------------------
+# Reference/ is read-only source material. Only MANIFEST.md and README.md at
+# its root are tracked; upstream checkouts, samples, reverse-engineering notes
+# and local caches stay on this machine.
+Reference/upstream/
+Reference/LauncherX/
+Reference/local/
+.local/
+LauncherX-*.md
+
+# --- IDE / OS ------------------------------------------------------------
 .idea/
 .vscode/
 *.iml
 *.ipr
 *.iws
-
-# OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Local-only material: reverse-engineering samples, upstream checkouts,
-# downloaded test fixtures, local service data
-.local/
-Reference/upstream/
-Reference/LauncherX/
-LauncherX-*.md
-
-# Local credentials / database / logs
+# --- Credentials and runtime data ---------------------------------------
 *.log
 accounts.json
 accounts.credentials.json

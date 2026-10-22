@@ -444,7 +444,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 accessToken: accessToken,
                 clientId: clientId,
                 userType: userType);
-            var (process, logPath) = Start(plan);
+            var (process, logPath) = Start(instance.Id, plan);
             return ModuleJson.Envelope(writer =>
             {
                 writer.WriteNumber("pid", process.Id);
@@ -585,10 +585,42 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         LaunchPaths paths)
     {
         var directoryName = Path.GetFileName(paths.InstanceRoot);
+        var isLoaderInstance = !string.Equals(
+            instance.Loader,
+            "vanilla",
+            StringComparison.OrdinalIgnoreCase);
+
+        // The instance's own profile wins. Every launcher (Mojang, Fabric,
+        // Quilt, Forge, NeoForge) writes exactly one profile JSON per version
+        // directory and names it after that directory, so the instance folder
+        // is authoritative even when its id carries no game version or loader
+        // name (e.g. a modpack called "AutumnTown").
+        //
+        // The one exception: a loader instance whose folder is named after the
+        // vanilla version (for example versions/1.21.1) can own the plain
+        // vanilla profile while its loader profile lives in a sibling
+        // directory. That base profile must not be launched on its own.
+        foreach (var own in new[]
+                 {
+                     Path.Combine(paths.InstanceRoot, $"{directoryName}.json"),
+                     Path.Combine(
+                         paths.SharedRoot,
+                         "versions",
+                         directoryName,
+                         $"{directoryName}.json"),
+                 })
+        {
+            var parsed = TryReadVersion(own);
+            if (parsed is null) continue;
+            if (isLoaderInstance && IsVanillaBase(parsed, instance)) continue;
+            EnsureMerged(parsed);
+            return parsed;
+        }
+
+        // Fallback for instances created from a plain version id (the profile
+        // keeps the game/loader id rather than the folder name).
         var candidates = new List<string>
         {
-            Path.Combine(paths.InstanceRoot, $"{directoryName}.json"),
-            Path.Combine(paths.SharedRoot, "versions", directoryName, $"{directoryName}.json"),
             Path.Combine(paths.InstanceRoot, $"{instance.GameVersion}.json"),
             Path.Combine(
                 paths.SharedRoot,
@@ -597,9 +629,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 $"{instance.GameVersion}.json"),
         };
 
-        // Version-isolated instances created under a versions/ directory may
-        // have a custom folder name. Also accept the version id recorded by a
-        // loader install (Forge/NeoForge merged profiles).
+        // Also accept a base profile found under versions/. Only ids related to
+        // this instance's game version are considered: picking another
+        // instance's profile would launch the wrong game.
         foreach (var versionsRoot in new[]
                  {
                      Path.Combine(paths.SharedRoot, "versions"),
@@ -609,58 +641,38 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             if (!Directory.Exists(versionsRoot)) continue;
             foreach (var directory in Directory.EnumerateDirectories(versionsRoot))
             {
-                foreach (var jsonPath in Directory.EnumerateFiles(
-                             directory,
-                             "*.json",
-                             SearchOption.TopDirectoryOnly))
-                {
-                    candidates.Add(jsonPath);
-                }
+                var name = Path.GetFileName(directory);
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                candidates.Add(Path.Combine(directory, $"{name}.json"));
             }
         }
 
         var matches = new List<(MojangVersion Version, int Score, DateTime Modified)>();
         foreach (var path in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            if (!File.Exists(path)) continue;
-            MojangVersion version;
-            try
-            {
-                using var document = JsonDocument.Parse(File.ReadAllText(path));
-                version = MojangJson.ParseVersion(document.RootElement);
-            }
-            catch (Exception exception) when (
-                exception is IOException or JsonException or ArgumentException)
-            {
-                continue;
-            }
+            var version = TryReadVersion(path);
+            if (version is null) continue;
 
-            var isLoaderInstance = !string.Equals(
-                instance.Loader,
-                "vanilla",
-                StringComparison.OrdinalIgnoreCase);
             var score = 0;
-            if (string.Equals(version.Id, directoryName, StringComparison.OrdinalIgnoreCase) &&
-                (!isLoaderInstance ||
-                 version.Id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase)))
-            {
-                score += 100;
-            }
-
             if (string.Equals(version.Id, instance.GameVersion, StringComparison.OrdinalIgnoreCase))
             {
+                // A vanilla base profile: usable for vanilla instances and as a
+                // last resort for a loader instance without a merged profile.
                 score += isLoaderInstance ? 10 : 80;
             }
-
-            if (isLoaderInstance &&
-                version.Id.Contains(instance.GameVersion, StringComparison.OrdinalIgnoreCase))
+            else if (isLoaderInstance &&
+                     version.Id.Contains(
+                         instance.GameVersion,
+                         StringComparison.OrdinalIgnoreCase) &&
+                     version.Id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase))
             {
-                score += 20;
-                if (version.Id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase))
-                {
-                    score += 20;
-                }
-
+                // Standard loader profile ids: "1.21.1-forge-47.2.0",
+                // "1.21.1-neoforge-21.1.248", "fabric-loader-0.16.14-1.21.1".
+                score += version.Id.StartsWith(
+                    instance.GameVersion + "-",
+                    StringComparison.OrdinalIgnoreCase)
+                    ? 60
+                    : 30;
                 if (!string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
                     version.Id.Contains(
                         instance.LoaderVersion,
@@ -686,14 +698,57 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             .ThenByDescending(item => item.Modified)
             .First()
             .Version;
-        if (!string.IsNullOrWhiteSpace(selected.InheritsFrom))
+        EnsureMerged(selected);
+        return selected;
+    }
+
+    /// <summary>
+    /// Reads a version profile, returning null when the file is missing or is
+    /// not a launchable profile (game data such as <c>usercache.json</c>, a
+    /// loader cache, or a truncated download).
+    /// </summary>
+    private static MojangVersion? TryReadVersion(string path)
+    {
+        if (!File.Exists(path)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            return MojangJson.ParseVersion(document.RootElement);
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or JsonException
+                or ArgumentException
+                or MojangException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// True when a profile is just the vanilla game profile for this instance,
+    /// i.e. it carries the game version id and none of the loader's libraries.
+    /// </summary>
+    private static bool IsVanillaBase(MojangVersion version, GameInstanceRecord instance)
+    {
+        if (!string.Equals(version.Id, instance.GameVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !version.Libraries.Any(library =>
+            library.Name.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void EnsureMerged(MojangVersion version)
+    {
+        if (!string.IsNullOrWhiteSpace(version.InheritsFrom))
         {
             throw new LaunchException(
                 "VERSION_NOT_MERGED",
-                $"version '{selected.Id}' still inherits from '{selected.InheritsFrom}'; install/merge it first");
+                $"version '{version.Id}' still inherits from '{version.InheritsFrom}'; install/merge it first");
         }
-
-        return selected;
     }
 
     private async Task<JavaRuntimeInfo> SelectJavaAsync(
@@ -752,7 +807,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         return null;
     }
 
-    private static (Process Process, string LogPath) Start(LaunchPlan plan)
+    private static (Process Process, string LogPath) Start(
+        string instanceId,
+        LaunchPlan plan)
     {
         Directory.CreateDirectory(plan.LogDirectory);
         var startInfo = new ProcessStartInfo
@@ -786,6 +843,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             throw new LaunchException("LAUNCH_FAILED", "JVM did not start");
         }
 
+        var pid = process.Id;
         var stream = new FileStream(logPath, FileMode.Create, FileAccess.Write, FileShare.Read);
         var log = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
         process.OutputDataReceived += (_, args) =>
@@ -806,7 +864,11 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 log.WriteLine($"[exited with code {process.ExitCode}]");
                 log.Dispose();
             }
+
+            // The log viewer polls the registry to know when a follow can end.
+            LaunchProcessRegistry.Unregister(instanceId, pid);
         };
+        LaunchProcessRegistry.Register(instanceId, pid, logPath);
         return (process, logPath);
     }
 

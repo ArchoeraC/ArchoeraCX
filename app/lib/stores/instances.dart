@@ -107,10 +107,12 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
     final plan = await client.planVanillaInstall(
       root: instance.rootPath,
       versionId: instance.gameVersion,
+      label: instance.gameVersion,
     );
     final result = await client.executeDownload(
       plan.plan,
       onProgress: onProgress,
+      label: '${instance.name} · ${instance.gameVersion}',
     );
     if (!result.ok) {
       final detail = result.stderr?.trim();
@@ -125,6 +127,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
       root: instance.rootPath,
       versionId: plan.versionId,
       versionJson: plan.versionJson,
+      label: instance.gameVersion,
     );
     await reload();
   }
