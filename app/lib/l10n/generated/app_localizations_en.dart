@@ -1707,4 +1707,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wikiSystemLive => 'Updates every 5 s';
+
+  @override
+  String get loaderPickerVanillaHint =>
+      'No mod loader; the instance installs the vanilla game.';
+
+  @override
+  String loaderVersionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count builds',
+      one: '1 build',
+      zero: 'No builds',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get loaderVersionNoMatch => 'No builds match this search.';
 }
