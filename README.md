@@ -1,30 +1,55 @@
+<p align="center">
+  <img src="app/assets/branding/archoera_icon_512.png" width="128" height="128" alt="ArchoeraCX">
+</p>
+
 # ArchoeraCX
 
-跨平台 Minecraft: Java Edition 启动器。Flutter 负责 UI，C++ 做唯一枢纽，C# 负责业务/API/SQLite，Rust 负责下载执行。
+> 开源、多端、面向 Minecraft: Java Edition 的混合架构启动器
 
 > **开发版 / Development build**  
 > 本项目目前仅通过 GitHub 发布开发版。功能不完整，可能损坏实例或配置数据；**请勿用于正式环境或重要实例**。不提供稳定性、兼容性或数据安全保证。
 
-> 当前为 GitHub-only alpha：已完成实例管理、原版文件安装、微软登录、权益校验、离线/在线启动、Modrinth 搜索/下载、加载器安装，以及 Modrinth/本地 `.mrpack` 整合包安装（原版 + Fabric/Quilt/Forge/NeoForge）；CurseForge 尚未完成。
+---
 
-## 当前能力
+ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，桌面为主（Linux / macOS / Windows）。UI 层采用 Flutter，C++ 作为唯一枢纽，业务/API/SQLite 由 C# NativeAOT 模块持有，下载执行交给 Rust；全程进程内 FFI，无 Node 进程、无本地监听端口。
 
-- Flutter AppShell、5 个页面、明暗主题、中英文 i18n
-- `system.ping` / `system.pingAsync` / `system.info` / `system.modules`
-- C++ `ModuleRegistry` + `MethodRegistry`，wake 驱动事件泵，无定时轮询
-- C# NativeAOT `archoera_cs`：方法注册表、Java 扫描、Forge/NeoForge 生成物校验/修复
-- 实例：创建/选择/删除/搜索、自定义目录、SQLite 索引 + `instance.json` 权威元数据
-- 设置：实例根目录持久化（C# 持有）
-- Modrinth：搜索、版本选择、`DownloadPlan`、Rust 下载与 hash 校验
-- 整合包：Modrinth 版本或本地 `.mrpack` 导入；按包依赖新建实例、安装原版 + Fabric/Quilt/Forge/NeoForge、解压 overrides 并并发下载缺失文件，包内自带文件优先
-- Forge/NeoForge：installer + processor 安装，自动选择 Java；NeoForge 官方 Maven 不可达时使用 BMCLAPI 镜像引导 installer，库仍按 installer 元数据校验
-- 启动预检：检查库/client jar/资源索引、资源对象与 Forge/NeoForge 生成物；任一加载器发现缺失时会自动补全下载，Forge/NeoForge 额外重跑 processors（受本地下载策略约束）
-- 依赖检查：`loader.check` 同时报告启动文件状态；“修复依赖”会补全下载、重跑 processors 并自动复检
-- 账户：Microsoft Authorization Code + PKCE（loopback）→ XBL → XSTS → Minecraft → entitlement/profile/certificates；离线/在线启动
-- Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（HTTP、hash、原子落盘、取消）
-- Linux release bundle 自带 `libarchoera_core.so`、`archoera_cs.so` 和 `archoera-dl`
+- 实例管理：创建 / 选择 / 删除 / 搜索、自定义目录、SQLite 索引 + `instance.json` 权威元数据
+- 原版文件安装与启动，Java 自动扫描（含手动回退）
+- 加载器：Fabric / Quilt / Forge / NeoForge 安装、生成物校验与按 processor 重跑修复
+- Microsoft 登录：Authorization Code + PKCE（loopback）→ XBL → XSTS → Minecraft，支持在线 / 离线启动
+- Modrinth 搜索与下载；Modrinth 版本或本地 `.mrpack` 整合包安装（原版 + 加载器 + overrides）
+- Rust `DownloadPlan` 执行器：HTTP、hash 校验、原子落盘、进度与取消
+- 界面：底部 CommandBar 的 AppShell、5 个页面、明暗主题、中英文 i18n
 
-当前基线：340 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+> 当前为 GitHub-only alpha：上述能力已贯通；CurseForge 源尚未完成。当前基线为 340 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
+
+## 快速开始
+
+> 完整的环境依赖、逐模块构建、client ID 注入、测试矩阵与数据目录见 **[docs/12-build-and-test.md](docs/12-build-and-test.md)**。
+
+```bash
+git clone https://github.com/BetaStudio2/ArchoeraCX.git
+cd ArchoeraCX/app
+
+./tool/build-core.sh    # C++ 核心
+./tool/build-cs.sh      # C# NativeAOT 模块
+./tool/build-dl.sh      # Rust DownloadPlan 执行器
+
+flutter pub get
+flutter gen-l10n
+flutter build linux --release   # 或 windows / macos
+```
+
+Microsoft 登录的 client ID 必须在构建 C# 模块时注入（否则登录返回 `MICROSOFT_CLIENT_ID_MISSING`）：
+
+```bash
+export ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>"
+./tool/build-cs.sh
+```
+
+```bash
+./build/linux/x64/release/bundle/archoera_cx
+```
 
 ## 架构
 
@@ -48,165 +73,42 @@ C# NativeAOT    Rust
 - C# 是 API、业务、SQLite 的唯一 owner。
 - Rust 只消费 `DownloadPlan`，不解压、不写 SQLite。
 - `.mrpack` 的解析与安全解压由 C# 负责；Rust 只下载计划中的文件。
-- token 不跨 C ABI、不写日志；refresh token/Minecraft token 存在本地加密凭据保险库中。
-
-## 环境
-
-- Flutter 3.47.7 / Dart 3.13.5
-- .NET 10 SDK
-- Rust stable
-- CMake 3.16+、C++20 编译器
-- Linux 需要 GTK3 开发包；macOS 目标为 Apple Silicon arm64
-
-## 构建
-
-```bash
-cd app
-
-./tool/build-core.sh    # C++ 核心
-./tool/build-cs.sh      # C# NativeAOT 模块
-./tool/build-dl.sh      # Rust DownloadPlan 执行器 + CLI
-
-flutter pub get
-flutter gen-l10n
-dart analyze            # 中文路径下不要用 flutter analyze
-flutter test
-flutter build linux --release
-```
-
-Microsoft 登录的 client ID 必须在这个 C# 构建步骤注入：
-
-```bash
-export ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>"
-./tool/build-cs.sh
-```
-
-离线启动在 C# 端强制要求已验证的 Microsoft 凭据，没有公开的跳过开关。
-
-CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注入；
-本地构建未设置该变量时，生成的 client ID 为空，登录会返回
-`MICROSOFT_CLIENT_ID_MISSING`，而不是发出网络请求。
-
-Authorization Code + loopback 登录还需要在 Entra 中注册精确回调：
-
-```text
-http://localhost:53682/callback
-```
-
-端口可用 `ARCHOERACX_OAUTH_PORT` 覆盖，并同步更新 Entra 回调地址。
-
-
-启动 release bundle：
-
-```bash
-./build/linux/x64/release/bundle/archoera_cx
-```
-
-## Microsoft 登录与 Minecraft 认证
-
-Entra Application (client) ID **不硬编码、不进仓库**。
-
-发布/CI 构建注入编译期默认值：
-
-```bash
-ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>" ./tool/build-cs.sh
-```
-
-本地调试时构建保持空值，启动时临时覆盖：
-
-```bash
-ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>" \
-  ./build/linux/x64/release/bundle/archoera_cx
-```
-
-运行时环境变量优先于编译期默认值。详细流程、错误码和审核要求见
-[`docs/authentication.md`](docs/authentication.md)。
-
-> **关键门槛**：Entra 应用注册、OAuth、XBL、XSTS 全部成功，也不等于 Minecraft 登录成功。
-> `login_with_xbox` 使用的 client_id 还必须通过 Minecraft Services 的应用审核
-> （`https://aka.ms/mce-reviewappid`）。未审核时返回 `MINECRAFT_APP_NOT_APPROVED`。
-> 不要复用其他启动器的 client_id 绕过审核。
-
-## 隐私与贡献
-
-- [隐私政策](PRIVACY.md)（本地账户、令牌、皮肤缓存、未成年人说明与删除方式）
-- [第三方许可清单](THIRD-PARTY-NOTICES.md)（Flutter/Dart、.NET、Rust、字体与图标）
-- 当前暂不接受外部代码贡献；仅接受指定开发者及经邀请的必要安全/合规修复，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-## 数据与安全
-
-默认数据目录：
-
-```text
-Linux:   ~/.local/share/archoera-cx
-macOS:   ~/Library/Application Support/ArchoeraCX
-Windows: %APPDATA%/ArchoeraCX
-```
-
-可用 `ARCHOERACX_DATA_DIR` 覆盖。主要文件：
-
-```text
-settings.json                 实例根目录等设置
-archoera.db                   C# SQLite 实例索引
-<instance>/.archoera/instance.json
-accounts.json                 账户元数据
-archoera-vault                凭证保险库（crypto/file 免密模式）
-logs/account.log              脱敏的账户诊断日志
-```
-
-- Flutter 不打开 SQLite；Linux/macOS 用系统 SQLite，Windows 随 C# 模块分发 `e_sqlite3.dll`。
-- 账户 token 只在 C# 使用；UI 只拿账户元数据。
-- 失败登录不会写入账户或 token。
-- OS 凭据库（DPAPI/Keychain/libsecret）尚未接入。
-
-## 测试
-
-```bash
-cd app
-./build/native/abi_smoke
-./build/native/async_smoke
-./build/native/module_smoke
-
-dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
-cargo test --manifest-path modules/downloader/Cargo.toml
-
-flutter test
-```
-
-可选集成测试：
-
-```bash
-ARCHOERACX_SETTINGS_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-settings \
-  flutter test test/settings_integration_test.dart
-ARCHOERACX_INSTANCE_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-instance \
-  flutter test test/instance_integration_test.dart
-ARCHOERACX_ACCOUNT_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-account \
-  flutter test test/account_integration_test.dart
-ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
-ARCHOERACX_MICROSOFT_START_TESTS=1 \
-ARCHOERACX_MICROSOFT_CLIENT_ID="<client id>" \
-  flutter test test/microsoft_start_test.dart
-```
+- token 不跨 C ABI、不写日志；refresh token / Minecraft token 存在本地加密凭据保险库中。
 
 ## 文档
 
-- [文档索引](docs/README.md)
-- [详细架构设计](docs/10-architecture-design.md)
-- [Microsoft / Minecraft 认证](docs/authentication.md)
-- [UI 设计系统](docs/11-ui-design-system.md)
-- [发行与下载策略](docs/09-distribution-and-download-policy.md)
-- [许可证与资产边界](docs/04-licensing.md)
-- [路线图](docs/05-roadmap.md)
-- [技术预研](docs/08-technical-research/README.md)
+- [文档索引](docs/README.md) —— 全部公开文档的入口
+- [构建、运行与测试](docs/12-build-and-test.md) —— 环境 / 逐模块构建 / 测试矩阵 / 数据目录
+- [详细架构设计](docs/10-architecture-design.md) —— ABI、模块协议、任务与事件、存储、流程、安全
+- [Microsoft / Minecraft 认证](docs/authentication.md) —— OAuth、XBL / XSTS、client_id 审核门槛
+- [UI 设计系统](docs/11-ui-design-system.md) —— 设计令牌、AppShell、页面结构、动效与资产边界
+- [发行与下载策略](docs/09-distribution-and-download-policy.md) —— 发行通道、Provider / Policy / `DownloadPlan`、密钥与镜像
+- [许可证与资产边界](docs/04-licensing.md) —— AGPL-3.0-only、依赖组合、字体 / 图标 / 品牌红线
+- [路线图](docs/05-roadmap.md) —— 阶段目标、当前进度、验收标准
+- [生态 API](docs/06-ecosystem-apis.md) —— Mojang、Microsoft、加载器、Modrinth / CurseForge、Java
+- [技术预研](docs/08-technical-research/README.md) —— 设计输入与验证记录
+- 历史设计稿见 [`docs/archive/`](docs/archive/README.md)（仅作溯源，不是现行规范）
 
-## 许可证与贡献
+## 许可证
 
-- 代码以 **AGPL-3.0-only** 发布，见 [LICENSE](LICENSE)。
-- **不接受外部代码贡献**，原因见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-- 安全问题请走私密渠道，见 [SECURITY.md](SECURITY.md)。
-- 可提交 Issue、崩溃日志、功能建议和文档纠错；请先脱敏。
+代码以 **AGPL-3.0-only** 发布，正文见 [LICENSE](LICENSE)。
+在遵守 AGPL 义务（分发时开放源码、保留声明并标注修改）的前提下，可自由使用、学习、修改与再分发；本项目不提供闭源商业授权。
+
+第三方依赖与随发布产物分发的内嵌运行库见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)；许可证与资产边界细则见 [docs/04-licensing.md](docs/04-licensing.md)。
+
+## 隐私与安全
+
+- [隐私政策](PRIVACY.md) —— 本地账户、令牌、皮肤缓存、未成年人说明与删除方式
+- [安全策略](SECURITY.md) —— 漏洞的私密报告渠道
+- 账户与数据默认存放于系统数据目录，可用 `ARCHOERACX_DATA_DIR` 覆盖（见[构建、运行与测试](docs/12-build-and-test.md#5-数据目录与本地文件)）。
+
+---
+
+## 联系与贡献
+
+- 仓库：<https://github.com/BetaStudio2/ArchoeraCX>
+- **当前不接受外部代码贡献**（含 PR、补丁、代码片段），原因与可参与方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 可提交 Issue、崩溃日志、功能建议和文档纠错；请先脱敏，勿粘贴 token 或他人的个人信息。
 
 ## 免责声明
 
