@@ -54,7 +54,9 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
   String? _versionError;
   int _versionRequest = 0;
   String? _selectedRoot;
-  bool _versionIsolation = false;
+  // Downloads land in versions/<name> by default: libraries and assets stay
+  // shared with the game root, which is what most launchers do.
+  bool _versionIsolation = true;
   bool _creating = false;
 
   @override
