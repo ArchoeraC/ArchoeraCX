@@ -163,6 +163,48 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         }
     }
 
+    private async Task<IReadOnlyList<string>> CandidateRootsAsync(
+        LaunchPaths paths,
+        AppSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var roots = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            paths.InstanceRoot,
+            paths.SharedRoot,
+            LaunchPaths.ResolveInstallRoot(paths.InstanceRoot),
+        };
+
+        foreach (var root in settings.Roots)
+        {
+            if (!string.IsNullOrWhiteSpace(root)) roots.Add(root);
+        }
+
+        try
+        {
+            foreach (var instance in await _instances
+                         .ListAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                if (string.IsNullOrWhiteSpace(instance.RootPath)) continue;
+                roots.Add(instance.RootPath);
+                roots.Add(LaunchPaths.ResolveInstallRoot(instance.RootPath));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // The current instance root and configured roots are still usable.
+        }
+
+        return roots
+            .Where(Directory.Exists)
+            .ToList();
+    }
+
     private async Task RepairLaunchAsync(
         GameInstanceRecord instance,
         string? javaPath,
@@ -466,10 +508,23 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             // Repair is only needed when something is actually missing -- an
             // instance prepared by another launcher must not require an
             // installer download just because its own downloads/ is empty.
-            var filesOk = LaunchPlanBuilder.CheckFiles(version, paths).Ok;
+            var filesCheck = LaunchPlanBuilder.CheckFiles(version, paths);
+            if (!filesCheck.Ok)
+            {
+                // Missing ordinary libraries/assets may already exist in
+                // another configured root or another instance's private game
+                // directory. Copy verified local files before downloading.
+                var roots = await CandidateRootsAsync(paths, settings, cancellationToken)
+                    .ConfigureAwait(false);
+                if (LaunchFileRecovery.TryRecover(instance, version, paths, roots) > 0)
+                {
+                    filesCheck = LaunchPlanBuilder.CheckFiles(version, paths);
+                }
+            }
+
             var loaderOk = LaunchPlanBuilder.CheckLoaderArtifacts(instance, version, paths).Ok;
             var needsRepair =
-                !filesOk ||
+                !filesCheck.Ok ||
                 !loaderOk ||
                 !string.IsNullOrWhiteSpace(version.InheritsFrom);
 
@@ -477,7 +532,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             // the network for anything. Only NeoForge hides generated jars from
             // CheckFiles; if ordinary libraries/assets are missing, processors
             // cannot help and the download repair takes over.
-            if (needsRepair && IsForgeInstance(instance) && filesOk && !loaderOk)
+            if (needsRepair && IsForgeInstance(instance) && filesCheck.Ok && !loaderOk)
             {
                 var localRepair = _instanceRepair ?? new PackInstallService(settings: _settings);
                 try

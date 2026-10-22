@@ -494,7 +494,7 @@ internal static class LaunchPlanBuilder
         }
     }
 
-    private static MojangDownload? NativeDownload(
+    internal static MojangDownload? NativeDownload(
         MojangLibrary library,
         MojangPlatform platform,
         string osKey)
@@ -515,7 +515,7 @@ internal static class LaunchPlanBuilder
         return null;
     }
 
-    private static string? NativeRelativePath(
+    internal static string? NativeRelativePath(
         MojangLibrary library,
         MojangPlatform platform,
         string osKey,
@@ -539,7 +539,7 @@ internal static class LaunchPlanBuilder
             : null;
     }
 
-    private static string? LibraryRelativePath(MojangLibrary library)
+    internal static string? LibraryRelativePath(MojangLibrary library)
     {
         var artifact = library.Downloads?.Artifact;
         if (artifact is null && library.Downloads?.ClassifierMap.Count > 0)

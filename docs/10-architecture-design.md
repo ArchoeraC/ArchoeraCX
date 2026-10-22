@@ -2154,6 +2154,7 @@ launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合�
 ```
 
 - `CheckFiles` 是启动前的快速全量扫描：只做存在性检查（不读大文件、不算哈希），一次报告缺失数量与第一个路径；原生库按 `downloads.classifiers` 的本机 classifier 检查，不再漏掉 `lwjgl-*-natives-linux.jar` 之类的文件。原生目录每次启动重新解压，避免旧的残缺 natives 目录让游戏报 `Failed to locate library`。
+- 缺失的普通库、原生 classifier、client jar、asset index 与 asset object 会先在本实例、已配置的游戏根以及其它实例目录中查找同相对路径的文件；用版本 JSON/资源索引里的 SHA-1 与大小校验后原子复制到目标位置。只补缺失文件，不覆盖已存在但可能损坏的文件（交给下载修复校验替换）。
 - NeoForge 的合并版 profile 不把 `neoforge-*-client.jar` / `-universal.jar` 列入 `libraries`；预检按 Maven 约定检查这两个生成物。存在时直接启动，**不因实例缺少 installer 而触发下载/processor 修复**（从其它启动器导入的实例可直接运行）。Forge 的合并版 profile 已列出这些 jar，由 `CheckFiles` 覆盖。
 - 自动修复只尝试一次；失败返回 `AUTO_REPAIR_FAILED`，下载被策略禁用返回 `AUTO_REPAIR_BLOCKED`。
 - `loader.check` / `loader.autoRepair` 与启动预检覆盖全部五类实例：vanilla、Fabric、Quilt、Forge、NeoForge。
