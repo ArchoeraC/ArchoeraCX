@@ -6,6 +6,7 @@ import '../pages/accounts_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/download_page.dart';
 import '../pages/instances_page.dart';
+import '../pages/java_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/wiki_page.dart';
 import 'shell.dart';
@@ -75,6 +76,13 @@ GoRouter buildAppRouter() {
                 path: '/settings',
                 name: 'settings',
                 builder: (context, state) => const SettingsPage(),
+                routes: [
+                  GoRoute(
+                    path: 'java',
+                    name: 'settings-java',
+                    builder: (context, state) => const JavaPage(),
+                  ),
+                ],
               ),
             ],
           ),

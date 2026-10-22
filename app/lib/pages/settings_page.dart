@@ -20,7 +20,9 @@ import '../theme/tokens.dart';
 import '../utils/app_info.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/common/toast.dart';
-import '../widgets/settings/java_runtimes_panel.dart';
+
+import 'package:go_router/go_router.dart';
+
 import '../widgets/common/app_page_header.dart';
 
 enum _SettingsSection { appearance, storage, java, about }
@@ -176,8 +178,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          const SizedBox(height: AppSpacing.md),
-          const JavaRuntimesPanel(),
+          _SettingRow(
+            icon: Icons.developer_board_rounded,
+            title: l10n.javaPageManage,
+            subtitle: l10n.javaPageManageHint,
+            onTap: () => context.go('/settings/java'),
+          ),
           const SizedBox(height: AppSpacing.md),
           _RuntimeSettingsPanel(settings: settings),
         ],

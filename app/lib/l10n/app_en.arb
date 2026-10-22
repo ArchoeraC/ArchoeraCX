@@ -1422,8 +1422,20 @@
   "@javaFilteredEmpty": {
     "description": "Empty state when the Java filter matches nothing."
   },
-  "javaDiscovered": "Discovered Java",
-  "@javaDiscovered": {
-    "description": "Header above the tiled Java runtime list in settings."
+  "back": "Back",
+  "@back": {
+    "description": "Back navigation button tooltip."
+  },
+  "javaPageSubtitle": "Every Java runtime found on this machine; pick the one used to launch games.",
+  "@javaPageSubtitle": {
+    "description": "Subtitle under the dedicated Java page title."
+  },
+  "javaPageManage": "Java runtimes",
+  "@javaPageManage": {
+    "description": "Settings row that opens the dedicated Java page."
+  },
+  "javaPageManageHint": "Browse every scan result, add a folder or pick a java executable.",
+  "@javaPageManageHint": {
+    "description": "Settings row subtitle for the Java page entry."
   }
 }

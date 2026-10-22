@@ -1,18 +1,19 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../l10n/generated/app_localizations.dart';
-import '../../services/core/core_client.dart';
-import '../../services/core/java_scan.dart';
-import '../../services/java/java_path_store.dart';
-import '../../stores/providers.dart';
-import '../../stores/settings.dart';
-import '../../theme/tokens.dart';
-import '../common/app_empty_state.dart';
-import '../common/app_panel.dart';
-import '../common/app_section.dart';
-import '../common/toast.dart';
+import '../l10n/generated/app_localizations.dart';
+import '../services/core/core_client.dart';
+import '../services/core/java_scan.dart';
+import '../services/java/java_path_store.dart';
+import '../stores/providers.dart';
+import '../stores/settings.dart';
+import '../theme/tokens.dart';
+import '../widgets/common/app_empty_state.dart';
+import '../widgets/common/app_page_header.dart';
+import '../widgets/common/app_panel.dart';
+import '../widgets/common/toast.dart';
 
 /// Signature of a Java scan call, matching [CoreClient.scanJava].
 typedef JavaScanCallback = Future<JavaScanResult> Function({
@@ -28,15 +29,15 @@ typedef PickDirectory = Future<String?> Function();
 /// Opens a native file picker and returns the selected Java executable path.
 typedef PickExecutable = Future<String?> Function();
 
-/// Tiled list of every Java runtime `java.scan` found, shown inside the Java
-/// section of the settings page.
+/// Dedicated Java page under Settings.
 ///
 /// The candidates used to be truncated to five entries behind a "view all"
-/// dialog; tiling them here keeps the whole list flat and in one place. The
-/// persisted choice still goes through `settings.set` (C# owns it); this panel
-/// only renders scan results and asks the settings store for the selection.
-class JavaRuntimesPanel extends ConsumerStatefulWidget {
-  const JavaRuntimesPanel({
+/// dialog. A page keeps the whole list flat and leaves the settings column for
+/// options. The persisted choice still goes through `settings.set` (C# owns
+/// it); this page only renders scan results and asks the settings store for the
+/// selection.
+class JavaPage extends ConsumerStatefulWidget {
+  const JavaPage({
     super.key,
     this.scan,
     this.pathStore = const JavaPathStore(),
@@ -60,14 +61,14 @@ class JavaRuntimesPanel extends ConsumerStatefulWidget {
   final PickExecutable? pickExecutable;
 
   @override
-  ConsumerState<JavaRuntimesPanel> createState() => _JavaRuntimesPanelState();
+  ConsumerState<JavaPage> createState() => _JavaPageState();
 }
 
 enum _JavaState { idle, scanning, ready, unavailable }
 
 enum _ScanOrigin { manual, directory, executable }
 
-class _JavaRuntimesPanelState extends ConsumerState<JavaRuntimesPanel> {
+class _JavaPageState extends ConsumerState<JavaPage> {
   _JavaState _state = _JavaState.idle;
   JavaScanResult? _result;
   String? _reason;
@@ -352,18 +353,37 @@ class _JavaRuntimesPanelState extends ConsumerState<JavaRuntimesPanel> {
     if (query.isEmpty) return items;
     return items
         .where(
-          (runtime) => [
-            runtime.path,
-            runtime.home,
-            runtime.version,
-            runtime.vendor,
-            runtime.arch,
-            runtime.source,
-          ].whereType<String>().any(
-            (value) => value.toLowerCase().contains(query),
-          ),
+          (runtime) =>
+              [
+                runtime.path,
+                runtime.home,
+                runtime.version,
+                runtime.vendor,
+                runtime.arch,
+                runtime.source,
+              ].whereType<String>().any(
+                (value) => value.toLowerCase().contains(query),
+              ),
         )
         .toList(growable: false);
+  }
+
+  Future<void> _setAuto(bool auto) async {
+    final l10n = AppLocalizations.of(context);
+    final settings = ref.read(appSettingsProvider).value;
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setJavaSelection(
+            javaPath: auto ? null : settings?.javaPath,
+            javaAuto: auto,
+          );
+      if (!mounted) return;
+      toast(l10n.settingsSaved, type: ToastType.success);
+    } catch (error) {
+      if (!mounted) return;
+      toast(error.toString(), type: ToastType.error);
+    }
   }
 
   @override
@@ -372,35 +392,49 @@ class _JavaRuntimesPanelState extends ConsumerState<JavaRuntimesPanel> {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final settings = ref.watch(appSettingsProvider).value;
+    final auto = settings?.javaAuto ?? true;
     final selectedPath = settings?.javaPath;
     final result = _result;
     final scanning = _state == _JavaState.scanning;
     final visible = _visibleRuntimes(result);
 
-    return AppSection(
-      showTop: true,
-      showBottom: false,
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(Icons.coffee_rounded, size: 18, color: tokens.accent),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(l10n.javaDiscovered, style: textTheme.titleMedium),
-              ),
-              TextButton.icon(
+          AppPageHeader(
+            leading: IconButton.filledTonal(
+              onPressed: () => context.go('/settings'),
+              tooltip: l10n.back,
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+            ),
+            title: l10n.settingsJava,
+            subtitle: l10n.javaPageSubtitle,
+            actions: [
+              OutlinedButton.icon(
                 onPressed: scanning ? null : () => _runScan(),
-                icon: const Icon(Icons.manage_search_rounded, size: 16),
+                icon: scanning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.manage_search_rounded, size: 18),
                 label: Text(
                   scanning ? l10n.javaStatusScanning : l10n.javaStatusScan,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.lg),
+          _CurrentJavaPanel(
+            auto: auto,
+            selectedPath: selectedPath,
+            runtimes: result?.items ?? const <JavaRuntime>[],
+            onAutoChanged: scanning ? null : _setAuto,
+          ),
+          const SizedBox(height: AppSpacing.xl),
           _Toolbar(
             controller: _search,
             query: _query,
@@ -450,7 +484,8 @@ class _JavaRuntimesPanelState extends ConsumerState<JavaRuntimesPanel> {
                 _invalidExecutablePath!,
               ),
               details:
-                  _invalidExecutableDetail ?? l10n.javaStatusNoValidExecutableHint,
+                  _invalidExecutableDetail ??
+                  l10n.javaStatusNoValidExecutableHint,
             ),
             const SizedBox(height: AppSpacing.md),
           ],
@@ -514,6 +549,108 @@ class _JavaRuntimesPanelState extends ConsumerState<JavaRuntimesPanel> {
   }
 }
 
+/// Current selection summary plus the automatic-selection switch.
+class _CurrentJavaPanel extends StatelessWidget {
+  const _CurrentJavaPanel({
+    required this.auto,
+    required this.selectedPath,
+    required this.runtimes,
+    required this.onAutoChanged,
+  });
+
+  final bool auto;
+  final String? selectedPath;
+  final List<JavaRuntime> runtimes;
+  final ValueChanged<bool>? onAutoChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    JavaRuntime? selected;
+    for (final runtime in runtimes) {
+      if (runtime.path == selectedPath) {
+        selected = runtime;
+        break;
+      }
+    }
+
+    final title = auto
+        ? l10n.settingsJavaAutoValue
+        : (selected?.home ?? selectedPath ?? '—');
+    final detail = auto
+        ? l10n.settingsJavaAutoHint
+        : selected == null
+        ? selectedPath
+        : l10n.javaStatusMeta(selected.displayVersion, selected.arch ?? '—');
+
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(
+                l10n.settingsJavaCurrent,
+                style: textTheme.labelSmall?.copyWith(
+                  color: tokens.textSecondary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                l10n.settingsJavaAuto,
+                style: textTheme.labelMedium?.copyWith(
+                  color: tokens.textSecondary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xxs),
+              Switch(value: auto, onChanged: onAutoChanged),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(height: 1, color: tokens.border),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                auto ? Icons.auto_awesome_rounded : Icons.coffee_rounded,
+                size: 18,
+                color: tokens.accent,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      detail ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: tokens.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.controller,
@@ -541,7 +678,11 @@ class _Toolbar extends StatelessWidget {
       decoration: InputDecoration(
         isDense: true,
         hintText: l10n.javaSearchHint,
-        prefixIcon: Icon(Icons.search_rounded, size: 18, color: tokens.textTertiary),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          size: 18,
+          color: tokens.textTertiary,
+        ),
         suffixIcon: query.isEmpty
             ? null
             : IconButton(
@@ -823,9 +964,8 @@ class _CustomPaths extends StatelessWidget {
       children: [
         Text(
           l10n.javaStatusCustomPaths,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: tokens.textTertiary,
-          ),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: tokens.textTertiary),
         ),
         const SizedBox(height: AppSpacing.xxs),
         Wrap(
