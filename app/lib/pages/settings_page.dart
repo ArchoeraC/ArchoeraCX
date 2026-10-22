@@ -65,7 +65,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 final contentWidth =
                     (constraints.maxWidth - 208 - AppSpacing.lg).clamp(
                       640.0,
-                      1040.0,
+                      1500.0,
                     );
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,139 +206,174 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final notifier = ref.read(appearanceProvider.notifier);
     final customized = appearance.accentMode == AccentMode.custom;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final themeGroup = _SettingsGroup(
+      title: l10n.settingsSectionTheme,
       children: [
-        _SettingsGroup(
-          title: l10n.settingsSectionTheme,
-          children: [
-            _AppearanceTile(
-              icon: Icons.contrast_rounded,
-              title: l10n.settingsThemeMode,
-              subtitle: l10n.settingsThemeModeDesc,
-              trailing: _SegmentedControl<ThemeMode>(
-                selected: appearance.themeMode,
-                options: [
-                  _SegmentedOption(ThemeMode.light, l10n.settingsThemeLight),
-                  _SegmentedOption(ThemeMode.dark, l10n.settingsThemeDark),
-                  _SegmentedOption(ThemeMode.system, l10n.settingsThemeSystem),
-                ],
-                onChanged: notifier.setThemeMode,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _SettingsGroup(
-          title: l10n.settingsSectionAccent,
-          children: [
-            _AppearanceTile(
-              icon: Icons.palette_outlined,
-              title: l10n.settingsThemeAccent,
-              subtitle: customized
-                  ? l10n.settingsThemeAccentCustomDesc
-                  : l10n.settingsThemeAccentSystemDesc,
-              trailing: _SegmentedControl<AccentMode>(
-                selected: appearance.accentMode,
-                options: [
-                  _SegmentedOption(
-                    AccentMode.system,
-                    l10n.settingsThemeAccentSystem,
-                  ),
-                  _SegmentedOption(
-                    AccentMode.custom,
-                    l10n.settingsThemeAccentCustom,
-                  ),
-                ],
-                onChanged: notifier.setAccentMode,
-              ),
-            ),
-            if (customized)
-              _AccentSwatchRow(
-                current: appearance.accentColor,
-                onPick: (color) => notifier.setAccentColor(color),
-                onChoose: () => _chooseAccent(context, l10n),
-              )
-            else
-              _SystemAccentRow(color: systemAccent ?? AppTokens.brandAccent),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _SettingsGroup(
-          title: l10n.settingsSectionInterface,
-          note: l10n.settingsAppearanceNote,
-          children: [
-            _AppearanceTile(
-              icon: Icons.tonality_rounded,
-              title: l10n.settingsGlobalTint,
-              subtitle: l10n.settingsGlobalTintDesc,
-              trailing: Switch(
-                value: appearance.globalTint,
-                onChanged: notifier.setGlobalTint,
-              ),
-            ),
-            _AppearanceTile(
-              icon: Icons.view_agenda_outlined,
-              title: l10n.settingsDensity,
-              subtitle: l10n.settingsDensityDesc,
-              trailing: _SegmentedControl<UiDensity>(
-                selected: appearance.density,
-                options: [
-                  _SegmentedOption(
-                    UiDensity.compact,
-                    l10n.settingsDensityCompact,
-                  ),
-                  _SegmentedOption(
-                    UiDensity.standard,
-                    l10n.settingsDensityStandard,
-                  ),
-                  _SegmentedOption(
-                    UiDensity.comfortable,
-                    l10n.settingsDensityComfortable,
-                  ),
-                ],
-                onChanged: notifier.setDensity,
-              ),
-            ),
-            _AppearanceTile(
-              icon: Icons.animation_rounded,
-              title: l10n.settingsMotion,
-              subtitle: l10n.settingsMotionDesc,
-              trailing: Switch(
-                value: appearance.reduceMotion,
-                onChanged: notifier.setReduceMotion,
-              ),
-            ),
-            _AppearanceTile(
-              icon: Icons.restart_alt_rounded,
-              title: l10n.settingsResetAppearance,
-              trailing: Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: context.tokens.textTertiary,
-              ),
-              onTap: () => _resetAppearance(context, l10n),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _SettingsGroup(
-          title: l10n.settingsAppearanceLanguage,
-          children: [
-            _AppearanceTile(
-              icon: Icons.translate_rounded,
-              title: l10n.settingsLanguage,
-              subtitle: _languageLabel(l10n, locale),
-              trailing: Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: context.tokens.textTertiary,
-              ),
-              onTap: () => _chooseLanguage(context, l10n),
-            ),
-          ],
+        _AppearanceTile(
+          icon: Icons.contrast_rounded,
+          title: l10n.settingsThemeMode,
+          subtitle: l10n.settingsThemeModeDesc,
+          trailing: _SegmentedControl<ThemeMode>(
+            selected: appearance.themeMode,
+            options: [
+              _SegmentedOption(ThemeMode.light, l10n.settingsThemeLight),
+              _SegmentedOption(ThemeMode.dark, l10n.settingsThemeDark),
+              _SegmentedOption(ThemeMode.system, l10n.settingsThemeSystem),
+            ],
+            onChanged: notifier.setThemeMode,
+          ),
         ),
       ],
+    );
+    final accentGroup = _SettingsGroup(
+      title: l10n.settingsSectionAccent,
+      children: [
+        _AppearanceTile(
+          icon: Icons.palette_outlined,
+          title: l10n.settingsThemeAccent,
+          subtitle: customized
+              ? l10n.settingsThemeAccentCustomDesc
+              : l10n.settingsThemeAccentSystemDesc,
+          trailing: _SegmentedControl<AccentMode>(
+            selected: appearance.accentMode,
+            options: [
+              _SegmentedOption(
+                AccentMode.system,
+                l10n.settingsThemeAccentSystem,
+              ),
+              _SegmentedOption(
+                AccentMode.custom,
+                l10n.settingsThemeAccentCustom,
+              ),
+            ],
+            onChanged: notifier.setAccentMode,
+          ),
+        ),
+        if (customized)
+          _AccentSwatchRow(
+            current: appearance.accentColor,
+            onPick: (color) => notifier.setAccentColor(color),
+            onChoose: () => _chooseAccent(context, l10n),
+          )
+        else
+          _SystemAccentRow(color: systemAccent ?? AppTokens.brandAccent),
+      ],
+    );
+    final interfaceGroup = _SettingsGroup(
+      title: l10n.settingsSectionInterface,
+      note: l10n.settingsAppearanceNote,
+      children: [
+        _AppearanceTile(
+          icon: Icons.tonality_rounded,
+          title: l10n.settingsGlobalTint,
+          subtitle: l10n.settingsGlobalTintDesc,
+          trailing: Switch(
+            value: appearance.globalTint,
+            onChanged: notifier.setGlobalTint,
+          ),
+        ),
+        _AppearanceTile(
+          icon: Icons.view_agenda_outlined,
+          title: l10n.settingsDensity,
+          subtitle: l10n.settingsDensityDesc,
+          trailing: _SegmentedControl<UiDensity>(
+            selected: appearance.density,
+            options: [
+              _SegmentedOption(UiDensity.compact, l10n.settingsDensityCompact),
+              _SegmentedOption(
+                UiDensity.standard,
+                l10n.settingsDensityStandard,
+              ),
+              _SegmentedOption(
+                UiDensity.comfortable,
+                l10n.settingsDensityComfortable,
+              ),
+            ],
+            onChanged: notifier.setDensity,
+          ),
+        ),
+        _AppearanceTile(
+          icon: Icons.animation_rounded,
+          title: l10n.settingsMotion,
+          subtitle: l10n.settingsMotionDesc,
+          trailing: Switch(
+            value: appearance.reduceMotion,
+            onChanged: notifier.setReduceMotion,
+          ),
+        ),
+        _AppearanceTile(
+          icon: Icons.restart_alt_rounded,
+          title: l10n.settingsResetAppearance,
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: context.tokens.textTertiary,
+          ),
+          onTap: () => _resetAppearance(context, l10n),
+        ),
+      ],
+    );
+    final languageGroup = _SettingsGroup(
+      title: l10n.settingsAppearanceLanguage,
+      children: [
+        _AppearanceTile(
+          icon: Icons.translate_rounded,
+          title: l10n.settingsLanguage,
+          subtitle: _languageLabel(l10n, locale),
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: context.tokens.textTertiary,
+          ),
+          onTap: () => _chooseLanguage(context, l10n),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 1200) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              themeGroup,
+              const SizedBox(height: AppSpacing.lg),
+              accentGroup,
+              const SizedBox(height: AppSpacing.lg),
+              interfaceGroup,
+              const SizedBox(height: AppSpacing.lg),
+              languageGroup,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  themeGroup,
+                  const SizedBox(height: AppSpacing.lg),
+                  accentGroup,
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  interfaceGroup,
+                  const SizedBox(height: AppSpacing.lg),
+                  languageGroup,
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

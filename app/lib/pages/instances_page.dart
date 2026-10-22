@@ -194,13 +194,20 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 // Rows get very wide on a fullscreen window; switch to a card
                 // grid so actions stay near their instance and the page uses
                 // the available width.
-                final columns = constraints.maxWidth >= 1850
+                final maxColumns = constraints.maxWidth >= 2200
+                    ? 5
+                    : constraints.maxWidth >= 1850
                     ? 4
                     : constraints.maxWidth >= 1500
                     ? 3
                     : constraints.maxWidth >= 1020
                     ? 2
                     : 1;
+                // Fill the row when there are fewer instances than columns,
+                // instead of leaving a large empty half-page.
+                final columns = filtered.length < maxColumns
+                    ? filtered.length
+                    : maxColumns;
                 final rows = <Widget>[
                   for (var i = 0; i < filtered.length; i++) ...[
                     _InstanceRow(
@@ -239,6 +246,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 final cardWidth =
                     (constraints.maxWidth - gap * (columns - 1)) / columns;
                 return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Wrap(
                       spacing: gap,

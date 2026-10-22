@@ -203,8 +203,7 @@ class _MetricGrid extends StatelessWidget {
           spacing: gap,
           runSpacing: AppSpacing.lg,
           children: [
-            for (final tile in tiles)
-              SizedBox(width: tileWidth, child: tile),
+            for (final tile in tiles) SizedBox(width: tileWidth, child: tile),
           ],
         );
       },
@@ -325,10 +324,8 @@ class _SystemCaption extends StatelessWidget {
       parts.join(' · '),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: tokens.textTertiary,
-        letterSpacing: 0,
-      ),
+      style: Theme.of(context).textTheme.labelSmall
+          ?.copyWith(color: tokens.textTertiary, letterSpacing: 0),
     );
   }
 }
@@ -433,24 +430,44 @@ class _FeedList extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // A single 1.6 k column of news lines is hard to scan on a fullscreen
-        // window; split into two balanced columns from 1200 px upwards.
-        if (constraints.maxWidth < 1200 || items.length < 6) {
+        // One wide column of news lines is hard to scan on fullscreen; split
+        // into balanced columns as the window grows.
+        final columns = constraints.maxWidth >= 2100
+            ? 3
+            : constraints.maxWidth >= 1200
+            ? 2
+            : 1;
+        if (columns == 1 || items.length < columns * 2) {
           return _FeedColumn(items: items);
         }
 
-        final half = (items.length + 1) ~/ 2;
+        final chunks = _split(items, columns);
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _FeedColumn(items: items.sublist(0, half))),
-            const SizedBox(width: AppSpacing.xl),
-            Expanded(child: _FeedColumn(items: items.sublist(half))),
+            for (var index = 0; index < chunks.length; index++) ...[
+              if (index > 0) const SizedBox(width: AppSpacing.xl),
+              Expanded(child: _FeedColumn(items: chunks[index])),
+            ],
           ],
         );
       },
     );
   }
+}
+
+/// Splits items into [columns] consecutive chunks of nearly equal size.
+List<List<WikiFeedItem>> _split(List<WikiFeedItem> items, int columns) {
+  final result = <List<WikiFeedItem>>[];
+  final base = items.length ~/ columns;
+  final remainder = items.length % columns;
+  var start = 0;
+  for (var index = 0; index < columns; index++) {
+    final size = base + (index < remainder ? 1 : 0);
+    result.add(items.sublist(start, start + size));
+    start += size;
+  }
+  return result;
 }
 
 class _FeedColumn extends StatelessWidget {
@@ -617,14 +634,15 @@ class _SourceChip extends StatelessWidget {
     final color = ok ? tokens.textSecondary : tokens.danger;
 
     final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 3,
+      ),
       decoration: ShapeDecoration(
         color: ok ? tokens.surface2 : tokens.danger.withValues(alpha: 0.10),
         shape: BeveledRectangleBorder(
           side: BorderSide(
-            color: ok
-                ? tokens.border
-                : tokens.danger.withValues(alpha: 0.40),
+            color: ok ? tokens.border : tokens.danger.withValues(alpha: 0.40),
           ),
           borderRadius: BorderRadius.circular(tokens.radiusS),
         ),
@@ -640,10 +658,8 @@ class _SourceChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '$label · ${ok ? status.count : l10n.wikiUnavailable}',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              letterSpacing: 0,
-            ),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: color, letterSpacing: 0),
           ),
         ],
       ),
@@ -651,10 +667,7 @@ class _SourceChip extends StatelessWidget {
 
     final error = status.error;
     if (ok || error == null) return chip;
-    return Tooltip(
-      message: l10n.wikiSourceError(error),
-      child: chip,
-    );
+    return Tooltip(message: l10n.wikiSourceError(error), child: chip);
   }
 }
 

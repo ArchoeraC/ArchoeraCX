@@ -24,7 +24,7 @@ Future<void> _pumpInstances(WidgetTester tester, Size size) async {
 }
 
 void main() {
-  testWidgets('fullscreen widens the centered content column', (tester) async {
+  testWidgets('fullscreen uses the full window width', (tester) async {
     await _pumpInstances(tester, const Size(1920, 1080));
 
     final headerX = tester
@@ -32,13 +32,17 @@ void main() {
           find.text('Isolated game directories with shared libraries and assets.'),
         )
         .dx;
-    // 1640 px column inside 1920 px + 32 px page padding.
-    expect(headerX, greaterThan(120));
+    // Full-bleed content: only the shell padding (32 px) separates it from the
+    // window edge.
+    expect(headerX, lessThan(60));
 
-    // The command bar contents follow the same column: the first nav item is
-    // no longer glued to the window edge.
+    // The command bar follows the same padding instead of a narrower column.
     final navX = tester.getTopLeft(find.text('Dashboard')).dx;
-    expect(navX, greaterThan(120));
+    expect(navX, lessThan(120));
+
+    // Cards flow from the left edge; no centred island with big side gaps.
+    final firstCard = tester.getTopLeft(find.text('Launch').first);
+    expect(firstCard.dx, lessThan(900));
     expect(tester.takeException(), isNull);
   });
 
