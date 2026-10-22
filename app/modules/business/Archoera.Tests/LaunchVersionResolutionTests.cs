@@ -144,6 +144,63 @@ public sealed class LaunchVersionResolutionTests
         }
     }
 
+    [Fact]
+    public void Fallback_skips_instance_like_version_directories()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(gameRoot, "libraries"));
+            Directory.CreateDirectory(Path.Combine(gameRoot, "assets"));
+            var instanceRoot = Path.Combine(gameRoot, "versions", "MyPack");
+            Directory.CreateDirectory(instanceRoot);
+
+            var standard = Path.Combine(gameRoot, "versions", "1.21.1-neoforge");
+            Directory.CreateDirectory(standard);
+            var standardJson = Path.Combine(standard, "1.21.1-neoforge.json");
+            File.WriteAllText(standardJson, MinimalVersionJson("1.21.1-neoforge"));
+            File.SetLastWriteTimeUtc(standardJson, DateTime.UtcNow.AddHours(-2));
+
+            // A real modpack folder with a newer profile; its name also
+            // contains the game and loader, but it must not be borrowed.
+            var decoy = Path.Combine(
+                gameRoot,
+                "versions",
+                "The Shooting Star 1.21.1 - NeoForge");
+            Directory.CreateDirectory(Path.Combine(decoy, "mods"));
+            var decoyJson = Path.Combine(
+                decoy,
+                "The Shooting Star 1.21.1 - NeoForge.json");
+            File.WriteAllText(
+                decoyJson,
+                MinimalVersionJson("The Shooting Star 1.21.1 - NeoForge"));
+            File.SetLastWriteTimeUtc(decoyJson, DateTime.UtcNow);
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "MyPack",
+                "1.21.1",
+                "neoforge",
+                "21.1.248",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var version = LaunchModuleService.LoadVersion(
+                instance,
+                LaunchPaths.Resolve(instanceRoot));
+
+            Assert.Equal("1.21.1-neoforge", version.Id);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
     private static string MinimalVersionJson(string id)
         => JsonSerializer.Serialize(new
         {

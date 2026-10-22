@@ -2142,10 +2142,14 @@ C#: 写 .archoera/pack.json → 注册 → 事件
 
 ```
 launch.prepare: 账户就绪 + CheckFiles（库/client jar/asset index/asset objects）+ CheckLoaderArtifacts（NeoForge 生成物）
-launch.start: CheckFiles / CheckLoaderArtifacts 失败或 version JSON 未合并
-  → 校验 DownloadPolicy
-  → vanilla/Fabric/Quilt: 重新生成 profile/原版计划（Rust 跳过已存在文件）
-  → Forge/NeoForge: 组合计划 + loader processors 修复生成物 + 重新提交合并版 JSON
+launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合并
+  → 本地修复优先（不联网、不校验下载策略）：
+      缺失/未合并 version JSON：从 versions/ 下匹配游戏+加载器+加载器版本的标准 profile
+        与基础版本 JSON 本地合并，原子写回 <实例>/<文件夹>.json
+      Forge/NeoForge 生成物缺失：使用实例 downloads/、共享 Maven `*-installer/` 或兄弟实例中
+        已有的 installer 解析 manifest 并运行 processors
+      （不会借用其它实例目录的合并 profile；带 mods/config/options.txt 的版本目录被排除）
+  → 本地修复失败才校验 DownloadPolicy，走原有下载/processor 修复
   → 重新 CheckFiles → 构建 LaunchPlan
 ```
 
