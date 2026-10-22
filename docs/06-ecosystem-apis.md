@@ -131,7 +131,7 @@ MSA OAuth (device code)
 | **Fabric** | `https://meta.fabricmc.net/v2/versions/loader/{game}/{loader}/profile/json` | 直接返回可合并的版本 JSON；最省事 |
 | **Quilt** | `https://meta.quiltmc.org/v3/versions/loader/{game}/{loader}/profile/json` | 与 Fabric 类似，注意包名差异 |
 | **Forge** | Maven metadata → installer jar → `install_profile.json` + processors | 需运行 Java 处理器；产物 `forge-<ver>-client.jar` |
-| **NeoForge** | `https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml` | 流程与 Forge 类似，版本号规则不同（`21.1.x`）；该 Maven 在部分网络会连接超时，版本列表与 installer 一样使用 BMCLAPI 镜像兜底 |
+| **NeoForge** | `https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml` | 流程与 Forge 类似，版本号规则不同（`21.1.x`）；该 Maven 在部分网络会连接超时：境内网络版本列表直接走 BMCLAPI 镜像（官方兜底），Forge 的版本列表则用 BMCLAPI 的 per-game JSON（其镜像的 maven-metadata 已过期），与 HMCL/SJMCL 的做法一致 |
 | **OptiFine** | 无公开 API | 站点条款限制自动化，建议引导手动放置 |
 
 ### Forge/NeoForge 安装要点
