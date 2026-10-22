@@ -60,6 +60,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               );
 
               if (wide) {
+                // Center the navigation + content block and use more of a
+                // fullscreen window; 920 px left the right half empty.
+                final contentWidth =
+                    (constraints.maxWidth - 208 - AppSpacing.lg).clamp(
+                      640.0,
+                      1040.0,
+                    );
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -75,9 +82,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
                         child: Align(
-                          alignment: Alignment.topLeft,
+                          alignment: Alignment.topCenter,
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 920),
+                            constraints: BoxConstraints(maxWidth: contentWidth),
                             child: content,
                           ),
                         ),

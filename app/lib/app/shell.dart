@@ -146,21 +146,23 @@ class _AppShellState extends ConsumerState<AppShell> {
     final index = navigationShell.currentIndex;
     final selectedInstance = ref.watch(selectedInstanceProvider);
     final account = ref.watch(currentAccountProvider);
+    final contentMaxWidth = AppLayout.contentMaxWidthFor(
+      MediaQuery.sizeOf(context).width,
+    );
 
     return AppBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Column(
           children: [
-            _TopBar(l10n: l10n),
-            if (AppInfo.isDevelopmentBuild) _DevelopmentBanner(l10n: l10n),
+            _TopBar(l10n: l10n, contentMaxWidth: contentMaxWidth),
+            if (AppInfo.isDevelopmentBuild)
+              _DevelopmentBanner(l10n: l10n, contentMaxWidth: contentMaxWidth),
             Expanded(
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AppLayout.contentMaxWidth,
-                  ),
+                  constraints: BoxConstraints(maxWidth: contentMaxWidth),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.xl,
@@ -183,6 +185,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             ),
             _CommandBar(
+              contentMaxWidth: contentMaxWidth,
               destinations: destinations,
               currentIndex: index,
               account: account,
@@ -209,9 +212,10 @@ class _AppShellState extends ConsumerState<AppShell> {
 }
 
 class _DevelopmentBanner extends StatelessWidget {
-  const _DevelopmentBanner({required this.l10n});
+  const _DevelopmentBanner({required this.l10n, required this.contentMaxWidth});
 
   final AppLocalizations l10n;
+  final double contentMaxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -219,46 +223,60 @@ class _DevelopmentBanner extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: AppSpacing.xxs,
-      ),
       decoration: BoxDecoration(
         color: tokens.warning.withValues(alpha: 0.10),
         border: Border(
           bottom: BorderSide(color: tokens.warning.withValues(alpha: 0.35)),
         ),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: ShapeDecoration(
-              color: tokens.warning.withValues(alpha: 0.16),
-              shape: BeveledRectangleBorder(
-                side: BorderSide(color: tokens.warning.withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(tokens.radiusS),
-              ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: contentMaxWidth),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.xxs,
             ),
-            child: Text(
-              l10n.developmentBuildBadge,
-              style: textTheme.labelSmall?.copyWith(
-                color: tokens.warning,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
-              ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: ShapeDecoration(
+                    color: tokens.warning.withValues(alpha: 0.16),
+                    shape: BeveledRectangleBorder(
+                      side: BorderSide(
+                        color: tokens.warning.withValues(alpha: 0.5),
+                      ),
+                      borderRadius: BorderRadius.circular(tokens.radiusS),
+                    ),
+                  ),
+                  child: Text(
+                    l10n.developmentBuildBadge,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: tokens.warning,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    l10n.developmentBuildWarning,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: tokens.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: Text(
-              l10n.developmentBuildWarning,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.bodySmall?.copyWith(color: tokens.textSecondary),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -281,9 +299,10 @@ class AppDestination {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.l10n});
+  const _TopBar({required this.l10n, required this.contentMaxWidth});
 
   final AppLocalizations l10n;
+  final double contentMaxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -292,31 +311,40 @@ class _TopBar extends StatelessWidget {
 
     return Container(
       height: AppLayout.titleBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       decoration: BoxDecoration(
         color: tokens.surface1.withValues(alpha: 0.62),
         border: Border(bottom: BorderSide(color: tokens.border)),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(tokens.radiusS),
-            child: Image.asset(
-              'assets/branding/archoera_icon_256.png',
-              width: 30,
-              height: 30,
-              fit: BoxFit.cover,
-              filterQuality: FilterQuality.medium,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: contentMaxWidth),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(tokens.radiusS),
+                  child: Image.asset(
+                    'assets/branding/archoera_icon_256.png',
+                    width: 30,
+                    height: 30,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  l10n.appName,
+                  style: textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                const TaskCenterButton(),
+              ],
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            l10n.appName,
-            style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const Spacer(),
-          const TaskCenterButton(),
-        ],
+        ),
       ),
     );
   }
@@ -493,6 +521,7 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
 /// competing with page cards.
 class _CommandBar extends StatelessWidget {
   const _CommandBar({
+    required this.contentMaxWidth,
     required this.destinations,
     required this.currentIndex,
     required this.account,
@@ -503,6 +532,7 @@ class _CommandBar extends StatelessWidget {
     required this.onLaunch,
   });
 
+  final double contentMaxWidth;
   final List<AppDestination> destinations;
   final int currentIndex;
   final Account? account;
@@ -525,72 +555,80 @@ class _CommandBar extends StatelessWidget {
         height: currentIndex == 0
             ? AppLayout.homeBarHeight
             : AppLayout.bottomBarHeight,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         decoration: BoxDecoration(
           color: tokens.surface1.withValues(alpha: 0.86),
           border: Border(top: BorderSide(color: tokens.border)),
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compactNav = constraints.maxWidth < 820;
-            final compactAccount = constraints.maxWidth < 900;
-            final compactLaunch = constraints.maxWidth < 680;
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentMaxWidth),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compactNav = constraints.maxWidth < 820;
+                  final compactAccount = constraints.maxWidth < 900;
+                  final compactLaunch = constraints.maxWidth < 680;
 
-            return Material(
-              color: Colors.transparent,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (final destination in destinations)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                right: AppSpacing.xxs,
-                              ),
-                              child: _NavItem(
-                                destination: destination,
-                                selected:
-                                    destination.branchIndex == currentIndex,
-                                compact: compactNav,
-                                onTap: () =>
-                                    onSelected(destination.branchIndex),
-                              ),
+                  return Material(
+                    color: Colors.transparent,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (final destination in destinations)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      right: AppSpacing.xxs,
+                                    ),
+                                    child: _NavItem(
+                                      destination: destination,
+                                      selected:
+                                          destination.branchIndex ==
+                                          currentIndex,
+                                      compact: compactNav,
+                                      onTap: () =>
+                                          onSelected(destination.branchIndex),
+                                    ),
+                                  ),
+                              ],
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Container(width: 1, height: 30, color: tokens.border),
+                        const SizedBox(width: AppSpacing.md),
+                        _AccountButton(
+                          account: account,
+                          compact: compactAccount,
+                          onTap: onAccount,
+                        ),
+                        if (currentIndex != 0) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          _LaunchButton(
+                            compact: compactLaunch,
+                            hasInstance: selectedInstance != null,
+                            onPressed: selectedInstance == null
+                                ? onChooseInstance
+                                : onLaunch,
+                            label: selectedInstance == null
+                                ? l10n.selectInstance
+                                : l10n.launch,
+                            tooltip: selectedInstance == null
+                                ? l10n.selectInstance
+                                : l10n.launch,
+                          ),
                         ],
-                      ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Container(width: 1, height: 30, color: tokens.border),
-                  const SizedBox(width: AppSpacing.md),
-                  _AccountButton(
-                    account: account,
-                    compact: compactAccount,
-                    onTap: onAccount,
-                  ),
-                  if (currentIndex != 0) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    _LaunchButton(
-                      compact: compactLaunch,
-                      hasInstance: selectedInstance != null,
-                      onPressed: selectedInstance == null
-                          ? onChooseInstance
-                          : onLaunch,
-                      label: selectedInstance == null
-                          ? l10n.selectInstance
-                          : l10n.launch,
-                      tooltip: selectedInstance == null
-                          ? l10n.selectInstance
-                          : l10n.launch,
-                    ),
-                  ],
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
