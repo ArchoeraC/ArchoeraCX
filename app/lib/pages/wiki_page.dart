@@ -431,6 +431,35 @@ class _FeedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // A single 1.6 k column of news lines is hard to scan on a fullscreen
+        // window; split into two balanced columns from 1200 px upwards.
+        if (constraints.maxWidth < 1200 || items.length < 6) {
+          return _FeedColumn(items: items);
+        }
+
+        final half = (items.length + 1) ~/ 2;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _FeedColumn(items: items.sublist(0, half))),
+            const SizedBox(width: AppSpacing.xl),
+            Expanded(child: _FeedColumn(items: items.sublist(half))),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _FeedColumn extends StatelessWidget {
+  const _FeedColumn({required this.items});
+
+  final List<WikiFeedItem> items;
+
+  @override
+  Widget build(BuildContext context) {
     final tokens = context.tokens;
 
     return DecoratedBox(

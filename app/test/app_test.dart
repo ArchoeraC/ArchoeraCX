@@ -151,17 +151,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Download'));
+    await tester.tap(find.byIcon(Icons.download_outlined));
     await tester.pumpAndSettle();
     expect(find.text('Game versions'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Accounts'));
+    await tester.tap(find.byIcon(Icons.person_outline_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Add account'), findsWidgets);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.byIcon(Icons.tune_outlined));
     await tester.pumpAndSettle();
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Network'), findsNothing);

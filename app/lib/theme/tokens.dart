@@ -333,4 +333,15 @@ abstract final class AppLayout {
   static const bottomBarHeight = 60.0;
   static const homeBarHeight = 46.0;
   static const contentMaxWidth = 1400.0;
+
+  /// Content column width for the current window.
+  ///
+  /// Wide screens (fullscreen on 1080p/1440p) get a broader column so pages do
+  /// not float in the middle of the window; the hard cap keeps text lines and
+  /// settings rows readable on 4K.
+  static double contentMaxWidthFor(double windowWidth) {
+    if (windowWidth >= 2400) return 1920;
+    if (windowWidth >= 1700) return 1640;
+    return contentMaxWidth;
+  }
 }

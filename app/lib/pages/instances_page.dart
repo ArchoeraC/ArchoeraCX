@@ -22,6 +22,7 @@ import '../widgets/instances/instance_mods_dialog.dart';
 import '../widgets/instances/loader_install_dialog.dart';
 import '../widgets/instances/vanilla_install_dialog.dart';
 import '../widgets/download/pack_install_dialog.dart';
+import '../widgets/common/app_panel.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/instances/create_instance_dialog.dart';
 
@@ -188,32 +189,91 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
           )
         else
           SliverToBoxAdapter(
-            child: Column(
-              children: [
-                for (var i = 0; i < filtered.length; i++) ...[
-                  _InstanceRow(
-                    instance: filtered[i],
-                    selected: filtered[i].id == selectedId,
-                    onSelect: () => ref
-                        .read(selectedInstanceIdProvider.notifier)
-                        .select(filtered[i].id),
-                    onLaunch: () => _launch(filtered[i]),
-                    onCheck: (mode) => _check(filtered[i], mode, l10n),
-                    onManageLoader: () =>
-                        showLoaderInstallDialog(context, filtered[i]),
-                    downloadsEnabled: downloadsEnabled,
-                    onInstallGame: () =>
-                        showVanillaInstallDialog(context, filtered[i]),
-                    onManageMods: () =>
-                        showInstanceModsDialog(context, filtered[i]),
-                    onViewLogs: () => showGameLogDialog(context, filtered[i]),
-                    onDelete: () => _delete(filtered[i], l10n),
-                  ),
-                  if (i < filtered.length - 1)
-                    Divider(height: 1, color: tokens.border),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Rows get very wide on a fullscreen window; switch to a card
+                // grid so actions stay near their instance and the page uses
+                // the available width.
+                final columns = constraints.maxWidth >= 1850
+                    ? 4
+                    : constraints.maxWidth >= 1500
+                    ? 3
+                    : constraints.maxWidth >= 1020
+                    ? 2
+                    : 1;
+                final rows = <Widget>[
+                  for (var i = 0; i < filtered.length; i++) ...[
+                    _InstanceRow(
+                      instance: filtered[i],
+                      selected: filtered[i].id == selectedId,
+                      onSelect: () => ref
+                          .read(selectedInstanceIdProvider.notifier)
+                          .select(filtered[i].id),
+                      onLaunch: () => _launch(filtered[i]),
+                      onCheck: (mode) => _check(filtered[i], mode, l10n),
+                      onManageLoader: () =>
+                          showLoaderInstallDialog(context, filtered[i]),
+                      downloadsEnabled: downloadsEnabled,
+                      onInstallGame: () =>
+                          showVanillaInstallDialog(context, filtered[i]),
+                      onManageMods: () =>
+                          showInstanceModsDialog(context, filtered[i]),
+                      onViewLogs: () => showGameLogDialog(context, filtered[i]),
+                      onDelete: () => _delete(filtered[i], l10n),
+                    ),
+                    if (i < filtered.length - 1)
+                      Divider(height: 1, color: tokens.border),
+                  ],
+                ];
+
+                if (columns == 1) {
+                  return Column(
+                    children: [
+                      ...rows,
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  );
+                }
+
+                const gap = AppSpacing.sm;
+                final cardWidth =
+                    (constraints.maxWidth - gap * (columns - 1)) / columns;
+                return Column(
+                  children: [
+                    Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: [
+                        for (final instance in filtered)
+                          SizedBox(
+                            width: cardWidth,
+                            height: 136,
+                            child: _InstanceCard(
+                              instance: instance,
+                              selected: instance.id == selectedId,
+                              onSelect: () => ref
+                                  .read(selectedInstanceIdProvider.notifier)
+                                  .select(instance.id),
+                              onLaunch: () => _launch(instance),
+                              onCheck: (mode) => _check(instance, mode, l10n),
+                              onManageLoader: () =>
+                                  showLoaderInstallDialog(context, instance),
+                              downloadsEnabled: downloadsEnabled,
+                              onInstallGame: () =>
+                                  showVanillaInstallDialog(context, instance),
+                              onManageMods: () =>
+                                  showInstanceModsDialog(context, instance),
+                              onViewLogs: () =>
+                                  showGameLogDialog(context, instance),
+                              onDelete: () => _delete(instance, l10n),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                );
+              },
             ),
           ),
       ],
@@ -998,104 +1058,255 @@ class _InstanceRow extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
                     label: Text(l10n.launch),
                   ),
-                  PopupMenuButton<String>(
-                    tooltip: l10n.instanceManage,
-                    icon: Icon(
-                      Icons.more_horiz_rounded,
-                      color: tokens.textSecondary,
-                    ),
-                    onSelected: (value) {
-                      if (value == 'delete') onDelete();
-                      if (value == 'manageLoader') onManageLoader();
-                      if (value == 'installGame') onInstallGame();
-                      if (value == 'manageMods') onManageMods();
-                      if (value == 'viewLogs') onViewLogs();
-                      if (value == 'checkQuick') onCheck('quick');
-                      if (value == 'checkFull') onCheck('full');
-                    },
-                    itemBuilder: (context) => [
-                      if (downloadsEnabled) ...[
-                        PopupMenuItem(
-                          value: 'manageLoader',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.build_circle_outlined, size: 20),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(l10n.instanceManageLoader),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'installGame',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.download_rounded, size: 20),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(l10n.instanceInstallGame),
-                            ],
-                          ),
-                        ),
-                      ],
-                      PopupMenuItem(
-                        value: 'manageMods',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.extension_rounded, size: 20),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(l10n.instanceManageMods),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'viewLogs',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.article_outlined, size: 20),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(l10n.instanceViewLogs),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'checkQuick',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.bolt_rounded, size: 20),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(l10n.instanceCheckQuick),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'checkFull',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.fact_check_outlined, size: 20),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(l10n.instanceCheckFull),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline_rounded,
-                              color: tokens.danger,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(l10n.instanceDelete),
-                          ],
-                        ),
-                      ),
-                    ],
+                  _InstanceMenu(
+                    l10n: l10n,
+                    downloadsEnabled: downloadsEnabled,
+                    onCheck: onCheck,
+                    onManageLoader: onManageLoader,
+                    onInstallGame: onInstallGame,
+                    onManageMods: onManageMods,
+                    onViewLogs: onViewLogs,
+                    onDelete: onDelete,
                   ),
                 ],
               );
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _InstanceMenu extends StatelessWidget {
+  const _InstanceMenu({
+    required this.l10n,
+    required this.downloadsEnabled,
+    required this.onCheck,
+    required this.onManageLoader,
+    required this.onInstallGame,
+    required this.onManageMods,
+    required this.onViewLogs,
+    required this.onDelete,
+  });
+
+  final AppLocalizations l10n;
+  final bool downloadsEnabled;
+  final ValueChanged<String> onCheck;
+  final VoidCallback onManageLoader;
+  final VoidCallback onInstallGame;
+  final VoidCallback onManageMods;
+  final VoidCallback onViewLogs;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return PopupMenuButton<String>(
+      tooltip: l10n.instanceManage,
+      icon: Icon(Icons.more_horiz_rounded, color: tokens.textSecondary),
+      onSelected: (value) {
+        if (value == 'delete') onDelete();
+        if (value == 'manageLoader') onManageLoader();
+        if (value == 'installGame') onInstallGame();
+        if (value == 'manageMods') onManageMods();
+        if (value == 'viewLogs') onViewLogs();
+        if (value == 'checkQuick') onCheck('quick');
+        if (value == 'checkFull') onCheck('full');
+      },
+      itemBuilder: (context) => [
+        if (downloadsEnabled) ...[
+          PopupMenuItem(
+            value: 'manageLoader',
+            child: Row(
+              children: [
+                const Icon(Icons.build_circle_outlined, size: 20),
+                const SizedBox(width: AppSpacing.xs),
+                Text(l10n.instanceManageLoader),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'installGame',
+            child: Row(
+              children: [
+                const Icon(Icons.download_rounded, size: 20),
+                const SizedBox(width: AppSpacing.xs),
+                Text(l10n.instanceInstallGame),
+              ],
+            ),
+          ),
+        ],
+        PopupMenuItem(
+          value: 'manageMods',
+          child: Row(
+            children: [
+              const Icon(Icons.extension_rounded, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.instanceManageMods),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'viewLogs',
+          child: Row(
+            children: [
+              const Icon(Icons.article_outlined, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.instanceViewLogs),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'checkQuick',
+          child: Row(
+            children: [
+              const Icon(Icons.bolt_rounded, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.instanceCheckQuick),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'checkFull',
+          child: Row(
+            children: [
+              const Icon(Icons.fact_check_outlined, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.instanceCheckFull),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline_rounded, color: tokens.danger),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.instanceDelete),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Instance card used by the wide-window grid. It carries the same actions as
+/// the list row so the two layouts stay behaviourally identical.
+class _InstanceCard extends StatelessWidget {
+  const _InstanceCard({
+    required this.instance,
+    required this.selected,
+    required this.onSelect,
+    required this.onLaunch,
+    required this.onCheck,
+    required this.onManageLoader,
+    required this.onInstallGame,
+    required this.downloadsEnabled,
+    required this.onManageMods,
+    required this.onViewLogs,
+    required this.onDelete,
+  });
+
+  final GameInstance instance;
+  final bool selected;
+  final VoidCallback onSelect;
+  final VoidCallback onLaunch;
+  final ValueChanged<String> onCheck;
+  final VoidCallback onManageLoader;
+  final VoidCallback onInstallGame;
+  final bool downloadsEnabled;
+  final VoidCallback onManageMods;
+  final VoidCallback onViewLogs;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return AppPanel(
+      accent: selected,
+      onTap: onSelect,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.xxs,
+        AppSpacing.xxs,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              LoaderMark(loader: instance.loader, size: 26),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      instance.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _instanceMeta(instance, l10n),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: instance.missing
+                            ? tokens.danger
+                            : tokens.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _InstanceMenu(
+                l10n: l10n,
+                downloadsEnabled: downloadsEnabled,
+                onCheck: onCheck,
+                onManageLoader: onManageLoader,
+                onInstallGame: onInstallGame,
+                onManageMods: onManageMods,
+                onViewLogs: onViewLogs,
+                onDelete: onDelete,
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Icon(
+                Icons.schedule_rounded,
+                size: 14,
+                color: tokens.textTertiary,
+              ),
+              const SizedBox(width: AppSpacing.xxs),
+              Expanded(
+                child: Text(
+                  _lastPlayedLabel(context, l10n, instance.lastPlayed),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: tokens.textTertiary,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: instance.missing ? null : onLaunch,
+                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                label: Text(l10n.launch),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

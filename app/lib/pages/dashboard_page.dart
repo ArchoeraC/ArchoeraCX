@@ -463,11 +463,17 @@ class _RecentInstancesSection extends StatelessWidget {
         else
           LayoutBuilder(
             builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 1040
+              final maxColumns = constraints.maxWidth >= 1500
                   ? 4
+                  : constraints.maxWidth >= 1040
+                  ? 3
                   : constraints.maxWidth >= 620
                   ? 2
                   : 1;
+              // Fill the row when fewer instances than columns are available.
+              final columns = recent.length < maxColumns
+                  ? recent.length
+                  : maxColumns;
               final width =
                   (constraints.maxWidth - AppSpacing.sm * (columns - 1)) /
                   columns;
