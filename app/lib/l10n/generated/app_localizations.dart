@@ -2708,6 +2708,12 @@ abstract class AppLocalizations {
   /// **'Showing the last {count} lines.'**
   String gameLogTruncated(int count);
 
+  /// Retention note under the log file picker.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} of logs on disk; only the latest {max} launches are kept.'**
+  String gameLogRetentionInfo(String size, int max);
+
   /// Launch task label.
   ///
   /// In en, this message translates to:

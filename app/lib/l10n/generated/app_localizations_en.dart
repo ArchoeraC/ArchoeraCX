@@ -1516,6 +1516,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String gameLogRetentionInfo(String size, int max) {
+    return '$size of logs on disk; only the latest $max launches are kept.';
+  }
+
+  @override
   String get taskCenterLaunch => 'Launch';
 
   @override

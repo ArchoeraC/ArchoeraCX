@@ -1181,6 +1181,18 @@
       }
     }
   },
+  "gameLogRetentionInfo": "{size} of logs on disk; only the latest {max} launches are kept.",
+  "@gameLogRetentionInfo": {
+    "description": "Retention note under the log file picker.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "taskCenterLaunch": "Launch",
   "@taskCenterLaunch": {
     "description": "Launch task label."

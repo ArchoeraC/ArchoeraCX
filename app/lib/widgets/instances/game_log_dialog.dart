@@ -272,6 +272,19 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
                   ),
                 ],
               ),
+              if (list != null &&
+                  list.logs.isNotEmpty &&
+                  list.retentionMaxFiles > 0) ...[
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  l10n.gameLogRetentionInfo(
+                    _formatBytes(list.totalSize),
+                    list.retentionMaxFiles,
+                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: tokens.textTertiary),
+                ),
+              ],
               if (_snapshot?.truncated == true) ...[
                 const SizedBox(height: AppSpacing.xxs),
                 Text(

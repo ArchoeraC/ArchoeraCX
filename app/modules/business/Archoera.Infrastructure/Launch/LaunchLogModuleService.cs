@@ -14,7 +14,9 @@ namespace Archoera.Infrastructure.Launch;
 ///
 /// The Flutter UI may not touch files, so every read goes through these
 /// methods. Logs are plain text written by <see cref="LaunchModuleService"/> to
-/// <c>&lt;instance&gt;/.archoera/logs/launch-*.log</c>.
+/// <c>&lt;instance&gt;/.archoera/logs/launch-*.log</c>. Retention is bounded
+/// (<see cref="LaunchLogFiles"/>): only the newest launches are kept, and the
+/// oldest files are pruned on the next start.
 ///
 /// <c>launch.log.tail</c> streams appended lines through the ABI progress
 /// callback (one message per batch) instead of being polled from Dart, so the
@@ -108,7 +110,9 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
         var target = await ResolveAsync(paramsJson, cancellationToken)
             .ConfigureAwait(false);
         var running = LaunchProcessRegistry.TryGet(target.Instance.Id);
-        var files = EnumerateLogs(target.Directory).Take(MaxLogFiles).ToList();
+        var all = EnumerateLogs(target.Directory).ToList();
+        var files = all.Take(MaxLogFiles).ToList();
+        var totalSize = all.Sum(SafeLength);
 
         return ModuleJson.Envelope(writer =>
         {
@@ -116,6 +120,9 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
             writer.WriteString("instanceName", target.Instance.Name);
             writer.WriteString("logDirectory", target.Directory);
             writer.WriteBoolean("running", running is not null);
+            writer.WriteNumber("totalSize", totalSize);
+            writer.WriteNumber("retentionMaxFiles", LaunchLogFiles.MaxFiles);
+            writer.WriteNumber("retentionMaxBytes", LaunchLogFiles.MaxTotalBytes);
             if (running is not null)
             {
                 writer.WriteNumber("pid", running.Pid);
@@ -402,9 +409,23 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
                 .ThenByDescending(file => file.Name, StringComparer.Ordinal)
                 .ToList();
         }
-        catch (DirectoryNotFoundException)
+        catch (Exception exception) when (
+            exception is DirectoryNotFoundException or IOException or UnauthorizedAccessException)
         {
             return [];
+        }
+    }
+
+    private static long SafeLength(FileInfo file)
+    {
+        try
+        {
+            return file.Length;
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            return 0;
         }
     }
 

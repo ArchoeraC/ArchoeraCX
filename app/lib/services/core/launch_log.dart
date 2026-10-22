@@ -37,6 +37,9 @@ class LaunchLogList {
     required this.logs,
     this.pid,
     this.activeLog,
+    this.totalSize = 0,
+    this.retentionMaxFiles = 0,
+    this.retentionMaxBytes = 0,
   });
 
   final String instanceId;
@@ -48,6 +51,13 @@ class LaunchLogList {
   final int? pid;
   final String? activeLog;
   final List<LaunchLogFile> logs;
+
+  /// Bytes occupied by all launch logs on disk (not only the listed ones).
+  final int totalSize;
+
+  /// Retention applied on the next launch: newest files kept, byte budget.
+  final int retentionMaxFiles;
+  final int retentionMaxBytes;
 
   static LaunchLogList? tryParse(Object? value) {
     if (value is! Map) return null;
@@ -70,6 +80,15 @@ class LaunchLogList {
       pid: value['pid'] is num ? (value['pid'] as num).toInt() : null,
       activeLog: value['activeLog']?.toString(),
       logs: List.unmodifiable(logs),
+      totalSize: value['totalSize'] is num
+          ? (value['totalSize'] as num).toInt()
+          : 0,
+      retentionMaxFiles: value['retentionMaxFiles'] is num
+          ? (value['retentionMaxFiles'] as num).toInt()
+          : 0,
+      retentionMaxBytes: value['retentionMaxBytes'] is num
+          ? (value['retentionMaxBytes'] as num).toInt()
+          : 0,
     );
   }
 }
