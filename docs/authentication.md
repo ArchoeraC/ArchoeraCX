@@ -285,7 +285,7 @@ logs/account.log              脱敏诊断日志
 
 - `AccountAuthTests`：完整 mock 链路、pending、XSTS 错误、refresh、离线账户、日志脱敏。
 - `account_integration_test.dart`：离线账户通过 C++/C#/SQLite 持久化。
-- `microsoft_start_test.dart`：运行时 client ID 能真实发起 device code（需网络与 client ID）。
+- `microsoft_start_test.dart`：运行时 client ID 能真实发起默认的 authorization code 挑战（校验 `authorizationUrl` 含 `client_id` / `code_challenge` / `code_challenge_method=S256` 与 loopback `redirectUri`），并验证 `{"flow":"device_code"}` 仍能拿到 `userCode`（需网络与 client ID）。
 - `LaunchOnlinePlanTests` / `LaunchModuleOnlineTests`：在线启动参数、准备状态和错误映射。
 
 人工上线验收：
