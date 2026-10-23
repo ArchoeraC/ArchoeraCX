@@ -46,6 +46,7 @@ part 'settings/tasks_panel.dart';
 part 'settings/about_panel.dart';
 part 'settings/update_check_row.dart';
 part 'settings/nav.dart';
+part 'settings/section_switcher.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -60,6 +61,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
     final settings = ref.watch(appSettingsProvider).value;
 
     return Column(
@@ -74,9 +76,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 820;
-              final content = KeyedSubtree(
-                key: ValueKey(_section),
-                child: _sectionContent(context, l10n, settings),
+              final content = _SectionSwitcher(
+                duration: tokens.normal,
+                child: KeyedSubtree(
+                  key: ValueKey(_section),
+                  child: _sectionContent(context, l10n, settings),
+                ),
               );
 
               if (wide) {
