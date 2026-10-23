@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
-import '../../services/core/launch_memory.dart';
+import '../../services/core/launch/launch_memory.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import '../common/confirm.dart';
 import '../common/toast.dart';
 
 /// Per-instance overrides of the global launch settings.
@@ -181,22 +182,12 @@ class _InstanceSettingsDialogState
       _fail(l10n.commonCoreNotConnected);
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.instanceSettingsReset),
-        content: Text(l10n.instanceSettingsResetBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.instanceSettingsReset),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      l10n,
+      title: l10n.instanceSettingsReset,
+      body: l10n.instanceSettingsResetBody,
+      confirmLabel: l10n.instanceSettingsReset,
     );
     if (confirmed != true || !mounted) return;
 

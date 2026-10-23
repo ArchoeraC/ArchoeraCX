@@ -295,4 +295,9 @@ mod tests {
         assert!(ErrorCode::Http5xx.retryable());
         assert!(!ErrorCode::Tls.retryable());
     }
+
+    #[test]
+    fn error_code_mapping_for_local_failure() {
+        assert_eq!(ErrorCode::DiskFull.as_str(), "DISK_FULL");
+    }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using Archoera.Application;
 using Archoera.Application.Modules;
 using Archoera.Infrastructure.Modules;
 
@@ -14,7 +15,7 @@ namespace Archoera.Infrastructure.Update;
 public sealed class UpdateModuleService : IModuleMethodHandler
 {
     /// <summary>Must follow app/pubspec.yaml version.</summary>
-    private const string LauncherVersion = "0.0.1+1";
+    private const string LauncherVersion = ArchoeraBuildInfo.Version;
 
     private const string RepositoryUrl =
         "https://github.com/BetaStudio2/ArchoeraCX";

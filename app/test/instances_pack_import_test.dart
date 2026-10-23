@@ -1,6 +1,6 @@
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/services/core/core_client.dart';
-import 'package:archoera_cx/services/core/pack_install_result.dart';
+import 'package:archoera_cx/services/core/packs/pack_install_result.dart';
 import 'package:archoera_cx/stores/downloads.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';

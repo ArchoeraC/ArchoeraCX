@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/core/app_settings.dart';
+import '../services/core/settings/app_settings.dart';
 import '../services/core/core_client.dart';
 import '../utils/app_paths.dart';
 import 'providers.dart';

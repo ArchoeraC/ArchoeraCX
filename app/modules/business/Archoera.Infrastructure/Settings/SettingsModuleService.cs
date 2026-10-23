@@ -7,13 +7,22 @@ namespace Archoera.Infrastructure.Settings;
 /// <summary>JSON facade for settings.get / settings.set.</summary>
 public sealed class SettingsModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods = ["settings.get", "settings.set"];
+    private const string GetMethod = "settings.get";
+    private const string SetMethod = "settings.set";
+
+    private static readonly string[] SupportedMethods = [GetMethod, SetMethod];
 
     private readonly JsonAppSettingsStore _store;
+    private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
 
     public SettingsModuleService(JsonAppSettingsStore? store = null)
     {
         _store = store ?? new JsonAppSettingsStore();
+        _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
+        {
+            [GetMethod] = GetAsync,
+            [SetMethod] = SetAsync,
+        };
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -25,13 +34,9 @@ public sealed class SettingsModuleService : IModuleMethodHandler
     {
         try
         {
-            return method switch
-            {
-                "settings.get" => await GetAsync(cancellationToken).ConfigureAwait(false),
-                "settings.set" => await SetAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                _ => Error("E_UNSUPPORTED", $"unsupported settings method '{method}'"),
-            };
+            return _handlers.TryGetValue(method, out var handler)
+                ? await handler(paramsJson, cancellationToken).ConfigureAwait(false)
+                : Error("E_UNSUPPORTED", $"unsupported settings method '{method}'");
         }
         catch (OperationCanceledException)
         {
@@ -47,13 +52,17 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         }
     }
 
-    private async Task<byte[]> GetAsync(CancellationToken cancellationToken)
+    private async Task<byte[]> GetAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
     {
         var settings = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
         return Build(settings);
     }
 
-    private async Task<byte[]> SetAsync(string? paramsJson, CancellationToken cancellationToken)
+    private async Task<byte[]> SetAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(paramsJson))
         {

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Archoera.Application.Instances;
+using Archoera.Domain;
 using Archoera.Domain.Instances;
 using Archoera.Infrastructure.Settings;
 using Microsoft.Data.Sqlite;
@@ -20,6 +21,23 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
 
     private static readonly SemaphoreSlim InitGate = new(1, 1);
     private static bool _providerInitialized;
+
+    /// <summary>
+    /// Column list and parameter placeholders of the instance INSERT, shared
+    /// verbatim by the plain INSERT, the upsert and the JSON-registry
+    /// migration so parameter naming cannot drift apart.
+    /// </summary>
+    private const string InstanceColumns =
+        """
+        id, name, game_version, loader_kind, loader_version, root_path,
+        mod_count, pinned, created_at, updated_at, last_played_at
+        """;
+
+    private const string InstanceValues =
+        """
+        $id, $name, $game, $loader, $loaderVersion, $root,
+        $mods, $pinned, $created, $updated, $played
+        """;
 
     private readonly string _dataRoot;
     private readonly string _databasePath;
@@ -106,13 +124,11 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
 
         await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
         await using var command = connection.CreateCommand();
-        command.CommandText = """
+        command.CommandText = $$"""
             INSERT INTO instances
-              (id, name, game_version, loader_kind, loader_version, root_path,
-               mod_count, pinned, created_at, updated_at, last_played_at)
+              ({{InstanceColumns}})
             VALUES
-              ($id, $name, $game, $loader, $loaderVersion, $root,
-               $mods, $pinned, $created, $updated, $played)
+              ({{InstanceValues}})
             """;
         AddParameters(command, record);
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -193,7 +209,7 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         var byId = existing.ToDictionary(record => record.Id, StringComparer.Ordinal);
 
         var found = new Dictionary<string, GameInstanceRecord>(StringComparer.Ordinal);
-        var rootCounts = new Dictionary<string, int>(PathComparer);
+        var rootCounts = new Dictionary<string, int>(PathSemantics.Comparer);
         foreach (var root in configured)
         {
             var exists = Directory.Exists(root);
@@ -310,7 +326,7 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             return roots
                 .Where(root => !string.IsNullOrWhiteSpace(root) && Path.IsPathFullyQualified(root))
                 .Select(AppDataPaths.Normalize)
-                .Distinct(PathComparer)
+                .Distinct(PathSemantics.Comparer)
                 .ToArray();
         }
 
@@ -324,13 +340,11 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
     {
         await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
         await using var command = connection.CreateCommand();
-        command.CommandText = """
+        command.CommandText = $$"""
             INSERT INTO instances
-              (id, name, game_version, loader_kind, loader_version, root_path,
-               mod_count, pinned, created_at, updated_at, last_played_at)
+              ({{InstanceColumns}})
             VALUES
-              ($id, $name, $game, $loader, $loaderVersion, $root,
-               $mods, $pinned, $created, $updated, $played)
+              ({{InstanceValues}})
             ON CONFLICT(id) DO UPDATE SET
               name = excluded.name,
               game_version = excluded.game_version,
@@ -363,29 +377,9 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
            left.Favorite == right.Favorite;
 
     private static bool PathsEqual(string left, string right)
-        => PathComparer.Equals(
+        => PathSemantics.Comparer.Equals(
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)));
-
-    private static IEnumerable<string> SafeGetDirectories(string root)
-    {
-        try
-        {
-            return Directory.Exists(root)
-                ? Directory.GetDirectories(root)
-                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-                : [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
-
-    private static readonly StringComparer PathComparer =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
 
     private async Task EnsureInitializedAsync(CancellationToken cancellationToken)
     {
@@ -443,13 +437,11 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
                     foreach (var old in await json.ListAsync(cancellationToken).ConfigureAwait(false))
                     {
                         await using var insert = connection.CreateCommand();
-                        insert.CommandText = """
+                        insert.CommandText = $$"""
                             INSERT OR IGNORE INTO instances
-                              (id, name, game_version, loader_kind, loader_version, root_path,
-                               mod_count, pinned, created_at, updated_at, last_played_at)
+                              ({{InstanceColumns}})
                             VALUES
-                              ($id, $name, $game, $loader, $loaderVersion, $root,
-                               $mods, $pinned, $created, $updated, $played)
+                              ({{InstanceValues}})
                             """;
                         AddParameters(insert, old);
                         await insert.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -577,43 +569,6 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
 
     private static InstanceOverrides? NormalizeOverrides(InstanceOverrides? overrides)
         => overrides is null || overrides.IsEmpty ? null : overrides;
-
-    private static void WriteOverrides(Utf8JsonWriter writer, InstanceOverrides? overrides)
-    {
-        if (overrides is null || overrides.IsEmpty) return;
-
-        writer.WriteStartObject("overrides");
-        if (overrides.MemoryMinMb is { } memoryMin)
-        {
-            writer.WriteNumber("memoryMinMb", memoryMin);
-        }
-
-        if (overrides.MemoryMaxMb is { } memoryMax)
-        {
-            writer.WriteNumber("memoryMaxMb", memoryMax);
-        }
-
-        if (overrides.JvmArgs is { } jvmArgs) writer.WriteString("jvmArgs", jvmArgs);
-        if (overrides.GcMode is { } gcMode) writer.WriteString("gcMode", gcMode);
-        if (overrides.GameArgs is { } gameArgs) writer.WriteString("gameArgs", gameArgs);
-        if (overrides.JavaPath is { } javaPath) writer.WriteString("javaPath", javaPath);
-        if (overrides.WindowWidth is { } windowWidth)
-        {
-            writer.WriteNumber("windowWidth", windowWidth);
-        }
-
-        if (overrides.WindowHeight is { } windowHeight)
-        {
-            writer.WriteNumber("windowHeight", windowHeight);
-        }
-
-        if (overrides.Fullscreen is { } fullscreen)
-        {
-            writer.WriteBoolean("fullscreen", fullscreen);
-        }
-
-        writer.WriteEndObject();
-    }
 
     private async Task<string> ResolveRootAsync(
         string name,
@@ -751,7 +706,7 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             writer.WriteString("createdAt", record.CreatedAt.ToString("O"));
             writer.WriteString("updatedAt", record.UpdatedAt.ToString("O"));
             writer.WriteString("lastPlayedAt", record.LastPlayedAt?.ToString("O"));
-            WriteOverrides(writer, record.Overrides);
+            InstanceOverridesJson.Write(writer, record.Overrides, omitWhenEmpty: true);
             writer.WriteEndObject();
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);

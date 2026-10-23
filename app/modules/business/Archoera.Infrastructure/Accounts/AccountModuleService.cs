@@ -16,17 +16,27 @@ namespace Archoera.Infrastructure.Accounts;
 /// </summary>
 public sealed class AccountModuleService : IModuleMethodHandler
 {
+    private const string ListMethod = "account.list";
+    private const string CurrentMethod = "account.current";
+    private const string SelectMethod = "account.select";
+    private const string StartMicrosoftMethod = "account.login.microsoft.start";
+    private const string PollMicrosoftMethod = "account.login.microsoft.poll";
+    private const string CancelMicrosoftMethod = "account.login.microsoft.cancel";
+    private const string LoginOfflineMethod = "account.login.offline";
+    private const string RefreshMethod = "account.refresh";
+    private const string RemoveMethod = "account.remove";
+
     private static readonly string[] SupportedMethods =
     [
-        "account.list",
-        "account.current",
-        "account.select",
-        "account.login.microsoft.start",
-        "account.login.microsoft.poll",
-        "account.login.microsoft.cancel",
-        "account.login.offline",
-        "account.refresh",
-        "account.remove",
+        ListMethod,
+        CurrentMethod,
+        SelectMethod,
+        StartMicrosoftMethod,
+        PollMicrosoftMethod,
+        CancelMicrosoftMethod,
+        LoginOfflineMethod,
+        RefreshMethod,
+        RemoveMethod,
     ];
 
     private const int AuthorizationCodeExpiresIn = 300;
@@ -45,6 +55,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
     private readonly object _logGate = new();
     private readonly object _flowGate = new();
     private readonly Dictionary<string, PendingFlow> _flows = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
 
     public AccountModuleService(
         IAccountRepository? accounts = null,
@@ -63,6 +74,18 @@ public sealed class AccountModuleService : IModuleMethodHandler
         _credentials = credentials;
         _auth = auth ?? new MicrosoftAuthClient(Http, new MicrosoftAuthOptions());
         _premiumGate = new MicrosoftAccountGate(_accounts, _credentials, _auth);
+        _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
+        {
+            [ListMethod] = ListAsync,
+            [CurrentMethod] = CurrentAsync,
+            [SelectMethod] = SelectAsync,
+            [StartMicrosoftMethod] = StartMicrosoftAsync,
+            [PollMicrosoftMethod] = PollMicrosoftAsync,
+            [CancelMicrosoftMethod] = CancelMicrosoftAsync,
+            [LoginOfflineMethod] = LoginOfflineAsync,
+            [RefreshMethod] = RefreshAsync,
+            [RemoveMethod] = RemoveAsync,
+        };
 
         var diagnosticRoot = dataRoot;
         if (diagnosticRoot is null && accounts is JsonAccountStore jsonStore)
@@ -84,27 +107,9 @@ public sealed class AccountModuleService : IModuleMethodHandler
     {
         try
         {
-            return method switch
-            {
-                "account.list" => await ListAsync(cancellationToken).ConfigureAwait(false),
-                "account.current" => await CurrentAsync(cancellationToken).ConfigureAwait(false),
-                "account.select" => await SelectAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "account.login.microsoft.start" => await StartMicrosoftAsync(
-                        paramsJson,
-                        cancellationToken)
-                    .ConfigureAwait(false),
-                "account.login.microsoft.poll" => await PollMicrosoftAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "account.login.microsoft.cancel" => CancelMicrosoft(paramsJson),
-                "account.login.offline" => await LoginOfflineAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "account.refresh" => await RefreshAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "account.remove" => await RemoveAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                _ => ModuleJson.Error("E_UNSUPPORTED", $"unsupported account method '{method}'"),
-            };
+            return _handlers.TryGetValue(method, out var handler)
+                ? await handler(paramsJson, cancellationToken).ConfigureAwait(false)
+                : ModuleJson.Error("E_UNSUPPORTED", $"unsupported account method '{method}'");
         }
         catch (AccountAuthException exception)
         {
@@ -133,7 +138,9 @@ public sealed class AccountModuleService : IModuleMethodHandler
         }
     }
 
-    private async Task<byte[]> ListAsync(CancellationToken cancellationToken)
+    private async Task<byte[]> ListAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
     {
         var items = await _accounts.ListAsync(cancellationToken).ConfigureAwait(false);
         return ModuleJson.Envelope(writer =>
@@ -151,7 +158,9 @@ public sealed class AccountModuleService : IModuleMethodHandler
         });
     }
 
-    private async Task<byte[]> CurrentAsync(CancellationToken cancellationToken)
+    private async Task<byte[]> CurrentAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
     {
         var active = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false);
         return ModuleJson.Envelope(writer =>
@@ -421,6 +430,11 @@ public sealed class AccountModuleService : IModuleMethodHandler
         });
     }
 
+    private Task<byte[]> CancelMicrosoftAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+        => Task.FromResult(CancelMicrosoft(paramsJson));
+
     private byte[] CancelMicrosoft(string? paramsJson)
     {
         var flowId = RequireString(paramsJson, "flowId");
@@ -467,7 +481,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
             existing?.Id ?? $"offline-{Guid.NewGuid():N}"[..24],
             AccountKind.Offline,
             name,
-            OfflineUuid(name),
+            OfflinePlayerUuid.FromName(name),
             null,
             null,
             null,
@@ -770,15 +784,6 @@ public sealed class AccountModuleService : IModuleMethodHandler
         writer.WriteString("updatedAt", account.UpdatedAt.ToString("O"));
         writer.WriteString("lastLoginAt", account.LastLoginAt?.ToString("O"));
         writer.WriteEndObject();
-    }
-
-    private static string OfflineUuid(string name)
-    {
-        var bytes = MD5.HashData(Encoding.UTF8.GetBytes($"OfflinePlayer:{name}"));
-        bytes[6] = (byte)((bytes[6] & 0x0F) | 0x30);
-        bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80);
-        var hex = Convert.ToHexStringLower(bytes);
-        return $"{hex[..8]}-{hex[8..12]}-{hex[12..16]}-{hex[16..20]}-{hex[20..]}";
     }
 
     private sealed class PendingFlow : IDisposable

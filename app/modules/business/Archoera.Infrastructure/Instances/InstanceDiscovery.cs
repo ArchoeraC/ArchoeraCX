@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Archoera.Domain;
 using Archoera.Domain.Instances;
 
 namespace Archoera.Infrastructure.Instances;
@@ -14,15 +15,9 @@ namespace Archoera.Infrastructure.Instances;
 /// </summary>
 internal static class InstanceDiscovery
 {
-    private static readonly StringComparer PathComparer =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
+    private static StringComparer PathComparer => PathSemantics.Comparer;
 
-    private static readonly StringComparison PathComparison =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+    private static StringComparison PathComparison => PathSemantics.Comparison;
 
     private static readonly string[] IgnoredRootDirectories =
     [

@@ -3,11 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
-import '../../services/core/task_update.dart';
+import '../../services/core/downloads/task_update.dart';
 import '../../stores/providers.dart';
 import '../../stores/tasks.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import '../../utils/format.dart';
 import '../common/app_progress_bar.dart';
 
 /// Title-bar entry point for the task center.
@@ -319,7 +320,7 @@ class _TaskRow extends ConsumerWidget {
                       if (task.bytesPerSecond > 0)
                         Text(
                           l10n.taskCenterSpeed(
-                            _formatBytes(task.bytesPerSecond),
+                            formatBytes(task.bytesPerSecond),
                           ),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: tokens.textTertiary),
@@ -328,7 +329,7 @@ class _TaskRow extends ConsumerWidget {
                   ),
                 ] else if (task.done > 0)
                   Text(
-                    _formatBytes(task.done),
+                    formatBytes(task.done),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall
@@ -390,20 +391,9 @@ class _TaskRow extends ConsumerWidget {
 
   String _progressText(TaskUpdate task, AppLocalizations l10n) {
     if (task.total > 0) {
-      return '${_formatBytes(task.done)} / ${_formatBytes(task.total)}';
+      return '${formatBytes(task.done)} / ${formatBytes(task.total)}';
     }
-    if (task.done > 0) return _formatBytes(task.done);
+    if (task.done > 0) return formatBytes(task.done);
     return l10n.taskCenterWorking;
   }
-}
-
-String _formatBytes(int bytes) {
-  if (bytes >= 1024 * 1024 * 1024) {
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-  }
-  if (bytes >= 1024 * 1024) {
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-  return '$bytes B';
 }

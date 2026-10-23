@@ -1,6 +1,6 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/models/game_instance.dart';
-import 'package:archoera_cx/services/core/launch_log.dart';
+import 'package:archoera_cx/services/core/launch/launch_log.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
 import 'package:archoera_cx/widgets/instances/game_log_dialog.dart';

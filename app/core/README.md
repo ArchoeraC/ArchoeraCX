@@ -5,7 +5,7 @@
 - ABI 头文件复用 `app/contracts/abi/archoera_abi.h`
 - `src/{abi,dispatcher,task,effect,event,module,config,log,crash,platform}`（当前是 `archoera_core.cpp` + `method_registry.*` + `module_registry.*` + `module_host.*`）
 - `ModuleRegistry` 按名字持有 `archoera_cs` 与可选的 `archoera_dl`；`MethodRegistry` 把公开方法映射到 core 或具名模块
-- 模块按 `ARCHOERACX_CS_MODULE` / `ARCHOERACX_DL_MODULE` → core 同目录 → 相对构建目录加载；缺失时对应方法返回 `E_UNSUPPORTED`
+- 模块按 `ARCHOERACX_CS_MODULE` / `ARCHOERACX_DL_MODULE` 环境变量或 core 同目录加载；缺失时对应方法返回 `E_UNSUPPORTED`
 - `system.modules` 返回已加载模块；未知方法同步返回 `E_UNSUPPORTED`
 - `system.openUrl` / `system.notify`：通过系统 API 打开 http(s) 链接与发送桌面通知；Linux 走 XDG OpenURI / Notifications D-Bus，Windows 走 `ShellExecuteW` + `Shell_NotifyIcon`，macOS 走 `NSWorkspace` + UserNotifications；参数校验与执行在 C++，执行放 worker 线程，避免阻塞调用线程
 - `system.appearance` 返回系统深浅色与强调色，并由 `platform_appearance_{linux,windows,macos}.cpp/.mm` 监听系统变化：

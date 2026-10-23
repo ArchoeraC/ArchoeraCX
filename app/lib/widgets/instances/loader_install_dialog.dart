@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
 import '../../services/core/core_client.dart';
-import '../../services/core/loader_versions.dart';
+import '../../services/core/loaders/loader_versions.dart';
 import '../../stores/downloads.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';

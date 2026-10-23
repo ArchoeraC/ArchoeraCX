@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Archoera.Application;
 using Archoera.Application.Downloads;
 using Archoera.Application.Loaders;
 using Archoera.Application.Mojang;
@@ -65,7 +66,7 @@ public sealed class PackGameInstallService
             new MojangClientOptions
             {
                 UserAgent = MojangClientOptions.CreateUserAgent(
-                    "0.0.1+1",
+                                        ArchoeraBuildInfo.Version,
                     "https://github.com/BetaStudio2/ArchoeraCX"),
             });
         _http = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };

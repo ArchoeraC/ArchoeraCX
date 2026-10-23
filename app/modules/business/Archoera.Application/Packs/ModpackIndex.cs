@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Archoera.Domain;
 using Archoera.Domain.Downloads;
 
 namespace Archoera.Application.Packs;
@@ -108,10 +109,7 @@ public static class ModpackIndexJson
     private static readonly string[] LoaderDependencies =
         ["fabric-loader", "quilt-loader", "forge", "neoforge"];
 
-    private static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
+    private static StringComparer PathComparer => Archoera.Domain.PathSemantics.Comparer;
 
     /// <summary>Parses UTF-8 index bytes. Throws <see cref="PackException"/>.</summary>
     public static ModpackIndex Parse(ReadOnlyMemory<byte> utf8)

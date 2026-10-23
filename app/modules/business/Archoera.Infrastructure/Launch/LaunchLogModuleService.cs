@@ -25,8 +25,13 @@ namespace Archoera.Infrastructure.Launch;
 /// </summary>
 public sealed class LaunchLogModuleService : IModuleMethodHandler
 {
+    private const string LogsMethod = "launch.logs";
+    private const string ReadMethod = "launch.log.read";
+    private const string TailMethod = "launch.log.tail";
+    private const string ClearMethod = "launch.logs.clear";
+
     private static readonly string[] SupportedMethods =
-        ["launch.logs", "launch.log.read", "launch.log.tail", "launch.logs.clear"];
+        [LogsMethod, ReadMethod, TailMethod, ClearMethod];
 
     /// <summary>How many past launches are offered in the file picker.</summary>
     private const int MaxLogFiles = 50;
@@ -51,6 +56,7 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
 
     private readonly IInstanceRepository _instances;
     private readonly JsonAppSettingsStore _settings;
+    private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
 
     public LaunchLogModuleService(
         IInstanceRepository? instances = null,
@@ -58,6 +64,13 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
     {
         _instances = instances ?? new SqliteInstanceRepository();
         _settings = settings ?? new JsonAppSettingsStore();
+        _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
+        {
+            [LogsMethod] = ListAsync,
+            [ReadMethod] = ReadAsync,
+            [TailMethod] = TailAsync,
+            [ClearMethod] = ClearAsync,
+        };
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -69,20 +82,11 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
     {
         try
         {
-            return method switch
-            {
-                "launch.logs" => await ListAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "launch.log.read" => await ReadAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "launch.log.tail" => await TailAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "launch.logs.clear" => await ClearAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                _ => ModuleJson.Error(
+            return _handlers.TryGetValue(method, out var handler)
+                ? await handler(paramsJson, cancellationToken).ConfigureAwait(false)
+                : ModuleJson.Error(
                     "E_UNSUPPORTED",
-                    $"unsupported log method '{method}'"),
-            };
+                    $"unsupported log method '{method}'");
         }
         catch (OperationCanceledException)
         {

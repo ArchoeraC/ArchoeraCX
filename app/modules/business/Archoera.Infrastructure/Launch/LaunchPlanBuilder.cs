@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Archoera.Application;
 using Archoera.Application.Mojang;
 using Archoera.Domain.Accounts;
 using Archoera.Domain.Instances;
@@ -281,7 +282,7 @@ internal static class LaunchPlanBuilder
         ExtractNatives(version, paths, platform);
 
         var uuid = string.IsNullOrWhiteSpace(account.Uuid)
-            ? OfflineUuid(account.DisplayName)
+            ? OfflinePlayerUuid.FromName(account.DisplayName)
             : account.Uuid;
         var assetIndex = version.AssetIndex?.Id ?? version.Assets ?? "legacy";
         var substitutions = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -290,7 +291,7 @@ internal static class LaunchPlanBuilder
             ["classpath"] = string.Join(Path.PathSeparator, classpath),
             ["classpath_separator"] = Path.PathSeparator.ToString(),
             ["launcher_name"] = "ArchoeraCX",
-            ["launcher_version"] = "0.0.1+1",
+            ["launcher_version"] = ArchoeraBuildInfo.Version,
             ["auth_player_name"] = account.DisplayName,
             ["version_name"] = version.Id,
             ["game_directory"] = paths.InstanceRoot,
@@ -612,14 +613,5 @@ internal static class LaunchPlanBuilder
             result = result.Replace("${" + key + "}", replacement, StringComparison.Ordinal);
         }
         return result;
-    }
-
-    private static string OfflineUuid(string name)
-    {
-        var bytes = MD5.HashData(Encoding.UTF8.GetBytes($"OfflinePlayer:{name}"));
-        bytes[6] = (byte)((bytes[6] & 0x0F) | 0x30);
-        bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80);
-        var hex = Convert.ToHexStringLower(bytes);
-        return $"{hex[..8]}-{hex[8..12]}-{hex[12..16]}-{hex[16..20]}-{hex[20..]}";
     }
 }

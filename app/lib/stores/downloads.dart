@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/game_instance.dart';
 import '../services/core/core_client.dart';
-import '../services/core/java_runtime_plan.dart';
-import '../services/core/pack_install_result.dart';
-import '../services/core/resource_models.dart';
-import '../services/core/task_update.dart';
+import '../services/core/java/java_runtime_plan.dart';
+import '../services/core/packs/pack_install_result.dart';
+import '../services/core/resources/resource_models.dart';
+import '../services/core/downloads/task_update.dart';
 import '../widgets/common/toast.dart';
 import 'instances.dart';
 import 'preferences.dart';

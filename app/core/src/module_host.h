@@ -39,7 +39,6 @@ class ModuleHost {
    *   1. the module-specific environment variable (for example
    *      ARCHOERACX_CS_MODULE)
    *   2. <directory of libarchoera_core.so>/<base>.so (+ lib prefix)
-   *   3. ./build/native, ../app/build/native, ./
    */
   bool load() noexcept;
 

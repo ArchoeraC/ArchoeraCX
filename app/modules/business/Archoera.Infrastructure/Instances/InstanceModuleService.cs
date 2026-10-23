@@ -1,28 +1,36 @@
 using System.Text.Json;
 using Archoera.Application.Instances;
 using Archoera.Application.Modules;
-using Archoera.Infrastructure.Settings;
+using Archoera.Domain;
 using Archoera.Domain.Instances;
+using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Instances;
 
 /// <summary>JSON facade for instance.list/create/update/delete/duplicate.</summary>
-public sealed class InstanceModuleService : IModuleMethodHandler
+public sealed partial class InstanceModuleService : IModuleMethodHandler
 {
+    private const string ListMethod = "instance.list";
+    private const string CreateMethod = "instance.create";
+    private const string UpdateMethod = "instance.update";
+    private const string DeleteMethod = "instance.delete";
+    private const string DuplicateMethod = "instance.duplicate";
+    private const string SyncMethod = "instance.sync";
+    private const string ModsListMethod = "instance.mods.list";
+    private const string ModsSetEnabledMethod = "instance.mods.setEnabled";
+    private const string ModsRemoveMethod = "instance.mods.remove";
+
     private static readonly string[] SupportedMethods =
         [
-            "instance.list", "instance.create", "instance.update", "instance.delete",
-            "instance.duplicate", "instance.sync",
-            "instance.mods.list", "instance.mods.setEnabled", "instance.mods.remove",
+            ListMethod, CreateMethod, UpdateMethod, DeleteMethod, DuplicateMethod,
+            SyncMethod, ModsListMethod, ModsSetEnabledMethod, ModsRemoveMethod,
         ];
 
-    private static readonly StringComparison PathComparison =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+    private static StringComparison PathComparison => PathSemantics.Comparison;
 
     private readonly IInstanceRepository _repository;
     private readonly JsonAppSettingsStore _settings;
+    private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
 
     public InstanceModuleService(
         IInstanceRepository? repository = null,
@@ -30,6 +38,18 @@ public sealed class InstanceModuleService : IModuleMethodHandler
     {
         _settings = settings ?? new JsonAppSettingsStore();
         _repository = repository ?? new SqliteInstanceRepository(settings: _settings);
+        _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
+        {
+            [ListMethod] = ListAsync,
+            [CreateMethod] = CreateAsync,
+            [UpdateMethod] = UpdateAsync,
+            [DeleteMethod] = DeleteAsync,
+            [DuplicateMethod] = DuplicateAsync,
+            [SyncMethod] = SyncAsync,
+            [ModsListMethod] = ListModsAsync,
+            [ModsSetEnabledMethod] = SetModEnabledAsync,
+            [ModsRemoveMethod] = RemoveModAsync,
+        };
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -41,27 +61,9 @@ public sealed class InstanceModuleService : IModuleMethodHandler
     {
         try
         {
-            return method switch
-            {
-                "instance.list" => await ListAsync(cancellationToken).ConfigureAwait(false),
-                "instance.create" => await CreateAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "instance.update" => await UpdateAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "instance.delete" => await DeleteAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "instance.duplicate" => await DuplicateAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "instance.sync" => await SyncAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "instance.mods.list" => await ListModsAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "instance.mods.setEnabled" => await SetModEnabledAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                "instance.mods.remove" => await RemoveModAsync(paramsJson, cancellationToken)
-                    .ConfigureAwait(false),
-                _ => Error("E_UNSUPPORTED", $"unsupported instance method '{method}'"),
-            };
+            return _handlers.TryGetValue(method, out var handler)
+                ? await handler(paramsJson, cancellationToken).ConfigureAwait(false)
+                : Error("E_UNSUPPORTED", $"unsupported instance method '{method}'");
         }
         catch (OperationCanceledException)
         {
@@ -77,7 +79,9 @@ public sealed class InstanceModuleService : IModuleMethodHandler
         }
     }
 
-    private async Task<byte[]> ListAsync(CancellationToken cancellationToken)
+    private async Task<byte[]> ListAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
     {
         var items = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
         var roots = (await _settings.LoadAsync(cancellationToken).ConfigureAwait(false)).Roots;
@@ -169,193 +173,6 @@ public sealed class InstanceModuleService : IModuleMethodHandler
             writer.WritePropertyName("instance");
             WriteRecord(writer, record, roots);
         });
-    }
-
-    private async Task<byte[]> DuplicateAsync(
-        string? paramsJson,
-        CancellationToken cancellationToken)
-    {
-        using var document = Parse(paramsJson);
-        var rootElement = document.RootElement;
-        var id = ReadString(rootElement, "id") ?? throw new ArgumentException("id is required");
-        var name = ReadString(rootElement, "name") ?? throw new ArgumentException("name is required");
-
-        var items = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
-        var source = items.FirstOrDefault(item => string.Equals(item.Id, id, StringComparison.Ordinal))
-            ?? throw new ArgumentException("instance not found");
-        if (!Directory.Exists(source.RootPath))
-        {
-            throw new ArgumentException("instance directory is missing");
-        }
-
-        // A repository may resolve the requested name onto the source directory
-        // itself (the JSON repository does not de-duplicate roots), so keep the
-        // original metadata to restore the source if the copy is rejected.
-        var sourceMetadataPath = Path.Combine(source.RootPath, ".archoera", "instance.json");
-        var sourceMetadata = File.Exists(sourceMetadataPath)
-            ? await File.ReadAllBytesAsync(sourceMetadataPath, cancellationToken).ConfigureAwait(false)
-            : null;
-
-        var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
-        var created = await _repository
-            .CreateAsync(
-                name,
-                source.GameVersion,
-                source.Loader,
-                source.LoaderVersion,
-                rootPath: null,
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
-        // Never copy an instance into itself or into a directory that hosts it:
-        // either direction would overwrite the source or unrelated files.
-        var overlapsSource =
-            IsSameOrNested(source.RootPath, created.RootPath) ||
-            IsSameOrNested(created.RootPath, source.RootPath);
-        var collidesWithSibling = !overlapsSource && items.Any(
-            item => !string.Equals(item.Id, created.Id, StringComparison.Ordinal) &&
-                    SamePath(item.RootPath, created.RootPath));
-        if (overlapsSource || collidesWithSibling)
-        {
-            if (SamePath(source.RootPath, created.RootPath))
-            {
-                RestoreInstanceMetadata(sourceMetadataPath, sourceMetadata);
-            }
-
-            await RollbackDuplicateAsync(created, items, settings.Roots).ConfigureAwait(false);
-            throw new ArgumentException(overlapsSource
-                ? "duplicate target must be outside the source instance directory"
-                : "duplicate target directory is already used by another instance");
-        }
-
-        try
-        {
-            CopyInstanceTree(source.RootPath, created.RootPath, cancellationToken);
-        }
-        catch
-        {
-            await RollbackDuplicateAsync(created, items, settings.Roots).ConfigureAwait(false);
-            throw;
-        }
-
-        var record = await _repository
-            .UpdateAsync(
-                created.Id,
-                name: null,
-                favorite: null,
-                lastPlayedAt: null,
-                overrides: source.Overrides,
-                setOverrides: source.Overrides is { IsEmpty: false },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new ArgumentException("instance not found");
-
-        var roots = (await _settings.LoadAsync(cancellationToken).ConfigureAwait(false)).Roots;
-        return BuildEnvelope(writer =>
-        {
-            writer.WritePropertyName("instance");
-            WriteRecord(writer, record, roots);
-        });
-    }
-
-    /// <summary>
-    /// Copies the source instance tree into the freshly created target root.
-    /// Per-instance logs and the portable metadata stay behind: the target owns
-    /// its own <c>instance.json</c> and must not inherit the source's log history.
-    /// Symbolic links are skipped so a copy cannot escape the instance or loop.
-    /// </summary>
-    private static void CopyInstanceTree(
-        string sourceRoot,
-        string targetRoot,
-        CancellationToken cancellationToken)
-    {
-        string[] excluded =
-        [
-            Path.Combine(".archoera", "logs"),
-            Path.Combine(".archoera", "instance.json"),
-        ];
-        var pending = new Stack<(string Source, string Target)>();
-        pending.Push((sourceRoot, targetRoot));
-        while (pending.Count > 0)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var (from, to) = pending.Pop();
-            Directory.CreateDirectory(to);
-            foreach (var entry in Directory.EnumerateFileSystemEntries(from))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (excluded.Contains(
-                        Path.GetRelativePath(sourceRoot, entry),
-                        StringComparer.Ordinal))
-                {
-                    continue;
-                }
-
-                var isDirectory = Directory.Exists(entry);
-                FileSystemInfo info = isDirectory
-                    ? new DirectoryInfo(entry)
-                    : new FileInfo(entry);
-                // Symlinks may escape the instance or form cycles; never follow them.
-                if (info.LinkTarget is not null) continue;
-
-                var destination = Path.Combine(to, info.Name);
-                if (isDirectory)
-                {
-                    pending.Push((entry, destination));
-                }
-                else
-                {
-                    File.Copy(entry, destination, overwrite: true);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Best-effort rollback after a failed duplicate: remove the new directory
-    /// through the guarded cleaner (which refuses shared roots, sibling
-    /// instances and unmanaged directories) and drop the registry row so the
-    /// half-created instance never shows up in the list.
-    /// </summary>
-    private async Task RollbackDuplicateAsync(
-        GameInstanceRecord created,
-        IReadOnlyList<GameInstanceRecord> existing,
-        IReadOnlyList<string> roots)
-    {
-        InstanceDirectoryCleaner.TryDelete(
-            created.RootPath,
-            roots,
-            existing
-                .Where(item => !string.Equals(item.Id, created.Id, StringComparison.Ordinal))
-                .Select(item => item.RootPath)
-                .ToArray(),
-            out _);
-        try
-        {
-            await _repository.DeleteAsync(created.Id, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            // Rollback is best effort; the original failure is what matters.
-        }
-    }
-
-    private static void RestoreInstanceMetadata(string path, byte[]? content)
-    {
-        try
-        {
-            if (content is null)
-            {
-                if (File.Exists(path)) File.Delete(path);
-                return;
-            }
-
-            File.WriteAllBytes(path, content);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // Rollback is best effort; the original failure is what matters.
-        }
     }
 
     private async Task<byte[]> UpdateAsync(
@@ -598,147 +415,6 @@ public sealed class InstanceModuleService : IModuleMethodHandler
         });
     }
 
-    private async Task<byte[]> ListModsAsync(
-        string? paramsJson,
-        CancellationToken cancellationToken)
-    {
-        using var document = Parse(paramsJson);
-        var instanceId = ReadString(document.RootElement, "instanceId")
-            ?? throw new ArgumentException("instanceId is required");
-        var directory = await ResolveModsDirectoryAsync(instanceId, cancellationToken)
-            .ConfigureAwait(false);
-        var files = Directory.Exists(directory)
-            ? Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly)
-                .Where(IsModFileName)
-                .OrderBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
-                .ToArray()
-            : [];
-
-        return BuildEnvelope(writer =>
-        {
-            writer.WriteStartArray("items");
-            foreach (var file in files) WriteMod(writer, file);
-            writer.WriteEndArray();
-            writer.WriteNumber("count", files.Length);
-        });
-    }
-
-    private async Task<byte[]> SetModEnabledAsync(
-        string? paramsJson,
-        CancellationToken cancellationToken)
-    {
-        using var document = Parse(paramsJson);
-        var root = document.RootElement;
-        var instanceId = ReadString(root, "instanceId")
-            ?? throw new ArgumentException("instanceId is required");
-        var fileName = NormalizeModFileName(
-            ReadString(root, "fileName")
-            ?? throw new ArgumentException("fileName is required"));
-        var enabled = root.TryGetProperty("enabled", out var enabledElement) &&
-                      enabledElement.ValueKind is JsonValueKind.True or JsonValueKind.False
-            ? enabledElement.GetBoolean()
-            : throw new ArgumentException("enabled must be a boolean");
-        var directory = await ResolveModsDirectoryAsync(instanceId, cancellationToken)
-            .ConfigureAwait(false);
-        var source = Path.Combine(directory, fileName);
-        if (!File.Exists(source))
-        {
-            throw new ArgumentException("mod file not found");
-        }
-
-        var baseName = fileName.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase)
-            ? fileName[..^".disabled".Length]
-            : fileName;
-        var targetName = enabled ? baseName : baseName + ".disabled";
-        var target = Path.Combine(directory, targetName);
-        if (!string.Equals(source, target, StringComparison.Ordinal))
-        {
-            if (File.Exists(target))
-            {
-                throw new ArgumentException("target mod file already exists");
-            }
-            File.Move(source, target);
-        }
-
-        return BuildEnvelope(writer =>
-        {
-            writer.WritePropertyName("item");
-            WriteMod(writer, target);
-        });
-    }
-
-    private async Task<byte[]> RemoveModAsync(
-        string? paramsJson,
-        CancellationToken cancellationToken)
-    {
-        using var document = Parse(paramsJson);
-        var root = document.RootElement;
-        var instanceId = ReadString(root, "instanceId")
-            ?? throw new ArgumentException("instanceId is required");
-        var fileName = NormalizeModFileName(
-            ReadString(root, "fileName")
-            ?? throw new ArgumentException("fileName is required"));
-        var directory = await ResolveModsDirectoryAsync(instanceId, cancellationToken)
-            .ConfigureAwait(false);
-        var path = Path.Combine(directory, fileName);
-        if (!File.Exists(path))
-        {
-            throw new ArgumentException("mod file not found");
-        }
-        File.Delete(path);
-        return BuildEnvelope(writer => writer.WriteBoolean("removed", true));
-    }
-
-    private async Task<string> ResolveModsDirectoryAsync(
-        string instanceId,
-        CancellationToken cancellationToken)
-    {
-        var items = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
-        var record = items.FirstOrDefault(item => item.Id == instanceId)
-            ?? throw new ArgumentException("instance not found");
-        if (!Directory.Exists(record.RootPath))
-        {
-            throw new ArgumentException("instance directory is missing");
-        }
-        return Path.Combine(record.RootPath, "mods");
-    }
-
-    private static string NormalizeModFileName(string value)
-    {
-        var name = value.Trim();
-        if (name.Length == 0 ||
-            name.Contains('/') ||
-            name.Contains('\\') ||
-            name is "." or ".." ||
-            !IsModFileName(name))
-        {
-            throw new ArgumentException("invalid mod file name");
-        }
-        return name;
-    }
-
-    private static bool IsModFileName(string path)
-    {
-        var name = Path.GetFileName(path);
-        return name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) ||
-               name.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static void WriteMod(Utf8JsonWriter writer, string path)
-    {
-        var fileName = Path.GetFileName(path);
-        var disabled = fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
-        var name = disabled ? fileName[..^".disabled".Length] : fileName;
-        var info = new FileInfo(path);
-        writer.WriteStartObject();
-        writer.WriteString("fileName", fileName);
-        writer.WriteString("name", name);
-        writer.WriteBoolean("enabled", !disabled);
-        writer.WriteNumber("size", info.Exists ? info.Length : 0);
-        writer.WriteString("modifiedAt", info.Exists ? info.LastWriteTimeUtc.ToString("O") : null);
-        writer.WriteEndObject();
-    }
-
     private static JsonDocument Parse(string? paramsJson)
     {
         if (string.IsNullOrWhiteSpace(paramsJson)) return JsonDocument.Parse("{}");
@@ -830,40 +506,6 @@ public sealed class InstanceModuleService : IModuleMethodHandler
                    fullPath.StartsWith(fullRoot + Path.DirectorySeparatorChar, PathComparison);
         }
         catch
-        {
-            return false;
-        }
-    }
-
-    private static bool SamePath(string left, string right)
-    {
-        try
-        {
-            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(left))
-                .Equals(
-                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
-                    PathComparison);
-        }
-        catch (Exception exception) when (exception is ArgumentException or NotSupportedException
-                                              or PathTooLongException)
-        {
-            return false;
-        }
-    }
-
-    private static bool IsSameOrNested(string candidate, string ancestor)
-    {
-        try
-        {
-            var fullCandidate = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate));
-            var fullAncestor = Path.TrimEndingDirectorySeparator(Path.GetFullPath(ancestor));
-            return fullCandidate.Equals(fullAncestor, PathComparison) ||
-                   fullCandidate.StartsWith(
-                       fullAncestor + Path.DirectorySeparatorChar,
-                       PathComparison);
-        }
-        catch (Exception exception) when (exception is ArgumentException or NotSupportedException
-                                              or PathTooLongException)
         {
             return false;
         }

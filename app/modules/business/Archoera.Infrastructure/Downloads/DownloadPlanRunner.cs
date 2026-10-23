@@ -29,6 +29,18 @@ public sealed class DownloadRunnerException(string code, string message) : Excep
 }
 
 /// <summary>
+/// Stable code and message shared by every guard that reports a missing Rust
+/// executor (the runner itself, the resource facade and pack installs), so
+/// the wording cannot drift between call sites.
+/// </summary>
+public static class DownloaderMissing
+{
+    public const string Code = "DOWNLOADER_MISSING";
+    public const string Message =
+        "archoera-dl was not found; build app/modules/downloader and set ARCHOERACX_DL_BIN";
+}
+
+/// <summary>
 /// Writes a validated plan next to the instance, invokes the Rust
 /// <c>archoera-dl</c> CLI and streams its progress lines into
 /// <see cref="ModuleProgress"/>. C# never downloads game bytes itself.
@@ -69,9 +81,7 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         ArgumentNullException.ThrowIfNull(plan);
         if (!IsAvailable)
         {
-            throw new DownloadRunnerException(
-                "DOWNLOADER_MISSING",
-                "archoera-dl was not found; build app/modules/downloader and set ARCHOERACX_DL_BIN");
+            throw new DownloadRunnerException(DownloaderMissing.Code, DownloaderMissing.Message);
         }
 
         // User tuning wins over producer defaults (docs/10 §9.4).

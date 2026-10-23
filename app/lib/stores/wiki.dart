@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/core/core_event.dart';
-import '../services/core/system_status.dart';
-import '../services/core/wiki_feed.dart';
+import '../services/core/system/system_status.dart';
+import '../services/core/wiki/wiki_feed.dart';
 import 'providers.dart';
 import 'settings.dart';
 

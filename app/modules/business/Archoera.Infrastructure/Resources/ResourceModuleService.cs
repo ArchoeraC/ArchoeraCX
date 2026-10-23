@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Archoera.Application;
 using Archoera.Application.Downloads;
 using Archoera.Application.Modules;
 using Archoera.Application.Resources;
@@ -21,8 +22,25 @@ namespace Archoera.Infrastructure.Resources;
 /// </summary>
 public sealed class ResourceModuleService : IModuleMethodHandler
 {
+    private const string SearchMethod = "resource.search";
+    private const string ProjectMethod = "resource.project";
+    private const string VersionsMethod = "resource.versions";
+    private const string PlanMethod = "resource.plan";
+    private const string ExecuteMethod = "download.execute";
+
     private static readonly string[] SupportedMethods =
-        ["resource.search", "resource.project", "resource.versions", "resource.plan", "download.execute"];
+        [SearchMethod, ProjectMethod, VersionsMethod, PlanMethod, ExecuteMethod];
+
+    /// <summary>
+    /// Methods that require the download policy gate before any work happens;
+    /// the guard runs before request parsing, exactly as the guard did in the
+    /// pre-dictionary switch shape.
+    /// </summary>
+    private static readonly HashSet<string> PolicyMethods =
+        new(StringComparer.Ordinal)
+        {
+            SearchMethod, ProjectMethod, VersionsMethod, PlanMethod, ExecuteMethod,
+        };
 
     public const string Modrinth = "modrinth";
 
@@ -35,6 +53,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
     private readonly DownloadPolicy _policy;
     private readonly JsonAppSettingsStore _settings;
     private readonly RegionPolicy _regionPolicy;
+    private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
 
     public ResourceModuleService(
         string? downloaderPath = null,
@@ -46,6 +65,28 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         _policy = policy ?? new DownloadPolicy();
         _settings = settings ?? new JsonAppSettingsStore();
         _regionPolicy = regionPolicy ?? new RegionPolicy();
+        _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
+        {
+            [SearchMethod] = (paramsJson, ct) => RunAsync(paramsJson, SearchAsync, ct),
+            [ProjectMethod] = (paramsJson, ct) => RunAsync(paramsJson, ProjectAsync, ct),
+            [VersionsMethod] = (paramsJson, ct) => RunAsync(paramsJson, VersionsAsync, ct),
+            [PlanMethod] = (paramsJson, ct) => RunAsync(paramsJson, PlanAsync, ct),
+            [ExecuteMethod] = (paramsJson, ct) => RunAsync(paramsJson, ExecuteAsync, ct),
+        };
+    }
+
+    /// <summary>
+    /// Adapter between the string-parameter dispatch delegate and handlers
+    /// that consume a validated <see cref="JsonElement"/> request root; the
+    /// document lives only for the duration of the handler call.
+    /// </summary>
+    private static async Task<byte[]> RunAsync(
+        string? paramsJson,
+        Func<JsonElement, CancellationToken, Task<byte[]>> body,
+        CancellationToken cancellationToken)
+    {
+        using var document = ParseRequest(paramsJson);
+        return await body(document.RootElement, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<DownloadSourceMode> SourceModeAsync(CancellationToken cancellationToken)
@@ -73,29 +114,19 @@ public sealed class ResourceModuleService : IModuleMethodHandler
     {
         try
         {
-            if (method is "resource.search" or "resource.project" or "resource.versions" or
-                "resource.plan" or "download.execute")
+            if (PolicyMethods.Contains(method))
             {
                 await _policy.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            // The request document is validated (and disposed) here so an
+            // unknown method with a malformed request answers exactly as it did
+            // under the pre-dictionary switch: E_INVALID from ParseRequest.
             using var document = ParseRequest(paramsJson);
-            var root = document.RootElement;
 
-            return method switch
-            {
-                "resource.search" => await SearchAsync(root, cancellationToken)
-                    .ConfigureAwait(false),
-                "resource.project" => await ProjectAsync(root, cancellationToken)
-                    .ConfigureAwait(false),
-                "resource.versions" => await VersionsAsync(root, cancellationToken)
-                    .ConfigureAwait(false),
-                "resource.plan" => await PlanAsync(root, cancellationToken)
-                    .ConfigureAwait(false),
-                "download.execute" => await ExecuteAsync(root, cancellationToken)
-                    .ConfigureAwait(false),
-                _ => Error("E_UNSUPPORTED", $"unsupported resource method '{method}'"),
-            };
+            return _handlers.TryGetValue(method, out var handler)
+                ? await handler(paramsJson, cancellationToken).ConfigureAwait(false)
+                : Error("E_UNSUPPORTED", $"unsupported resource method '{method}'");
         }
         catch (ResourceProviderException exception)
         {
@@ -277,9 +308,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
 
         if (!_runner.IsAvailable)
         {
-            return Error(
-                "DOWNLOADER_MISSING",
-                "archoera-dl was not found; build app/modules/downloader and set ARCHOERACX_DL_BIN");
+            return Error(DownloaderMissing.Code, DownloaderMissing.Message);
         }
 
         if (!DownloadPlanJson.TryParse(planJson, out var plan, out var issue))
@@ -392,7 +421,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             {
                 BaseAddress = baseAddress,
                 UserAgent = ModrinthClientOptions.CreateUserAgent(
-                    "0.0.1+1",
+                    ArchoeraBuildInfo.Version,
                     "dev@archoera.local"),
             });
     }

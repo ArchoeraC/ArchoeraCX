@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.IO.Compression;
-using System.Security.Cryptography;
 using Archoera.Application.Loaders;
 using Archoera.Application.Modules;
 using Archoera.Domain.Loaders;
@@ -584,7 +583,6 @@ public sealed class ForgeRepairService : IForgeRepairService
 
             try
             {
-                using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
                 await using (var source = entry.Open())
                 await using (var destination = new FileStream(
                                  temporary,
@@ -594,18 +592,10 @@ public sealed class ForgeRepairService : IForgeRepairService
                                  bufferSize: 81920,
                                  useAsync: true))
                 {
-                    var buffer = new byte[81920];
-                    int read;
-                    while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
-                    {
-                        hash.AppendData(buffer, 0, read);
-                        await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken)
-                            .ConfigureAwait(false);
-                        written += read;
-                    }
+                    (actualSha1, written) = await Sha1Streams
+                        .CopyAsync(source, destination, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
                 }
-
-                actualSha1 = LoaderPaths.Hex(hash.GetHashAndReset());
             }
             catch
             {

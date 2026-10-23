@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/core/task_update.dart';
+import '../services/core/downloads/task_update.dart';
 import 'preferences.dart';
 import 'providers.dart';
 

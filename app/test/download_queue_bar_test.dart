@@ -1,5 +1,5 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
-import 'package:archoera_cx/services/core/task_update.dart';
+import 'package:archoera_cx/services/core/downloads/task_update.dart';
 import 'package:archoera_cx/stores/tasks.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
 import 'package:archoera_cx/widgets/common/app_progress_bar.dart';

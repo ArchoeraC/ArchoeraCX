@@ -37,6 +37,13 @@ add_library(archoera_core SHARED
   src/method_registry.cpp
   src/module_host.cpp
   src/module_registry.cpp
+  src/core_json.cpp
+  src/core_result.cpp
+  src/core_tasks.cpp
+  src/core_status.cpp
+  src/core_actions.cpp
+  src/core_appearance.cpp
+  src/core_module_bridge.cpp
   src/platform_system_common.cpp
   src/platform_status_common.cpp
   ${ARCHOERA_APPEARANCE_SOURCES}
@@ -52,6 +59,14 @@ target_include_directories(archoera_core
 )
 target_compile_definitions(archoera_core PRIVATE ARCHOERA_CORE_EXPORTS)
 target_link_libraries(archoera_core PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+
+# Keep every non-ABI symbol inside the .so: the ARCHOERA_API macro re-opens
+# visibility for the ten exported functions.
+set_target_properties(archoera_core PROPERTIES
+  C_VISIBILITY_PRESET hidden
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
+)
 
 if(WIN32)
   target_link_libraries(archoera_core PRIVATE dwmapi advapi32 shell32)
