@@ -124,18 +124,27 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         string? name,
         bool? favorite,
         DateTimeOffset? lastPlayedAt,
+        InstanceOverrides? overrides = null,
+        bool setOverrides = false,
         CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
         var cleanId = ValidateId(id);
-        var current = await FindAsync(cleanId, cancellationToken).ConfigureAwait(false);
-        if (current is null) return null;
+        var record = await FindAsync(cleanId, cancellationToken).ConfigureAwait(false);
+        if (record is null) return null;
+
+        // The SQLite row is only an index: per-instance overrides live in
+        // `.archoera/instance.json`, so read them back before merging.
+        var fromFile = await ReadInstanceFileAsync(record.RootPath, cancellationToken)
+            .ConfigureAwait(false);
+        var current = record with { Overrides = fromFile?.Overrides };
 
         var updated = current with
         {
             Name = name is null ? current.Name : ValidateName(name),
             Favorite = favorite ?? current.Favorite,
             LastPlayedAt = lastPlayedAt ?? current.LastPlayedAt,
+            Overrides = setOverrides ? NormalizeOverrides(overrides) : current.Overrides,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
 
@@ -527,6 +536,67 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
     private static DateTimeOffset? ParseDate(string? value)
         => DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;
 
+    private static InstanceOverrides? ReadOverrides(JsonElement root)
+    {
+        if (!root.TryGetProperty("overrides", out var element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var overrides = new InstanceOverrides(
+            Int(element, "memoryMinMb"),
+            Int(element, "memoryMaxMb"),
+            String(element, "jvmArgs"),
+            String(element, "gcMode"),
+            String(element, "gameArgs"),
+            String(element, "javaPath"),
+            Int(element, "windowWidth"),
+            Int(element, "windowHeight"),
+            Bool(element, "fullscreen"));
+        return NormalizeOverrides(overrides);
+    }
+
+    private static InstanceOverrides? NormalizeOverrides(InstanceOverrides? overrides)
+        => overrides is null || overrides.IsEmpty ? null : overrides;
+
+    private static void WriteOverrides(Utf8JsonWriter writer, InstanceOverrides? overrides)
+    {
+        if (overrides is null || overrides.IsEmpty) return;
+
+        writer.WriteStartObject("overrides");
+        if (overrides.MemoryMinMb is { } memoryMin)
+        {
+            writer.WriteNumber("memoryMinMb", memoryMin);
+        }
+
+        if (overrides.MemoryMaxMb is { } memoryMax)
+        {
+            writer.WriteNumber("memoryMaxMb", memoryMax);
+        }
+
+        if (overrides.JvmArgs is { } jvmArgs) writer.WriteString("jvmArgs", jvmArgs);
+        if (overrides.GcMode is { } gcMode) writer.WriteString("gcMode", gcMode);
+        if (overrides.GameArgs is { } gameArgs) writer.WriteString("gameArgs", gameArgs);
+        if (overrides.JavaPath is { } javaPath) writer.WriteString("javaPath", javaPath);
+        if (overrides.WindowWidth is { } windowWidth)
+        {
+            writer.WriteNumber("windowWidth", windowWidth);
+        }
+
+        if (overrides.WindowHeight is { } windowHeight)
+        {
+            writer.WriteNumber("windowHeight", windowHeight);
+        }
+
+        if (overrides.Fullscreen is { } fullscreen)
+        {
+            writer.WriteBoolean("fullscreen", fullscreen);
+        }
+
+        writer.WriteEndObject();
+    }
+
     private async Task<string> ResolveRootAsync(
         string name,
         string? rootPath,
@@ -663,6 +733,7 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             writer.WriteString("createdAt", record.CreatedAt.ToString("O"));
             writer.WriteString("updatedAt", record.UpdatedAt.ToString("O"));
             writer.WriteString("lastPlayedAt", record.LastPlayedAt?.ToString("O"));
+            WriteOverrides(writer, record.Overrides);
             writer.WriteEndObject();
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -708,7 +779,8 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
                 favorite.ValueKind == JsonValueKind.True,
                 ParseDate(String(rootElement, "createdAt")) ?? DateTimeOffset.UtcNow,
                 ParseDate(String(rootElement, "updatedAt")) ?? DateTimeOffset.UtcNow,
-                ParseDate(String(rootElement, "lastPlayedAt")));
+                ParseDate(String(rootElement, "lastPlayedAt")),
+                ReadOverrides(rootElement));
         }
         catch (Exception exception) when (
             exception is IOException or JsonException or UnauthorizedAccessException)
@@ -727,5 +799,11 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
            element.ValueKind == JsonValueKind.Number &&
            element.TryGetInt32(out var value)
             ? value
+            : null;
+
+    private static bool? Bool(JsonElement root, string name)
+        => root.TryGetProperty(name, out var element) &&
+           element.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? element.GetBoolean()
             : null;
 }

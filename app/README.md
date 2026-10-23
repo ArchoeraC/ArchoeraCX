@@ -157,3 +157,5 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<your-public-client-id>" \
 ## 许可证
 
 AGPL-3.0-only；见仓库根目录 [`LICENSE`](../LICENSE)。
+
+界面图标字体 `assets/fonts/AppIcons.ttf` 是 [Tabler Icons](https://github.com/tabler/tabler-icons) 3.49.0 的裁剪子集，单独遵循 **MIT**（© 2020-2026 Paweł Kuna）；正文随应用分发于 `assets/licenses/Tabler-Icons-MIT.txt`，并通过 `lib/app/licenses.dart` 注册到 Flutter 的第三方许可页面。仓库只提交打包好的子集字体，不提交上游图标集；来源与致谢见 [`assets/icons/ui/SOURCES.md`](assets/icons/ui/SOURCES.md)。

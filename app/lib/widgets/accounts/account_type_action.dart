@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 
 /// One add-account entry: icon, title, description, and a chevron.
@@ -79,7 +80,7 @@ class AccountTypeAction extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.xs),
               Icon(
-                Icons.chevron_right_rounded,
+                AppIcons.chevronRight,
                 size: 18,
                 color: tokens.textTertiary,
               ),

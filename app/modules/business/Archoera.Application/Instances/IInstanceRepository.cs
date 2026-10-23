@@ -18,6 +18,8 @@ public interface IInstanceRepository
         string? name,
         bool? favorite,
         DateTimeOffset? lastPlayedAt,
+        InstanceOverrides? overrides = null,
+        bool setOverrides = false,
         CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
     Task<InstanceSyncReport> SyncAsync(

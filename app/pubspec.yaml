@@ -17,7 +17,9 @@ dependencies:
   go_router: ^18.1.0
   intl: ^0.20.3
   shared_preferences: ^2.5.6
+  tray_manager: ^0.8.0
   url_launcher: ^6.3.3
+  window_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:
@@ -29,14 +31,19 @@ flutter:
   generate: true
   assets:
     - assets/branding/archoera_icon_256.png
+    - assets/branding/tray_icon.png
     - assets/skins/default-offline.png
     - assets/icons/loaders/vanilla.png
     - assets/icons/loaders/fabric.png
     - assets/icons/loaders/quilt.png
     - assets/icons/loaders/forge.png
     - assets/icons/loaders/neoforge.png
+    - assets/licenses/Tabler-Icons-MIT.txt
   fonts:
     - family: NotoSansSC
       fonts:
         - asset: assets/fonts/NotoSansSC-Medium.otf
           weight: 500
+    - family: AppIcons
+      fonts:
+        - asset: assets/fonts/AppIcons.ttf

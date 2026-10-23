@@ -93,6 +93,11 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     String? jvmArgs,
     String? gcMode,
     String? gameArgs,
+    int? windowWidth,
+    int? windowHeight,
+    bool? fullscreen,
+    int? logRetentionFiles,
+    int? logRetentionMegabytes,
   }) async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
@@ -110,6 +115,12 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           jvmArgs: jvmArgs ?? current.jvmArgs,
           gcMode: gcMode ?? current.gcMode,
           gameArgs: gameArgs ?? current.gameArgs,
+          windowWidth: windowWidth ?? current.windowWidth,
+          windowHeight: windowHeight ?? current.windowHeight,
+          fullscreen: fullscreen ?? current.fullscreen,
+          logRetentionFiles: logRetentionFiles ?? current.logRetentionFiles,
+          logRetentionMegabytes:
+              logRetentionMegabytes ?? current.logRetentionMegabytes,
         ),
       );
       return;
@@ -122,6 +133,11 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         jvmArgs: jvmArgs,
         gcMode: gcMode,
         gameArgs: gameArgs,
+        windowWidth: windowWidth,
+        windowHeight: windowHeight,
+        fullscreen: fullscreen,
+        logRetentionFiles: logRetentionFiles,
+        logRetentionMegabytes: logRetentionMegabytes,
       ),
     );
   }
@@ -131,6 +147,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     int? downloadConcurrency,
     int? downloadPerHost,
     Object? downloadProxy = noChange,
+    int? downloadChunkSizeKb,
+    int? downloadRangeThresholdKb,
   }) async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
@@ -148,6 +166,10 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           downloadProxy: downloadProxy is String?
               ? downloadProxy
               : current.downloadProxy,
+          downloadChunkSizeKb:
+              downloadChunkSizeKb ?? current.downloadChunkSizeKb,
+          downloadRangeThresholdKb:
+              downloadRangeThresholdKb ?? current.downloadRangeThresholdKb,
         ),
       );
       return;
@@ -159,6 +181,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         downloadConcurrency: downloadConcurrency,
         downloadPerHost: downloadPerHost,
         downloadProxy: downloadProxy,
+        downloadChunkSizeKb: downloadChunkSizeKb,
+        downloadRangeThresholdKb: downloadRangeThresholdKb,
       ),
     );
   }

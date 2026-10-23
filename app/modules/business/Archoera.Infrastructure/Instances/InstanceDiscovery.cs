@@ -189,7 +189,8 @@ internal static class InstanceDiscovery
                 favorite.ValueKind == JsonValueKind.True,
                 Date(root, "createdAt") ?? Directory.GetCreationTimeUtc(directory),
                 Date(root, "updatedAt") ?? Directory.GetLastWriteTimeUtc(directory),
-                Date(root, "lastPlayedAt"));
+                Date(root, "lastPlayedAt"),
+                ReadOverrides(root));
         }
         catch
         {
@@ -561,6 +562,40 @@ internal static class InstanceDiscovery
         => DateTimeOffset.TryParse(String(root, name), out var value) &&
            value.Year >= 2000
             ? value
+            : null;
+
+    private static InstanceOverrides? ReadOverrides(JsonElement root)
+    {
+        if (!root.TryGetProperty("overrides", out var element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var overrides = new InstanceOverrides(
+            Int(element, "memoryMinMb"),
+            Int(element, "memoryMaxMb"),
+            String(element, "jvmArgs"),
+            String(element, "gcMode"),
+            String(element, "gameArgs"),
+            String(element, "javaPath"),
+            Int(element, "windowWidth"),
+            Int(element, "windowHeight"),
+            Bool(element, "fullscreen"));
+        return overrides.IsEmpty ? null : overrides;
+    }
+
+    private static int? Int(JsonElement root, string name)
+        => root.TryGetProperty(name, out var element) &&
+           element.ValueKind == JsonValueKind.Number &&
+           element.TryGetInt32(out var value)
+            ? value
+            : null;
+
+    private static bool? Bool(JsonElement root, string name)
+        => root.TryGetProperty(name, out var element) &&
+           element.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? element.GetBoolean()
             : null;
 
     private sealed record SjmclMetadata(

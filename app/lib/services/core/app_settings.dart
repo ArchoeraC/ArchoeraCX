@@ -16,6 +16,13 @@ class AppSettings {
     this.downloadConcurrency = 16,
     this.downloadPerHost = 16,
     this.downloadProxy,
+    this.windowWidth = 854,
+    this.windowHeight = 480,
+    this.fullscreen = false,
+    this.downloadChunkSizeKb = 512,
+    this.downloadRangeThresholdKb = 1024,
+    this.logRetentionFiles = 10,
+    this.logRetentionMegabytes = 32,
   });
 
   /// Primary/legacy root. Always the first entry of [instancesRoots].
@@ -50,6 +57,28 @@ class AppSettings {
 
   /// Manual download proxy URL; null follows the system proxy.
   final String? downloadProxy;
+
+  /// Game window size used for `${resolution_width}` / `${resolution_height}`.
+  final int windowWidth;
+  final int windowHeight;
+
+  /// Adds `--fullscreen` to the game arguments.
+  final bool fullscreen;
+
+  /// Human label for the window preset, e.g. `1280 × 720`.
+  String get windowLabel => '$windowWidth × $windowHeight';
+
+  /// Ranged-download chunk size in KiB (128..8192).
+  final int downloadChunkSizeKb;
+
+  /// Files above this size use ranged chunks; 0 disables chunking.
+  final int downloadRangeThresholdKb;
+
+  /// Launch logs kept per instance (2..50).
+  final int logRetentionFiles;
+
+  /// Total launch-log budget per instance in MiB (8..512).
+  final int logRetentionMegabytes;
 
   /// Human readable source label for tooltips/diagnostics.
   String get downloadSourceLabel => switch (downloadSource) {
@@ -98,6 +127,20 @@ class AppSettings {
       ),
       downloadPerHost: (_int(value['downloadPerHost']) ?? 16).clamp(0, 64),
       downloadProxy: _string(value['downloadProxy']),
+      windowWidth: (_int(value['windowWidth']) ?? 854).clamp(640, 7680),
+      windowHeight: (_int(value['windowHeight']) ?? 480).clamp(480, 4320),
+      fullscreen: value['fullscreen'] == true,
+      downloadChunkSizeKb: (_int(value['downloadChunkSizeKb']) ?? 512).clamp(
+        128,
+        8192,
+      ),
+      downloadRangeThresholdKb:
+          (_int(value['downloadRangeThresholdKb']) ?? 1024).clamp(0, 65536),
+      logRetentionFiles: (_int(value['logRetentionFiles']) ?? 10).clamp(2, 50),
+      logRetentionMegabytes: (_int(value['logRetentionMb']) ?? 32).clamp(
+        8,
+        512,
+      ),
     );
   }
 

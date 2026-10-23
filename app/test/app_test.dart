@@ -3,6 +3,7 @@ import 'package:archoera_cx/app/shell.dart';
 import 'package:archoera_cx/services/core/build_policy.dart';
 import 'package:archoera_cx/services/core/download_policy.dart';
 import 'package:archoera_cx/stores/providers.dart';
+import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,7 +49,7 @@ void main() {
 
     expect(find.byType(AppShell), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/download')));
     await tester.pumpAndSettle();
     expect(find.text('Game versions'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -71,7 +72,7 @@ void main() {
     expect(find.byType(AppShell), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/download')));
     await tester.pumpAndSettle();
     expect(find.text('Game versions'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -129,7 +130,7 @@ void main() {
     await tester.tap(find.text('Settings'));
     await tester.pump(const Duration(milliseconds: 120));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.space_dashboard_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/')));
     await tester.pump(const Duration(milliseconds: 120));
     await tester.pumpAndSettle();
 
@@ -151,17 +152,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/download')));
     await tester.pumpAndSettle();
     expect(find.text('Game versions'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byIcon(Icons.person_outline_rounded));
+    await tester.tap(find.byKey(const ValueKey('nav-/accounts')));
     await tester.pumpAndSettle();
     expect(find.text('Add account'), findsWidgets);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byIcon(Icons.tune_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/settings')));
     await tester.pumpAndSettle();
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Network'), findsNothing);
@@ -214,7 +215,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/download')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mods'));
     await tester.pumpAndSettle();
@@ -236,7 +237,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.task_alt_rounded));
+    await tester.tap(find.byIcon(AppIcons.completed));
     await tester.pumpAndSettle();
 
     expect(find.text('Tasks'), findsOneWidget);
@@ -283,7 +284,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byKey(const ValueKey('nav-/download')), findsNothing);
     expect(find.text('Download'), findsNothing);
     expect(tester.takeException(), isNull);
   });

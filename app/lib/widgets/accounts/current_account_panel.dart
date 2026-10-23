@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_labels.dart';
 import '../../models/account.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/app_panel.dart';
 import 'account_avatar.dart';
@@ -90,7 +91,7 @@ class CurrentAccountPanel extends StatelessWidget {
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size(0, 44),
                         ),
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        icon: const Icon(AppIcons.refresh, size: 18),
                         label: Text(l10n.accountRefresh),
                       ),
                   ],

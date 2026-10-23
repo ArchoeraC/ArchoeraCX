@@ -8,7 +8,9 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
 import '../../services/core/launch_log.dart';
+import '../../stores/preferences.dart';
 import '../../stores/providers.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/toast.dart';
 
@@ -97,6 +99,7 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
       final snapshot = await client.readLaunchLog(
         instanceId: widget.instance.id,
         fileName: selected,
+        lines: ref.read(preferencesProvider).logLineLimit,
       );
       if (!mounted) return;
       setState(() {
@@ -236,6 +239,7 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
                     '${widget.instance.gameVersion} · '
                     '${widget.instance.loader.labelFor(l10n)}',
                 running: running,
+                onOpenFolder: list == null ? null : _openLogFolder,
                 onRefresh: _loading ? null : _load,
                 onClose: () => Navigator.of(context).pop(),
               ),
@@ -266,9 +270,16 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
                       },
                     ),
                   IconButton(
+                    tooltip: l10n.gameLogClear,
+                    onPressed: list == null || list.logs.isEmpty
+                        ? null
+                        : _clearOldLogs,
+                    icon: const Icon(AppIcons.delete, size: 20),
+                  ),
+                  IconButton(
                     tooltip: l10n.gameLogCopy,
                     onPressed: _lines.isEmpty ? null : _copyAll,
-                    icon: const Icon(Icons.copy_all_rounded, size: 20),
+                    icon: const Icon(AppIcons.copy, size: 20),
                   ),
                 ],
               ),
@@ -308,6 +319,60 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
         ),
       ),
     );
+  }
+
+  /// Reveals the instance log directory in the OS file manager.
+  Future<void> _openLogFolder() async {
+    final directory = _list?.logDirectory;
+    if (directory == null || directory.isEmpty) return;
+    final client = ref.read(coreClientProvider);
+    final opened = client != null && await client.openSystemPath(directory);
+    if (!opened && mounted) {
+      toast(
+        AppLocalizations.of(context).gameLogOpenFolderFailed,
+        type: ToastType.error,
+      );
+    }
+  }
+
+  /// Deletes archived launch logs of this instance (the running one is kept).
+  Future<void> _clearOldLogs() async {
+    final l10n = AppLocalizations.of(context);
+    final client = ref.read(coreClientProvider);
+    if (client == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.gameLogClearTitle),
+        content: Text(l10n.gameLogClearBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.commonDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final result = await client.clearLaunchLogs(
+        instanceId: widget.instance.id,
+      );
+      if (!mounted) return;
+      toast(
+        l10n.gameLogClearDone(result.deletedFiles, _formatBytes(result.freedBytes)),
+        type: ToastType.success,
+      );
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
   }
 
   Widget _body(BuildContext context, AppLocalizations l10n, AppTokens tokens) {
@@ -358,6 +423,7 @@ class _Header extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.running,
+    required this.onOpenFolder,
     required this.onRefresh,
     required this.onClose,
   });
@@ -365,6 +431,7 @@ class _Header extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool running;
+  final VoidCallback? onOpenFolder;
   final VoidCallback? onRefresh;
   final VoidCallback onClose;
 
@@ -397,14 +464,19 @@ class _Header extends StatelessWidget {
           ),
         ),
         IconButton(
+          onPressed: onOpenFolder,
+          tooltip: l10n.gameLogOpenFolder,
+          icon: const Icon(AppIcons.folder),
+        ),
+        IconButton(
           onPressed: onRefresh,
           tooltip: l10n.refresh,
-          icon: const Icon(Icons.refresh_rounded),
+          icon: const Icon(AppIcons.refresh),
         ),
         IconButton(
           onPressed: onClose,
           tooltip: l10n.commonClose,
-          icon: const Icon(Icons.close_rounded),
+          icon: const Icon(AppIcons.close),
         ),
       ],
     );
@@ -514,7 +586,7 @@ class _FollowToggle extends StatelessWidget {
         selected: following,
         showCheckmark: false,
         avatar: Icon(
-          following ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          following ? AppIcons.pause : AppIcons.play,
           size: 16,
           color: following ? tokens.accent : tokens.textSecondary,
         ),

@@ -16,6 +16,110 @@ enum GameLoader {
   final String defaultVersion;
 }
 
+/// Per-instance launch overrides.
+///
+/// Every field is optional: a null field means "follow the global setting",
+/// which is exactly what an absent key means on the wire. The C# owner applies
+/// this as a merge patch, so `null` clears an override and a value sets it.
+@immutable
+class InstanceOverrides {
+  const InstanceOverrides({
+    this.memoryMinMb,
+    this.memoryMaxMb,
+    this.jvmArgs,
+    this.gcMode,
+    this.gameArgs,
+    this.javaPath,
+    this.windowWidth,
+    this.windowHeight,
+    this.fullscreen,
+  });
+
+  /// Supported garbage collectors, mirroring the global settings contract.
+  static const gcModes = <String>[
+    'auto',
+    'g1gc',
+    'zgc',
+    'parallel',
+    'serial',
+    'shenandoah',
+    'epsilon',
+  ];
+
+  final int? memoryMinMb;
+  final int? memoryMaxMb;
+  final String? jvmArgs;
+  final String? gcMode;
+  final String? gameArgs;
+
+  /// Absolute path to a `java` executable.
+  final String? javaPath;
+  final int? windowWidth;
+  final int? windowHeight;
+  final bool? fullscreen;
+
+  bool get isEmpty =>
+      memoryMinMb == null &&
+      memoryMaxMb == null &&
+      jvmArgs == null &&
+      gcMode == null &&
+      gameArgs == null &&
+      javaPath == null &&
+      windowWidth == null &&
+      windowHeight == null &&
+      fullscreen == null;
+
+  /// Parse the `overrides` object of an instance payload. Returns null when the
+  /// object is absent or carries no override at all.
+  static InstanceOverrides? tryParse(Object? value) {
+    if (value is! Map) return null;
+    String? text(Object? raw) {
+      final value = raw?.toString().trim();
+      return value == null || value.isEmpty ? null : value;
+    }
+
+    final gcMode = text(value['gcMode']);
+    final overrides = InstanceOverrides(
+      memoryMinMb: GameInstance._int(value['memoryMinMb']),
+      memoryMaxMb: GameInstance._int(value['memoryMaxMb']),
+      jvmArgs: text(value['jvmArgs']),
+      gcMode: gcMode != null && gcModes.contains(gcMode) ? gcMode : null,
+      gameArgs: text(value['gameArgs']),
+      javaPath: text(value['javaPath']),
+      windowWidth: GameInstance._int(value['windowWidth']),
+      windowHeight: GameInstance._int(value['windowHeight']),
+      fullscreen: value['fullscreen'] is bool
+          ? value['fullscreen'] as bool
+          : null,
+    );
+    return overrides.isEmpty ? null : overrides;
+  }
+
+  InstanceOverrides copyWith({
+    int? memoryMinMb,
+    int? memoryMaxMb,
+    String? jvmArgs,
+    String? gcMode,
+    String? gameArgs,
+    String? javaPath,
+    int? windowWidth,
+    int? windowHeight,
+    bool? fullscreen,
+  }) {
+    return InstanceOverrides(
+      memoryMinMb: memoryMinMb ?? this.memoryMinMb,
+      memoryMaxMb: memoryMaxMb ?? this.memoryMaxMb,
+      jvmArgs: jvmArgs ?? this.jvmArgs,
+      gcMode: gcMode ?? this.gcMode,
+      gameArgs: gameArgs ?? this.gameArgs,
+      javaPath: javaPath ?? this.javaPath,
+      windowWidth: windowWidth ?? this.windowWidth,
+      windowHeight: windowHeight ?? this.windowHeight,
+      fullscreen: fullscreen ?? this.fullscreen,
+    );
+  }
+}
+
 /// A UI-facing instance summary. This is intentionally not a persistence
 /// model: the C#/SQLite owner will replace the mock provider later.
 @immutable
@@ -33,6 +137,7 @@ class GameInstance {
     this.instanceRoot,
     this.custom = false,
     this.missing = false,
+    this.overrides,
   });
 
   final String id;
@@ -56,6 +161,10 @@ class GameInstance {
 
   /// True when [rootPath] no longer exists on disk.
   final bool missing;
+
+  /// Per-instance launch overrides, or null when the instance follows the
+  /// global settings.
+  final InstanceOverrides? overrides;
 
   static GameLoader loaderFromWire(String? value) => switch (value) {
     'fabric' => GameLoader.fabric,
@@ -85,6 +194,7 @@ class GameInstance {
       instanceRoot: value['instanceRoot']?.toString(),
       custom: value['custom'] == true,
       missing: value['missing'] == true,
+      overrides: InstanceOverrides.tryParse(value['overrides']),
     );
   }
 
@@ -112,6 +222,7 @@ class GameInstance {
     String? instanceRoot,
     bool? custom,
     bool? missing,
+    InstanceOverrides? overrides,
   }) {
     return GameInstance(
       id: id,
@@ -126,6 +237,7 @@ class GameInstance {
       instanceRoot: instanceRoot ?? this.instanceRoot,
       custom: custom ?? this.custom,
       missing: missing ?? this.missing,
+      overrides: overrides ?? this.overrides,
     );
   }
 }

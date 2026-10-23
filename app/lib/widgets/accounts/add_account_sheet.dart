@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import 'account_type_action.dart';
 
@@ -62,7 +63,7 @@ class AddAccountSheet extends StatelessWidget {
               ),
               Divider(height: 1, color: tokens.border),
               AccountTypeAction(
-                icon: Icons.window_rounded,
+                icon: AppIcons.microsoft,
                 title: l10n.accountMicrosoftTitle,
                 subtitle: l10n.accountMicrosoftDesc,
                 color: tokens.success,
@@ -71,7 +72,7 @@ class AddAccountSheet extends StatelessWidget {
               if (showOffline) ...[
                 Divider(height: 1, color: tokens.border),
                 AccountTypeAction(
-                  icon: Icons.person_rounded,
+                  icon: AppIcons.accounts,
                   title: l10n.accountAddOffline,
                   subtitle: offlineHint ?? l10n.accountOfflineDesc,
                   color: tokens.accent,

@@ -116,7 +116,7 @@ Future<void> _pumpWiki(
   );
   await tester.pumpAndSettle();
 
-  await tester.tap(find.byIcon(Icons.menu_book_outlined));
+  await tester.tap(find.byKey(const ValueKey('nav-/wiki')));
   await tester.pumpAndSettle();
 }
 

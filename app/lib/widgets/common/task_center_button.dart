@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../services/core/task_update.dart';
 import '../../stores/providers.dart';
 import '../../stores/tasks.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/app_progress_bar.dart';
 
@@ -31,7 +32,7 @@ class TaskCenterButton extends ConsumerWidget {
           isLabelVisible: active > 0,
           label: Text('$active'),
           child: Icon(
-            active > 0 ? Icons.downloading_rounded : Icons.task_alt_rounded,
+            active > 0 ? AppIcons.running : AppIcons.completed,
             color: active > 0 ? tokens.accent : tokens.textSecondary,
           ),
         ),
@@ -223,7 +224,7 @@ class _SidebarHeader extends StatelessWidget {
             tooltip: l10n.close,
             onPressed: () => Navigator.of(context).maybePop(),
             visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.close_rounded, size: 18),
+            icon: const Icon(AppIcons.close, size: 18),
           ),
         ],
       ),
@@ -261,10 +262,10 @@ class _TaskRow extends ConsumerWidget {
         children: [
           Icon(
             switch (task.state) {
-              TaskUpdateState.completed => Icons.check_circle_outline_rounded,
-              TaskUpdateState.failed => Icons.error_outline_rounded,
-              TaskUpdateState.cancelled => Icons.block_rounded,
-              TaskUpdateState.running => Icons.downloading_rounded,
+              TaskUpdateState.completed => AppIcons.completed,
+              TaskUpdateState.failed => AppIcons.error,
+              TaskUpdateState.cancelled => AppIcons.cancelled,
+              TaskUpdateState.running => AppIcons.running,
             },
             size: 20,
             color: switch (task.state) {
@@ -354,7 +355,7 @@ class _TaskRow extends ConsumerWidget {
                   ref.read(coreClientProvider)?.cancel(task.taskId),
               visualDensity: VisualDensity.compact,
               iconSize: 18,
-              icon: Icon(Icons.close_rounded, color: tokens.textTertiary),
+              icon: Icon(AppIcons.close, color: tokens.textTertiary),
             ),
         ],
       ),

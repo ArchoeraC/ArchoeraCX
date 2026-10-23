@@ -26,7 +26,7 @@ Future<ProviderContainer> pumpSettings(
   final container = ProviderScope.containerOf(
     tester.element(find.byType(ArchoeraApp)),
   );
-  await tester.tap(find.byIcon(Icons.tune_outlined));
+  await tester.tap(find.byKey(const ValueKey('nav-/settings')));
   await tester.pumpAndSettle();
   return container;
 }

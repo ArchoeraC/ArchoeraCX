@@ -289,8 +289,8 @@ internal static class LaunchPlanBuilder
             ["auth_xuid"] = account.Xuid ?? string.Empty,
             ["user_type"] = userType,
             ["version_type"] = string.IsNullOrWhiteSpace(version.Type) ? "release" : version.Type,
-            ["resolution_width"] = "854",
-            ["resolution_height"] = "480",
+            ["resolution_width"] = settings.WindowWidth.ToString(),
+            ["resolution_height"] = settings.WindowHeight.ToString(),
             ["library_directory"] = paths.LibrariesRoot,
             ["quickPlayPath"] = string.Empty,
             ["quickPlaySingleplayer"] = string.Empty,
@@ -359,6 +359,11 @@ internal static class LaunchPlanBuilder
                     game.Add(Substitute(value, substitutions));
                 }
             }
+        }
+
+        if (settings.Fullscreen)
+        {
+            game.Add("--fullscreen");
         }
 
         if (!string.IsNullOrWhiteSpace(settings.GameArgs))

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/core/loader_versions.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import 'loader_picker_panel.dart';
 
@@ -77,7 +78,7 @@ class _LoaderVersionPickerDialog extends StatelessWidget {
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     tooltip: l10n.commonClose,
-                    icon: const Icon(Icons.close_rounded),
+                    icon: const Icon(AppIcons.close),
                   ),
                 ],
               ),

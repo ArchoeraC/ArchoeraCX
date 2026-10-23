@@ -298,6 +298,8 @@ public sealed class LaunchModuleOnlineTests
             string? name,
             bool? favorite,
             DateTimeOffset? lastPlayedAt,
+            Archoera.Domain.Instances.InstanceOverrides? overrides = null,
+            bool setOverrides = false,
             CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 

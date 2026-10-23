@@ -22,6 +22,7 @@ enum class MethodRouteKind {
   kCoreModules,
   kCoreAppearance,
   kCoreOpenUrl,
+  kCoreOpenPath,
   kCoreNotify,
   kCoreStatus,
   kCoreStatusWatch,

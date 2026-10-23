@@ -8,6 +8,7 @@ import '../models/game_instance.dart';
 import '../services/core/build_policy.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/instances.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_panel.dart';
 import '../widgets/common/loader_mark.dart';
@@ -166,8 +167,8 @@ class _LaunchHero extends StatelessWidget {
                       ),
                       icon: Icon(
                         hasInstance
-                            ? Icons.play_arrow_rounded
-                            : Icons.add_rounded,
+                            ? AppIcons.play
+                            : AppIcons.add,
                         size: 20,
                       ),
                       label: Text(
@@ -179,7 +180,7 @@ class _LaunchHero extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(0, 44),
                       ),
-                      icon: const Icon(Icons.grid_view_rounded, size: 18),
+                      icon: const Icon(AppIcons.gridView, size: 18),
                       label: Text(l10n.viewAll),
                     ),
                   ],
@@ -229,7 +230,7 @@ class _HeroArt extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (loader == null)
-                  Icon(Icons.add_rounded, size: 76, color: tokens.accent)
+                  Icon(AppIcons.add, size: 76, color: tokens.accent)
                 else
                   LoaderMark(loader: loader, size: 76),
                 const SizedBox(height: AppSpacing.sm),
@@ -303,14 +304,14 @@ class _ShortcutStrip extends StatelessWidget {
     final tokens = context.tokens;
     final cells = <Widget>[
       _ShortcutCell(
-        icon: Icons.grid_view_rounded,
+        icon: AppIcons.gridView,
         title: l10n.navInstances,
         value: l10n.instancesCount(instanceCount),
         onTap: onInstances,
       ),
       if (onDownload != null)
         _ShortcutCell(
-          icon: Icons.download_rounded,
+          icon: AppIcons.download,
           title: l10n.dashboardBrowseContent,
           value: l10n.sourceModrinth,
           onTap: onDownload!,
@@ -403,7 +404,7 @@ class _ShortcutCell extends StatelessWidget {
                 ),
               ),
               Icon(
-                Icons.chevron_right_rounded,
+                AppIcons.chevronRight,
                 size: 18,
                 color: tokens.textTertiary,
               ),
@@ -563,7 +564,7 @@ class _InstanceTile extends StatelessWidget {
             ),
           ),
           if (selected)
-            Icon(Icons.check_rounded, size: 18, color: tokens.accent),
+            Icon(AppIcons.check, size: 18, color: tokens.accent),
         ],
       ),
     );

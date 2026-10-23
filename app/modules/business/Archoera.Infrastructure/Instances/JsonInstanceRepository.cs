@@ -103,6 +103,8 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         string? name,
         bool? favorite,
         DateTimeOffset? lastPlayedAt,
+        InstanceOverrides? overrides = null,
+        bool setOverrides = false,
         CancellationToken cancellationToken = default)
     {
         var cleanId = ValidateId(id);
@@ -111,11 +113,21 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         if (index < 0) return null;
 
         var current = registry[index];
+        if (!setOverrides)
+        {
+            // instance.json is authoritative for overrides; a registry entry may
+            // predate a manual edit of the portable metadata.
+            var fromFile = await ReadInstanceFileAsync(current.RootPath, cancellationToken)
+                .ConfigureAwait(false);
+            if (fromFile is not null) current = current with { Overrides = fromFile.Overrides };
+        }
+
         var updated = current with
         {
             Name = name is null ? current.Name : ValidateName(name),
             Favorite = favorite ?? current.Favorite,
             LastPlayedAt = lastPlayedAt ?? current.LastPlayedAt,
+            Overrides = setOverrides ? NormalizeOverrides(overrides) : current.Overrides,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
 
@@ -446,7 +458,69 @@ public sealed class JsonInstanceRepository : IInstanceRepository
             item.TryGetProperty("favorite", out var favorite) && favorite.ValueKind == JsonValueKind.True,
             Date(item, "createdAt") ?? DateTimeOffset.UtcNow,
             Date(item, "updatedAt") ?? DateTimeOffset.UtcNow,
-            Date(item, "lastPlayedAt"));
+            Date(item, "lastPlayedAt"),
+            ReadOverrides(item));
+    }
+
+    private static InstanceOverrides? ReadOverrides(JsonElement root)
+    {
+        if (!root.TryGetProperty("overrides", out var element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var overrides = new InstanceOverrides(
+            Int(element, "memoryMinMb"),
+            Int(element, "memoryMaxMb"),
+            String(element, "jvmArgs"),
+            String(element, "gcMode"),
+            String(element, "gameArgs"),
+            String(element, "javaPath"),
+            Int(element, "windowWidth"),
+            Int(element, "windowHeight"),
+            Bool(element, "fullscreen"));
+        return NormalizeOverrides(overrides);
+    }
+
+    private static InstanceOverrides? NormalizeOverrides(InstanceOverrides? overrides)
+        => overrides is null || overrides.IsEmpty ? null : overrides;
+
+    private static void WriteOverrides(Utf8JsonWriter writer, InstanceOverrides? overrides)
+    {
+        if (overrides is null || overrides.IsEmpty) return;
+
+        writer.WriteStartObject("overrides");
+        if (overrides.MemoryMinMb is { } memoryMin)
+        {
+            writer.WriteNumber("memoryMinMb", memoryMin);
+        }
+
+        if (overrides.MemoryMaxMb is { } memoryMax)
+        {
+            writer.WriteNumber("memoryMaxMb", memoryMax);
+        }
+
+        if (overrides.JvmArgs is { } jvmArgs) writer.WriteString("jvmArgs", jvmArgs);
+        if (overrides.GcMode is { } gcMode) writer.WriteString("gcMode", gcMode);
+        if (overrides.GameArgs is { } gameArgs) writer.WriteString("gameArgs", gameArgs);
+        if (overrides.JavaPath is { } javaPath) writer.WriteString("javaPath", javaPath);
+        if (overrides.WindowWidth is { } windowWidth)
+        {
+            writer.WriteNumber("windowWidth", windowWidth);
+        }
+
+        if (overrides.WindowHeight is { } windowHeight)
+        {
+            writer.WriteNumber("windowHeight", windowHeight);
+        }
+
+        if (overrides.Fullscreen is { } fullscreen)
+        {
+            writer.WriteBoolean("fullscreen", fullscreen);
+        }
+
+        writer.WriteEndObject();
     }
 
     private static async Task WriteRecordsAsync(
@@ -493,6 +567,7 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         writer.WriteString("createdAt", record.CreatedAt.ToString("O"));
         writer.WriteString("updatedAt", record.UpdatedAt.ToString("O"));
         writer.WriteString("lastPlayedAt", record.LastPlayedAt?.ToString("O"));
+        WriteOverrides(writer, record.Overrides);
         writer.WriteEndObject();
     }
 
@@ -510,4 +585,10 @@ public sealed class JsonInstanceRepository : IInstanceRepository
 
     private static DateTimeOffset? Date(JsonElement root, string name)
         => DateTimeOffset.TryParse(String(root, name), out var value) ? value : null;
+
+    private static bool? Bool(JsonElement root, string name)
+        => root.TryGetProperty(name, out var element) &&
+           element.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? element.GetBoolean()
+            : null;
 }

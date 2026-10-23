@@ -9,19 +9,22 @@ import '../models/game_instance.dart';
 import '../services/core/build_policy.dart';
 import '../services/core/core_client.dart';
 import '../services/launch/launch_action.dart';
+import '../stores/downloads.dart';
 import '../stores/instances.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../stores/tasks.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_progress_bar.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/common/loader_mark.dart';
 import '../widgets/instances/game_log_dialog.dart';
+import '../widgets/instances/instance_duplicate_dialog.dart';
 import '../widgets/instances/instance_mods_dialog.dart';
+import '../widgets/instances/instance_settings_dialog.dart';
 import '../widgets/instances/loader_install_dialog.dart';
-import '../widgets/instances/vanilla_install_dialog.dart';
 import '../widgets/download/pack_install_dialog.dart';
 import '../widgets/common/app_panel.dart';
 import '../widgets/common/app_section.dart';
@@ -130,19 +133,19 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.refresh_rounded, size: 18),
+                        : const Icon(AppIcons.refresh, size: 18),
                     label: Text(l10n.refresh),
                   ),
                   OutlinedButton.icon(
                     onPressed: downloadsEnabled
                         ? () => _importPack(l10n)
                         : null,
-                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    icon: const Icon(AppIcons.fileDownload, size: 18),
                     label: Text(l10n.importPack),
                   ),
                   FilledButton.icon(
                     onPressed: () => showCreateInstanceDialog(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
+                    icon: const Icon(AppIcons.add, size: 18),
                     label: Text(l10n.createInstance),
                   ),
                 ],
@@ -167,7 +170,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
         else if (instancesAsync.hasError && instances.isEmpty)
           SliverToBoxAdapter(
             child: _InlineNotice(
-              icon: Icons.error_outline_rounded,
+              icon: AppIcons.error,
               message: l10n.instancesLoadFailed('${instancesAsync.error}'),
               color: tokens.danger,
             ),
@@ -192,7 +195,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
         else if (filtered.isEmpty)
           SliverToBoxAdapter(
             child: _InlineNotice(
-              icon: Icons.search_off_rounded,
+              icon: AppIcons.searchEmpty,
               message: l10n.instanceNoMatches,
               color: tokens.textSecondary,
             ),
@@ -231,11 +234,14 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                       onManageLoader: () =>
                           showLoaderInstallDialog(context, filtered[i]),
                       downloadsEnabled: downloadsEnabled,
-                      onInstallGame: () =>
-                          showVanillaInstallDialog(context, filtered[i]),
+                      onInstallGame: () => _installGame(filtered[i], l10n),
                       onManageMods: () =>
                           showInstanceModsDialog(context, filtered[i]),
+                      onDuplicate: () =>
+                          showInstanceDuplicateDialog(context, filtered[i]),
                       onViewLogs: () => showGameLogDialog(context, filtered[i]),
+                      onOpenFolder: () =>
+                          _openInstanceFolder(filtered[i], l10n),
                       onDelete: () => _delete(filtered[i], l10n),
                     ),
                     if (i < filtered.length - 1)
@@ -277,12 +283,15 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                               onManageLoader: () =>
                                   showLoaderInstallDialog(context, instance),
                               downloadsEnabled: downloadsEnabled,
-                              onInstallGame: () =>
-                                  showVanillaInstallDialog(context, instance),
+                              onInstallGame: () => _installGame(instance, l10n),
                               onManageMods: () =>
                                   showInstanceModsDialog(context, instance),
+                              onDuplicate: () =>
+                                  showInstanceDuplicateDialog(context, instance),
                               onViewLogs: () =>
                                   showGameLogDialog(context, instance),
+                              onOpenFolder: () =>
+                                  _openInstanceFolder(instance, l10n),
                               onDelete: () => _delete(instance, l10n),
                             ),
                           ),
@@ -296,6 +305,29 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
           ),
       ],
     );
+  }
+
+  /// Queues the vanilla game files in the background; the task center owns
+  /// progress, so the page never blocks on a modal dialog.
+  Future<void> _installGame(
+    GameInstance instance,
+    AppLocalizations l10n,
+  ) async {
+    try {
+      await ref
+          .read(downloadsProvider.notifier)
+          .installGameFiles(
+            instance,
+            successMessage: l10n.instanceInstallGameDone,
+            failureMessage: l10n.instanceInstallGameFailed,
+            cancelledMessage: l10n.downloadCancelled(instance.name),
+          );
+      if (!mounted) return;
+      toast(l10n.downloadQueued(instance.name), type: ToastType.success);
+    } catch (error) {
+      if (!mounted) return;
+      toast('${l10n.instanceInstallGameFailed}\n$error', type: ToastType.error);
+    }
   }
 
   void _launch(GameInstance instance) {
@@ -319,7 +351,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
         builder: (context) {
           final tokens = context.tokens;
           return AlertDialog(
-            icon: Icon(Icons.warning_amber_rounded, color: tokens.danger),
+            icon: Icon(AppIcons.warning, color: tokens.danger),
             title: Text(l10n.instanceDeleteFilesConfirmTitle),
             content: Text(
               l10n.instanceDeleteFilesConfirmBody(instance.rootPath),
@@ -415,6 +447,20 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   }) {
     toast(message, type: type);
   }
+
+  /// Reveals the instance folder through the core; the UI never touches paths
+  /// itself.
+  Future<void> _openInstanceFolder(
+    GameInstance instance,
+    AppLocalizations l10n,
+  ) async {
+    final client = ref.read(coreClientProvider);
+    final opened =
+        client != null && await client.openSystemPath(instance.rootPath);
+    if (!opened && mounted) {
+      _notify(context, l10n.settingsOpenFailed, type: ToastType.error);
+    }
+  }
 }
 
 class _InstancesToolbar extends StatelessWidget {
@@ -439,14 +485,14 @@ class _InstancesToolbar extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: l10n.searchInstances,
-        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+        prefixIcon: const Icon(AppIcons.search, size: 20),
         isDense: true,
       ),
     );
     final countLabel = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.grid_view_rounded, size: 16, color: tokens.textTertiary),
+        Icon(AppIcons.gridView, size: 16, color: tokens.textTertiary),
         const SizedBox(width: AppSpacing.xxs),
         Text(
           query.isEmpty ? l10n.instancesCount(total) : '$count / $total',
@@ -503,7 +549,7 @@ class _EmptyInstancesPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.grid_view_rounded, size: 30, color: tokens.accent),
+        Icon(AppIcons.gridView, size: 30, color: tokens.accent),
         const SizedBox(height: AppSpacing.sm),
         Text(l10n.instanceEmptyTitle, style: textTheme.titleLarge),
         const SizedBox(height: AppSpacing.xs),
@@ -521,12 +567,12 @@ class _EmptyInstancesPanel extends StatelessWidget {
           children: [
             FilledButton.icon(
               onPressed: () => showCreateInstanceDialog(context),
-              icon: const Icon(Icons.add_rounded, size: 18),
+              icon: const Icon(AppIcons.add, size: 18),
               label: Text(l10n.createInstance),
             ),
             OutlinedButton.icon(
               onPressed: () => _showUnavailable(context, l10n),
-              icon: const Icon(Icons.file_download_outlined, size: 18),
+              icon: const Icon(AppIcons.fileDownload, size: 18),
               label: Text(l10n.importPack),
             ),
           ],
@@ -677,7 +723,7 @@ class _InstanceRootCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
         children: [
-          Icon(Icons.folder_outlined, size: 18, color: tokens.textSecondary),
+          Icon(AppIcons.folder, size: 18, color: tokens.textSecondary),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -979,7 +1025,7 @@ class _DependencyCheckDialogState
         if (!ok && _canRepair && downloadsEnabled)
           FilledButton.icon(
             onPressed: _busy ? null : _repair,
-            icon: const Icon(Icons.build_rounded, size: 18),
+            icon: const Icon(AppIcons.repair, size: 18),
             label: Text(
               _busy ? l10n.instanceCheckRepairing : l10n.instanceCheckRepair,
             ),
@@ -1004,7 +1050,9 @@ class _InstanceRow extends StatelessWidget {
     required this.onInstallGame,
     required this.downloadsEnabled,
     required this.onManageMods,
+    required this.onDuplicate,
     required this.onViewLogs,
+    required this.onOpenFolder,
     required this.onDelete,
   });
 
@@ -1017,7 +1065,9 @@ class _InstanceRow extends StatelessWidget {
   final VoidCallback onInstallGame;
   final bool downloadsEnabled;
   final VoidCallback onManageMods;
+  final VoidCallback onDuplicate;
   final VoidCallback onViewLogs;
+  final VoidCallback onOpenFolder;
   final VoidCallback onDelete;
 
   @override
@@ -1061,15 +1111,25 @@ class _InstanceRow extends StatelessWidget {
                           style: textTheme.titleSmall,
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          _instanceMeta(instance, l10n),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: instance.missing
-                                ? tokens.danger
-                                : tokens.textTertiary,
-                          ),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                _instanceMeta(instance, l10n),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: instance.missing
+                                      ? tokens.danger
+                                      : tokens.textTertiary,
+                                ),
+                              ),
+                            ),
+                            if (_hasOverrides(instance)) ...[
+                              const SizedBox(width: AppSpacing.xxs),
+                              _OverridesBadge(l10n: l10n, overrides: instance.overrides!),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -1086,7 +1146,7 @@ class _InstanceRow extends StatelessWidget {
                   const SizedBox(width: AppSpacing.xs),
                   TextButton.icon(
                     onPressed: instance.missing ? null : onLaunch,
-                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    icon: const Icon(AppIcons.play, size: 18),
                     label: Text(l10n.launch),
                   ),
                   _InstanceMenu(
@@ -1094,9 +1154,13 @@ class _InstanceRow extends StatelessWidget {
                     downloadsEnabled: downloadsEnabled,
                     onCheck: onCheck,
                     onManageLoader: onManageLoader,
+                    onSettings: () =>
+                        showInstanceSettingsDialog(context, instance),
                     onInstallGame: onInstallGame,
                     onManageMods: onManageMods,
+                    onDuplicate: onDuplicate,
                     onViewLogs: onViewLogs,
+                    onOpenFolder: onOpenFolder,
                     onDelete: onDelete,
                   ),
                 ],
@@ -1115,9 +1179,12 @@ class _InstanceMenu extends StatelessWidget {
     required this.downloadsEnabled,
     required this.onCheck,
     required this.onManageLoader,
+    required this.onSettings,
     required this.onInstallGame,
     required this.onManageMods,
+    required this.onDuplicate,
     required this.onViewLogs,
+    required this.onOpenFolder,
     required this.onDelete,
   });
 
@@ -1125,9 +1192,12 @@ class _InstanceMenu extends StatelessWidget {
   final bool downloadsEnabled;
   final ValueChanged<String> onCheck;
   final VoidCallback onManageLoader;
+  final VoidCallback onSettings;
   final VoidCallback onInstallGame;
   final VoidCallback onManageMods;
+  final VoidCallback onDuplicate;
   final VoidCallback onViewLogs;
+  final VoidCallback onOpenFolder;
   final VoidCallback onDelete;
 
   @override
@@ -1135,13 +1205,16 @@ class _InstanceMenu extends StatelessWidget {
     final tokens = context.tokens;
     return PopupMenuButton<String>(
       tooltip: l10n.instanceManage,
-      icon: Icon(Icons.more_horiz_rounded, color: tokens.textSecondary),
+      icon: Icon(AppIcons.more, color: tokens.textSecondary),
       onSelected: (value) {
         if (value == 'delete') onDelete();
         if (value == 'manageLoader') onManageLoader();
+        if (value == 'settings') onSettings();
         if (value == 'installGame') onInstallGame();
         if (value == 'manageMods') onManageMods();
+        if (value == 'duplicate') onDuplicate();
         if (value == 'viewLogs') onViewLogs();
+        if (value == 'openFolder') onOpenFolder();
         if (value == 'checkQuick') onCheck('quick');
         if (value == 'checkFull') onCheck('full');
       },
@@ -1151,7 +1224,7 @@ class _InstanceMenu extends StatelessWidget {
             value: 'manageLoader',
             child: Row(
               children: [
-                const Icon(Icons.build_circle_outlined, size: 20),
+                const Icon(AppIcons.repair, size: 20),
                 const SizedBox(width: AppSpacing.xs),
                 Flexible(
                   child: Text(
@@ -1166,7 +1239,7 @@ class _InstanceMenu extends StatelessWidget {
             value: 'installGame',
             child: Row(
               children: [
-                const Icon(Icons.download_rounded, size: 20),
+                const Icon(AppIcons.download, size: 20),
                 const SizedBox(width: AppSpacing.xs),
                 Flexible(
                   child: Text(
@@ -1179,10 +1252,40 @@ class _InstanceMenu extends StatelessWidget {
           ),
         ],
         PopupMenuItem(
+          value: 'settings',
+          child: Row(
+            children: [
+              const Icon(AppIcons.settings, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  l10n.instanceSettingsTitle,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'duplicate',
+          child: Row(
+            children: [
+              const Icon(AppIcons.copy, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  l10n.instanceDuplicate,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
           value: 'manageMods',
           child: Row(
             children: [
-              const Icon(Icons.extension_rounded, size: 20),
+              const Icon(AppIcons.mod, size: 20),
               const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: Text(
@@ -1197,7 +1300,7 @@ class _InstanceMenu extends StatelessWidget {
           value: 'viewLogs',
           child: Row(
             children: [
-              const Icon(Icons.article_outlined, size: 20),
+              const Icon(AppIcons.news, size: 20),
               const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: Text(
@@ -1209,10 +1312,25 @@ class _InstanceMenu extends StatelessWidget {
           ),
         ),
         PopupMenuItem(
+          value: 'openFolder',
+          child: Row(
+            children: [
+              const Icon(AppIcons.folder, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  l10n.instanceOpenFolder,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
           value: 'checkQuick',
           child: Row(
             children: [
-              const Icon(Icons.bolt_rounded, size: 20),
+              const Icon(AppIcons.quick, size: 20),
               const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: Text(
@@ -1227,7 +1345,7 @@ class _InstanceMenu extends StatelessWidget {
           value: 'checkFull',
           child: Row(
             children: [
-              const Icon(Icons.fact_check_outlined, size: 20),
+              const Icon(AppIcons.checklist, size: 20),
               const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: Text(
@@ -1242,7 +1360,7 @@ class _InstanceMenu extends StatelessWidget {
           value: 'delete',
           child: Row(
             children: [
-              Icon(Icons.delete_outline_rounded, color: tokens.danger),
+              Icon(AppIcons.delete, color: tokens.danger),
               const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: Text(
@@ -1271,7 +1389,9 @@ class _InstanceCard extends StatelessWidget {
     required this.onInstallGame,
     required this.downloadsEnabled,
     required this.onManageMods,
+    required this.onDuplicate,
     required this.onViewLogs,
+    required this.onOpenFolder,
     required this.onDelete,
   });
 
@@ -1284,7 +1404,9 @@ class _InstanceCard extends StatelessWidget {
   final VoidCallback onInstallGame;
   final bool downloadsEnabled;
   final VoidCallback onManageMods;
+  final VoidCallback onDuplicate;
   final VoidCallback onViewLogs;
+  final VoidCallback onOpenFolder;
   final VoidCallback onDelete;
 
   @override
@@ -1320,15 +1442,25 @@ class _InstanceCard extends StatelessWidget {
                       style: textTheme.titleSmall,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      _instanceMeta(instance, l10n),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: instance.missing
-                            ? tokens.danger
-                            : tokens.textTertiary,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _instanceMeta(instance, l10n),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: instance.missing
+                                  ? tokens.danger
+                                  : tokens.textTertiary,
+                            ),
+                          ),
+                        ),
+                        if (_hasOverrides(instance)) ...[
+                          const SizedBox(width: AppSpacing.xxs),
+                          _OverridesBadge(l10n: l10n, overrides: instance.overrides!),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -1338,9 +1470,12 @@ class _InstanceCard extends StatelessWidget {
                 downloadsEnabled: downloadsEnabled,
                 onCheck: onCheck,
                 onManageLoader: onManageLoader,
+                onSettings: () => showInstanceSettingsDialog(context, instance),
                 onInstallGame: onInstallGame,
                 onManageMods: onManageMods,
+                onDuplicate: onDuplicate,
                 onViewLogs: onViewLogs,
+                onOpenFolder: onOpenFolder,
                 onDelete: onDelete,
               ),
             ],
@@ -1348,11 +1483,7 @@ class _InstanceCard extends StatelessWidget {
           const Spacer(),
           Row(
             children: [
-              Icon(
-                Icons.schedule_rounded,
-                size: 14,
-                color: tokens.textTertiary,
-              ),
+              Icon(AppIcons.time, size: 14, color: tokens.textTertiary),
               const SizedBox(width: AppSpacing.xxs),
               Expanded(
                 child: Text(
@@ -1367,7 +1498,7 @@ class _InstanceCard extends StatelessWidget {
               ),
               TextButton.icon(
                 onPressed: instance.missing ? null : onLaunch,
-                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                icon: const Icon(AppIcons.play, size: 18),
                 label: Text(l10n.launch),
               ),
             ],
@@ -1463,6 +1594,47 @@ String _instanceMeta(GameInstance instance, AppLocalizations l10n) {
   if (instance.missing) parts.insert(0, l10n.instanceMissing);
   if (instance.custom) parts.insert(0, l10n.instanceCustom);
   return parts.join(' · ');
+}
+
+/// True when the instance carries at least one launch override.
+bool _hasOverrides(GameInstance instance) {
+  final overrides = instance.overrides;
+  return overrides != null && !overrides.isEmpty;
+}
+
+/// Tiny marker next to the metadata that flags per-instance overrides without
+/// taking space from the row.
+class _OverridesBadge extends StatelessWidget {
+  const _OverridesBadge({required this.l10n, required this.overrides});
+
+  final AppLocalizations l10n;
+  final InstanceOverrides overrides;
+
+  @override
+  Widget build(BuildContext context) {
+    final fields = <String>[
+      if (overrides.memoryMinMb != null || overrides.memoryMaxMb != null)
+        l10n.instanceOverridesMemory,
+      if (overrides.gcMode != null) l10n.instanceOverridesGc,
+      if (overrides.jvmArgs != null) l10n.instanceOverridesJvm,
+      if (overrides.gameArgs != null) l10n.instanceOverridesGameArgs,
+      if (overrides.javaPath != null) l10n.instanceOverridesJava,
+      if (overrides.windowWidth != null ||
+          overrides.windowHeight != null ||
+          overrides.fullscreen != null)
+        l10n.instanceOverridesWindow,
+    ];
+    return Tooltip(
+      message: fields.isEmpty
+          ? l10n.instanceOverridesBadge
+          : '${l10n.instanceOverridesBadge}\n${fields.join(' · ')}',
+      child: Icon(
+        AppIcons.settings,
+        size: 14,
+        color: context.tokens.textTertiary,
+      ),
+    );
+  }
 }
 
 String _lastPlayedLabel(

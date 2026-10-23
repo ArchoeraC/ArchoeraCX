@@ -19,7 +19,7 @@ Future<void> _pumpInstances(WidgetTester tester, Size size) async {
     ),
   );
   await tester.pumpAndSettle();
-  await tester.tap(find.byIcon(Icons.grid_view_outlined));
+  await tester.tap(find.byKey(const ValueKey('nav-/instances')));
   await tester.pumpAndSettle();
 }
 

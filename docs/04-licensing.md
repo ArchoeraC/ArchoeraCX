@@ -396,7 +396,7 @@ GPL-2/3 · AGPL-3 · SSPL · BUSL · Commons Clause · CC-BY-NC(代码) · 任�
 |---|---|---|
 | 启动器图标/插画 | 对方版权，闭源不可用 | 自制 / 委托设计 |
 | 字体 | LauncherX 的 DINPro 是**商业字体** | Inter、Noto Sans SC、JetBrains Mono（OFL） |
-| 图标库 | Font Awesome Pro 不可免费商用 | Lucide（ISC）、Tabler（MIT）、FA Free（需署名） |
+| 图标库 | Font Awesome Pro 不可免费商用 | Tabler（MIT，当前使用，见 `app/assets/icons/ui/SOURCES.md`）、Lucide（ISC）、FA Free（需署名） |
 | 音效/动画 | 版权 | 自制或 CC0 |
 | 翻译文件 | 译文也受版权保护 | 自己翻译 / 用 Crowdin 社区贡献（需 CLA） |
 | Minecraft 皮肤/披风渲染 | 皮肤是用户资产；渲染库另有许可 | 用 MIT 渲染库，或自研 |
@@ -468,7 +468,7 @@ the Free Software Foundation, version 3 of the License.
 | 源码头 SPDX | `reuse`（FSFE）或自定义脚本 |
 | SBOM | `dotnet CycloneDX` / `syft` |
 | 禁止 GPL 进入构建 | 构建脚本里显式断言（白名单之外直接 fail） |
-| 资产来源 | `assets/SOURCES.md` 记录每个图标/字体的来源与许可 |
+| 资产来源 | `assets/icons/loaders/SOURCES.md`、`assets/icons/ui/SOURCES.md` 记录每个图标/字体的来源与许可，许可正文放 `assets/licenses/` |
 
 ### 7.3 发布物
 
@@ -504,7 +504,7 @@ the Free Software Foundation, version 3 of the License.
 - [ ] 账户 token 加密存储，日志无敏感信息
 - [ ] AGPL：源码获取方式已写进"关于"页与下载页（当前必须做）
 - [ ] 若使用 authlib-injector：其 AGPL 声明与源码链接已提供
-- [ ] 字体/图标/音效均有 `SOURCES.md` 记录
+- [ ] 字体/图标/音效均有 `SOURCES.md` 记录，图标字体许可正文随包分发（`assets/licenses/Tabler-Icons-MIT.txt`，并已注册到应用内第三方许可页）
 - [ ] CI 的许可证白名单检查已启用
 
 ---

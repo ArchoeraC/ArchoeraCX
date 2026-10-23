@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import 'app_panel.dart';
 
@@ -30,13 +31,18 @@ class ToastController extends ChangeNotifier {
   final List<ToastItem> _items = [];
   int _nextId = 0;
 
+  /// Applied when a caller does not pass an explicit duration. Settings lets
+  /// the user make toasts linger longer (or get out of the way sooner).
+  Duration defaultDuration = const Duration(milliseconds: 3000);
+
   List<ToastItem> get items => List.unmodifiable(_items);
 
   void show(
     String message, {
     ToastType type = ToastType.info,
-    Duration duration = const Duration(milliseconds: 3000),
+    Duration? duration,
   }) {
+    final resolved = duration ?? defaultDuration;
     while (_items.length >= maxToasts) {
       _items.removeAt(0);
     }
@@ -44,7 +50,7 @@ class ToastController extends ChangeNotifier {
       id: _nextId++,
       type: type,
       message: message,
-      duration: duration,
+      duration: resolved,
     );
     _items.add(item);
     notifyListeners();
@@ -71,7 +77,7 @@ final ToastController toastController = ToastController();
 void toast(
   String message, {
   ToastType type = ToastType.info,
-  Duration duration = const Duration(milliseconds: 3000),
+  Duration? duration,
 }) {
   toastController.show(message, type: type, duration: duration);
 }
@@ -198,10 +204,10 @@ class _ToastItemViewState extends State<_ToastItemView>
       ToastType.info => tokens.accent,
     };
     final icon = switch (widget.item.type) {
-      ToastType.success => Icons.check_circle_outline_rounded,
-      ToastType.warning => Icons.warning_amber_rounded,
-      ToastType.error => Icons.error_outline_rounded,
-      ToastType.info => Icons.info_outline_rounded,
+      ToastType.success => AppIcons.completed,
+      ToastType.warning => AppIcons.warning,
+      ToastType.error => AppIcons.error,
+      ToastType.info => AppIcons.info,
     };
     final shape = AppShapes.panel(
       tokens,

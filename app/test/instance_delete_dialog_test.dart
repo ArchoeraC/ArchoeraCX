@@ -2,6 +2,7 @@ import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/models/game_instance.dart';
 import 'package:archoera_cx/stores/instances.dart';
 import 'package:archoera_cx/stores/providers.dart';
+import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,12 +47,12 @@ Future<void> pumpInstances(WidgetTester tester) async {
     ),
   );
   await tester.pumpAndSettle();
-  await tester.tap(find.byIcon(Icons.grid_view_outlined));
+  await tester.tap(find.byKey(const ValueKey('nav-/instances')));
   await tester.pumpAndSettle();
 }
 
 Future<void> openDeleteDialog(WidgetTester tester) async {
-  await tester.tap(find.byIcon(Icons.more_horiz_rounded).first);
+  await tester.tap(find.byIcon(AppIcons.more).first);
   await tester.pumpAndSettle();
   await tester.tap(find.text('Delete instance').last);
   await tester.pumpAndSettle();

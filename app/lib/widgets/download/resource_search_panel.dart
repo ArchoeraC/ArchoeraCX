@@ -7,15 +7,16 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
 import '../../services/core/resource_models.dart';
+import '../../stores/downloads.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/app_progress_bar.dart';
 import '../common/app_empty_state.dart';
 import '../common/app_network_image.dart';
 import '../common/app_section.dart';
 import '../common/toast.dart';
-import 'pack_install_dialog.dart';
 
 /// Real Modrinth search + install surface for one content tab.
 ///
@@ -61,7 +62,19 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   int _total = 0;
   int _requestSeq = 0;
   String _sort = 'relevance';
-  bool _installing = false;
+
+  /// Project shown in the side pane (wide layouts) or detail view (narrow).
+  ResourceProject? _selected;
+
+  /// The pane switches from the project overview to its version list in place;
+  /// installing never opens a dialog.
+  bool _showVersions = false;
+  List<ResourceVersion>? _versions;
+  bool _versionsLoading = false;
+
+  /// Versions currently being planned (planning hits the network before the
+  /// background task exists).
+  final Set<String> _preparing = <String>{};
   String? _error;
 
   bool get _hasMore => _items.length < _total;
@@ -98,10 +111,11 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
     final instance = ref.watch(selectedInstanceProvider);
     final target = _targetFor(instance, l10n);
 
-    return Column(
+    final list = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SearchHeader(
@@ -109,7 +123,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
           controller: _queryController,
           target: target,
           busy: _loading,
-          installing: _installing,
+          installing: _preparing.isNotEmpty,
           total: _total,
           sort: _sort,
           onQueryChanged: _onQueryChanged,
@@ -124,6 +138,61 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         Expanded(child: _buildResults(l10n)),
       ],
     );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pane = _buildPane(context);
+        if (pane == null) return list;
+        // Side-by-side browsing is the point of the pane; below this width the
+        // pane takes over the tab instead of squeezing the list.
+        if (constraints.maxWidth < 1120) return pane;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: list),
+            Container(width: 1, color: tokens.border),
+            SizedBox(width: 380, child: pane),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget? _buildPane(BuildContext context) {
+    final project = _selected;
+    if (project == null) return null;
+
+    if (_showVersions) {
+      return _VersionPane(
+        project: project,
+        versions: _versions,
+        loading: _versionsLoading,
+        preparingVersionId: _preparing.isEmpty ? null : _preparing.first,
+        onBack: () => setState(() {
+          _showVersions = false;
+          _versions = null;
+          _preparing.clear();
+        }),
+        onClose: _closePane,
+        onInstall: _installVersion,
+      );
+    }
+
+    return _ProjectPane(
+      key: ValueKey(project.id),
+      project: project,
+      onClose: _closePane,
+      onInstall: _openVersions,
+    );
+  }
+
+  void _closePane() {
+    setState(() {
+      _selected = null;
+      _showVersions = false;
+      _versions = null;
+      _preparing.clear();
+    });
   }
 
   Widget _buildResults(AppLocalizations l10n) {
@@ -136,7 +205,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         padding: const EdgeInsets.only(bottom: AppSpacing.lg),
         children: [
           AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.offline,
             title: l10n.downloadSearchError,
             message: _error!,
             primaryAction: FilledButton(
@@ -180,7 +249,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
                     )
                   : TextButton.icon(
                       onPressed: () => _search(reset: false),
-                      icon: const Icon(Icons.expand_more_rounded, size: 18),
+                      icon: const Icon(AppIcons.chevronDown, size: 18),
                       label: Text(l10n.downloadLoadMore),
                     ),
             ),
@@ -190,8 +259,9 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         final project = _items[index];
         return _ResourceRow(
           project: project,
-          onTap: _installing ? null : () => _openDetails(project),
-          onInstall: _installing ? null : () => _openVersions(project),
+          selected: _selected?.id == project.id,
+          onTap: () => _selectProject(project),
+          onInstall: () => _selectProject(project, openVersions: true),
         );
       },
     );
@@ -209,13 +279,138 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     };
   }
 
-  String _loaderFor(GameInstance instance) => switch (instance.loader) {
-    GameLoader.fabric => 'fabric',
-    GameLoader.forge => 'forge',
-    GameLoader.neoforge => 'neoforge',
-    GameLoader.quilt => 'quilt',
-    _ => 'fabric',
-  };
+  void _selectProject(ResourceProject project, {bool openVersions = false}) {
+    if (_selected?.id == project.id && !openVersions) {
+      _closePane();
+      return;
+    }
+    setState(() {
+      _selected = project;
+      _showVersions = false;
+      _versions = null;
+      _versionsLoading = false;
+      _preparing.clear();
+    });
+    if (openVersions) {
+      _openVersions();
+    }
+  }
+
+  /// Loads the compatible versions into the pane. No modal sheet: the list
+  /// replaces the project overview and a back action returns to it.
+  Future<void> _openVersions() async {
+    final project = _selected;
+    if (project == null) return;
+    final l10n = AppLocalizations.of(context);
+    final client = ref.read(coreClientProvider);
+    final instance = ref.read(selectedInstanceProvider);
+
+    if (client == null) {
+      _notify(l10n.commonCoreNotConnected, type: ToastType.error);
+      return;
+    }
+    if (widget.kind != 'modpack') {
+      if (instance == null) {
+        _notify(l10n.selectInstance, type: ToastType.warning);
+        return;
+      }
+      if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
+        _notify(l10n.resourceNeedsLoader, type: ToastType.warning);
+        return;
+      }
+    }
+
+    setState(() {
+      _showVersions = true;
+      _versionsLoading = true;
+      _versions = null;
+    });
+
+    try {
+      // A modpack brings its own game version and loader, so it is listed
+      // without instance facets; mods and shaders must match the target.
+      final pack = widget.kind == 'modpack';
+      final versions = await client.modrinthVersions(
+        projectId: project.id,
+        kind: widget.kind,
+        gameVersion: pack ? null : instance?.gameVersion,
+        loader: pack || instance == null
+            ? null
+            : loaderSlug(instance.loader),
+        shaderLoader: widget.kind == 'shader' ? 'iris' : null,
+      );
+      if (!mounted || _selected?.id != project.id) return;
+      setState(() {
+        _versions = versions;
+        _versionsLoading = false;
+      });
+      if (versions.isEmpty) {
+        _notify(l10n.downloadNoVersions, type: ToastType.warning);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _versionsLoading = false;
+        _versions = const [];
+      });
+      _notify(error.toString(), type: ToastType.error);
+    }
+  }
+
+  /// Starts the install as a background task and closes the pane.
+  Future<void> _installVersion(ResourceVersion version) async {
+    final project = _selected;
+    if (project == null) return;
+    final l10n = AppLocalizations.of(context);
+    final instance = ref.read(selectedInstanceProvider);
+
+    if (widget.kind != 'modpack') {
+      if (instance == null) {
+        _notify(l10n.selectInstance, type: ToastType.warning);
+        return;
+      }
+      if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
+        _notify(l10n.resourceNeedsLoader, type: ToastType.warning);
+        return;
+      }
+      if (instance.rootPath.isEmpty) {
+        _notify(l10n.selectInstance, type: ToastType.warning);
+        return;
+      }
+    }
+
+    setState(() => _preparing.add(version.id));
+    try {
+      final downloads = ref.read(downloadsProvider.notifier);
+      if (widget.kind == 'modpack') {
+        await downloads.installModpackFromModrinth(
+          projectId: project.id,
+          versionId: version.id,
+          label: project.name,
+          successMessage: l10n.packInstallDone,
+          failureMessage: l10n.packInstallFailed,
+          cancelledMessage: l10n.downloadCancelled(project.name),
+        );
+      } else {
+        await downloads.installResource(
+          project: project,
+          version: version,
+          instance: instance!,
+          kind: widget.kind,
+          successMessage: l10n.downloadFinished(project.name),
+          failureMessage: l10n.downloadFailed(project.name),
+          cancelledMessage: l10n.downloadCancelled(project.name),
+        );
+      }
+      if (!mounted) return;
+      _notify(l10n.downloadQueued(project.name), type: ToastType.success);
+      _closePane();
+    } catch (error) {
+      _notify(error.toString(), type: ToastType.error);
+    } finally {
+      if (mounted) setState(() => _preparing.remove(version.id));
+    }
+  }
 
   void _onQueryChanged(String _) {
     _debounce?.cancel();
@@ -259,7 +454,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         : (instance?.gameVersion ?? '1.21.1');
     final loader = packMode
         ? null
-        : (instance == null ? 'fabric' : _loaderFor(instance));
+        : (instance == null ? 'fabric' : loaderSlug(instance.loader));
     final requestSeq = ++_requestSeq;
     final page = reset ? 0 : _page + 1;
 
@@ -317,185 +512,6 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
     }
   }
 
-  Future<void> _openDetails(ResourceProject project) async {
-    final install = await showDialog<bool>(
-      context: context,
-      builder: (_) => _ProjectDetailDialog(project: project),
-    );
-    if (install == true && mounted) {
-      await _openVersions(project);
-    }
-  }
-
-  Future<void> _openVersions(ResourceProject project) async {
-    final client = ref.read(coreClientProvider);
-    if (client == null) {
-      _notify(
-        AppLocalizations.of(context).commonCoreNotConnected,
-        type: ToastType.error,
-      );
-      return;
-    }
-
-    if (widget.kind == 'modpack') {
-      await _openPackVersions(project);
-      return;
-    }
-
-    final instance = ref.read(selectedInstanceProvider);
-    if (instance == null) {
-      _notify(
-        AppLocalizations.of(context).selectInstance,
-        type: ToastType.warning,
-      );
-      return;
-    }
-
-    if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
-      _notify(
-        AppLocalizations.of(context).resourceNeedsLoader,
-        type: ToastType.warning,
-      );
-      return;
-    }
-
-    setState(() => _installing = true);
-    try {
-      final versions = await client.modrinthVersions(
-        projectId: project.id,
-        kind: widget.kind,
-        gameVersion: instance.gameVersion,
-        loader: _loaderFor(instance),
-        shaderLoader: widget.kind == 'shader' ? 'iris' : null,
-      );
-      if (!mounted) return;
-      if (versions.isEmpty) {
-        _notify(
-          AppLocalizations.of(context).downloadNoVersions,
-          type: ToastType.warning,
-        );
-        return;
-      }
-
-      final selected = await showModalBottomSheet<ResourceVersion>(
-        context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.82,
-        ),
-        builder: (context) =>
-            _VersionSheet(project: project, versions: versions),
-      );
-      if (selected != null && mounted) {
-        await _install(project, selected);
-      }
-    } catch (error) {
-      if (mounted) _notify(error.toString(), type: ToastType.error);
-    } finally {
-      if (mounted) setState(() => _installing = false);
-    }
-  }
-
-  Future<void> _openPackVersions(ResourceProject project) async {
-    final client = ref.read(coreClientProvider);
-    if (client == null) return;
-    final l10n = AppLocalizations.of(context);
-
-    setState(() => _installing = true);
-    try {
-      final versions = await client.modrinthVersions(
-        projectId: project.id,
-        kind: 'modpack',
-      );
-      if (!mounted) return;
-      if (versions.isEmpty) {
-        _notify(l10n.downloadNoVersions, type: ToastType.warning);
-        return;
-      }
-
-      final selected = await showModalBottomSheet<ResourceVersion>(
-        context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.82,
-        ),
-        builder: (context) =>
-            _VersionSheet(project: project, versions: versions),
-      );
-      if (selected != null && mounted) {
-        await showPackInstallDialog(
-          context,
-          projectId: project.id,
-          versionId: selected.id,
-          title: l10n.packInstallTitle,
-          taskLabel: project.name,
-        );
-      }
-    } catch (error) {
-      if (mounted) _notify(error.toString(), type: ToastType.error);
-    } finally {
-      if (mounted) setState(() => _installing = false);
-    }
-  }
-
-  Future<void> _install(
-    ResourceProject project,
-    ResourceVersion version,
-  ) async {
-    final client = ref.read(coreClientProvider);
-    if (client == null) return;
-
-    final instance = ref.read(selectedInstanceProvider);
-    if (instance == null) {
-      _notify(
-        AppLocalizations.of(context).selectInstance,
-        type: ToastType.warning,
-      );
-      return;
-    }
-
-    if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
-      _notify(
-        AppLocalizations.of(context).resourceNeedsLoader,
-        type: ToastType.warning,
-      );
-      return;
-    }
-
-    final downloadRoot = instance.rootPath;
-    if (downloadRoot.isEmpty) {
-      _notify(
-        AppLocalizations.of(context).selectInstance,
-        type: ToastType.warning,
-      );
-      return;
-    }
-
-    setState(() => _installing = true);
-    try {
-      final plan = await client.planModrinthDownload(
-        projectId: project.id,
-        versionId: version.id,
-        kind: widget.kind,
-        gameVersion: instance.gameVersion,
-        loader: _loaderFor(instance),
-        shaderLoader: widget.kind == 'shader' ? 'iris' : null,
-        includeDependencies: true,
-        root: downloadRoot,
-      );
-      if (!mounted) return;
-      final result = await client.executeDownload(plan, label: project.name);
-      if (!mounted) return;
-      _notify(AppLocalizations.of(context).downloadResult(result.status));
-    } catch (error) {
-      if (mounted) _notify(error.toString(), type: ToastType.error);
-    } finally {
-      if (mounted) setState(() => _installing = false);
-    }
-  }
-
   void _notify(String message, {ToastType type = ToastType.info}) {
     toast(message, type: type);
   }
@@ -549,7 +565,7 @@ class _SearchHeader extends StatelessWidget {
                 onSubmitted: (_) => onSearch(),
                 decoration: InputDecoration(
                   hintText: l10n.searchDownload,
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  prefixIcon: const Icon(AppIcons.search, size: 20),
                   isDense: true,
                 ),
               );
@@ -589,7 +605,7 @@ class _SearchHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
             child: Row(
               children: [
-                Icon(Icons.tune_rounded, size: 14, color: tokens.textTertiary),
+                Icon(AppIcons.filter, size: 14, color: tokens.textTertiary),
                 const SizedBox(width: AppSpacing.xxs),
                 Expanded(
                   child: Text(
@@ -625,7 +641,7 @@ class _SearchHeader extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.sort_rounded,
+                        AppIcons.sort,
                         size: 14,
                         color: tokens.textSecondary,
                       ),
@@ -676,9 +692,15 @@ class _SearchHeader extends StatelessWidget {
 }
 
 class _ResourceRow extends StatelessWidget {
-  const _ResourceRow({required this.project, this.onTap, this.onInstall});
+  const _ResourceRow({
+    required this.project,
+    this.selected = false,
+    this.onTap,
+    this.onInstall,
+  });
 
   final ResourceProject project;
+  final bool selected;
   final VoidCallback? onTap;
   final VoidCallback? onInstall;
 
@@ -700,7 +722,14 @@ class _ResourceRow extends StatelessWidget {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: tokens.border)),
+            color: selected ? tokens.accentSoft : null,
+            border: Border(
+              left: BorderSide(
+                color: selected ? tokens.accent : Colors.transparent,
+                width: 2,
+              ),
+              bottom: BorderSide(color: tokens.border),
+            ),
           ),
           child: Row(
             children: [
@@ -745,11 +774,11 @@ class _ResourceRow extends StatelessWidget {
                       runSpacing: 2,
                       children: [
                         _MetaText(
-                          icon: Icons.file_download_outlined,
+                          icon: AppIcons.fileDownload,
                           text: _formatCount(project.downloads),
                         ),
                         _MetaText(
-                          icon: Icons.favorite_border_rounded,
+                          icon: AppIcons.favorite,
                           text: _formatCount(project.follows),
                         ),
                         for (final category in project.categories.take(2))
@@ -763,9 +792,9 @@ class _ResourceRow extends StatelessWidget {
               IconButton(
                 onPressed: onInstall,
                 tooltip: l10n.downloadInstall,
-                icon: const Icon(Icons.download_rounded, size: 20),
+                icon: const Icon(AppIcons.download, size: 20),
               ),
-              Icon(Icons.chevron_right_rounded, color: tokens.textTertiary),
+              Icon(AppIcons.chevronRight, color: tokens.textTertiary),
             ],
           ),
         ),
@@ -774,17 +803,23 @@ class _ResourceRow extends StatelessWidget {
   }
 }
 
-class _ProjectDetailDialog extends ConsumerStatefulWidget {
-  const _ProjectDetailDialog({required this.project});
+class _ProjectPane extends ConsumerStatefulWidget {
+  const _ProjectPane({
+    super.key,
+    required this.project,
+    required this.onClose,
+    required this.onInstall,
+  });
 
   final ResourceProject project;
+  final VoidCallback onClose;
+  final VoidCallback onInstall;
 
   @override
-  ConsumerState<_ProjectDetailDialog> createState() =>
-      _ProjectDetailDialogState();
+  ConsumerState<_ProjectPane> createState() => _ProjectPaneState();
 }
 
-class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
+class _ProjectPaneState extends ConsumerState<_ProjectPane> {
   ResourceProject? _detail;
   bool _loading = true;
   String? _error;
@@ -826,12 +861,11 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
     final project = _detail ?? widget.project;
     final gallery = project.gallery;
 
-    return Dialog(
+    return DecoratedBox(
+      decoration: BoxDecoration(color: tokens.surface1),
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 860,
-          maxHeight: MediaQuery.sizeOf(context).height * 0.88,
-        ),
+        // The pane shares the tab's height; the list scrolls on its own.
+        constraints: const BoxConstraints(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -845,7 +879,7 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _ProjectThumb(project: project, size: 68),
+                  _ProjectThumb(project: project, size: 56),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
@@ -877,9 +911,9 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(false),
+                    onPressed: widget.onClose,
                     tooltip: l10n.commonClose,
-                    icon: const Icon(Icons.close_rounded),
+                    icon: const Icon(AppIcons.close),
                   ),
                 ],
               ),
@@ -901,12 +935,12 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
                       runSpacing: AppSpacing.xs,
                       children: [
                         _MetaText(
-                          icon: Icons.file_download_outlined,
+                          icon: AppIcons.fileDownload,
                           text:
                               '${l10n.statDownloads}: ${_formatCount(project.downloads)}',
                         ),
                         _MetaText(
-                          icon: Icons.favorite_border_rounded,
+                          icon: AppIcons.favorite,
                           text: _formatCount(project.follows),
                         ),
                         if (project.license?.isNotEmpty == true)
@@ -958,7 +992,7 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
                                     height: 168,
                                     child: AppNetworkImage(
                                       url: image.url,
-                                      fallbackIcon: Icons.photo_outlined,
+                                      fallbackIcon: AppIcons.imagePlaceholder,
                                     ),
                                   ),
                                 ),
@@ -1004,8 +1038,8 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
                     ),
                   ),
                   FilledButton.icon(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    icon: const Icon(Icons.download_rounded, size: 18),
+                    onPressed: widget.onInstall,
+                    icon: const Icon(AppIcons.download, size: 18),
                     label: Text(l10n.downloadInstall),
                   ),
                 ],
@@ -1037,7 +1071,7 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
                     child: AppNetworkImage(
                       url: image.url,
                       fit: BoxFit.contain,
-                      fallbackIcon: Icons.broken_image_outlined,
+                      fallbackIcon: AppIcons.imagePlaceholder,
                     ),
                   ),
                 ),
@@ -1048,7 +1082,7 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
                 child: IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  icon: const Icon(AppIcons.close, color: Colors.white),
                 ),
               ),
             ],
@@ -1059,99 +1093,140 @@ class _ProjectDetailDialogState extends ConsumerState<_ProjectDetailDialog> {
   }
 }
 
-class _VersionSheet extends StatelessWidget {
-  const _VersionSheet({required this.project, required this.versions});
+class _VersionPane extends StatelessWidget {
+  const _VersionPane({
+    required this.project,
+    required this.versions,
+    required this.loading,
+    required this.preparingVersionId,
+    required this.onBack,
+    required this.onClose,
+    required this.onInstall,
+  });
 
   final ResourceProject project;
-  final List<ResourceVersion> versions;
+  final List<ResourceVersion>? versions;
+  final bool loading;
+  final String? preparingVersionId;
+  final VoidCallback onBack;
+  final VoidCallback onClose;
+  final ValueChanged<ResourceVersion> onInstall;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
+    final items = versions ?? const <ResourceVersion>[];
 
-    return SafeArea(
+    return DecoratedBox(
+      decoration: BoxDecoration(color: tokens.surface1),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              0,
-              AppSpacing.lg,
-              AppSpacing.sm,
+              AppSpacing.xxs,
+              AppSpacing.xs,
+              AppSpacing.xxs,
+              AppSpacing.xs,
             ),
             child: Row(
               children: [
-                _ProjectThumb(project: project, size: 44),
-                const SizedBox(width: AppSpacing.sm),
+                IconButton(
+                  onPressed: onBack,
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(AppIcons.back, size: 18),
+                ),
+                const SizedBox(width: AppSpacing.xxs),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         project.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleMedium,
+                        style: textTheme.titleSmall,
                       ),
-                      const SizedBox(height: 2),
                       Text(
                         l10n.downloadSelectVersion,
-                        style: textTheme.bodySmall?.copyWith(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall?.copyWith(
                           color: tokens.textTertiary,
                         ),
                       ),
                     ],
                   ),
                 ),
+                IconButton(
+                  onPressed: onClose,
+                  tooltip: l10n.commonClose,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(AppIcons.close, size: 18),
+                ),
               ],
             ),
           ),
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              itemCount: versions.length,
-              separatorBuilder: (_, _) => Divider(
-                height: 1,
-                indent: AppSpacing.lg,
-                endIndent: AppSpacing.lg,
-                color: tokens.border,
-              ),
-              itemBuilder: (context, index) {
-                final version = versions[index];
-                final file = version.primaryFile;
-                final dependencyCount = version.dependencies.length;
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                  ),
-                  title: Text(version.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${version.versionNumber} · '
-                        '${_versionTypeLabel(l10n, version.versionType)}'
-                        '${file == null ? '' : ' · ${_formatSize(file.size)}'}',
-                      ),
-                      if (dependencyCount > 0)
-                        Text(
-                          l10n.downloadDependencies(dependencyCount),
-                          style: textTheme.bodySmall?.copyWith(
-                            color: tokens.textTertiary,
-                          ),
+          Divider(height: 1, color: tokens.border),
+          Expanded(
+            child: loading
+                ? const Center(child: CircularProgressIndicator())
+                : items.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: Text(
+                        l10n.downloadNoVersions,
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: tokens.textSecondary,
                         ),
-                    ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) =>
+                        Divider(height: 1, color: tokens.border),
+                    itemBuilder: (context, index) {
+                      final version = items[index];
+                      final file = version.primaryFile;
+                      final preparing = preparingVersionId == version.id;
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
+                        title: Text(
+                          version.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleSmall,
+                        ),
+                        subtitle: Text(
+                          '${version.versionNumber} · '
+                          '${_versionTypeLabel(l10n, version.versionType)}'
+                          '${file == null ? '' : ' · ${_formatSize(file.size)}'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: preparing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(AppIcons.download, size: 18),
+                        onTap: preparing ? null : () => onInstall(version),
+                      );
+                    },
                   ),
-                  trailing: const Icon(Icons.download_rounded),
-                  onTap: () => Navigator.of(context).pop(version),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -1234,10 +1309,10 @@ class _Tag extends StatelessWidget {
 }
 
 IconData _kindIcon(String kind) => switch (kind) {
-  'shader' => Icons.flare_rounded,
-  'resourcepack' => Icons.photo_library_rounded,
-  'modpack' => Icons.inventory_2_rounded,
-  _ => Icons.extension_rounded,
+  'shader' => AppIcons.shader,
+  'resourcepack' => AppIcons.resourcePack,
+  'modpack' => AppIcons.modpack,
+  _ => AppIcons.mod,
 };
 
 String _plainBody(String value) {

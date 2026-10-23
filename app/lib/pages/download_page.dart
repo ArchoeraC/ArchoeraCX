@@ -4,13 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/build_policy.dart';
 import '../services/core/download_policy.dart';
+import '../stores/downloads.dart';
 import '../stores/providers.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_empty_state.dart';
 import '../widgets/common/app_page_header.dart';
+import '../widgets/common/toast.dart';
+import '../widgets/download/download_queue_bar.dart';
 import '../widgets/download/resource_search_panel.dart';
 import '../widgets/instances/create_instance_dialog.dart';
-import '../widgets/instances/vanilla_install_dialog.dart';
 import '../services/core/version_models.dart';
 
 /// Download hub.
@@ -89,28 +92,29 @@ class _DownloadPageState extends State<DownloadPage> {
                         ResourceSearchPanel(
                           kind: 'mod',
                           title: l10n.tabMods,
-                          icon: Icons.extension_rounded,
+                          icon: AppIcons.mod,
                           global: true,
                         ),
                         ResourceSearchPanel(
                           kind: 'modpack',
                           title: l10n.tabPacks,
-                          icon: Icons.inventory_2_rounded,
+                          icon: AppIcons.modpack,
                           global: true,
                         ),
                         ResourceSearchPanel(
                           kind: 'resourcepack',
                           title: l10n.tabResourcePacks,
-                          icon: Icons.photo_library_rounded,
+                          icon: AppIcons.resourcePack,
                         ),
                         ResourceSearchPanel(
                           kind: 'shader',
                           title: l10n.tabShaders,
-                          icon: Icons.flare_rounded,
+                          icon: AppIcons.shader,
                         ),
                       ],
                     ),
                   ),
+                  const DownloadQueueBar(),
                 ],
               ),
             );
@@ -149,12 +153,12 @@ class _DownloadUnavailable extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Expanded(
           child: AppEmptyState(
-            icon: Icons.download_for_offline_outlined,
+            icon: AppIcons.cloudDownload,
             title: l10n.downloadUnavailableTitle,
             message: message,
             primaryAction: FilledButton.icon(
               onPressed: onReload,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
+              icon: const Icon(AppIcons.refresh, size: 18),
               label: Text(l10n.downloadConfigReload),
             ),
             secondaryAction: configPath == null || configPath.isEmpty
@@ -208,7 +212,7 @@ class _SourceSelector extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.public_rounded, size: 15, color: tokens.textTertiary),
+              Icon(AppIcons.world, size: 15, color: tokens.textTertiary),
               const SizedBox(width: AppSpacing.xxs),
               Text(
                 l10n.sourceLabel,
@@ -281,11 +285,7 @@ class _SourceChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (!enabled) ...[
-                Icon(
-                  Icons.lock_outline_rounded,
-                  size: 14,
-                  color: tokens.textTertiary,
-                ),
+                Icon(AppIcons.locked, size: 14, color: tokens.textTertiary),
                 const SizedBox(width: AppSpacing.xxs),
               ],
               Text(
@@ -412,6 +412,36 @@ class _VersionsPanelState extends ConsumerState<_VersionsPanel> {
     }
   }
 
+  /// Creates the instance from the version list and downloads the game files
+  /// in the background; the page stays usable and the queue strip reports
+  /// progress.
+  Future<void> _createAndDownload(
+    BuildContext context,
+    AppLocalizations l10n,
+    String versionId,
+  ) async {
+    final created = await showCreateInstanceDialog(
+      context,
+      initialVersion: versionId,
+    );
+    if (created == null || !mounted) return;
+    try {
+      await ref
+          .read(downloadsProvider.notifier)
+          .installGameFiles(
+            created,
+            successMessage: l10n.instanceInstallGameDone,
+            failureMessage: l10n.instanceInstallGameFailed,
+            cancelledMessage: l10n.downloadCancelled(created.name),
+          );
+      if (!mounted) return;
+      toast(l10n.downloadQueued(created.name), type: ToastType.success);
+    } catch (error) {
+      if (!mounted) return;
+      toast('${l10n.instanceInstallGameFailed}\n$error', type: ToastType.error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -433,7 +463,7 @@ class _VersionsPanelState extends ConsumerState<_VersionsPanel> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: l10n.versionSearchHint,
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  prefixIcon: const Icon(AppIcons.search, size: 20),
                   isDense: true,
                 ),
               ),
@@ -454,7 +484,7 @@ class _VersionsPanelState extends ConsumerState<_VersionsPanel> {
             IconButton(
               onPressed: _loading ? null : _load,
               tooltip: l10n.refresh,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
+              icon: const Icon(AppIcons.refresh, size: 20),
             ),
           ],
         ),
@@ -494,9 +524,7 @@ class _VersionsPanelState extends ConsumerState<_VersionsPanel> {
                     horizontal: AppSpacing.xs,
                   ),
                   leading: Icon(
-                    item.isRelease
-                        ? Icons.verified_outlined
-                        : Icons.science_outlined,
+                    item.isRelease ? AppIcons.stable : AppIcons.beta,
                     size: 20,
                     color: item.isRelease
                         ? tokens.success
@@ -512,15 +540,7 @@ class _VersionsPanelState extends ConsumerState<_VersionsPanel> {
                     ].join(' · '),
                   ),
                   trailing: TextButton(
-                    onPressed: () async {
-                      final created = await showCreateInstanceDialog(
-                        context,
-                        initialVersion: item.id,
-                      );
-                      if (created != null && context.mounted) {
-                        await showVanillaInstallDialog(context, created);
-                      }
-                    },
+                    onPressed: () => _createAndDownload(context, l10n, item.id),
                     child: Text(l10n.versionUse),
                   ),
                 );

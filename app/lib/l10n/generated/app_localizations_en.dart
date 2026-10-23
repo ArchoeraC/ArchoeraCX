@@ -287,6 +287,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instanceDelete => 'Delete instance';
 
   @override
+  String get instanceDuplicate => 'Duplicate instance';
+
+  @override
+  String get instanceDuplicateTitle => 'Duplicate instance';
+
+  @override
+  String get instanceDuplicateName => 'New name';
+
+  @override
+  String get instanceDuplicateNameHint => 'e.g. 1.21.4 · Fabric copy';
+
+  @override
+  String get instanceDuplicateSuffix => 'copy';
+
+  @override
+  String get instanceDuplicateHint =>
+      'Copies the game folder, mods and configs (logs excluded) and keeps the instance settings.';
+
+  @override
+  String get instanceDuplicateAction => 'Duplicate';
+
+  @override
+  String instanceDuplicateDone(String name) {
+    return 'Created “$name”.';
+  }
+
+  @override
+  String get instanceDuplicateFailed => 'Could not duplicate the instance.';
+
+  @override
+  String get instanceDuplicateInvalidName => 'Enter an instance name.';
+
+  @override
   String instanceDeleteConfirm(String name) {
     return 'Delete “$name”?';
   }
@@ -569,6 +602,45 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String downloadQueued(String name) {
+    return '“$name” queued. Track it in Tasks or the queue strip below.';
+  }
+
+  @override
+  String downloadFinished(String name) {
+    return '“$name” finished downloading.';
+  }
+
+  @override
+  String downloadFailed(String name) {
+    return '“$name” failed to download.';
+  }
+
+  @override
+  String downloadCancelled(String name) {
+    return '“$name” download cancelled.';
+  }
+
+  @override
+  String downloadQueueActive(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count downloads in progress',
+      one: '1 download in progress',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String downloadQueueProgress(String done, String total) {
+    return '$done / $total';
+  }
+
+  @override
+  String get downloadQueueOpen => 'View tasks';
+
+  @override
   String get downloadRootLabel => 'Install folder';
 
   @override
@@ -623,6 +695,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAppearance => 'Appearance';
+
+  @override
+  String get settingsSectionLaunch => 'Launch';
+
+  @override
+  String get settingsSectionWindow => 'Game window';
+
+  @override
+  String get settingsWindowNote =>
+      'Window settings are written as vanilla launch arguments (--width / --height / --fullscreen) and apply to versions that accept them.';
+
+  @override
+  String get settingsFullscreen => 'Start fullscreen';
+
+  @override
+  String get settingsFullscreenDesc =>
+      'Enter the game fullscreen; the window size is still passed as a fallback.';
+
+  @override
+  String get settingsWindowSize => 'Window size';
+
+  @override
+  String get settingsWindowSizeDesc => 'Initial size of the game window.';
+
+  @override
+  String get settingsWindowSizeFullscreen =>
+      'Ignored while starting fullscreen.';
+
+  @override
+  String get settingsSectionGameArgs => 'Extra game arguments';
+
+  @override
+  String get settingsGameArgsNote =>
+      'Appended after the vanilla arguments and split on spaces; leave empty for none.';
+
+  @override
+  String get settingsSectionTasks => 'Tasks & logs';
+
+  @override
+  String get settingsTasksNote =>
+      'These preferences only affect the interface and are not written to settings.json.';
+
+  @override
+  String get settingsTaskHistory => 'Task history';
+
+  @override
+  String get settingsTaskHistoryDesc =>
+      'How many finished tasks stay in the task center; running tasks are never pruned.';
+
+  @override
+  String get settingsLogLines => 'Default log lines';
+
+  @override
+  String get settingsLogLinesDesc =>
+      'Tail size loaded when the log viewer opens.';
+
+  @override
+  String get settingsSectionNotifications => 'Notifications';
+
+  @override
+  String get settingsNotificationsNote =>
+      'Desktop notifications use the system notification center, which can mute them separately.';
+
+  @override
+  String get settingsNotifyDesktop => 'Desktop notifications';
+
+  @override
+  String get settingsNotifyDesktopDesc =>
+      'Notify on sign-in and similar events.';
+
+  @override
+  String get settingsNotifyDownloads => 'Download notifications';
+
+  @override
+  String get settingsNotifyDownloadsDesc =>
+      'Notify when a background download finishes or fails.';
+
+  @override
+  String get settingsToastDuration => 'Toast duration';
+
+  @override
+  String get settingsToastDurationDesc =>
+      'How long success/info toasts stay; errors stay longer.';
 
   @override
   String get settingsStorage => 'Storage';
@@ -699,6 +854,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDownloadProxy => 'Download proxy';
 
   @override
+  String get settingsDownloadRangeThreshold => 'Range threshold';
+
+  @override
+  String get settingsDownloadRangeThresholdDesc =>
+      'Size above which a file is split into parallel chunks.';
+
+  @override
+  String get settingsRangeDisabled => 'Chunking off';
+
+  @override
+  String get settingsDownloadChunk => 'Chunk size';
+
+  @override
+  String get settingsDownloadChunkDesc => 'Size of one ranged request.';
+
+  @override
+  String get settingsLogRetentionFiles => 'Logs kept';
+
+  @override
+  String get settingsLogRetentionFilesDesc =>
+      'Oldest logs are deleted first; the newest one is always kept.';
+
+  @override
+  String get settingsLogRetentionTotal => 'Log storage cap';
+
+  @override
+  String get settingsLogRetentionTotalDesc =>
+      'Pruning also starts from the oldest log.';
+
+  @override
   String get settingsDownloadProxySystem => 'Follow the system proxy';
 
   @override
@@ -736,6 +921,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDataRoot => 'Application data';
+
+  @override
+  String get settingsOpenDataRoot => 'Open data folder';
+
+  @override
+  String get settingsOpenDataRootDesc =>
+      'Show settings, logs and cached files.';
+
+  @override
+  String get settingsOpenInstanceRoot => 'Open default instances folder';
+
+  @override
+  String get settingsOpenInstanceRootDesc =>
+      'Show the folder that holds your instances.';
+
+  @override
+  String get settingsOpenFailed => 'Could not open that folder.';
+
+  @override
+  String get settingsStartPage => 'Startup page';
+
+  @override
+  String get settingsStartPageDesc =>
+      'Applied the next time the launcher starts.';
+
+  @override
+  String get startPageDashboard => 'Dashboard';
+
+  @override
+  String get startPageInstances => 'Instances';
+
+  @override
+  String get startPageDownload => 'Download';
+
+  @override
+  String get startPageAccounts => 'Accounts';
+
+  @override
+  String get startPageWiki => 'Wiki';
+
+  @override
+  String get startPageSettings => 'Settings';
 
   @override
   String get settingsChooseFolder => 'Choose folder';
@@ -832,6 +1059,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsMotion => 'Reduce motion';
 
   @override
+  String get settingsCloseToTray => 'Close to tray';
+
+  @override
+  String get settingsCloseToTrayDesc =>
+      'Hide the main window in the system tray instead of quitting.';
+
+  @override
+  String get trayShow => 'Show window';
+
+  @override
+  String get trayQuit => 'Quit';
+
+  @override
+  String get settingsCleanPartials => 'Clean partial downloads';
+
+  @override
+  String get settingsCleanPartialsDesc =>
+      'Removes `.part` files untouched for more than three days; active downloads are kept.';
+
+  @override
+  String get settingsCleanPartialsBody =>
+      'Every partial download untouched for more than three days is deleted from the instance folders. This cannot be undone.';
+
+  @override
+  String settingsCleanPartialsDone(int count, String size) {
+    return 'Deleted $count partial files, freed $size.';
+  }
+
+  @override
+  String get settingsCleanPartialsNone => 'No stale partial downloads found.';
+
+  @override
   String get settingsMotionDesc =>
       'Limit page transitions and background effects.';
 
@@ -884,6 +1143,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get javaStatusScan => 'Scan Java';
+
+  @override
+  String get javaInstallAction => 'Install Java';
+
+  @override
+  String get javaInstallTitle => 'Install a Java runtime';
+
+  @override
+  String get javaInstallHint =>
+      'Downloads the runtime from Mojang\'s official catalog and rescans when it finishes; the transfer runs in the background.';
+
+  @override
+  String get javaInstallRecommended => 'Recommended';
+
+  @override
+  String javaInstallQueued(int major) {
+    return 'Java $major queued for download.';
+  }
+
+  @override
+  String javaInstallDone(int major) {
+    return 'Java $major installed.';
+  }
+
+  @override
+  String javaInstallFailed(int major) {
+    return 'Java $major installation failed.';
+  }
+
+  @override
+  String javaInstallCancelled(int major) {
+    return 'Java $major installation cancelled.';
+  }
 
   @override
   String get javaStatusSelect => 'Use this Java';
@@ -1174,6 +1466,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceManageMods => 'Manage mods';
+
+  @override
+  String get instanceOpenFolder => 'Open instance folder';
+
+  @override
+  String get instanceOverridesBadge => 'Overrides global settings';
 
   @override
   String get instanceModsTitle => 'Installed mods';
@@ -1583,6 +1881,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAboutThanks => 'Thanks';
 
   @override
+  String get settingsCheckUpdate => 'Check for updates';
+
+  @override
+  String get settingsCheckUpdateDesc =>
+      'Compares against the newest GitHub release (check only, no auto-install).';
+
+  @override
+  String get updateChecking => 'Checking for updates…';
+
+  @override
+  String updateUpToDate(String version) {
+    return 'You are up to date ($version).';
+  }
+
+  @override
+  String get updateAvailableTitle => 'Update available';
+
+  @override
+  String updateAvailableBody(String current, String latest) {
+    return 'Current $current, latest $latest.';
+  }
+
+  @override
+  String get updateOpenRelease => 'Open release page';
+
+  @override
+  String get updateCheckFailed => 'Could not check for updates.';
+
+  @override
+  String get updateCurrentVersion => 'Current version';
+
+  @override
   String get settingsAboutThanksDesc =>
       'Open-source projects and services this build relies on.';
 
@@ -1650,6 +1980,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String gameLogTruncated(int count) {
     return 'Showing the last $count lines.';
   }
+
+  @override
+  String get gameLogOpenFolder => 'Open log folder';
+
+  @override
+  String get gameLogOpenFolderFailed => 'Could not open the log folder.';
+
+  @override
+  String get gameLogClear => 'Clear old logs';
+
+  @override
+  String get gameLogClearTitle => 'Clear old launch logs?';
+
+  @override
+  String get gameLogClearBody =>
+      'Every archived launch log of this instance is deleted; a running log is kept. This cannot be undone.';
+
+  @override
+  String gameLogClearDone(int count, String size) {
+    return 'Deleted $count logs, freed $size.';
+  }
+
+  @override
+  String get settingsClearLogs => 'Clear launch logs';
+
+  @override
+  String get settingsClearLogsDesc =>
+      'Deletes archived launch logs of every instance; running logs are kept.';
+
+  @override
+  String get settingsClearLogsBody =>
+      'Every archived launch log is deleted (running logs are kept). This cannot be undone.';
 
   @override
   String gameLogRetentionInfo(String size, int max) {
@@ -1861,4 +2223,112 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loaderVersionNoMatch => 'No builds match this search.';
+
+  @override
+  String get instanceSettingsTitle => 'Instance settings';
+
+  @override
+  String get instanceSettingsDesc => 'Blank fields follow the global settings.';
+
+  @override
+  String get instanceSettingsMemoryMin => 'Minimum memory (MB)';
+
+  @override
+  String get instanceSettingsMemoryMax => 'Maximum memory (MB)';
+
+  @override
+  String get instanceSettingsGc => 'Garbage collector';
+
+  @override
+  String get instanceSettingsJvmArgs => 'JVM arguments';
+
+  @override
+  String get instanceSettingsGameArgs => 'Game arguments';
+
+  @override
+  String get instanceSettingsJava => 'Java executable';
+
+  @override
+  String get instanceSettingsJavaHint =>
+      'Absolute path to the java binary; leave blank to follow the global selection.';
+
+  @override
+  String get instanceSettingsWindow => 'Game window';
+
+  @override
+  String get instanceSettingsWindowInherit => 'Follow global';
+
+  @override
+  String get instanceSettingsWindowFullscreen => 'Fullscreen';
+
+  @override
+  String get instanceSettingsWindowWindowed => 'Windowed';
+
+  @override
+  String get instanceSettingsWindowWidth => 'Window width';
+
+  @override
+  String get instanceSettingsWindowHeight => 'Window height';
+
+  @override
+  String get instanceSettingsFollowGlobal => 'Follow global';
+
+  @override
+  String get instanceSettingsSave => 'Save';
+
+  @override
+  String get instanceSettingsSaved => 'Instance settings saved.';
+
+  @override
+  String instanceSettingsFollowGlobalWith(String value) {
+    return 'Follow global ($value)';
+  }
+
+  @override
+  String get instanceSettingsReset => 'Reset to global';
+
+  @override
+  String get instanceSettingsResetBody =>
+      'Clears every override so this instance follows the global settings again.';
+
+  @override
+  String get instanceSettingsResetDone => 'Reset to the global settings.';
+
+  @override
+  String get instanceOverridesMemory => 'memory';
+
+  @override
+  String get instanceOverridesGc => 'GC';
+
+  @override
+  String get instanceOverridesJvm => 'JVM args';
+
+  @override
+  String get instanceOverridesGameArgs => 'game args';
+
+  @override
+  String get instanceOverridesJava => 'Java';
+
+  @override
+  String get instanceOverridesWindow => 'window';
+
+  @override
+  String get instanceSettingsInvalidNumbers =>
+      'Memory and window sizes must be whole numbers.';
+
+  @override
+  String get instanceSettingsInvalidRange =>
+      'Memory must be 128–65536 MB with min ≤ max; the window must be 640–7680 × 480–4320.';
+
+  @override
+  String get instanceSettingsInvalidPath =>
+      'Enter an absolute path to the Java executable.';
+
+  @override
+  String get instanceSettingsInvalidGc => 'Unsupported garbage collector.';
+
+  @override
+  String instanceSettingsSaveFailed(String message) {
+    return 'Could not save instance settings: $message';
+  }
 }

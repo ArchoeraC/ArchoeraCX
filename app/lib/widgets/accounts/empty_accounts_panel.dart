@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/app_panel.dart';
 import 'account_avatar.dart';
@@ -36,7 +37,7 @@ class EmptyAccountsPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const AccountMark(icon: Icons.person_rounded, size: 48),
+          const AccountMark(icon: AppIcons.accounts, size: 48),
           const SizedBox(height: AppSpacing.md),
           Text(l10n.addAccount, style: textTheme.titleLarge),
           const SizedBox(height: AppSpacing.xs),
@@ -57,7 +58,7 @@ class EmptyAccountsPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         AccountTypeAction(
-          icon: Icons.window_rounded,
+          icon: AppIcons.microsoft,
           title: l10n.accountMicrosoftTitle,
           subtitle: l10n.accountMicrosoftDesc,
           color: tokens.success,
@@ -66,7 +67,7 @@ class EmptyAccountsPanel extends StatelessWidget {
         if (showOffline) ...[
           Divider(height: 1, color: tokens.border),
           AccountTypeAction(
-            icon: Icons.person_rounded,
+            icon: AppIcons.accounts,
             title: l10n.accountAddOffline,
             subtitle: offlineHint ?? l10n.accountOfflineDesc,
             color: tokens.accent,

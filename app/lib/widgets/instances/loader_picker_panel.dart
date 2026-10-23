@@ -4,6 +4,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
 import '../../services/core/loader_versions.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/loader_mark.dart';
 
@@ -368,7 +369,7 @@ class _LoaderVersionListState extends State<LoaderVersionList> {
             isDense: true,
             hintText: l10n.loaderVersionSearch,
             prefixIcon: Icon(
-              Icons.search_rounded,
+              AppIcons.search,
               size: 18,
               color: tokens.textTertiary,
             ),
@@ -380,7 +381,7 @@ class _LoaderVersionListState extends State<LoaderVersionList> {
                       _search.clear();
                       setState(() => _query = '');
                     },
-                    icon: const Icon(Icons.close_rounded, size: 16),
+                    icon: const Icon(AppIcons.close, size: 16),
                   ),
           ),
         ),

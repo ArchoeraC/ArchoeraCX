@@ -14,6 +14,7 @@ import '../services/core/build_policy.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/appearance.dart';
 import '../stores/instances.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../utils/app_info.dart';
 import '../widgets/accounts/account_avatar.dart';
@@ -101,44 +102,44 @@ class _AppShellState extends ConsumerState<AppShell> {
         path: '/',
         branchIndex: 0,
         label: l10n.navDashboard,
-        icon: Icons.space_dashboard_outlined,
-        selectedIcon: Icons.space_dashboard_rounded,
+        icon: AppIcons.dashboard,
+        selectedIcon: AppIcons.dashboard,
       ),
       AppDestination(
         path: '/instances',
         branchIndex: 1,
         label: l10n.navInstances,
-        icon: Icons.grid_view_outlined,
-        selectedIcon: Icons.grid_view_rounded,
+        icon: AppIcons.instances,
+        selectedIcon: AppIcons.instances,
       ),
       if (ref.watch(downloadEnabledProvider))
         AppDestination(
           path: '/download',
           branchIndex: 2,
           label: l10n.navDownload,
-          icon: Icons.download_outlined,
-          selectedIcon: Icons.download_rounded,
+          icon: AppIcons.download,
+          selectedIcon: AppIcons.download,
         ),
       AppDestination(
         path: '/accounts',
         branchIndex: 3,
         label: l10n.navAccounts,
-        icon: Icons.person_outline_rounded,
-        selectedIcon: Icons.person_rounded,
+        icon: AppIcons.accounts,
+        selectedIcon: AppIcons.accounts,
       ),
       AppDestination(
         path: '/wiki',
         branchIndex: 4,
         label: l10n.navWiki,
-        icon: Icons.menu_book_outlined,
-        selectedIcon: Icons.menu_book_rounded,
+        icon: AppIcons.wiki,
+        selectedIcon: AppIcons.wiki,
       ),
       AppDestination(
         path: '/settings',
         branchIndex: 5,
         label: l10n.navSettings,
-        icon: Icons.tune_outlined,
-        selectedIcon: Icons.tune_rounded,
+        icon: AppIcons.settings,
+        selectedIcon: AppIcons.settings,
       ),
     ];
 
@@ -588,6 +589,7 @@ class _CommandBar extends StatelessWidget {
                                       right: AppSpacing.xxs,
                                     ),
                                     child: _NavItem(
+                                      key: ValueKey('nav-${destination.path}'),
                                       destination: destination,
                                       selected:
                                           destination.branchIndex ==
@@ -672,6 +674,7 @@ class _CommandBar extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
+    super.key,
     required this.destination,
     required this.selected,
     required this.compact,
@@ -848,9 +851,7 @@ class _LaunchButton extends StatelessWidget {
                 minimumSize: const Size(38, 38),
               ),
               icon: Icon(
-                hasInstance
-                    ? Icons.play_arrow_rounded
-                    : Icons.grid_view_rounded,
+                hasInstance ? AppIcons.play : AppIcons.gridView,
                 size: 20,
               ),
             )
@@ -861,9 +862,7 @@ class _LaunchButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               ),
               icon: Icon(
-                hasInstance
-                    ? Icons.play_arrow_rounded
-                    : Icons.grid_view_rounded,
+                hasInstance ? AppIcons.play : AppIcons.gridView,
                 size: 19,
               ),
               label: Text(label),

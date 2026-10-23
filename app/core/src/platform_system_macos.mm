@@ -1,5 +1,5 @@
 /*
- * macOS native system actions: default browser + UserNotifications.
+ * macOS native system actions: default browser, Finder + UserNotifications.
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -33,6 +33,29 @@ bool open_external_url(const std::string& url, std::string* error) {
   const BOOL opened = [[NSWorkspace sharedWorkspace] openURL:target];
   if (!opened) {
     if (error != nullptr) *error = "NSWorkspace refused the url";
+    return false;
+  }
+  return true;
+}
+
+bool open_path(const std::string& path, std::string* error) {
+  if (!is_safe_directory_path(path)) {
+    if (error != nullptr) *error = "invalid directory";
+    return false;
+  }
+  NSString* text = to_nsstring(path);
+  if (text == nil) {
+    if (error != nullptr) *error = "invalid encoding";
+    return false;
+  }
+  NSURL* target = [NSURL fileURLWithPath:text isDirectory:YES];
+  if (target == nil) {
+    if (error != nullptr) *error = "invalid path";
+    return false;
+  }
+  const BOOL opened = [[NSWorkspace sharedWorkspace] openURL:target];
+  if (!opened) {
+    if (error != nullptr) *error = "NSWorkspace refused the folder";
     return false;
   }
   return true;

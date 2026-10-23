@@ -293,7 +293,8 @@ std::string make_modules_result(const archoera_core& core) {
       "\"version\":\"0.0.1+1\",\"state\":\"ready\","
       "\"methods\":[\"system.ping\",\"system.pingAsync\","
       "\"system.info\",\"system.modules\",\"system.appearance\","
-      "\"system.openUrl\",\"system.notify\",\"system.status\","
+      "\"system.openUrl\",\"system.openPath\",\"system.notify\","
+      "\"system.status\","
       "\"system.status.watch\",\"system.status.unwatch\"]}";
   if (core.module_registry != nullptr) {
     for (const auto& module : core.module_registry->modules()) {
@@ -798,18 +799,39 @@ archoera_status start_ping_async(archoera_core* core,
 }
 
 // ---------------------------------------------------------------------------
-// Native system actions (openUrl / notify)
+// Native system actions (openUrl / openPath / notify)
 // ---------------------------------------------------------------------------
 
-enum class SystemActionKind { kOpenUrl, kNotify };
+enum class SystemActionKind { kOpenUrl, kOpenPath, kNotify };
 
 struct SystemAction {
   SystemActionKind kind = SystemActionKind::kOpenUrl;
   std::string method;
   std::string url;
+  std::string path;
   std::string title;
   std::string body;
 };
+
+// system.openPath echoes the directory back so Dart can correlate the result
+// without tracking parameters itself.
+std::string make_open_path_result(const std::string& path, bool opened) {
+  std::string json = "{\"ok\":true,\"data\":{\"path\":\"";
+  append_json_escaped(json, path.c_str());
+  json.append("\",\"opened\":");
+  json.append(opened ? "true" : "false");
+  json.append("},\"meta\":{\"schemaVersion\":1}}");
+  return json;
+}
+
+std::string make_system_action_result(const SystemAction& action,
+                                      bool success) {
+  if (action.kind == SystemActionKind::kOpenPath) {
+    return make_open_path_result(action.path, success);
+  }
+  return make_action_result(
+      action.kind == SystemActionKind::kOpenUrl ? "opened" : "sent", success);
+}
 
 void system_action_worker(archoera_core* core,
                           uint64_t task_id,
@@ -819,6 +841,8 @@ void system_action_worker(archoera_core* core,
     std::string error;
     if (action.kind == SystemActionKind::kOpenUrl) {
       success = archoera::open_external_url(action.url, &error);
+    } else if (action.kind == SystemActionKind::kOpenPath) {
+      success = archoera::open_path(action.path, &error);
     } else {
       success = archoera::send_system_notification(action.title, action.body,
                                                     &error);
@@ -853,9 +877,7 @@ void system_action_worker(archoera_core* core,
         event.json = make_state_json(task.method, "cancelled", "task cancelled");
       } else {
         task.state = ARCHOERA_TASK_COMPLETED;
-        task.result = make_action_result(
-            action.kind == SystemActionKind::kOpenUrl ? "opened" : "sent",
-            success);
+        task.result = make_system_action_result(action, success);
         event.state = ARCHOERA_TASK_COMPLETED;
         event.json =
             make_state_json(task.method, "completed", "task completed");
@@ -1924,6 +1946,18 @@ ARCHOERA_API archoera_status archoera_call(archoera_core* core,
         if (!extract_json_string(raw_params, "url", &action.url) ||
             !archoera::is_safe_external_url(action.url)) {
           set_error(err, ARCHOERA_E_INVALID, "system.openUrl requires http(s)");
+          return ARCHOERA_E_INVALID;
+        }
+        return start_system_action(core, std::move(action), out_task_id, err);
+      }
+      case MethodRouteKind::kCoreOpenPath: {
+        SystemAction action;
+        action.kind = SystemActionKind::kOpenPath;
+        action.method = method_name;
+        if (!extract_json_string(raw_params, "path", &action.path) ||
+            !archoera::is_safe_directory_path(action.path)) {
+          set_error(err, ARCHOERA_E_INVALID,
+                    "system.openPath requires an absolute existing directory");
           return ARCHOERA_E_INVALID;
         }
         return start_system_action(core, std::move(action), out_task_id, err);

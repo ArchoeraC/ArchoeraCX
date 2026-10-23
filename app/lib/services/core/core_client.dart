@@ -13,7 +13,9 @@ import 'download_policy.dart';
 import 'core_event.dart';
 import 'event_pump.dart';
 import 'installed_mod.dart';
+import 'java_runtime_plan.dart';
 import 'java_scan.dart';
+import 'maintenance.dart';
 import 'launch_preparation.dart';
 import 'launch_result.dart';
 import 'launch_log.dart';
@@ -27,6 +29,7 @@ import 'system_memory.dart';
 import 'system_appearance.dart';
 import 'system_status.dart';
 import 'task_update.dart';
+import 'update_check.dart';
 import 'vanilla_install_plan.dart';
 import 'wiki_feed.dart';
 
@@ -542,6 +545,27 @@ final class CoreClient {
       );
     }
     return logs;
+  }
+
+  /// Deletes stored launch logs; a running instance keeps its active log.
+  ///
+  /// Pass [instanceId] for one instance or [all] to sweep every instance.
+  Future<LaunchLogClearResult> clearLaunchLogs({
+    String? instanceId,
+    bool all = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'launch.logs.clear';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'instanceId': ?instanceId,
+        if (all) 'all': true,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return LaunchLogClearResult.fromNative(decoded['data']);
   }
 
   /// Read the tail of one launch log. Omit [fileName] to use the running
@@ -1170,6 +1194,56 @@ final class CoreClient {
     );
   }
 
+  /// Deletes stale `.part` files of interrupted downloads.
+  ///
+  /// Only files untouched for [olderThanDays] are removed, so an in-flight
+  /// transfer (which keeps its `.part` fresh) is never touched.
+  Future<PartialCleanupResult> cleanPartialDownloads({
+    int olderThanDays = 3,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'maintenance.cleanPartials';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'olderThanDays': olderThanDays}),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return PartialCleanupResult.fromNative(decoded['data']);
+  }
+
+  /// Ask the C# module for the Mojang Java runtime download plan.
+  ///
+  /// Nothing is downloaded here: the returned plan is executed through
+  /// [executeDownload] and lands under `<root>/runtime/java-<major>`.
+  Future<JavaRuntimePlan> planJavaRuntime({
+    required int major,
+    String? root,
+    void Function(int done, int total)? onProgress,
+    String? label,
+  }) async {
+    const methodName = 'java.runtime.plan';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'major': major,
+        'root': ?root,
+      }),
+      onProgress: onProgress,
+      label: label,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final plan = JavaRuntimePlan.tryParse(decoded['data']);
+    if (plan == null || plan.major <= 0 || plan.plan.isEmpty) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an incomplete runtime plan.',
+      );
+    }
+    return plan;
+  }
+
   /// Read the C#-owned settings document.
   Future<AppSettings> getSettings({
     void Function(int done, int total)? onProgress,
@@ -1201,6 +1275,8 @@ final class CoreClient {
     int? downloadConcurrency,
     int? downloadPerHost,
     Object? downloadProxy = noChange,
+    int? downloadChunkSizeKb,
+    int? downloadRangeThresholdKb,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'settings.set';
@@ -1212,6 +1288,8 @@ final class CoreClient {
         'downloadPerHost': ?downloadPerHost,
         if (downloadProxy != noChange)
           'downloadProxy': downloadProxy as String?,
+        'downloadChunkSizeKb': ?downloadChunkSizeKb,
+        'downloadRangeThresholdKb': ?downloadRangeThresholdKb,
       }),
       onProgress: onProgress,
     );
@@ -1286,6 +1364,31 @@ final class CoreClient {
       final jsonText = await _runAsync(
         methodName,
         paramsJson: jsonEncode(<String, Object?>{'url': url}),
+        onProgress: onProgress,
+      );
+      final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+      final data = _asMap(decoded['data'], methodName);
+      return data['opened'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens an existing absolute directory in the OS file manager.
+  ///
+  /// The core validates that [path] is an existing absolute directory and
+  /// rejects anything else with `E_INVALID`. Returns false when the core is
+  /// unavailable or the platform refused the request, so callers can show a
+  /// single localized failure message.
+  Future<bool> openSystemPath(
+    String path, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.openPath';
+    try {
+      final jsonText = await _runAsync(
+        methodName,
+        paramsJson: jsonEncode(<String, Object?>{'path': path}),
         onProgress: onProgress,
       );
       final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
@@ -1404,6 +1507,11 @@ final class CoreClient {
     String? jvmArgs,
     String? gcMode,
     String? gameArgs,
+    int? windowWidth,
+    int? windowHeight,
+    bool? fullscreen,
+    int? logRetentionFiles,
+    int? logRetentionMegabytes,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'settings.set';
@@ -1415,6 +1523,11 @@ final class CoreClient {
         'jvmArgs': ?jvmArgs,
         'gcMode': ?gcMode,
         'gameArgs': ?gameArgs,
+        'windowWidth': ?windowWidth,
+        'windowHeight': ?windowHeight,
+        'fullscreen': ?fullscreen,
+        'logRetentionFiles': ?logRetentionFiles,
+        'logRetentionMb': ?logRetentionMegabytes,
       }),
       onProgress: onProgress,
     );
@@ -1609,6 +1722,81 @@ final class CoreClient {
         'lastPlayedAt': ?lastPlayedAt?.toUtc().toIso8601String(),
       }),
       onProgress: onProgress,
+    );
+    return _parseInstance(jsonText, methodName);
+  }
+
+  /// Copy an instance (files + metadata) under a new name.
+  Future<GameInstance> duplicateInstance({
+    required String id,
+    required String name,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'instance.duplicate';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'id': id, 'name': name}),
+      onProgress: onProgress,
+    );
+    return _parseInstance(jsonText, methodName);
+  }
+
+  /// Compare this build with the newest GitHub release.
+  Future<UpdateCheckResult> checkForUpdate({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'update.check';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: '{}',
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final result = UpdateCheckResult.tryParse(decoded['data']);
+    if (result == null) {
+      throw CoreException(
+        status: _ok,
+        code: 'E_INVALID',
+        message: '$methodName returned an incomplete version check.',
+      );
+    }
+    return result;
+  }
+
+  /// Set, change or clear the per-instance launch overrides.
+  ///
+  /// Every key is always sent: `null` clears the override (the instance then
+  /// follows the global setting) while a value sets it. The C# owner treats
+  /// this as a merge patch, so omitted keys would stay untouched.
+  Future<GameInstance> updateInstanceOverrides({
+    required String instanceId,
+    int? memoryMinMb,
+    int? memoryMaxMb,
+    String? jvmArgs,
+    String? gcMode,
+    String? gameArgs,
+    String? javaPath,
+    int? windowWidth,
+    int? windowHeight,
+    bool? fullscreen,
+  }) async {
+    const methodName = 'instance.update';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'id': instanceId,
+        'overrides': <String, Object?>{
+          'memoryMinMb': memoryMinMb,
+          'memoryMaxMb': memoryMaxMb,
+          'jvmArgs': jvmArgs,
+          'gcMode': gcMode,
+          'gameArgs': gameArgs,
+          'javaPath': javaPath,
+          'windowWidth': windowWidth,
+          'windowHeight': windowHeight,
+          'fullscreen': fullscreen,
+        },
+      }),
     );
     return _parseInstance(jsonText, methodName);
   }

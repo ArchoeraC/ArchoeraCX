@@ -32,7 +32,7 @@ void main() {
     // The home bar has no launch action.
     expect(launchAction, findsNothing);
 
-    await tester.tap(find.byIcon(Icons.grid_view_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/instances')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
 
@@ -49,7 +49,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(launchAction, findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.space_dashboard_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
     expect(tester.takeException(), isNull);
@@ -62,7 +62,7 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester);
-    await tester.tap(find.byIcon(Icons.grid_view_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/instances')));
     await tester.pumpAndSettle();
 
     final launchAction = find.byKey(const ValueKey('command-bar-launch'));
