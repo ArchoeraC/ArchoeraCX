@@ -6,6 +6,8 @@ class LoaderPlanResult {
     required this.versionJson,
     required this.requiresJava,
     this.installerPath,
+    this.installRoot = '',
+    this.shareLoaderFiles = true,
   });
 
   final Map<String, Object?> plan;
@@ -18,6 +20,15 @@ class LoaderPlanResult {
 
   /// Instance-relative installer file written by the plan.
   final String? installerPath;
+
+  /// Root that owns `libraries/` and `versions/<id>/` for this install: the
+  /// shared game root, or the instance directory when the user turned sharing
+  /// off. Commit and repair must target this root.
+  final String installRoot;
+
+  /// True when the files are shared with other instances of the same loader
+  /// build.
+  final bool shareLoaderFiles;
 }
 
 class LoaderCommitResult {

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Archoera.Domain.Settings;
 using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Tests;
@@ -492,6 +493,151 @@ public sealed class SettingsTests
                     """{"logRetentionFiles":500}""",
                     CancellationToken.None));
             Assert.False(invalid.RootElement.GetProperty("ok").GetBoolean());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Module_persists_the_loader_sharing_preference()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var service = new SettingsModuleService(
+                new JsonAppSettingsStore(Path.Combine(directory, "data")));
+
+            using var defaults = JsonDocument.Parse(
+                await service.HandleAsync("settings.get", "{}", CancellationToken.None));
+            Assert.True(defaults.RootElement
+                .GetProperty("data")
+                .GetProperty("settings")
+                .GetProperty("shareLoaderFiles")
+                .GetBoolean());
+
+            using var setDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"shareLoaderFiles":false}""",
+                    CancellationToken.None));
+            Assert.True(setDocument.RootElement.GetProperty("ok").GetBoolean());
+
+            using var getDocument = JsonDocument.Parse(
+                await service.HandleAsync("settings.get", "{}", CancellationToken.None));
+            Assert.False(getDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("settings")
+                .GetProperty("shareLoaderFiles")
+                .GetBoolean());
+
+            using var invalid = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"shareLoaderFiles":"yes"}""",
+                    CancellationToken.None));
+            Assert.False(invalid.RootElement.GetProperty("ok").GetBoolean());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Module_persists_memory_mode_and_game_optimization()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var service = new SettingsModuleService(
+                new JsonAppSettingsStore(Path.Combine(directory, "data")));
+
+            using var defaults = JsonDocument.Parse(
+                await service.HandleAsync("settings.get", "{}", CancellationToken.None));
+            var initial = defaults.RootElement
+                .GetProperty("data")
+                .GetProperty("settings");
+            Assert.Equal("auto", initial.GetProperty("memoryMode").GetString());
+            Assert.True(initial.GetProperty("gameOptimization").GetBoolean());
+
+            using var setDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"memoryMode":"manual","gameOptimization":false}""",
+                    CancellationToken.None));
+            Assert.True(setDocument.RootElement.GetProperty("ok").GetBoolean());
+
+            using var getDocument = JsonDocument.Parse(
+                await service.HandleAsync("settings.get", "{}", CancellationToken.None));
+            var settings = getDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("settings");
+            Assert.Equal("manual", settings.GetProperty("memoryMode").GetString());
+            Assert.False(settings.GetProperty("gameOptimization").GetBoolean());
+
+            using var invalid = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"memoryMode":"sometimes"}""",
+                    CancellationToken.None));
+            Assert.False(invalid.RootElement.GetProperty("ok").GetBoolean());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Schema_10_custom_heap_stays_manual_after_upgrade()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var games = Path.Combine(directory, "games");
+            Directory.CreateDirectory(dataRoot);
+            Directory.CreateDirectory(games);
+            await File.WriteAllTextAsync(
+                Path.Combine(dataRoot, "settings.json"),
+                $$"""
+                  {"schemaVersion":10,"instancesRoot":"{{games}}",
+                   "memoryMinMb":1024,"memoryMaxMb":6144}
+                  """);
+
+            var loaded = await new JsonAppSettingsStore(dataRoot).LoadAsync();
+
+            Assert.Equal(AppSettings.MemoryModes.Manual, loaded.MemoryMode);
+            Assert.Equal(6144, loaded.MemoryMaxMb);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Schema_10_default_heap_becomes_automatic()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var games = Path.Combine(directory, "games");
+            Directory.CreateDirectory(dataRoot);
+            Directory.CreateDirectory(games);
+            await File.WriteAllTextAsync(
+                Path.Combine(dataRoot, "settings.json"),
+                $$"""
+                  {"schemaVersion":10,"instancesRoot":"{{games}}",
+                   "memoryMinMb":512,"memoryMaxMb":2048}
+                  """);
+
+            var loaded = await new JsonAppSettingsStore(dataRoot).LoadAsync();
+
+            Assert.Equal(AppSettings.MemoryModes.Auto, loaded.MemoryMode);
         }
         finally
         {

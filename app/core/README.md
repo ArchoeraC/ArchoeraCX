@@ -13,6 +13,7 @@
   - Windows：`AppsUseLightTheme` + DWM `AccentColor`，`RegNotifyChangeKeyValue` 推送变化
   - macOS：`AppleInterfaceStyle` + `NSColor.controlAccentColor`，监听 AppKit 分布式通知
   - 首次调用 `system.appearance` 才启动监听线程；变化以 `ARCHOERA_EV_DOMAIN` 事件（`kind=system.appearance`）推送
+- `system.gpu` 返回显示适配器快照（`vendor`/`discrete`/`driverLoaded`/`hybrid`/`primaryVendor`）：Linux 读 `/sys/class/drm`（含 `boot_vga`、`mem_info_vram_total`），Windows 走 `EnumDisplayDevicesW`，macOS/其它返回空列表；进程内缓存一次，不做轮询。GPU 策略（PRIME 环境变量、Windows 首选项）属于 C# 启动模块
 - 测试：`abi_smoke`、`async_smoke`、`module_smoke`（使用 `libarchoera_fake_module.so` 作为 oracle）
 
 职责与禁止事项见 [`docs/10-architecture-design.md`](../../docs/10-architecture-design.md) §5。

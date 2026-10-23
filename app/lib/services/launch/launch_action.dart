@@ -7,7 +7,9 @@ import '../../models/game_instance.dart';
 import '../../stores/account_policy.dart';
 import '../../stores/accounts.dart';
 import '../../stores/providers.dart';
+import '../../stores/settings.dart';
 import '../core/core_client.dart';
+import '../core/launch_memory.dart';
 import '../../widgets/common/toast.dart';
 
 /// Build and start a basic offline launch. UI code only calls this helper;
@@ -32,12 +34,34 @@ Future<void> launchInstance(
     return;
   }
   final client = ref.read(coreClientProvider);
-  toast(l10n.launchStarting, duration: const Duration(seconds: 4));
 
   if (client == null) {
     toast(l10n.commonCoreNotConnected, type: ToastType.error);
     return;
   }
+
+  // Automatic sizing can still be tight on a small machine, and a manual value
+  // can sit far below what the instance needs. Warn once, then let the user
+  // decide; the native module never silently clamps a manual heap.
+  final memory = await _readMemory(client, instance.id);
+  if (memory != null && memory.hasWarning) {
+    if (!context.mounted) return;
+    final proceed = await _confirmLowMemory(context, l10n, memory);
+    if (proceed != true) return;
+  }
+
+  // The hardware snapshot comes from the C++ core; the launch module decides
+  // whether it is worth preferring the dedicated GPU.
+  Map<String, Object?>? hardware;
+  if (ref.read(appSettingsProvider).value?.gameOptimization == true) {
+    try {
+      hardware = await client.getSystemGpu();
+    } catch (_) {
+      // Probing is best effort; the launch still works without it.
+    }
+  }
+
+  toast(l10n.launchStarting, duration: const Duration(seconds: 4));
 
   try {
     final result = await client.launchInstance(
@@ -45,6 +69,7 @@ Future<void> launchInstance(
       mode: account?.kind == AccountKind.microsoft ? 'online' : 'offline',
       requirePremium: policy.requirePremium,
       requireMicrosoft: policy.microsoftOnly,
+      hardware: hardware,
       label: instance.name,
     );
     if (!context.mounted) return;
@@ -75,4 +100,52 @@ Future<void> launchInstance(
     };
     toast(message, type: ToastType.error, duration: const Duration(seconds: 4));
   }
+}
+
+Future<LaunchMemoryPlan?> _readMemory(
+  CoreClient client,
+  String instanceId,
+) async {
+  try {
+    return await client.getLaunchMemory(instanceId);
+  } catch (_) {
+    // A core without `launch.memory` still launches; the warning is optional.
+    return null;
+  }
+}
+
+Future<bool?> _confirmLowMemory(
+  BuildContext context,
+  AppLocalizations l10n,
+  LaunchMemoryPlan memory,
+) {
+  final body = switch (memory.warningCode) {
+    'SYSTEM_LOW_MEMORY' => l10n.launchMemoryWarningSystem(
+      memory.systemTotalMb,
+      memory.maxMb,
+    ),
+    'OVER_SYSTEM' || 'OVER_AVAILABLE' => l10n.launchMemoryWarningOver(
+      memory.maxMb,
+      memory.systemAvailableMb ?? memory.systemTotalMb,
+    ),
+    _ => l10n.launchMemoryWarningLow(memory.maxMb, memory.recommendedMb),
+  };
+
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.launchMemoryWarningTitle),
+      content: Text(body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(l10n.launchAnyway),
+        ),
+      ],
+    ),
+  );
 }

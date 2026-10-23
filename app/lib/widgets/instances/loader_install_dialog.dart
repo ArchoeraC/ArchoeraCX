@@ -10,6 +10,7 @@ import '../../services/core/core_client.dart';
 import '../../services/core/loader_versions.dart';
 import '../../stores/downloads.dart';
 import '../../stores/providers.dart';
+import '../../stores/settings.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/toast.dart';
@@ -49,6 +50,10 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
   String? _versionError;
   int _versionRequest = 0;
   Timer? _gameDebounce;
+
+  /// Per-install override of the global "share loader files" preference.
+  /// Null follows the setting until the user touches the checkbox.
+  bool? _shareLoaderFiles;
 
   @override
   void initState() {
@@ -208,6 +213,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
             gameVersion: game,
             loaderVersion: loaderVersion,
             installerPath: installer,
+            shareLoaderFiles: _shareLoaderFiles,
             successMessage: l10n.loaderInstallDone,
             failureMessage: l10n.loaderInstallFailed,
             cancelledMessage: l10n.downloadCancelled(widget.instance.name),
@@ -377,6 +383,29 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                   onPressed: _busy ? null : () => _chooseInstaller(l10n),
                   icon: const Icon(AppIcons.modpackFile, size: 18),
                   label: Text(l10n.loaderChooseInstaller),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              // Follows the global setting until the user changes it here;
+              // the choice applies to this install only.
+              CheckboxListTile(
+                value: _shareLoaderFiles ??
+                    (ref.watch(appSettingsProvider).value?.shareLoaderFiles ??
+                        true),
+                onChanged: _busy
+                    ? null
+                    : (value) => setState(() => _shareLoaderFiles = value),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                dense: true,
+                title: Text(
+                  l10n.loaderShareFiles,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                subtitle: Text(
+                  l10n.loaderShareFilesHint,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.textTertiary),
                 ),
               ),
               if (_message != null) ...[

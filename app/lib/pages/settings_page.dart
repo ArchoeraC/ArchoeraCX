@@ -392,9 +392,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
             onChanged: (value) async {
               if (value == null) return;
-              await notifier.setDownloadPreferences(
-                downloadChunkSizeKb: value,
-              );
+              await notifier.setDownloadPreferences(downloadChunkSizeKb: value);
               if (context.mounted) {
                 _notify(context, l10n.settingsSaved, type: ToastType.success);
               }
@@ -596,9 +594,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           subtitle: l10n.settingsCloseToTrayDesc,
           trailing: Switch(
             value: prefs.closeToTray,
-            onChanged: ref
-                .read(preferencesProvider.notifier)
-                .setCloseToTray,
+            onChanged: ref.read(preferencesProvider.notifier).setCloseToTray,
           ),
         ),
         _AppearanceTile(
@@ -613,9 +609,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               _SegmentedOption(5, '5s'),
               _SegmentedOption(8, '8s'),
             ],
-            onChanged: ref
-                .read(preferencesProvider.notifier)
-                .setToastSeconds,
+            onChanged: ref.read(preferencesProvider.notifier).setToastSeconds,
           ),
         ),
         _AppearanceTile(
@@ -964,11 +958,7 @@ class _InstanceRootsEditor extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                AppIcons.folder,
-                size: 20,
-                color: tokens.textSecondary,
-              ),
+              Icon(AppIcons.folder, size: 20, color: tokens.textSecondary),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
@@ -1170,7 +1160,11 @@ List<_SettingsItem> _settingsItems(AppLocalizations l10n) => [
     l10n.settingsAppearance,
     AppIcons.appearance,
   ),
-  _SettingsItem(_SettingsSection.launch, l10n.settingsSectionLaunch, AppIcons.play),
+  _SettingsItem(
+    _SettingsSection.launch,
+    l10n.settingsSectionLaunch,
+    AppIcons.play,
+  ),
   _SettingsItem(
     _SettingsSection.storage,
     l10n.settingsStorage,
@@ -1182,17 +1176,17 @@ List<_SettingsItem> _settingsItems(AppLocalizations l10n) => [
     AppIcons.download,
   ),
   _SettingsItem(_SettingsSection.java, l10n.settingsJava, AppIcons.java),
-  _SettingsItem(_SettingsSection.tasks, l10n.settingsSectionTasks, AppIcons.list),
+  _SettingsItem(
+    _SettingsSection.tasks,
+    l10n.settingsSectionTasks,
+    AppIcons.list,
+  ),
   _SettingsItem(
     _SettingsSection.notifications,
     l10n.settingsSectionNotifications,
     AppIcons.notifications,
   ),
-  _SettingsItem(
-    _SettingsSection.about,
-    l10n.settingsAbout,
-    AppIcons.info,
-  ),
+  _SettingsItem(_SettingsSection.about, l10n.settingsAbout, AppIcons.info),
 ];
 
 class _RuntimeSettingsPanel extends ConsumerStatefulWidget {
@@ -1248,6 +1242,18 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
     _gcMode = settings?.gcMode ?? 'auto';
   }
 
+  /// Switches between automatic sizing and the manual `-Xms`/`-Xmx` pair.
+  Future<void> _setMemoryMode(bool auto) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(memoryMode: auto ? 'auto' : 'manual');
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
+  }
+
   Future<void> _loadMemory() async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
@@ -1283,7 +1289,11 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
     final l10n = AppLocalizations.of(context);
     final min = int.tryParse(_min.text.trim());
     final max = int.tryParse(_max.text.trim());
-    if (min == null || max == null || min < 128 || max > 65536 || min > max) {
+    final memoryAuto = widget.settings?.memoryAuto ?? true;
+    // In automatic mode the manual numbers are kept but not applied, so a
+    // half-typed value must not block saving the JVM/GC fields.
+    if (!memoryAuto &&
+        (min == null || max == null || min < 128 || max > 65536 || min > max)) {
       setState(() => _error = l10n.settingsMemoryInvalid);
       return;
     }
@@ -1297,8 +1307,8 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
       await ref
           .read(appSettingsProvider.notifier)
           .setRuntimeOptions(
-            memoryMinMb: min,
-            memoryMaxMb: max,
+            memoryMinMb: memoryAuto ? null : min,
+            memoryMaxMb: memoryAuto ? null : max,
             jvmArgs: _jvm.text.trim(),
             gcMode: _gcMode,
           );
@@ -1348,9 +1358,11 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
     final memory = _memory;
     final total = memory?.totalMb ?? 0;
     final available = memory?.availableMb ?? 0;
+    final memoryAuto = widget.settings?.memoryAuto ?? true;
     final maxMb = int.tryParse(_max.text.trim()) ?? 2048;
     final estimated = maxMb + 512;
-    final overAvailable = memory?.isKnown == true && estimated > available;
+    final overAvailable =
+        !memoryAuto && memory?.isKnown == true && estimated > available;
     final ratio = total > 0 ? (estimated / total).clamp(0.0, 1.0) : 0.0;
 
     return _SettingsCard(
@@ -1367,11 +1379,7 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    AppIcons.memory,
-                    size: 19,
-                    color: tokens.textSecondary,
-                  ),
+                  Icon(AppIcons.memory, size: 19, color: tokens.textSecondary),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     l10n.settingsMemorySystem,
@@ -1393,6 +1401,35 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.settingsMemoryAuto,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.settingsMemoryAutoDesc,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: tokens.textTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Switch(
+                    key: const ValueKey('settings-memory-auto'),
+                    value: memoryAuto,
+                    onChanged: _setMemoryMode,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
               Wrap(
                 spacing: AppSpacing.lg,
                 runSpacing: AppSpacing.xs,
@@ -1409,14 +1446,15 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
                         ? _formatMb(available)
                         : l10n.settingsMemoryUnavailable,
                   ),
-                  _MemoryMetric(
-                    label: l10n.settingsMemoryEstimated,
-                    value: _formatMb(estimated),
-                    color: overAvailable ? tokens.warning : null,
-                  ),
+                  if (!memoryAuto)
+                    _MemoryMetric(
+                      label: l10n.settingsMemoryEstimated,
+                      value: _formatMb(estimated),
+                      color: overAvailable ? tokens.warning : null,
+                    ),
                 ],
               ),
-              if (memory?.isKnown == true) ...[
+              if (!memoryAuto && memory?.isKnown == true) ...[
                 const SizedBox(height: AppSpacing.sm),
                 AppProgressBar(
                   value: ratio,
@@ -1454,38 +1492,40 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
-                  SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: _min,
-                      focusNode: _minFocus,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) {
-                        setState(() {});
-                        _scheduleSave();
-                      },
-                      onSubmitted: (_) => _saveNow(),
-                      decoration: InputDecoration(
-                        labelText: l10n.settingsMemoryMin,
+                  if (!memoryAuto)
+                    SizedBox(
+                      width: 150,
+                      child: TextField(
+                        controller: _min,
+                        focusNode: _minFocus,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) {
+                          setState(() {});
+                          _scheduleSave();
+                        },
+                        onSubmitted: (_) => _saveNow(),
+                        decoration: InputDecoration(
+                          labelText: l10n.settingsMemoryMin,
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: _max,
-                      focusNode: _maxFocus,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) {
-                        setState(() {});
-                        _scheduleSave();
-                      },
-                      onSubmitted: (_) => _saveNow(),
-                      decoration: InputDecoration(
-                        labelText: l10n.settingsMemoryMax,
+                  if (!memoryAuto)
+                    SizedBox(
+                      width: 150,
+                      child: TextField(
+                        controller: _max,
+                        focusNode: _maxFocus,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) {
+                          setState(() {});
+                          _scheduleSave();
+                        },
+                        onSubmitted: (_) => _saveNow(),
+                        decoration: InputDecoration(
+                          labelText: l10n.settingsMemoryMax,
+                        ),
                       ),
                     ),
-                  ),
                   SizedBox(
                     width: 240,
                     child: DropdownButtonFormField<String>(
@@ -1509,6 +1549,14 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
                   ),
                 ],
               ),
+              if (memoryAuto) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  l10n.settingsMemoryAutoHint,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.textTertiary),
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: _jvm,
@@ -1576,7 +1624,6 @@ class _MemoryMetric extends StatelessWidget {
     );
   }
 }
-
 
 /// Game window size, fullscreen and extra game arguments.
 ///
@@ -1677,6 +1724,28 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     }
   }
 
+  Future<void> _setShareLoaderFiles(bool enabled) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(shareLoaderFiles: enabled);
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
+  }
+
+  Future<void> _setGameOptimization(bool enabled) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(gameOptimization: enabled);
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -1685,6 +1754,8 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     final width = settings?.windowWidth ?? 854;
     final height = settings?.windowHeight ?? 480;
     final fullscreen = settings?.fullscreen ?? false;
+    final shareLoaderFiles = settings?.shareLoaderFiles ?? true;
+    final gameOptimization = settings?.gameOptimization ?? true;
     final current = '${width}x$height';
     final knownPreset = _presets.any((p) => '${p.$1}x${p.$2}' == current);
 
@@ -1729,6 +1800,26 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
               if (w == null || h == null) return;
               _applyWindow(w, h);
             },
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.modpack,
+          title: l10n.settingsShareLoaderFiles,
+          subtitle: l10n.settingsShareLoaderFilesDesc,
+          trailing: Switch(
+            key: const ValueKey('settings-share-loader-files'),
+            value: shareLoaderFiles,
+            onChanged: _setShareLoaderFiles,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.running,
+          title: l10n.settingsGameOptimization,
+          subtitle: l10n.settingsGameOptimizationDesc,
+          trailing: Switch(
+            key: const ValueKey('settings-game-optimization'),
+            value: gameOptimization,
+            onChanged: _setGameOptimization,
           ),
         ),
       ],
@@ -1851,10 +1942,9 @@ class _TasksSettingsPanel extends ConsumerWidget {
               _SegmentedOption(10, '10'),
               _SegmentedOption(20, '20'),
             ],
-            onChanged: (value) =>
-                ref.read(appSettingsProvider.notifier).setRuntimeOptions(
-                  logRetentionFiles: value,
-                ),
+            onChanged: (value) => ref
+                .read(appSettingsProvider.notifier)
+                .setRuntimeOptions(logRetentionFiles: value),
           ),
         ),
         _AppearanceTile(
@@ -1868,10 +1958,9 @@ class _TasksSettingsPanel extends ConsumerWidget {
               _SegmentedOption(32, '32 MiB'),
               _SegmentedOption(64, '64 MiB'),
             ],
-            onChanged: (value) =>
-                ref.read(appSettingsProvider.notifier).setRuntimeOptions(
-                  logRetentionMegabytes: value,
-                ),
+            onChanged: (value) => ref
+                .read(appSettingsProvider.notifier)
+                .setRuntimeOptions(logRetentionMegabytes: value),
           ),
         ),
         _AppearanceTile(
@@ -3013,10 +3102,7 @@ class _UpdateCheckRowState extends ConsumerState<_UpdateCheckRow> {
       if (result.hasUpdate) {
         await _showUpdateDialog(client, result);
       } else {
-        toast(
-          l10n.updateUpToDate(result.current),
-          type: ToastType.success,
-        );
+        toast(l10n.updateUpToDate(result.current), type: ToastType.success);
       }
     } on CoreException catch (error) {
       if (mounted) {

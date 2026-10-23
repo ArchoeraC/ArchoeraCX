@@ -4,10 +4,12 @@ find_package(Threads REQUIRED)
 set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_stub.cpp)
 set(ARCHOERA_SYSTEM_SOURCES src/platform_system_stub.cpp)
 set(ARCHOERA_STATUS_SOURCES src/platform_status_stub.cpp)
+set(ARCHOERA_GPU_SOURCES src/platform_gpu_stub.cpp)
 if(WIN32)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_windows.cpp)
   set(ARCHOERA_SYSTEM_SOURCES src/platform_system_windows.cpp)
   set(ARCHOERA_STATUS_SOURCES src/platform_status_windows.cpp)
+  set(ARCHOERA_GPU_SOURCES src/platform_gpu_windows.cpp)
 elseif(APPLE)
   enable_language(OBJCXX)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_macos.mm)
@@ -26,6 +28,8 @@ else()
   endif()
   # /proc + statvfs need no extra dependency.
   set(ARCHOERA_STATUS_SOURCES src/platform_status_linux.cpp)
+  # /sys/class/drm needs no extra dependency either.
+  set(ARCHOERA_GPU_SOURCES src/platform_gpu_linux.cpp)
 endif()
 
 add_library(archoera_core SHARED
@@ -38,6 +42,7 @@ add_library(archoera_core SHARED
   ${ARCHOERA_APPEARANCE_SOURCES}
   ${ARCHOERA_SYSTEM_SOURCES}
   ${ARCHOERA_STATUS_SOURCES}
+  ${ARCHOERA_GPU_SOURCES}
 )
 
 target_compile_features(archoera_core PRIVATE cxx_std_20)

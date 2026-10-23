@@ -29,6 +29,7 @@ constexpr MethodRoute kRoutes[] = {
     {"system.status", MethodRouteKind::kCoreStatus, {}},
     {"system.status.watch", MethodRouteKind::kCoreStatusWatch, {}},
     {"system.status.unwatch", MethodRouteKind::kCoreStatusUnwatch, {}},
+    {"system.gpu", MethodRouteKind::kCoreGpu, {}},
 
     {"java.scan", MethodRouteKind::kModule, kCsModule},
     {"java.select", MethodRouteKind::kModule, kCsModule},
@@ -38,6 +39,7 @@ constexpr MethodRoute kRoutes[] = {
     {"version.commit", MethodRouteKind::kModule, kCsModule},
     {"launch.start", MethodRouteKind::kModule, kCsModule},
     {"launch.prepare", MethodRouteKind::kModule, kCsModule},
+    {"launch.memory", MethodRouteKind::kModule, kCsModule},
     {"launch.logs", MethodRouteKind::kModule, kCsModule},
     {"launch.log.read", MethodRouteKind::kModule, kCsModule},
     {"launch.log.tail", MethodRouteKind::kModule, kCsModule},

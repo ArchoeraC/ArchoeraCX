@@ -4,4 +4,5 @@ internal sealed record LaunchPlan(
     string JavaPath,
     string GameDirectory,
     string LogDirectory,
-    IReadOnlyList<string> Arguments);
+    IReadOnlyList<string> Arguments,
+    IReadOnlyDictionary<string, string> Environment);

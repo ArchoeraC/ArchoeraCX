@@ -30,6 +30,7 @@ int main(void) {
   uint64_t ping_task = 0;
   uint64_t info_task = 0;
   uint64_t modules_task = 0;
+  uint64_t gpu_task = 0;
   uint64_t appearance_task = 0;
   uint64_t rejected_task = 123;
   uint64_t unknown_task = 123;
@@ -122,6 +123,29 @@ int main(void) {
   CHECK(strstr(json, "\"system.ping\"") != NULL);
   CHECK(strstr(json, "\"system.modules\"") != NULL);
   archoera_release(core, modules_task);
+
+  /* system.gpu reports display adapters for launch optimization. The payload
+   * must stay stable even on machines without a usable adapter. */
+  CHECK(archoera_call(core, "system.gpu", "{}", &gpu_task, &err) ==
+        ARCHOERA_OK);
+  CHECK(gpu_task != 0);
+  count = archoera_poll(core, events, 64);
+  CHECK(count == 1);
+  CHECK(events[0].task_id == gpu_task);
+  CHECK(events[0].state == ARCHOERA_TASK_COMPLETED);
+
+  free(json);
+  json = NULL;
+  len = 0;
+  CHECK(archoera_result(core, gpu_task, NULL, 0, &len, &err) == ARCHOERA_OK);
+  json = (char*)malloc(len);
+  CHECK(json != NULL);
+  CHECK(archoera_result(core, gpu_task, json, len, &len, &err) ==
+        ARCHOERA_OK);
+  CHECK(strstr(json, "\"platform\":\"") != NULL);
+  CHECK(strstr(json, "\"gpus\":[") != NULL);
+  CHECK(strstr(json, "\"hybrid\":") != NULL);
+  archoera_release(core, gpu_task);
 
   /* system.appearance is a core-owned, synchronous method. A native watcher
    * may also enqueue domain events at any time, so scan by task id. */

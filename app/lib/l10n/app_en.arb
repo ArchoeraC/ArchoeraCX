@@ -246,6 +246,41 @@
   },
   "launchJavaMissing": "No suitable Java runtime found.",
   "launchLoaderNotInstalled": "This instance has no loader installed. Install Forge/NeoForge from the instance menu, then launch again.",
+  "launchMemoryWarningTitle": "Low memory",
+  "launchMemoryWarningLow": "Only {max} MB is allocated but {recommended} MB is recommended. The game may stutter or crash.",
+  "@launchMemoryWarningLow": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      },
+      "recommended": {
+        "type": "int"
+      }
+    }
+  },
+  "launchMemoryWarningOver": "A {max} MB heap leaves little room for the system ({available} MB available).",
+  "@launchMemoryWarningOver": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "launchMemoryWarningSystem": "This machine has {total} MB of RAM, so the heap is capped at {max} MB. Heavy modpacks may not fit.",
+  "@launchMemoryWarningSystem": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "launchAnyway": "Launch anyway",
   "launchLog": "Log: {path}",
   "@launchStarted": {
     "placeholders": {
@@ -296,6 +331,12 @@
   "loaderInstallDone": "Loader files downloaded, version JSON written, and processors completed.",
   "loaderInstallPickInstaller": "Choose a Forge/NeoForge installer jar first.",
   "loaderInstallFailed": "Loader install failed.",
+  "loaderShareFiles": "Share loader files",
+  "@loaderShareFiles": {
+    "description": "Checkbox in the Forge/NeoForge install dialog; overrides the global preference for this install only."
+  },
+  "loaderShareFilesHint": "Reuses one libraries/versions copy in the game folder for every instance of this loader build. Untick to keep them inside this instance.",
+  "@loaderShareFilesHint": {},
   "searchDownload": "Search resources",
   "downloadSearchAction": "Search",
   "downloadSearchEmpty": "No compatible projects found.",
@@ -404,6 +445,12 @@
   "settingsWindowSize": "Window size",
   "settingsWindowSizeDesc": "Initial size of the game window.",
   "settingsWindowSizeFullscreen": "Ignored while starting fullscreen.",
+  "settingsShareLoaderFiles": "Share loader files",
+  "settingsShareLoaderFilesDesc": "Forge/NeoForge libraries and the merged loader profile are installed once in the game folder and reused by every instance of that loader build. Untick to keep them inside each instance.",
+  "@settingsShareLoaderFiles": {
+    "description": "Global default for the Forge/NeoForge install dialog checkbox."
+  },
+  "@settingsShareLoaderFilesDesc": {},
   "settingsSectionGameArgs": "Extra game arguments",
   "settingsGameArgsNote": "Appended after the vanilla arguments and split on spaces; leave empty for none.",
   "settingsSectionTasks": "Tasks & logs",
@@ -1077,6 +1124,26 @@
   "settingsMemoryOverAvailable": "Estimated usage exceeds available memory.",
   "@settingsMemoryOverAvailable": {
     "description": "Memory warning."
+  },
+  "settingsMemoryAuto": "Automatic memory",
+  "@settingsMemoryAuto": {
+    "description": "Switch that lets the launcher size the heap itself."
+  },
+  "settingsMemoryAutoDesc": "Picks the heap from the game version, loader, enabled mods and installed RAM.",
+  "@settingsMemoryAutoDesc": {
+    "description": "Explains automatic heap sizing."
+  },
+  "settingsMemoryAutoHint": "Each instance gets the heap it needs; the manual numbers above are kept but no longer applied.",
+  "@settingsMemoryAutoHint": {
+    "description": "Shown while automatic sizing is on."
+  },
+  "settingsGameOptimization": "Game optimization",
+  "@settingsGameOptimization": {
+    "description": "Switch for launcher-added JVM tuning and discrete GPU preference."
+  },
+  "settingsGameOptimizationDesc": "Adds tuned G1 flags and prefers the dedicated GPU when starting the game.",
+  "@settingsGameOptimizationDesc": {
+    "description": "Explains the game optimization switch."
   },
   "downloadResults": "{count, plural, =0{No results} =1{1 result} other{{count} results}}",
   "@downloadResults": {
@@ -1849,8 +1916,25 @@
       }
     }
   },
-  "instanceSettingsReset": "Reset to global",
-  "instanceSettingsResetBody": "Clears every override so this instance follows the global settings again.",
+  "instanceSettingsMemoryAuto": "Automatic · {mb} MB recommended",
+  "@instanceSettingsMemoryAuto": {
+    "description": "Hint for the memory fields while automatic sizing is on.",
+    "placeholders": {
+      "mb": {
+        "type": "int"
+      }
+    }
+  },
+  "instanceSettingsMemoryLow": "Below the recommended {recommended} MB; the game may stutter or crash.",
+  "@instanceSettingsMemoryLow": {
+    "description": "Inline warning when a manual heap override is too small.",
+    "placeholders": {
+      "recommended": {
+        "type": "int"
+      }
+    }
+  },
+  "instanceSettingsReset": "Reset to global",  "instanceSettingsResetBody": "Clears every override so this instance follows the global settings again.",
   "instanceSettingsResetDone": "Reset to the global settings.",
   "instanceOverridesMemory": "memory",
   "instanceOverridesGc": "GC",

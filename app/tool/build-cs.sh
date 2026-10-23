@@ -24,6 +24,32 @@ esac
 # repository secrets and local builds pass it through the environment. The
 # build turns it into an obfuscated blob, so the id never lands in obj/ or in
 # the binary's string table.
+#
+# Local convenience: when the environment is empty, read the git-ignored
+# `client_id.key` from the repository root (or `app/`). Editors and Windows
+# tooling like to prepend a UTF-8 BOM or trailing CRLF, which would end up
+# inside the blob and silently break sign-in, so strip both and validate the
+# GUID shape before using it.
+if [[ -z "${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" ]]; then
+  for candidate in "$(pwd)/../client_id.key" "$(pwd)/client_id.key"; do
+    if [[ -f "${candidate}" ]]; then
+      read -r ARCHOERACX_MICROSOFT_CLIENT_ID < <(
+        tr -d '\r' < "${candidate}" | sed -e '1s/^\xEF\xBB\xBF//' -e 's/[[:space:]]//g'
+      )
+      export ARCHOERACX_MICROSOFT_CLIENT_ID
+      echo "client id: read from ${candidate} (git-ignored)"
+      break
+    fi
+  done
+fi
+
+if [[ -n "${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" ]] &&
+   [[ ! "${ARCHOERACX_MICROSOFT_CLIENT_ID}" =~ ^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$ ]]; then
+  echo "error: ARCHOERACX_MICROSOFT_CLIENT_ID is not a GUID (length ${#ARCHOERACX_MICROSOFT_CLIENT_ID});" >&2
+  echo "       expected the Application (client) ID, e.g. 00000000-0000-0000-0000-000000000000." >&2
+  exit 1
+fi
+
 if [[ -z "${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" ]]; then
   echo "warning: ARCHOERACX_MICROSOFT_CLIENT_ID is empty; Microsoft sign-in will" >&2
   echo "         return MICROSOFT_CLIENT_ID_MISSING and the About build marker stays hidden." >&2

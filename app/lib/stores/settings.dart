@@ -98,6 +98,9 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     bool? fullscreen,
     int? logRetentionFiles,
     int? logRetentionMegabytes,
+    bool? shareLoaderFiles,
+    String? memoryMode,
+    bool? gameOptimization,
   }) async {
     final client = ref.read(coreClientProvider);
     if (client == null) {
@@ -121,6 +124,9 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           logRetentionFiles: logRetentionFiles ?? current.logRetentionFiles,
           logRetentionMegabytes:
               logRetentionMegabytes ?? current.logRetentionMegabytes,
+          shareLoaderFiles: shareLoaderFiles ?? current.shareLoaderFiles,
+          memoryMode: memoryMode ?? current.memoryMode,
+          gameOptimization: gameOptimization ?? current.gameOptimization,
         ),
       );
       return;
@@ -138,6 +144,9 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         fullscreen: fullscreen,
         logRetentionFiles: logRetentionFiles,
         logRetentionMegabytes: logRetentionMegabytes,
+        shareLoaderFiles: shareLoaderFiles,
+        memoryMode: memoryMode,
+        gameOptimization: gameOptimization,
       ),
     );
   }

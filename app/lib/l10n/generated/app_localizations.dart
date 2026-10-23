@@ -812,6 +812,36 @@ abstract class AppLocalizations {
   /// **'This instance has no loader installed. Install Forge/NeoForge from the instance menu, then launch again.'**
   String get launchLoaderNotInstalled;
 
+  /// No description provided for @launchMemoryWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Low memory'**
+  String get launchMemoryWarningTitle;
+
+  /// No description provided for @launchMemoryWarningLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Only {max} MB is allocated but {recommended} MB is recommended. The game may stutter or crash.'**
+  String launchMemoryWarningLow(int max, int recommended);
+
+  /// No description provided for @launchMemoryWarningOver.
+  ///
+  /// In en, this message translates to:
+  /// **'A {max} MB heap leaves little room for the system ({available} MB available).'**
+  String launchMemoryWarningOver(int max, int available);
+
+  /// No description provided for @launchMemoryWarningSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine has {total} MB of RAM, so the heap is capped at {max} MB. Heavy modpacks may not fit.'**
+  String launchMemoryWarningSystem(int total, int max);
+
+  /// No description provided for @launchAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch anyway'**
+  String get launchAnyway;
+
   /// No description provided for @launchLog.
   ///
   /// In en, this message translates to:
@@ -1027,6 +1057,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loader install failed.'**
   String get loaderInstallFailed;
+
+  /// Checkbox in the Forge/NeoForge install dialog; overrides the global preference for this install only.
+  ///
+  /// In en, this message translates to:
+  /// **'Share loader files'**
+  String get loaderShareFiles;
+
+  /// No description provided for @loaderShareFilesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reuses one libraries/versions copy in the game folder for every instance of this loader build. Untick to keep them inside this instance.'**
+  String get loaderShareFilesHint;
 
   /// No description provided for @searchDownload.
   ///
@@ -1285,6 +1327,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ignored while starting fullscreen.'**
   String get settingsWindowSizeFullscreen;
+
+  /// Global default for the Forge/NeoForge install dialog checkbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Share loader files'**
+  String get settingsShareLoaderFiles;
+
+  /// No description provided for @settingsShareLoaderFilesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge/NeoForge libraries and the merged loader profile are installed once in the game folder and reused by every instance of that loader build. Untick to keep them inside each instance.'**
+  String get settingsShareLoaderFilesDesc;
 
   /// No description provided for @settingsSectionGameArgs.
   ///
@@ -2642,6 +2696,36 @@ abstract class AppLocalizations {
   /// **'Estimated usage exceeds available memory.'**
   String get settingsMemoryOverAvailable;
 
+  /// Switch that lets the launcher size the heap itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic memory'**
+  String get settingsMemoryAuto;
+
+  /// Explains automatic heap sizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Picks the heap from the game version, loader, enabled mods and installed RAM.'**
+  String get settingsMemoryAutoDesc;
+
+  /// Shown while automatic sizing is on.
+  ///
+  /// In en, this message translates to:
+  /// **'Each instance gets the heap it needs; the manual numbers above are kept but no longer applied.'**
+  String get settingsMemoryAutoHint;
+
+  /// Switch for launcher-added JVM tuning and discrete GPU preference.
+  ///
+  /// In en, this message translates to:
+  /// **'Game optimization'**
+  String get settingsGameOptimization;
+
+  /// Explains the game optimization switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds tuned G1 flags and prefers the dedicated GPU when starting the game.'**
+  String get settingsGameOptimizationDesc;
+
   /// Search result count.
   ///
   /// In en, this message translates to:
@@ -3943,6 +4027,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follow global ({value})'**
   String instanceSettingsFollowGlobalWith(String value);
+
+  /// Hint for the memory fields while automatic sizing is on.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic · {mb} MB recommended'**
+  String instanceSettingsMemoryAuto(int mb);
+
+  /// Inline warning when a manual heap override is too small.
+  ///
+  /// In en, this message translates to:
+  /// **'Below the recommended {recommended} MB; the game may stutter or crash.'**
+  String instanceSettingsMemoryLow(int recommended);
 
   /// No description provided for @instanceSettingsReset.
   ///

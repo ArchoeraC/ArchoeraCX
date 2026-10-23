@@ -84,6 +84,9 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         int? downloadRangeThresholdKb = null;
         int? logRetentionFiles = null;
         int? logRetentionMb = null;
+        bool? shareLoaderFiles = null;
+        string? memoryMode = null;
+        bool? gameOptimization = null;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -281,6 +284,32 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 }
             }
 
+            if (root.TryGetProperty("shareLoaderFiles", out var shareElement))
+            {
+                shareLoaderFiles = shareElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? shareElement.GetBoolean()
+                    : throw new ArgumentException("shareLoaderFiles must be a boolean");
+            }
+
+            if (root.TryGetProperty("memoryMode", out var memoryModeElement))
+            {
+                memoryMode = memoryModeElement.ValueKind == JsonValueKind.String
+                    ? memoryModeElement.GetString()
+                    : throw new ArgumentException("memoryMode must be a string");
+                if (memoryMode is not (AppSettings.MemoryModes.Auto or AppSettings.MemoryModes.Manual))
+                {
+                    return Error("E_INVALID", "memoryMode must be 'auto' or 'manual'");
+                }
+            }
+
+            if (root.TryGetProperty("gameOptimization", out var optimizationElement))
+            {
+                gameOptimization =
+                    optimizationElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                        ? optimizationElement.GetBoolean()
+                        : throw new ArgumentException("gameOptimization must be a boolean");
+            }
+
             if (root.TryGetProperty("downloadProxy", out var proxyElement))
             {
                 downloadProxyPresent = true;
@@ -433,6 +462,21 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             };
         }
 
+        if (shareLoaderFiles is not null)
+        {
+            current = current with { ShareLoaderFiles = shareLoaderFiles.Value };
+        }
+
+        if (memoryMode is not null)
+        {
+            current = current with { MemoryMode = memoryMode };
+        }
+
+        if (gameOptimization is not null)
+        {
+            current = current with { GameOptimization = gameOptimization.Value };
+        }
+
         if (instancesRoots is not { Count: > 0 } &&
             string.IsNullOrWhiteSpace(legacyRoot) &&
             !javaPathPresent &&
@@ -452,7 +496,10 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             downloadChunkSizeKb is null &&
             downloadRangeThresholdKb is null &&
             logRetentionFiles is null &&
-            logRetentionMb is null)
+            logRetentionMb is null &&
+            shareLoaderFiles is null &&
+            memoryMode is null &&
+            gameOptimization is null)
         {
             return Error("E_INVALID", "settings.set requires at least one field");
         }
@@ -521,6 +568,9 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             writer.WriteNumber("downloadRangeThresholdKb", settings.DownloadRangeThresholdKb);
             writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
             writer.WriteNumber("logRetentionMb", settings.LogRetentionMegabytes);
+            writer.WriteBoolean("shareLoaderFiles", settings.ShareLoaderFiles);
+            writer.WriteString("memoryMode", settings.MemoryMode);
+            writer.WriteBoolean("gameOptimization", settings.GameOptimization);
             if (string.IsNullOrWhiteSpace(settings.DownloadProxy))
             {
                 writer.WriteNull("downloadProxy");

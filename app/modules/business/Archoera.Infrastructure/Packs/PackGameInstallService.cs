@@ -98,14 +98,15 @@ public sealed class PackGameInstallService
         string loaderVersion,
         MojangPlatform platform,
         DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool? shareLoaderFiles = true)
     {
         ArgumentNullException.ThrowIfNull(platform);
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceRoot);
         ArgumentException.ThrowIfNullOrWhiteSpace(gameVersion);
 
         var kind = loaderKind.Trim().ToLowerInvariant();
-        var installRoot = LaunchPaths.ResolveInstallRoot(instanceRoot);
+        var installRoot = LaunchPaths.ResolveLoaderRoot(instanceRoot, shareLoaderFiles);
 
         if (kind == "vanilla")
         {
@@ -217,7 +218,8 @@ public sealed class PackGameInstallService
     public static string CommitVersionJson(
         string instanceRoot,
         string versionId,
-        string versionJson)
+        string versionJson,
+        bool? shareLoaderFiles = true)
     {
         if (!DownloadPlanPaths.IsPlainFileName(versionId))
         {
@@ -226,7 +228,7 @@ public sealed class PackGameInstallService
                 $"version id '{versionId}' is not a safe file name");
         }
 
-        var installRoot = LaunchPaths.ResolveInstallRoot(instanceRoot);
+        var installRoot = LaunchPaths.ResolveLoaderRoot(instanceRoot, shareLoaderFiles);
         var directory = Path.Combine(installRoot, "versions", versionId);
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, $"{versionId}.json");
@@ -273,12 +275,13 @@ public sealed class PackGameInstallService
         string installerPath,
         MojangPlatform platform,
         bool preferMavenMirror,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool? shareLoaderFiles = true)
     {
         ArgumentNullException.ThrowIfNull(platform);
         ArgumentException.ThrowIfNullOrWhiteSpace(installerPath);
 
-        var installRoot = LaunchPaths.ResolveInstallRoot(instanceRoot);
+        var installRoot = LaunchPaths.ResolveLoaderRoot(instanceRoot, shareLoaderFiles);
         var options = preferMavenMirror
             ? new ForgeDownloadPlanOptions { MavenMirror = ForgeMavenMirror.Bmclapi }
             : null;

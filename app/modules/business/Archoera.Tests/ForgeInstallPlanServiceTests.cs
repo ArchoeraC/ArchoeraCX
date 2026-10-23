@@ -1,4 +1,5 @@
 using System.Text;
+using Archoera.Application.Loaders;
 using Archoera.Application.Mojang;
 using Archoera.Domain.Loaders;
 using Archoera.Domain.Mojang;
@@ -51,6 +52,14 @@ public sealed class ForgeInstallPlanServiceTests
                 destinations);
             Assert.Contains(
                 "downloads/loaders/forge/1.20.1-47.2.0-installer.jar",
+                destinations);
+            // loader.plan reports the installer location to the caller; it has
+            // to be the same path the plan writes.
+            Assert.Contains(
+                ForgeMavenUrls.DefaultInstallerRelativePath(
+                    LoaderKind.Forge,
+                    "1.20.1",
+                    "47.2.0"),
                 destinations);
             Assert.Contains(MojangTestData.AssetIndexPath, destinations);
             Assert.Contains(MojangTestData.AssetAPath, destinations);

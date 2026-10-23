@@ -21,6 +21,20 @@ namespace Archoera.Domain.Settings;
 /// <param name="DownloadRangeThresholdKb">Files above this size use ranged chunks (0 disables).</param>
 /// <param name="LogRetentionFiles">Launch logs kept per instance.</param>
 /// <param name="LogRetentionMegabytes">Total launch-log budget per instance, in MiB.</param>
+/// <param name="ShareLoaderFiles">
+/// Installs Forge/NeoForge libraries and the merged loader profile once in the
+/// game root so every instance of that loader build reuses them. When false,
+/// each instance keeps its own <c>libraries/</c> and <c>versions/&lt;id&gt;/</c>.
+/// </param>
+/// <param name="MemoryMode">
+/// <c>auto</c> derives the heap from the game version, loader, mod count and
+/// installed RAM; <c>manual</c> uses <paramref name="MemoryMinMb"/> /
+/// <paramref name="MemoryMaxMb"/> and only warns when they are too small.
+/// </param>
+/// <param name="GameOptimization">
+/// Lets the launcher add JVM tuning and prefer the discrete GPU when starting
+/// the game. Off keeps the launch line minimal.
+/// </param>
 public sealed record AppSettings(
     string InstancesRoot,
     string DataRoot,
@@ -43,10 +57,22 @@ public sealed record AppSettings(
     int DownloadChunkSizeKb = 512,
     int DownloadRangeThresholdKb = 1024,
     int LogRetentionFiles = 10,
-    int LogRetentionMegabytes = 32)
+    int LogRetentionMegabytes = 32,
+    bool ShareLoaderFiles = true,
+    string MemoryMode = "auto",
+    bool GameOptimization = true)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 11;
+
+    /// <summary>Supported heap sizing modes.</summary>
+    public static class MemoryModes
+    {
+        public const string Auto = "auto";
+        public const string Manual = "manual";
+
+        public static readonly string[] All = [Auto, Manual];
+    }
 
     /// <summary>Configured roots, falling back to the legacy primary root.</summary>
     public IReadOnlyList<string> Roots =>

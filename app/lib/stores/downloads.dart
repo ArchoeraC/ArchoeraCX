@@ -12,6 +12,7 @@ import '../widgets/common/toast.dart';
 import 'instances.dart';
 import 'preferences.dart';
 import 'providers.dart';
+import 'settings.dart';
 import 'tasks.dart';
 
 /// Methods that actually move bytes to disk.
@@ -228,6 +229,7 @@ class DownloadsNotifier extends Notifier<void> {
     required String gameVersion,
     required String loaderVersion,
     required String installerPath,
+    bool? shareLoaderFiles,
     required String successMessage,
     required String failureMessage,
     required String cancelledMessage,
@@ -235,6 +237,10 @@ class DownloadsNotifier extends Notifier<void> {
   }) async {
     final client = _client();
     final label = '${kind[0].toUpperCase()}${kind.substring(1)} $loaderVersion';
+    final share =
+        shareLoaderFiles ??
+        ref.read(appSettingsProvider).value?.shareLoaderFiles ??
+        true;
 
     // Forge/NeoForge processors need a JVM; fail before the large download
     // when no suitable runtime is installed.
@@ -245,8 +251,14 @@ class DownloadsNotifier extends Notifier<void> {
       kind: kind,
       gameVersion: gameVersion,
       loaderVersion: loaderVersion,
+      shareLoaderFiles: share,
       label: label,
     );
+    // Commit and repair follow the plan: the shared game root, or the
+    // instance itself when sharing is off.
+    final installRoot = plan.installRoot.isEmpty
+        ? instance.rootPath
+        : plan.installRoot;
 
     _detach(
       () async {
@@ -259,7 +271,7 @@ class DownloadsNotifier extends Notifier<void> {
           );
         }
         await client.commitLoaderVersion(
-          root: instance.rootPath,
+          root: installRoot,
           versionId: plan.versionId,
           versionJson: plan.versionJson,
           label: label,
@@ -271,7 +283,7 @@ class DownloadsNotifier extends Notifier<void> {
           }
           final repair = await client.repairLoader(
             installerPath: generated,
-            root: instance.rootPath,
+            root: installRoot,
             kind: kind,
             javaPath: java.path,
             label: label,

@@ -275,6 +275,13 @@ public sealed class PackInstallService
                 cancellationToken)
             .ConfigureAwait(false);
 
+        // A brand-new instance has no loader layout yet, so the user's
+        // "share loader files" preference decides where it goes.
+        var shareLoaderFiles = (await _settings
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false))
+            .ShareLoaderFiles;
+
         DownloadPlan gamePlan;
         string versionId;
         string versionJson;
@@ -284,7 +291,8 @@ public sealed class PackInstallService
                     instance,
                     kind,
                     javaRuntime!.Path,
-                    cancellationToken)
+                    cancellationToken,
+                    shareLoaderFiles)
                 .ConfigureAwait(false);
             versionId = outcome.VersionId;
             versionJson = outcome.VersionJson;
@@ -299,7 +307,8 @@ public sealed class PackInstallService
                     index.Loader.Version,
                     platform,
                     await ResolveSourceModeAsync(cancellationToken).ConfigureAwait(false),
-                    cancellationToken)
+                    cancellationToken,
+                    shareLoaderFiles)
                 .ConfigureAwait(false);
 
             gamePlan = game.Plan;
@@ -330,7 +339,8 @@ public sealed class PackInstallService
             PackGameInstallService.CommitVersionJson(
                 instance.RootPath,
                 versionId,
-                versionJson);
+                versionJson,
+                shareLoaderFiles);
         }
 
         var overridePaths = contents.Overrides
@@ -468,7 +478,7 @@ public sealed class PackInstallService
 
         try
         {
-            var installRoot = LaunchPaths.ResolveInstallRoot(instance.RootPath);
+            var installRoot = LaunchPaths.ResolveLoaderRoot(instance.RootPath, null);
             var manifest = await _forgePlanner
                 .ParseAsync(
                     installerPath,
@@ -529,7 +539,7 @@ public sealed class PackInstallService
         var installer = FindLocalForgeInstaller(instance, kind.Value);
         if (installer is null) return false;
 
-        var installRoot = LaunchPaths.ResolveInstallRoot(instance.RootPath);
+        var installRoot = LaunchPaths.ResolveLoaderRoot(instance.RootPath, null);
         try
         {
             var manifest = await _forgePlanner
@@ -585,7 +595,7 @@ public sealed class PackInstallService
         if (string.IsNullOrWhiteSpace(instance.LoaderVersion)) return null;
         var game = instance.GameVersion;
         var loader = instance.LoaderVersion.Trim();
-        var installRoot = LaunchPaths.ResolveInstallRoot(instance.RootPath);
+        var installRoot = LaunchPaths.ResolveLoaderRoot(instance.RootPath, null);
         var libraries = Path.Combine(installRoot, "libraries");
         var token = kind == LoaderKind.Forge ? "forge" : "neoforge";
         var legacy = loader.StartsWith(game + "-", StringComparison.Ordinal)
@@ -735,7 +745,8 @@ public sealed class PackInstallService
                 instance.LoaderVersion,
                 MojangPlatform.Current(),
                 await ResolveSourceModeAsync(cancellationToken).ConfigureAwait(false),
-                cancellationToken)
+                cancellationToken,
+                shareLoaderFiles: null)
             .ConfigureAwait(false);
 
         ModuleProgress.Report(
@@ -762,7 +773,8 @@ public sealed class PackInstallService
         PackGameInstallService.CommitVersionJson(
             instance.RootPath,
             game.VersionId,
-            game.VersionJson);
+            game.VersionJson,
+            shareLoaderFiles: null);
         return new PackRepairResult(instance, game.VersionId);
     }
 
@@ -834,7 +846,8 @@ public sealed class PackInstallService
         GameInstanceRecord instance,
         LoaderKind kind,
         string javaPath,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool? shareLoaderFiles = null)
     {
         if (!_runner.IsAvailable)
         {
@@ -869,7 +882,8 @@ public sealed class PackInstallService
                 platform,
                 preferMavenMirror: await PreferMirrorAsync(cancellationToken)
                     .ConfigureAwait(false),
-                cancellationToken)
+                cancellationToken,
+                shareLoaderFiles: shareLoaderFiles)
             .ConfigureAwait(false);
 
         ModuleProgress.Report(
@@ -893,7 +907,7 @@ public sealed class PackInstallService
                 TailDetail(download.Stderr));
         }
 
-        var installRoot = LaunchPaths.ResolveInstallRoot(instance.RootPath);
+        var installRoot = LaunchPaths.ResolveLoaderRoot(instance.RootPath, shareLoaderFiles);
         var manifest = await _forgePlanner
             .ParseAsync(
                 installerPath,
@@ -927,7 +941,8 @@ public sealed class PackInstallService
         PackGameInstallService.CommitVersionJson(
             instance.RootPath,
             forge.VersionId,
-            forge.VersionJson);
+            forge.VersionJson,
+            shareLoaderFiles);
 
         return new ForgeInstallOutcome(forge.VersionId, forge.VersionJson);
     }

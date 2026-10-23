@@ -130,6 +130,12 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             var kindText = ReadString(root, "kind");
             var gameVersion = ReadString(root, "gameVersion");
             var loaderVersion = ReadString(root, "loaderVersion");
+            // Shared game root (default) or per-instance files when the user
+            // unticks "share loader files" in the install dialog.
+            var shareLoaderFiles =
+                !root.TryGetProperty("shareLoaderFiles", out var shareElement) ||
+                shareElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                shareElement.GetBoolean();
             if (string.IsNullOrWhiteSpace(instanceRoot) ||
                 !Path.IsPathFullyQualified(instanceRoot) ||
                 string.IsNullOrWhiteSpace(installerPath) ||
@@ -154,7 +160,9 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 });
             var plan = await new ForgeInstallPlanService(mojang)
                 .BuildAsync(
-                    Path.GetFullPath(instanceRoot),
+                    LaunchPaths.ResolveLoaderRoot(
+                        Path.GetFullPath(instanceRoot),
+                        shareLoaderFiles),
                     kind,
                     gameVersion,
                     loaderVersion,
@@ -166,6 +174,16 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             var planJson = DownloadPlanJson.Build(plan.Plan);
             using var planDocument = JsonDocument.Parse(planJson);
             var versionJson = Encoding.UTF8.GetString(plan.Version.Json);
+            var loaderRoot = LaunchPaths.ResolveLoaderRoot(
+                Path.GetFullPath(instanceRoot),
+                shareLoaderFiles);
+            // The plan writes the installer next to the libraries it installs.
+            // Repair needs the absolute path, so report it instead of making
+            // the caller guess the layout.
+            var planInstaller = Path.Combine(
+                loaderRoot,
+                ForgeMavenUrls.DefaultInstallerRelativePath(kind, gameVersion, loaderVersion)
+                    .Replace('/', Path.DirectorySeparatorChar));
 
             return BuildEnvelope(writer =>
             {
@@ -175,6 +193,11 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 writer.WriteString("versionJson", versionJson);
                 writer.WriteBoolean("requiresJava", true);
                 writer.WriteString("kind", kind.ToString().ToLowerInvariant());
+                writer.WriteString("installerPath", planInstaller);
+                // Callers commit and repair against this root so the loader
+                // files land where the plan put them.
+                writer.WriteString("installRoot", loaderRoot);
+                writer.WriteBoolean("shareLoaderFiles", shareLoaderFiles);
             });
         }
         catch (Exception exception) when (
@@ -300,21 +323,34 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 kind,
                 gameVersion,
                 loaderVersion!);
-            var installerPath = Path.Combine(
-                Path.GetFullPath(instanceRoot),
-                relative.Replace('/', Path.DirectorySeparatorChar));
-            if (!File.Exists(installerPath))
+            // Libraries live either in the instance (isolated install) or in
+            // the shared game root; follow whichever layout is on disk.
+            var loaderRoot = LaunchPaths.ResolveLoaderRoot(instanceRoot, null);
+            // The installer follows the plan root, but pack installs keep it in
+            // the instance, so accept both locations.
+            var installerPath = new[]
+                {
+                    Path.GetFullPath(instanceRoot),
+                    loaderRoot,
+                }
+                .Select(root => Path.Combine(
+                    root,
+                    relative.Replace('/', Path.DirectorySeparatorChar)))
+                .FirstOrDefault(File.Exists);
+            if (installerPath is null)
             {
                 return LoaderManifestJson.BuildError(
                     "MANIFEST_MISSING",
-                    $"installer not found: {installerPath}");
+                    $"installer not found: {Path.Combine(
+                        Path.GetFullPath(instanceRoot),
+                        relative.Replace('/', Path.DirectorySeparatorChar))}");
             }
 
-            var librariesPath = Path.Combine(instanceRoot, "libraries");
+            var librariesPath = Path.Combine(loaderRoot, "libraries");
             var manifest = await _planner
-                .ParseAsync(installerPath, instanceRoot, librariesPath, kind, cancellationToken)
+                .ParseAsync(installerPath, loaderRoot, librariesPath, kind, cancellationToken)
                 .ConfigureAwait(false);
-            var verification = _verifier.Verify(manifest, instanceRoot, mode);
+            var verification = _verifier.Verify(manifest, loaderRoot, mode);
             return LoaderManifestJson.BuildEnvelope(
                 manifest,
                 verification,

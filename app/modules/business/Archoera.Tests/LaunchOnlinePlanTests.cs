@@ -162,6 +162,9 @@ public sealed class LaunchOnlinePlanTests
             var (instance, version, paths) = CreateFixture(root, arguments: null);
             var global = CreateSettings(root) with
             {
+                // Manual mode is what the override is being tested against:
+                // automatic sizing would ignore the numbers on purpose.
+                MemoryMode = AppSettings.MemoryModes.Manual,
                 MemoryMaxMb = 2048,
                 GameArgs = "--global",
             };

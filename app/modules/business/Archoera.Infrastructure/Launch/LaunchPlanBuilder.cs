@@ -253,12 +253,25 @@ internal static class LaunchPlanBuilder
         LaunchPaths paths,
         string accessToken = "0",
         string clientId = "",
-        string userType = "legacy")
+        string userType = "legacy",
+        LaunchMemoryPlan? memoryPlan = null,
+        LaunchOptimizationPlan? optimizationPlan = null,
+        int cores = 0)
     {
         if (string.IsNullOrWhiteSpace(version.MainClass))
         {
             throw new LaunchException("VERSION_INVALID", "version JSON has no mainClass");
         }
+
+        // Auto memory and optimization are resolved here when the caller did
+        // not do it first, so every entry point (launch, tests, repair) gets
+        // the same heap instead of the raw settings numbers.
+        var memory = memoryPlan ?? LaunchMemoryPlanner.Resolve(settings, instance);
+        var optimization = optimizationPlan ?? LaunchOptimizationPlanner.Build(
+            settings,
+            memory,
+            hardware: null,
+            cores: cores > 0 ? cores : Environment.ProcessorCount);
 
         var platform = MojangPlatform.Current();
         var classpath = BuildClasspath(version, paths, platform);
@@ -299,8 +312,8 @@ internal static class LaunchPlanBuilder
 
         var jvm = new List<string>
         {
-            $"-Xms{settings.MemoryMinMb}M",
-            $"-Xmx{settings.MemoryMaxMb}M",
+            $"-Xms{memory.MinMb}M",
+            $"-Xmx{memory.MaxMb}M",
             "-Dfile.encoding=UTF-8",
             "-Dminecraft.launcher.brand=ArchoeraCX",
             "-Dminecraft.launcher.version=0.0.1+1",
@@ -321,13 +334,16 @@ internal static class LaunchPlanBuilder
             : settings.JvmArgs
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
-        var customSelectsGc = customJvm.Any(argument =>
-            argument.StartsWith("-XX:+Use", StringComparison.Ordinal) &&
-            argument.EndsWith("GC", StringComparison.Ordinal));
+        var customSelectsGc = customJvm.Any(SelectsGc) ||
+                              optimization.JvmArgs.Any(SelectsGc);
         if (gcFlag is not null && !customSelectsGc)
         {
             jvm.Add(gcFlag);
         }
+
+        // Optimization flags go before the user's own arguments so a custom
+        // `-XX:` line still wins.
+        jvm.AddRange(optimization.JvmArgs);
         jvm.AddRange(customJvm);
 
         if (version.Arguments is { Jvm.Count: > 0 })
@@ -395,8 +411,13 @@ internal static class LaunchPlanBuilder
             java.Path,
             paths.InstanceRoot,
             Path.Combine(paths.InstanceRoot, ".archoera", "logs"),
-            jvm);
+            jvm,
+            optimization.Environment);
     }
+
+    private static bool SelectsGc(string argument) =>
+        argument.StartsWith("-XX:+Use", StringComparison.Ordinal) &&
+        argument.EndsWith("GC", StringComparison.Ordinal);
 
     private static List<string> BuildClasspath(
         MojangVersion version,

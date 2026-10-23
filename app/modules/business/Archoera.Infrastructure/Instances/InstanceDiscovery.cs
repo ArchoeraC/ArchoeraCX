@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Archoera.Domain.Instances;
 
 namespace Archoera.Infrastructure.Instances;
@@ -29,6 +30,54 @@ internal static class InstanceDiscovery
         "shaderpacks", "saves", "mods", "config", "defaultconfigs",
         "natives", "downloads", "cache", "screenshots", "replay_recordings",
     ];
+
+    /// <summary>
+    /// Version ids a loader installer creates: Forge writes
+    /// <c>1.21.1-forge-52.0.1</c> (or <c>forge-52.0.1</c> on older installers),
+    /// NeoForge writes <c>neoforge-21.1.176</c>, Fabric
+    /// <c>fabric-loader-0.16.9-1.21.1</c> and Quilt
+    /// <c>quilt-loader-0.9.1-1.21.1</c>. Those folders hold a launch profile
+    /// shared by every instance of that loader build, so they sit in
+    /// <c>versions/</c> next to real instances without being one. Matches the
+    /// hyphenated ids only; PCL's <c>1.21.1-Forge_52.0.1</c> layout is a real
+    /// instance and stays.
+    /// </summary>
+    private static readonly Regex LoaderProfileId = new(
+        @"^(?:(?:\d[^/\\]*-)?(?:forge|neoforge)|fabric-loader|quilt-loader)-\d",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// True when <paramref name="directory"/> is a shared loader profile rather
+    /// than an instance folder: the name is an installer version id and the
+    /// folder carries no instance data of its own. A profile that gained mods,
+    /// configs or <c>.archoera/instance.json</c> is treated as an instance.
+    /// </summary>
+    internal static bool IsLoaderProfileDirectory(string directory)
+    {
+        string name;
+        try
+        {
+            name = Path.GetFileName(Path.TrimEndingDirectorySeparator(directory));
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+
+        if (name.Length == 0 || !LoaderProfileId.IsMatch(name)) return false;
+        if (!Directory.Exists(directory)) return false;
+        if (Directory.Exists(Path.Combine(directory, ".archoera"))) return false;
+
+        // A shared profile only ever holds the version JSON and its jar.
+        // Anything a real instance accumulates means the user turned the
+        // folder into one, so keep it.
+        foreach (var marker in new[] { "logs", "natives", "crash-reports" })
+        {
+            if (Directory.Exists(Path.Combine(directory, marker))) return false;
+        }
+
+        return !HasInstanceMarkers(directory);
+    }
 
     public static IReadOnlyList<GameInstanceRecord> Discover(
         string root,
@@ -84,6 +133,11 @@ internal static class InstanceDiscovery
 
         foreach (var directory in SafeDirectories(Path.Combine(rootFull, "versions")))
         {
+            // Installing a loader commits its profile to versions/<id> so every
+            // instance of that loader build can launch from it. That folder is
+            // not an instance: listing it produced a "neoforge-21.1.176" entry
+            // with an unknown game version right after a pack install.
+            if (IsLoaderProfileDirectory(directory)) continue;
             Add(directory);
         }
 
