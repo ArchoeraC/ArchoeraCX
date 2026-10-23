@@ -1,70 +1,44 @@
 # AGENTS.md — ArchoeraCX
 
-面向在本仓库工作的 AI 助手与维护者。当前阶段：**Phase 1**（Flutter UI + C++ 枢纽 + C# 模块注册表 + 实例/下载/账户/整合包垂直切片）。
+## 布局
 
-## 先读
-
-- [`docs/12-build-and-test.md`](docs/12-build-and-test.md)：环境、逐模块构建、测试矩阵、数据目录
-- [`docs/10-architecture-design.md`](docs/10-architecture-design.md)：ABI、模块协议、任务/事件、存储、安全
-- [`docs/11-ui-design-system.md`](docs/11-ui-design-system.md)：设计令牌、AppShell、页面与动效
-- [`docs/09-distribution-and-download-policy.md`](docs/09-distribution-and-download-policy.md)：发行地区门控、Provider、下载策略
-- [`docs/README.md`](docs/README.md)：文档索引；冲突时以代码与契约为准
-
-## 边界
-
-- 只改本仓库；不要动仓库之外的目录。本地草稿、样本与反编译产物放 `Reference/local/`（忽略，不提交）。
-- `.gitignore` 规则要收窄：不要用 `**/bin/`、`**/build/` 这类宽规则，它会把 Rust `src/bin/` 之类的源码一起隐藏。
-- 不复制 LauncherX / HMCL / Prism / Modrinth 的代码、XAML、图标、插画、文案或字体；新资产必须登记来源与许可证。
-- 不接受外部代码贡献，政策见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
-- 代码、注释、提交信息用英文；面向用户的文档与 UI 文案用中文，UI 文案走 ARB（`en` / `zh`）。
-
-## 目录
-
-```text
-app/
-├─ lib/                  # Flutter：app/、pages/、stores/、services/core/、widgets/、theme/、l10n/
-├─ core/                 # C++20 枢纽 archoera_core；core/vault-rs 为凭据保险库
-├─ modules/business/     # C# NativeAOT archoera_cs（API / 业务 / SQLite 唯一 owner）
-├─ modules/downloader/   # Rust archoera_dl（只执行 DownloadPlan）
-├─ contracts/            # ABI 与模块 schema
-├─ native/               # 平台桥接（占位）
-├─ tool/                 # build-core / build-cs / build-dl / build-vault
-└─ test/                 # Flutter 测试
-docs/                    # 架构 / 构建 / 发行 / UI 文档
-Reference/               # 只读参考，不参与构建
-```
+`app/lib` Flutter（经 `services/core/CoreClient` 调 C++）· `app/core` C++20 枢纽，`vault-rs` 为凭据保险库 · `app/modules/business` C# NativeAOT（业务与 SQLite）· `app/modules/downloader` Rust（只执行 `DownloadPlan`）· `app/contracts` ABI/schema · `docs/` 文档 · `Reference/` 只读参考。
 
 ## 架构红线
 
-- Dart 只经 `app/lib/services/core/CoreClient` 调 C++；UI 不读文件、不起进程、不直连业务 API（图片加载例外）。
+- Dart 只经 `CoreClient` 调 C++；UI 不读文件、不起进程、不直连业务 API（图片加载例外）。
 - C++ 只做生命周期、路由、任务与事件，不写 Mojang/Modrinth/加载器业务。
-- C# 是 API、业务、SQLite 的唯一 owner；SQLite 只由 C# 持有，Flutter 不引入数据库插件。
-- Rust 只消费 `DownloadPlan`：不解压、不写 SQLite、不理解业务语义。
-- `.mrpack` 由 C# 解析与安全解压（zip-slip、symlink、size/entry 上限）；Rust 仍只执行计划。
-- 例外：Forge/NeoForge 官方 Maven 不可达时，C# 仅对 installer 做 BMCLAPI 镜像引导下载并计算 SHA-1；库与游戏文件仍由 Rust 下载。
-- 核事件必须 **wake 驱动**：C++ 调 `wake`，Dart `NativeCallable.listener` 收到后批量 drain；**禁止 `Timer.periodic` 轮询**。
-- 新方法必须同时登记到 C++ `method_registry` 与 C# `BusinessModuleRegistry`；未知方法返回 `E_UNSUPPORTED`，导出层不加 if 分支。
-- 跨模块协作走效果协议，不直接互调；所有跨边界数据都有 schema、owner、生命周期与失败路径。
-- token / refresh token / device code 不跨 ABI、不写日志；Microsoft client id 不硬编码（CI 注入 `-p:MicrosoftClientId`，调试用 `ARCHOERACX_MICROSOFT_CLIENT_ID`，运行时优先）。
+- C# 独占 API、业务与 SQLite；Flutter 不引入数据库插件。
+- Rust 只消费 `DownloadPlan`：不解压、不写 SQLite、不碰业务语义。`.mrpack` 由 C# 安全解压（zip-slip、symlink、size/entry 上限）。
+- 例外：Forge/NeoForge 官方 Maven 不可达时，C# 仅对 installer 做 BMCLAPI 镜像引导下载并算 SHA-1。
+- 事件必须 wake 驱动：C++ `wake` → Dart `NativeCallable.listener` 批量 drain；**禁止 `Timer.periodic` 轮询**。
+- 新方法同时登记 C++ `method_registry` 与 C# `BusinessModuleRegistry`；未知返回 `E_UNSUPPORTED`，导出层不加分支。
+- 跨模块走效果协议，不直接互调；跨边界数据须有 schema、owner、生命周期与失败路径。
+- token / device code 不跨 ABI、不写日志；client id 不硬编码（CI `-p:MicrosoftClientId`，调试 `ARCHOERACX_MICROSOFT_CLIENT_ID`）。
+- 禁止以Python等工具代替write直接操作代码（l10n对键值的翻译可以借助外部工具）
+- 禁止加入对用户信息的第三方上传
+- 禁止使用pkill -x等自杀终端命令
+- 禁止不通过即提交
+- 禁止非必要暴力测试
+- 本地保存后提醒用户推送，优先使用GPG与SSH推送，降低代理依赖
+- 禁止因为代码修改而仍然保留历史遗留
 
-## 提交前必跑
+## 边界
+
+- 只改本仓库；草稿与反编译产物放 `Reference/local/`（忽略）。`.gitignore` 不用 `**/bin/`、`**/build/` 等宽规则（会隐藏 Rust `src/bin/`）。
+- 不复制 LauncherX / HMCL / Prism / Modrinth 的代码、XAML、图标、插画、文案或字体；新资产登记来源与许可证。不接受外部代码贡献（[`CONTRIBUTING.md`](CONTRIBUTING.md)）。
+
+## 提交前必须验证
 
 ```bash
 cd app
-./tool/build-core.sh
-./tool/build-cs.sh
-./tool/build-dl.sh
-./tool/build-vault.sh
-./build/native/abi_smoke
-./build/native/async_smoke
-./build/native/module_smoke
+./tool/build-core.sh && ./tool/build-cs.sh && ./tool/build-dl.sh && ./tool/build-vault.sh
+./build/native/abi_smoke && ./build/native/async_smoke && ./build/native/module_smoke
 dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
 dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
 dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
 cargo test --manifest-path modules/downloader/Cargo.toml
-
-flutter pub get
-flutter gen-l10n
+flutter pub get && flutter gen-l10n
 dart analyze                 # 中文路径下不要用 flutter analyze
 flutter test
 ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
@@ -76,52 +50,10 @@ flutter build linux --release
 python3 tool/check_icons.py
 ```
 
-## 协作约定
+## 版本与协作
 
-- ABI 改动必须同时更新 `app/contracts/abi/archoera_abi.h`、C++、Dart、C harness 与相关测试。
-- 按边界拆子代理：C++/CMake、Dart/Flutter、文档/契约可并行；不要让两个代理改同一文件，共享契约先由主代理冻结。
-- 子代理的报告不等于验证：完成后由主代理统一跑构建与测试。
-- 不臆造进度或测试结果；没有实际运行就写“未验证”。
-
-## 版本与身份
-
-- 版本唯一来源是 `app/pubspec.yaml` 的 `version`（当前 `0.0.1+1`），并与 `app/lib/utils/app_info.dart` 的 `AppInfo.version` 保持一致。
-- 所有对外版本号都跟随它：C++ `build_info`/`system.modules`、C# 模块表与 User-Agent、启动参数 `launcher_version`、Rust crate（`archoera-dl` / `archoera-vault`）。改版本时一并更新这些常量。
-- 应用 ID：Linux/Android `awa.archoera.archoera_cx`，macOS `awa.archoera.archoeraCx`（Apple 不允许下划线）。
-- 身份与品牌细则见 [`app/README.md`](app/README.md)、[`docs/04-licensing.md`](docs/04-licensing.md)。
-
-## 当前进度
-
-已完成：
-
-- 界面：AppShell + 6 页面（主页/实例/下载/账户/Wiki/设置）、设计令牌、明暗主题、中英文 i18n、斜切角面板/Toast/页面转场、账户皮肤预览；右上角任务中心为右侧滑入边栏，展示真实进度/速度与具体目标，只记录长任务；实例菜单含游戏日志查看器（`launch.logs` / `launch.log.read` / `launch.log.tail`，运行中经 ABI 进度回调实时跟随，UI 不读文件；每实例保留最近 10 次、≤32 MiB，单文件 64 MiB 截断）。
-- Wiki 页（底栏第 5 项，`/wiki`）：C++ `system.status` 用平台 API 采样 CPU/核数/负载、内存、实例根所在磁盘、启动器进程与系统运行时长，`system.status.watch` 用条件变量每 5 秒推送域事件（Dart 只 drain，不轮询）；`wiki.feed` 汇总 Mojang 官方新闻、Java 补丁说明与 Minecraft Wiki 最近编辑（逐源独立失败 + 5 分钟缓存）。负载由核心推送更新，社区动态只在用户刷新或进入页面时拉取，Dart 不做定时轮询。
-- 下载设置：设置页新增“下载”分区（来源优先 auto/official/mirror，auto 行内显示按地区解析出的实际来源；并发下载数 1–64、每站点连接数 0–64（默认 16）、下载代理（手工 http(s)/socks5，留空跟随系统；Linux 自动读 KDE/GNOME/PAC）；任一并发值超过 32 需二次确认并常驻警告），执行前由 `DownloadPlanRunner` 覆盖计划默认值；镜像优先会影响原版 client/库/资源、Forge/NeoForge installer 与加载器元数据，另一侧保留为回退。
-- Java 选择：设置页 Java 分区只保留 `/settings/java` 子页入口与内存参数（自动/手动与当前 Java 只在子页）；子页平铺全部扫描结果（版本徽标、使用中标记、搜索、自定义目录/可执行文件），不再是“显示前 5 + 查看全部”弹窗。
-- 外观设置：C++ `system.appearance`（Linux：KDE/GNOME 配置优先 + XDG Portal 异步兜底；Windows 注册表；AppKit）推送系统深浅色与强调色；“外观”改为单列分组平铺（主题 / 主题色 / 界面 / 语言与区域，无二级页签，行外不套卡片），含主题模式、系统/自定义主题色、全局着色、界面密度、减少动效与重置；关于页含环境信息复制、源码/反馈、许可证/隐私/安全入口；顶栏应用名使用当前主题强调色；C# `system.identity` 仍只返回编译期 client_id 的域分隔 SHA-256（原始 id 不跨 ABI），当前 UI 不展示构建标识。
-- 界面图标：改为仓库自带的 Tabler Icons 3.49.0（MIT）子集字体 `assets/fonts/AppIcons.ttf` + `lib/theme/icons/app_icons.dart` 语义层，全部 `Icons.*` 调用已迁移；构建与运行都不联网、不引入图标 pub 包，`tool/build-icons.sh` 可在本地复现生成，`tool/check_icons.py` 同时校验源字体与 release bundle。加载器/品牌标识仍用 `assets/icons/loaders/` 位图。
-- 下载页：项目详情/版本选择改为右侧内联侧板（≥1120 与列表并排，更窄时接管标签页），安装不再弹进度框——统一提交后台任务并立即恢复浏览；页面底部新增下载队列条（活动数/合计进度/速度/查看任务），与任务中心共用同一份任务状态；版本页“使用此版本”与实例页“下载游戏本体”同样走后台队列，安装完成/失败用 Toast 提示。
-- 设置页：分区扩为外观 / 启动 / 下载 / 存储 / Java / 任务与日志 / 通知 / 关于；“启动”新增全屏开关、窗口尺寸（854×480 / 1280×720 / 1600×900 / 1920×1080）与附加游戏参数（C# `windowWidth` / `windowHeight` / `fullscreen` 写入 `settings.json`，LaunchPlanBuilder 生成 `--width`/`--height`/`--fullscreen`）；“任务与日志”提供任务中心保留条数、日志默认行数、每实例日志保留数量与总量上限（C# 启动裁剪）；“通知”提供桌面通知与下载完成通知开关；下载分区新增分片阈值与分片大小（`DownloadPlanRunner.ApplyTuning` 写入 plan options）；外观新增 Toast 停留时长。
-- 系统集成：C++ `system.openUrl` / `system.notify` 用系统 API 打开授权浏览器并发送登录成功桌面通知（Linux D-Bus / Windows Shell API / macOS AppKit+UserNotifications）。
-- 系统目录与启动偏好：C++ `system.openPath`（核心自有方法，不经 C#）只接受已存在、绝对路径的目录（`{"path":"/absolute/dir"}` → `{"opened":bool}`，文件/不存在/非绝对路径返回 `E_INVALID`；Linux 走 XDG Portal OpenURI 的 `file:` URI、Windows `ShellExecute`、macOS `NSWorkspace`，无实现返回 false），设置页“存储”分区与实例「更多」菜单可打开数据目录/实例目录；“启动页”偏好存 `shared_preferences` 的 `ui.startPage`（`/`、`/instances`、`/download`、`/accounts`、`/wiki`、`/settings`，默认 `/`），下次启动生效；实例列表/卡片在 `overrides` 非空时显示覆盖标记（tooltip「已覆盖全局设置」）。
-- 日志维护：C++ 注册 `launch.logs.clear`（C# 实现，`{instanceId}` 或 `{all:true}`，保留运行中的当前日志，返回删除数/释放字节）；日志查看器标题栏可“打开日志目录”（`system.openPath`），工具行可“清理旧日志”；设置 → 任务与日志可一键清理全部实例的旧日志。
-- 核心：C++ Method/Module 注册表、wake 事件泵、C ABI v2 进度回调；C# NativeAOT 模块与 DevHost。
-- 账户：Microsoft Authorization Code + PKCE（loopback）→ XBL/XSTS → Minecraft；凭据保险库（crypto/file）；离线账户；在线启动。
-- 实例与设置：SQLite 索引 + `instance.json` 权威源；新建实例默认版本隔离（`versions/<name>`，整合包安装同样默认隔离；显式 `rootPath` 仍可覆盖）；Java 扫描/选择、内存/GC/JVM/游戏参数持久化。
-- 下载：Mojang 原版与 Java runtime、Modrinth（Mod/光影/资源包）、Forge/NeoForge 依赖与 installer 计划；Rust 执行器含 hash、原子落盘、进度与取消；大文件按 `rangeThreshold`（默认 1 MiB）/`chunkSize`（默认 512 KiB）走 Range 分片并发（服务端不支持则退回单流），单流与分片共用 `concurrency`（默认 16）连接预算并受 `perHostConcurrency`（默认 16）host 上限约束；无代理时对 `cdn.modrinth.com` 做 Fastly 边缘节点探测并按实测吞吐排序（`ARCHOERACX_DL_NO_EDGE=1` 关闭）；分片支持断点续传（`.part.meta` + `If-Range`），分片失败按 chunk 重试；代理由 C# `DownloadProxyResolver` 解析后写入 `options.proxy`，Rust 只消费。
-- 加载器与整合包：Fabric/Quilt/Forge/NeoForge 安装与依赖检查/补全；Forge/NeoForge processor 修复；Modrinth 与本地 `.mrpack` 整合包安装。`loader.versions` 按“自动源”处理：中国大陆网络镜像优先（Fabric fabric-meta、Forge per-game JSON、NeoForge Maven 镜像），其他地区官方优先、失败回退镜像；结果缓存 10 分钟。
-- 启动依赖预检 `launch.prepare` / `launch.start`：启动前快速扫描全部库（含原生 classifier）、client jar、asset index 与逐条 asset object；先本地修复（缺失/未合并 profile 从 `versions/` 本地 profile 合并，缺失库/原生/资源从其它实例根或配置游戏根按 SHA-1+大小校验后复制，Forge/NeoForge 复用已有 installer 跑 processors），本地修复失败才自动下载补全（下载策略关闭返回 `AUTO_REPAIR_BLOCKED`）。
-- 加载器实例启动：缺加载器时返回 `LOADER_NOT_INSTALLED` 并走自动安装（禁止回退到原版启动）；profile 解析先按安装器 id（Forge `<game>-forge-<ver>`、NeoForge `neoforge-<ver>`、Fabric/Quilt `*-loader-<ver>-<game>`）精确查找，再回退扫描；优先使用实例目录自己的版本 JSON，再回退到游戏版本对应的加载器 profile；自定义整合包名（如 `AutumnTown`、`Radiance`）不再报 `VERSION_JSON_MISSING` 或误用其它实例的 profile。NeoForge 的 client/universal 生成物按 Maven 约定预检，齐全时直接启动，不因实例缺少 installer 触发下载修复。
-- 每实例覆盖：`instance.json` schema 升到 2，新增可空 `overrides`（内存 / GC / JVM 参数 / 游戏参数 / Java / 窗口），缺省或 `null` 跟随全局；`instance.update` 走 merge patch（键缺省不改、`null` 清除），列表/创建/更新返回的实例始终带 `overrides`（无覆盖为 `{}`）；启动时 C# `InstanceOverrides.ApplyTo` 合并到全局设置后再选 Java、构建 LaunchPlan，实例固定 Java 等价于该实例 `javaAuto=false`；SQLite 只做索引、不存 `overrides`；实例「更多 → 实例设置」弹窗编辑，保存后提示并刷新列表。
-- 每实例设置体验：实例设置弹窗在空字段上显示全局生效值（内存/GC/Java/窗口），支持一键“恢复全局设置”；实例列表/卡片的覆盖标记 tooltip 列出被覆盖字段（内存/GC/JVM/游戏参数/Java/窗口）。
-- Java 运行时安装：C++ 注册 `java.runtime.plan`（C# 实现：`{major}` + 可选 `{root}`（默认数据根，计划前缀 `runtime/java-<major>/`）→ Mojang catalog/manifest → DownloadPlan），Java 子页可选 8/17/21/25 后台安装，落在 `<dataRoot>/runtime/java-<major>`；`java.scan` 与自动选择都会扫描 `<dataRoot>/runtime`，装完自动重新扫描。
-- 实例复制：C++ 注册 `instance.duplicate`（C# 实现，参数 `{"id","name"}` → 返回带 `overrides` 的实例），按源实例的 gameVersion/loader/loaderVersion 创建新实例并递归复制目录，排除 `.archoera/logs` 与 `.archoera/instance.json`，保留每实例覆盖；失败时清理新目录，拒绝复制到自身/自身内部；实例「更多 → 复制实例」默认名「<名称> 副本」。
-- 更新检查：C++ 注册 `update.check`（C# 实现，`{}` → `current` / `latest` / `hasUpdate` / `url` / `name` / `publishedAt` / `notes`），读 GitHub Release `https://api.github.com/repos/BetaStudio2/ArchoeraCX/releases/latest`（404 时回退 `/releases?per_page=1`，空列表视为已是最新）（User-Agent + `Accept: application/vnd.github+json`，10 秒超时），按 `major.minor.patch` 比较并忽略 `+build`/`-pre`，失败返回 `E_NETWORK`/`E_INVALID`；设置 → 关于提供入口，只检查不自动安装。
-- 托盘与关闭行为：Flutter 集成 `tray_manager` + `window_manager`，托盘图标 `assets/branding/tray_icon.png`（32×32 PNG；Windows 只接受 PNG，右键菜单必须在代码里显式 `setContextMenu`，否则不显示）；默认关闭窗口即退出，开启「关闭窗口时最小化到托盘」（`shared_preferences` 的 `ui.closeToTray`，默认 false）后关闭只隐藏窗口、下载/任务继续，托盘菜单含「显示主窗口」「退出」；托盘与窗口都在 Flutter 侧，不经过 C#。
-- 过期下载清理：C++ 注册 `maintenance.cleanPartials`（C# 实现，`{olderThanDays?}` 默认 3、范围 1–365 → `deletedFiles` / `freedBytes` / `scannedFiles`），递归扫描配置的实例根（最多 20 万条目），只删超过 N 天未修改的 `.part` / `.part.meta` / `.part.lock`，同组 10 分钟内有 `.part.lock` 修改则跳过，跳过 symlink 与无权限项；设置 → 存储提供确认入口，Toast 汇总删除数与释放体积，无文件时提示无需清理。
-
-待接：
-
-- 正式 C++ DownloadManager、原版安装入口；游戏进程状态与停止（`launch.status` / `launch.stop`）。
-- Fabric/Quilt 安装器（无 Java 依赖）与 CurseForge provider（需 key）。
-- 真实 Entra / Minecraft Services client_id 审核；更新器、签名与安装包。
+- 版本唯一来源 `app/pubspec.yaml`（当前 `0.0.1+1`），须与 `app/lib/utils/app_info.dart` 一致；C++ `build_info`、C# 模块表与 User-Agent、`launcher_version`、Rust crate 版本一并跟随。
+- 应用 ID：Linux/Android `awa.archoera.archoera_cx`，macOS `awa.archoera.archoeraCx`。
+- ABI 改动同步更新 `app/contracts/abi/archoera_abi.h`、C++、Dart、C harness 与测试。
+- 可按 C++/CMake、Dart/Flutter、文档/契约拆子代理并行，但不得同改一个文件；共享契约先冻结，子代理产物由主代理统一构建验证。
+- 不臆造进度或测试结果；未运行就写“未验证”。
