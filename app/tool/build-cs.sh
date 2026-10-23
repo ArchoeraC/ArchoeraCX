@@ -89,19 +89,32 @@ fi
 
 install -m 0755 "${PRODUCED}" "${FINAL_PATH}"
 
-# Linux/macOS use the system SQLite loaded by the process (no second native
-# copy). Windows has no system SQLite, so keep the bundled DLL next to the AOT
-# module. Flutter itself never opens SQLite.
+# Every platform ships SQLitePCLRaw's bundled e_sqlite3 next to the AOT module;
+# SqliteNativeLibrary loads that exact file by absolute path, so neither the
+# module nor the bundle depends on the host's libsqlite3. Flutter itself never
+# opens SQLite.
 case "$(uname -s)" in
-  MINGW*|MSYS*|CYGWIN*)
-    if [[ -f "${OUT_DIR}/e_sqlite3.dll" ]]; then
-      install -m 0755 "${OUT_DIR}/e_sqlite3.dll" "$(pwd)/build/native/e_sqlite3.dll"
-      echo "SQLite: build/native/e_sqlite3.dll"
-    fi
-    ;;
-  *)
-    rm -f "$(pwd)/build/native/libe_sqlite3.so" "$(pwd)/build/native/libe_sqlite3.dylib"
-    ;;
+  Darwin) SQLITE_NAME="libe_sqlite3.dylib" ;;
+  MINGW*|MSYS*|CYGWIN*) SQLITE_NAME="e_sqlite3.dll" ;;
+  *) SQLITE_NAME="libe_sqlite3.so" ;;
 esac
+
+# The RID publish normally flattens the native asset into OUT_DIR. Fall back to
+# the runtimes payload when the SDK keeps the package layout instead.
+SQLITE_SOURCE="${OUT_DIR}/${SQLITE_NAME}"
+if [[ ! -f "${SQLITE_SOURCE}" ]]; then
+  SQLITE_SOURCE="$(pwd)/modules/business/Archoera.Exports/bin/Release/net10.0/${RID}/publish/runtimes/${RID}/native/${SQLITE_NAME}"
+fi
+if [[ ! -f "${SQLITE_SOURCE}" ]]; then
+  SQLITE_SOURCE="$(pwd)/modules/business/Archoera.Exports/bin/Release/net10.0/${RID}/runtimes/${RID}/native/${SQLITE_NAME}"
+fi
+if [[ ! -f "${SQLITE_SOURCE}" ]]; then
+  echo "error: bundled SQLite payload ${SQLITE_NAME} not found for ${RID}" >&2
+  echo "       looked in ${OUT_DIR} and the Archoera.Exports publish directory." >&2
+  exit 1
+fi
+
+install -m 0755 "${SQLITE_SOURCE}" "$(pwd)/build/native/${SQLITE_NAME}"
+echo "SQLite: build/native/${SQLITE_NAME}"
 
 echo "Built: ${FINAL_PATH}"

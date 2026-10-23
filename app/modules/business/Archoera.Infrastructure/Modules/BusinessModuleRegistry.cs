@@ -50,6 +50,7 @@ public static class BusinessModuleRegistry
                 credentials: credentials,
                 auth: auth),
             new LaunchLogModuleService(instances),
+            new LaunchStopModuleService(),
             new LoaderVersionService(policy: policy, regionPolicy: region),
             new LoaderModuleService(policy: policy),
             new ResourceModuleService(policy: policy),

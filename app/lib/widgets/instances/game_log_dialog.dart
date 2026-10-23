@@ -30,6 +30,68 @@ Future<void> showGameLogDialog(BuildContext context, GameInstance instance) {
   );
 }
 
+/// Asks twice before force-terminating a running game.
+///
+/// The first dialog states the consequence (unsaved world progress can be
+/// lost); the second is the explicit final confirmation. Returns true only
+/// when both steps are accepted, so a stray click can never kill a game.
+Future<bool> confirmForceStopGame(
+  BuildContext context, {
+  required String instanceName,
+  int? pid,
+}) async {
+  final l10n = AppLocalizations.of(context);
+  final tokens = context.tokens;
+
+  final first = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      icon: Icon(AppIcons.cancelled, color: tokens.danger),
+      title: Text(l10n.gameLogForceStopTitle),
+      content: Text(l10n.gameLogForceStopBody(instanceName)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text(l10n.commonCancel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: Text(l10n.gameLogForceStopContinue),
+        ),
+      ],
+    ),
+  );
+  if (first != true || !context.mounted) return false;
+
+  final second = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      icon: Icon(AppIcons.warning, color: tokens.danger),
+      title: Text(l10n.gameLogForceStopAgainTitle),
+      content: Text(
+        pid == null
+            ? l10n.gameLogForceStopAgainBody
+            : l10n.gameLogForceStopAgainBodyPid(pid),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: tokens.danger,
+            foregroundColor: tokens.onAccent,
+          ),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: Text(l10n.gameLogForceStopConfirm),
+        ),
+      ],
+    ),
+  );
+  return second == true;
+}
+
 class GameLogDialog extends ConsumerStatefulWidget {
   const GameLogDialog({super.key, required this.instance});
 
@@ -51,6 +113,7 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
   String? _error;
   bool _loading = true;
   bool _following = false;
+  bool _stopping = false;
   bool _atBottom = true;
   LaunchLogTail? _tail;
 
@@ -242,6 +305,8 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
                     '${widget.instance.gameVersion} · '
                     '${widget.instance.loader.labelFor(l10n)}',
                 running: running,
+                forceStopping: _stopping,
+                onForceStop: _forceStop,
                 onOpenFolder: list == null ? null : _openLogFolder,
                 onRefresh: _loading ? null : _load,
                 onClose: () => Navigator.of(context).pop(),
@@ -368,13 +433,54 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
       );
       if (!mounted) return;
       toast(
-        l10n.gameLogClearDone(result.deletedFiles, formatBytes(result.freedBytes)),
+        l10n.gameLogClearDone(
+          result.deletedFiles,
+          formatBytes(result.freedBytes),
+        ),
         type: ToastType.success,
       );
       await _load();
     } catch (error) {
       if (!mounted) return;
       toast('$error', type: ToastType.error);
+    }
+  }
+
+  /// Force-terminates the running game after two explicit warnings.
+  ///
+  /// The C# module resolves the pid from the launch it started, so this can
+  /// only ever stop this launcher's game. When the game exited between the
+  /// confirmation and the call, the result is a normal "already stopped" toast
+  /// instead of an error, and the status is refreshed either way.
+  Future<void> _forceStop() async {
+    if (_stopping) return;
+    final l10n = AppLocalizations.of(context);
+    final client = ref.read(coreClientProvider);
+    if (client == null) return;
+
+    final confirmed = await confirmForceStopGame(
+      context,
+      instanceName: widget.instance.name,
+      pid: _list?.pid,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _stopping = true);
+    try {
+      final result = await client.stopLaunch(widget.instance.id);
+      if (!mounted) return;
+      await _stopFollowing();
+      if (!mounted) return;
+      toast(
+        result.stopped ? l10n.gameLogForceStopped : l10n.gameLogAlreadyStopped,
+        type: result.stopped ? ToastType.success : ToastType.info,
+      );
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    } finally {
+      if (mounted) setState(() => _stopping = false);
     }
   }
 

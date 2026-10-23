@@ -1379,12 +1379,8 @@
     "description": "Online launch reserved message."
   },
   "developmentBuildBadge": "DEV",
-  "developmentBuildWarning": "Development build — incomplete and may corrupt data. Do not use it for production or important instances.",
   "@developmentBuildBadge": {
-    "description": "Persistent development-build badge."
-  },
-  "@developmentBuildWarning": {
-    "description": "Persistent development-build warning banner."
+    "description": "Development-build badge on the about page."
   },
   "launchOnlineSessionExpired": "Your Minecraft session expired. Sign in again.",
   "launchMicrosoftAccountRequired": "Select a Microsoft account to launch online.",
@@ -1517,6 +1513,41 @@
       }
     }
   },
+  "gameLogForceStop": "Force stop",
+  "@gameLogForceStop": {
+    "description": "Header action that terminates the running game."
+  },
+  "gameLogForceStopTitle": "Force stop the game?",
+  "@gameLogForceStopTitle": {},
+  "gameLogForceStopBody": "\"{name}\" is running. Force stopping it ends the game immediately and any unsaved world progress is lost.",
+  "@gameLogForceStopBody": {
+    "description": "First of two warnings before force-stopping a game.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gameLogForceStopContinue": "Continue",
+  "@gameLogForceStopContinue": {},
+  "gameLogForceStopAgainTitle": "Terminate anyway?",
+  "@gameLogForceStopAgainTitle": {},
+  "gameLogForceStopAgainBody": "This cannot be undone. The game process will be killed immediately.",
+  "@gameLogForceStopAgainBody": {},
+  "gameLogForceStopAgainBodyPid": "This cannot be undone. Process {pid} will be killed immediately.",
+  "@gameLogForceStopAgainBodyPid": {
+    "placeholders": {
+      "pid": {
+        "type": "int"
+      }
+    }
+  },
+  "gameLogForceStopConfirm": "Force stop",
+  "@gameLogForceStopConfirm": {},
+  "gameLogForceStopped": "Game process terminated.",
+  "@gameLogForceStopped": {},
+  "gameLogAlreadyStopped": "The game had already stopped.",
+  "@gameLogAlreadyStopped": {},
   "settingsClearLogs": "Clear launch logs",
   "@settingsClearLogs": {},
   "settingsClearLogsDesc": "Deletes archived launch logs of every instance; running logs are kept.",

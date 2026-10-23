@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../../render/app_shaders.dart';
 import '../../theme/tokens.dart';
+import 'hover_glow.dart';
 
 /// Angular surface used for the launcher's large blocks.
 ///
 /// The shape is a straight rectangle with one or two cut corners. It keeps the
 /// UI away from generic rounded cards while retaining a clear hit target.
+///
+/// Interactive panels ([onTap] != null) additionally get an [AppHoverGlow]
+/// sheen that follows the pointer. The glow is clipped by the same
+/// [ShapeBorderClipper] as the surface, paints above the content, and ignores
+/// pointers. It adds no [Material] of its own, so the ink response still
+/// attaches to the [Material] created here; a backend without a fragment
+/// program keeps the plain panel with no extra pointer plumbing.
 class AppPanel extends StatelessWidget {
   const AppPanel({
     super.key,
@@ -41,6 +50,19 @@ class AppPanel extends StatelessWidget {
       ),
       child: Padding(padding: padding, child: child),
     );
+
+    // Only interactive panels get the sheen; static panels stay a plain
+    // DecoratedBox with no pointer listeners. The glow sits inside the clip
+    // below so the bevel cuts it exactly like the surface. When no fragment
+    // program is available (no shader scope, backend without runtime effects),
+    // the widget collapses to the child and the panel keeps its plain look.
+    if (onTap != null) {
+      content = AppHoverGlow(
+        color: tokens.accent,
+        program: AppShaderScope.of(context).glow,
+        child: content,
+      );
+    }
 
     if (clip) {
       content = ClipPath(

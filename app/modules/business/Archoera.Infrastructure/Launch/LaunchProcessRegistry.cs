@@ -69,4 +69,50 @@ internal static class LaunchProcessRegistry
             return false;
         }
     }
+
+    /// <summary>
+    /// Force-terminates the game process registered for [instanceId].
+    ///
+    /// The pid always comes from this registry, never from the caller, so the
+    /// UI cannot ask the module to kill an arbitrary process. The Minecraft
+    /// client has no graceful shutdown channel, therefore this is a hard kill
+    /// of the process tree (SIGKILL on Unix, TerminateProcess on Windows).
+    /// Returns false when no game is registered or it already exited.
+    /// </summary>
+    public static bool TryStop(string instanceId, out int pid)
+    {
+        pid = 0;
+        var entry = TryGet(instanceId);
+        if (entry is null) return false;
+        pid = entry.Pid;
+
+        try
+        {
+            using var process = Process.GetProcessById(entry.Pid);
+            if (process.HasExited)
+            {
+                Unregister(instanceId, entry.Pid);
+                return false;
+            }
+
+            process.Kill(entireProcessTree: true);
+            // Give the Exited handler a moment to drain the piped output and
+            // write the exit marker before the viewer reloads the log.
+            process.WaitForExit(5000);
+        }
+        catch (ArgumentException)
+        {
+            // The process disappeared between TryGet and GetProcessById.
+            Unregister(instanceId, entry.Pid);
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            Unregister(instanceId, entry.Pid);
+            return false;
+        }
+
+        Unregister(instanceId, entry.Pid);
+        return true;
+    }
 }

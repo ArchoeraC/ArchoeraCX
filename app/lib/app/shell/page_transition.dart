@@ -49,14 +49,9 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
 
   late final Animation<Offset> _liftOffset = Tween<Offset>(
-    begin: const Offset(0, 0.04),
+    begin: const Offset(0, 0.02),
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-  late final Animation<double> _liftOpacity = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutCubic,
-  );
 
   ui.Image? _previous;
   bool _finishing = false;
@@ -66,6 +61,18 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
   void didUpdateWidget(covariant _PageTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.index == widget.index) return;
+
+    // A second branch switch can interrupt an unfinished transition. The old
+    // snapshot is no longer referenced by the shell (it already swapped in the
+    // new cover image), so hand it back on the next frame instead of leaking
+    // the GPU texture.
+    final stale = _previous;
+    if (stale != null) {
+      _previous = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onCoverFinished(stale);
+      });
+    }
 
     if (widget.coverImage == null) {
       _clearPrevious();
@@ -127,41 +134,51 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
             Positioned.fill(
               child: SlideTransition(
                 position: _outOffset,
-                child: RawImage(
-                  image: previous,
-                  fit: BoxFit.fitWidth,
-                  alignment: Alignment.topCenter,
-                ),
+                child: _Snapshot(image: previous),
               ),
             ),
           ] else if (_mode == _PageTransitionMode.lift) ...[
+            // Page-to-page switches lift the new page under a dissolving
+            // snapshot. Painting the snapshot on top lets the dissolve reveal
+            // the finished page directly, so no opacity animation is needed and
+            // the two layers never turn into a grey wash.
             Positioned.fill(
-              child: RawImage(
-                image: previous,
-                fit: BoxFit.fitWidth,
-                alignment: Alignment.topCenter,
-              ),
+              child: SlideTransition(position: _liftOffset, child: current),
             ),
             Positioned.fill(
-              child: FadeTransition(
-                opacity: _liftOpacity,
-                child: SlideTransition(position: _liftOffset, child: current),
+              child: AppDissolveMask(
+                progress: _controller,
+                program: reduceMotion
+                    ? null
+                    : AppShaderScope.of(context).transition,
+                child: _Snapshot(image: previous),
               ),
             ),
           ] else ...[
-            Positioned.fill(
-              child: RawImage(
-                image: previous,
-                fit: BoxFit.fitWidth,
-                alignment: Alignment.topCenter,
-              ),
-            ),
+            Positioned.fill(child: _Snapshot(image: previous)),
             Positioned.fill(
               child: SlideTransition(position: _offset, child: current),
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Snapshot of the page that is leaving, scaled to the page width and pinned to
+/// the top so it lines up with the live page under the finger.
+class _Snapshot extends StatelessWidget {
+  const _Snapshot({required this.image});
+
+  final ui.Image image;
+
+  @override
+  Widget build(BuildContext context) {
+    return RawImage(
+      image: image,
+      fit: BoxFit.fitWidth,
+      alignment: Alignment.topCenter,
     );
   }
 }

@@ -5,6 +5,8 @@ class _Header extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.running,
+    required this.forceStopping,
+    required this.onForceStop,
     required this.onOpenFolder,
     required this.onRefresh,
     required this.onClose,
@@ -13,6 +15,8 @@ class _Header extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool running;
+  final bool forceStopping;
+  final VoidCallback onForceStop;
   final VoidCallback? onOpenFolder;
   final VoidCallback? onRefresh;
   final VoidCallback onClose;
@@ -45,6 +49,18 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
+        if (running)
+          IconButton(
+            onPressed: forceStopping ? null : onForceStop,
+            tooltip: l10n.gameLogForceStop,
+            icon: forceStopping
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(AppIcons.cancelled, color: tokens.danger),
+          ),
         IconButton(
           onPressed: onOpenFolder,
           tooltip: l10n.gameLogOpenFolder,

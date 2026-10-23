@@ -55,6 +55,7 @@ public sealed class PackGameInstallService
     private readonly MojangPlanService _planService;
     private readonly VersionMergeService _merge = new();
     private readonly MavenSidecarClient _maven;
+    private readonly MojangLibraryMetadataResolver _libraryResolver;
 
     public PackGameInstallService(
         IMojangMetadataClient? mojang = null,
@@ -77,10 +78,41 @@ public sealed class PackGameInstallService
         }
 
         _endpoints = endpoints ?? LoaderProfileEndpoints.Default;
-        _planService = new MojangPlanService(_mojang);
         _maven = new MavenSidecarClient(
             _http,
             ModrinthUserAgent);
+        _libraryResolver = new MojangLibraryMetadataResolver(_maven);
+        _planService = new MojangPlanService(
+            _mojang,
+            ResolveLibraryArtifactAsync);
+    }
+
+    /// <summary>
+    /// Adapts sidecar failures to the pack error vocabulary so callers do not
+    /// have to know that Fabric/Quilt libraries are resolved like Forge Maven
+    /// artifacts.
+    /// </summary>
+    private async Task<MojangDownload?> ResolveLibraryArtifactAsync(
+        MojangLibrary library,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _libraryResolver
+                .ResolveAsync(library, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ForgeDownloadException exception)
+        {
+            throw new PackException(
+                PackErrorCode.LoaderMetadata,
+                exception.Message,
+                exception);
+        }
     }
 
     private const string ModrinthUserAgent =
@@ -108,6 +140,7 @@ public sealed class PackGameInstallService
 
         var kind = loaderKind.Trim().ToLowerInvariant();
         var installRoot = LaunchPaths.ResolveLoaderRoot(instanceRoot, shareLoaderFiles);
+        loaderVersion = LoaderVersionText.Normalize(kind, gameVersion, loaderVersion);
 
         if (kind == "vanilla")
         {
@@ -287,7 +320,9 @@ public sealed class PackGameInstallService
             ? new ForgeDownloadPlanOptions { MavenMirror = ForgeMavenMirror.Bmclapi }
             : null;
 
-        var result = await new ForgeInstallPlanService(_mojang)
+        var result = await new ForgeInstallPlanService(
+                _mojang,
+                ResolveLibraryArtifactAsync)
             .BuildAsync(
                 installRoot,
                 kind,

@@ -91,6 +91,88 @@ public sealed class PackGameInstallServiceTests
     }
 
     [Fact]
+    public async Task Fabric_profile_resolves_hashless_maven_libraries()
+    {
+        var handler = new FakeHttpMessageHandler();
+        handler.EnqueueJson("""
+                            {
+                              "id": "fabric-loader-0.19.3-1.20.1",
+                              "inheritsFrom": "1.20.1",
+                              "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                              "libraries": [
+                                {
+                                  "name": "net.fabricmc:fabric-loader:0.19.3",
+                                  "url": "https://maven.fabricmc.net/"
+                                },
+                                {
+                                  "name": "org.ow2.asm:asm:9.10.1",
+                                  "url": "https://maven.fabricmc.net/",
+                                  "sha1": "dddddddddddddddddddddddddddddddddddddddd",
+                                  "size": 100
+                                }
+                              ]
+                            }
+                            """);
+        handler.EnqueueJson(
+            "cccccccccccccccccccccccccccccccccccccccc");
+        handler.Enqueue(() =>
+        {
+            var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent([]),
+            };
+            response.Content.Headers.ContentLength = 1234;
+            return response;
+        });
+
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-pack-fabric-maven",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var service = new PackGameInstallService(
+                new FakeMojangMetadata(),
+                new HttpClient(handler),
+                new LoaderProfileEndpoints(
+                    new Uri("https://meta.fabricmc.net/v2/"),
+                    new Uri("https://meta.quiltmc.org/v3/")));
+
+            var result = await service.BuildAsync(
+                directory,
+                "1.20.1",
+                "fabric",
+                "fabric-loader-0.19.3-1.20.1",
+                MojangPlatform.LinuxX64);
+
+            var loader = result.Plan.Files.Single(file =>
+                file.Dest ==
+                "libraries/net/fabricmc/fabric-loader/0.19.3/fabric-loader-0.19.3.jar");
+            Assert.Equal(
+                "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.19.3/" +
+                "fabric-loader-0.19.3.jar",
+                loader.Url);
+            Assert.Equal("cccccccccccccccccccccccccccccccccccccccc", loader.Hash.Hex);
+            Assert.Equal(1234, loader.Size);
+            Assert.Equal(
+                "fabric-loader-0.19.3-1.20.1",
+                result.VersionId);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch
+            {
+                // best effort
+            }
+        }
+    }
+
+    [Fact]
     public async Task CheckForgeInstance_detects_deleted_generated_artifacts()
     {
         using var temp = new TempFixture("pack-forge-check");
@@ -165,7 +247,8 @@ public sealed class PackGameInstallServiceTests
                 "Repair",
                 "1.20.1",
                 "forge",
-                "47.2.0",
+                // SJMCL/LauncherX imports keep the full profile id.
+                "1.20.1-forge-47.2.0",
                 root,
                 0,
                 false,

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Archoera.Domain;
 using Archoera.Domain.Instances;
+using Archoera.Domain.Loaders;
 
 namespace Archoera.Infrastructure.Instances;
 
@@ -173,7 +174,10 @@ internal static class InstanceDiscovery
         var name = sjmcl?.Name ?? mmc?.Name ?? modrinth?.Name ?? profile?.Name;
         var gameVersion = sjmcl?.GameVersion ?? mmc?.GameVersion ?? modrinth?.GameVersion ?? versionJson?.GameVersion;
         var loader = sjmcl?.Loader ?? mmc?.Loader ?? modrinth?.Loader ?? versionJson?.Loader ?? "vanilla";
-        var loaderVersion = sjmcl?.LoaderVersion ?? mmc?.LoaderVersion ?? modrinth?.LoaderVersion ?? versionJson?.LoaderVersion ?? string.Empty;
+        var loaderVersion = LoaderVersionText.Normalize(
+            loader,
+            gameVersion,
+            sjmcl?.LoaderVersion ?? mmc?.LoaderVersion ?? modrinth?.LoaderVersion ?? versionJson?.LoaderVersion);
 
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -226,12 +230,16 @@ internal static class InstanceDiscovery
             var name = String(root, "name");
             var game = String(root, "gameVersion");
             if (id is null || name is null || game is null) return null;
+            var loader = String(root, "loader") ?? "vanilla";
             return new GameInstanceRecord(
                 id,
                 name,
                 game,
-                String(root, "loader") ?? "vanilla",
-                String(root, "loaderVersion") ?? string.Empty,
+                loader,
+                LoaderVersionText.Normalize(
+                    loader,
+                    game,
+                    String(root, "loaderVersion")),
                 directory,
                 CountMods(directory),
                 root.TryGetProperty("favorite", out var favorite) &&
@@ -272,7 +280,7 @@ internal static class InstanceDiscovery
                 name,
                 gameVersion,
                 NormalizeLoader(loaderType),
-                NormalizeLoaderVersion(loaderVersion));
+                LoaderVersionText.Normalize(loaderType, gameVersion, loaderVersion));
         }
         catch
         {
@@ -543,26 +551,6 @@ internal static class InstanceDiscovery
         if (text.Contains("fabric")) return "fabric";
         if (text.Contains("forge")) return "forge";
         return "vanilla";
-    }
-
-    private static string NormalizeLoaderVersion(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-        var text = value.Trim();
-        foreach (var prefix in new[]
-                 {
-                     "neoforge-", "neoforge:", "forge-", "forge:",
-                     "fabric-loader-", "fabric-loader:", "quilt-loader-",
-                     "quilt-loader:",
-                 })
-        {
-            if (text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return text[prefix.Length..];
-            }
-        }
-
-        return text;
     }
 
     private static bool IsWithin(string path, string root)

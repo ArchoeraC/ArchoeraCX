@@ -31,6 +31,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  shaders:
+    - shaders/transition.frag
+    - shaders/glow.frag
   assets:
     - assets/branding/archoera_icon_256.png
     - assets/branding/tray_icon.png

@@ -33,11 +33,13 @@ public sealed class ForgeInstallPlanService
     private readonly MojangPlanService _vanillaPlan;
     private readonly VersionMergeService _merge = new();
 
-    public ForgeInstallPlanService(IMojangMetadataClient mojang)
+    public ForgeInstallPlanService(
+        IMojangMetadataClient mojang,
+        LibraryArtifactResolver? libraryResolver = null)
     {
         ArgumentNullException.ThrowIfNull(mojang);
         _mojang = mojang;
-        _vanillaPlan = new MojangPlanService(mojang);
+        _vanillaPlan = new MojangPlanService(mojang, libraryResolver);
     }
 
     /// <summary>

@@ -121,11 +121,14 @@ install(DIRECTORY "${NATIVE_ASSETS_DIR}"
 # ArchoeraCX native slice. These are built by tool/build-core.sh and
 # tool/build-cs.sh; install them when present so the release bundle is
 # relocatable. The C++ ModuleRegistry resolves modules from the core library
-# directory, and CoreClient probes <executable>/lib.
+# directory, and CoreClient probes <executable>/lib. The C# module lives here
+# too and brings its own SQLite payload (libe_sqlite3.so), so the bundle never
+# uses the host's libsqlite3.
 set(ARCHOERACX_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../build/native")
 foreach(archoera_native_lib
     libarchoera_core.so
     archoera_cs.so
+    libe_sqlite3.so
     libarchoera_dl.so)
   install(CODE "
     if(EXISTS \"${ARCHOERACX_NATIVE_DIR}/${archoera_native_lib}\")

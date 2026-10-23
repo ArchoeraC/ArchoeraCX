@@ -29,6 +29,10 @@ internal sealed class PackForgeInstallerBootstrap(
         string loaderVersion,
         CancellationToken cancellationToken)
     {
+        loaderVersion = LoaderVersionText.Normalize(
+            kind.ToString(),
+            gameVersion,
+            loaderVersion);
         var relative = ForgeMavenUrls.DefaultInstallerRelativePath(
             kind,
             gameVersion,

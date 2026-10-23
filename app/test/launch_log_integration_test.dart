@@ -88,6 +88,13 @@ void main() {
       final streamed = chunks.join('\n');
       expect(streamed, contains('line 29'));
 
+      // Force-stop is harmless when no game is running: the module reports
+      // stopped=false instead of inventing a pid to kill.
+      final stopped = await client.stopLaunch(instance.id);
+      expect(stopped.instanceId, instance.id);
+      expect(stopped.stopped, isFalse);
+      expect(stopped.pid, isNull);
+
       await client.deleteInstance(instance.id);
     },
     skip: enabled && core.existsSync() && module.existsSync()

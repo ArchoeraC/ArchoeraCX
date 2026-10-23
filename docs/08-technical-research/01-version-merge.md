@@ -4,7 +4,7 @@
 > 结论基于：Mojang `version_manifest_v2` 实际响应、Fabric Meta 实际响应、公开实现的行为，以及本仓库 `02-loader-install.md` 的实测。
 > 本文只描述**我们**要实现的语义，不复制任何 GPL 代码。
 >
-> **实现状态（2026-10-21）**：C# `VersionChainResolver` / `VersionMergeService` / `VersionMergeJson` 已落地，覆盖本文 §3 的标量、库去重、参数拼接、legacy `minecraftArguments` 和链深/环检测；规则与 `${}` 仍在启动期求值。`EffectiveVersion` 可直接交给 `MojangPlanService.BuildFromEffectiveAsync` 生成原版下载计划。
+> **实现状态（2026-10-24）**：C# `VersionChainResolver` / `VersionMergeService` / `VersionMergeJson` 已落地，覆盖本文 §3 的标量、库去重、参数拼接、legacy `minecraftArguments` 和链深/环检测；规则与 `${}` 仍在启动期求值。`EffectiveVersion` 可直接交给 `MojangPlanService.BuildFromEffectiveAsync` 生成原版下载计划。仅带 Maven 坐标的库（Fabric/Quilt profile、其他启动器合并后的 profile）会按 group 推断仓库并进入下载计划；缺 `sha1`/`size` 时由 `MojangLibraryMetadataResolver` 读取 Maven `.sha1` sidecar 与 `Content-Length` 补全，仍满足计划必须带 hash 的约束。
 
 ---
 
@@ -142,7 +142,7 @@ hash/size 可能缺失：
 |---|---|
 | 有 `downloads.artifact.sha1` | 校验 |
 | 有顶层 `sha1` / `size`（Fabric 风格） | 校验 |
-| 两者都没有 | 下载但记录 `unverified`，失败时重试一次；不要因此拒绝安装 |
+| 两者都没有 | 读取仓库 `.sha1` sidecar 与 `Content-Length`；拿不到 hash/size 时不进入 `DownloadPlan`，避免不可校验下载 |
 
 ### 3.3 arguments
 
@@ -346,7 +346,7 @@ key = SHA256(
 | 8 | rules：仅 osx 的库在 Windows | 合并保留；launch plan 中不出现 |
 | 9 | `assetIndex` 在子层覆盖 | 子层胜，assets 目录按新索引 |
 | 10 | Fabric `releaseTime` 两次不同 | 缓存命中，不重建 |
-| 11 | 缺 `downloads` 且缺 `sha1` | 可下载，标记 unverified；校验失败重试一次 |
+| 11 | 缺 `downloads` 且缺 `sha1` | 通过 Maven sidecar 补 hash/size 后可下载；sidecar 不可用时明确失败 |
 | 12 | 未知顶层字段 | 保留在 Extra，不影响行为 |
 
 ---

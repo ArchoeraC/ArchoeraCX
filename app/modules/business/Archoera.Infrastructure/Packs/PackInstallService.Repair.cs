@@ -40,7 +40,11 @@ public sealed partial class PackInstallService
                 $"instance loader '{instance.Loader}' does not use processors"),
         };
 
-        if (string.IsNullOrWhiteSpace(instance.LoaderVersion))
+        var loaderVersion = LoaderVersionText.Normalize(
+            instance.Loader,
+            instance.GameVersion,
+            instance.LoaderVersion);
+        if (string.IsNullOrWhiteSpace(loaderVersion))
         {
             return new ForgeCheckResult(
                 false,
@@ -49,15 +53,23 @@ public sealed partial class PackInstallService
         }
 
         string installerPath;
+        string installRoot;
         try
         {
-            installerPath = Path.Combine(
-                instance.RootPath,
-                ForgeMavenUrls.DefaultInstallerRelativePath(
-                        kind,
-                        instance.GameVersion,
-                        instance.LoaderVersion)
-                    .Replace('/', Path.DirectorySeparatorChar));
+            installRoot = LaunchPaths.ResolveLoaderRoot(instance.RootPath, null);
+            var relative = ForgeMavenUrls.DefaultInstallerRelativePath(
+                    kind,
+                    instance.GameVersion,
+                    loaderVersion)
+                .Replace('/', Path.DirectorySeparatorChar);
+            // Repair stores the installer under the instance root's downloads/
+            // folder, while loader.plan stores it under the loader root. Accept
+            // either location.
+            var candidates = new[] { installRoot, instance.RootPath }
+                .Distinct(StringComparer.Ordinal)
+                .Select(root => Path.Combine(root, relative));
+            installerPath = candidates.FirstOrDefault(File.Exists) ??
+                            candidates.First();
         }
         catch (ForgeDownloadException exception)
         {
@@ -73,7 +85,6 @@ public sealed partial class PackInstallService
 
         try
         {
-            var installRoot = LaunchPaths.ResolveLoaderRoot(instance.RootPath, null);
             var manifest = await _forgePlanner
                 .ParseAsync(
                     installerPath,
@@ -187,9 +198,12 @@ public sealed partial class PackInstallService
         GameInstanceRecord instance,
         LoaderKind kind)
     {
-        if (string.IsNullOrWhiteSpace(instance.LoaderVersion)) return null;
+        var loader = LoaderVersionText.Normalize(
+            kind.ToString(),
+            instance.GameVersion,
+            instance.LoaderVersion);
+        if (string.IsNullOrWhiteSpace(loader)) return null;
         var game = instance.GameVersion;
-        var loader = instance.LoaderVersion.Trim();
         var installRoot = LaunchPaths.ResolveLoaderRoot(instance.RootPath, null);
         var libraries = Path.Combine(installRoot, "libraries");
         var token = kind == LoaderKind.Forge ? "forge" : "neoforge";
@@ -416,7 +430,11 @@ public sealed partial class PackInstallService
     {
         EnsureRunnerAvailable();
 
-        if (string.IsNullOrWhiteSpace(instance.LoaderVersion))
+        var loaderVersion = LoaderVersionText.Normalize(
+            instance.Loader,
+            instance.GameVersion,
+            instance.LoaderVersion);
+        if (string.IsNullOrWhiteSpace(loaderVersion))
         {
             throw new PackException(
                 PackErrorCode.Invalid,
@@ -428,7 +446,7 @@ public sealed partial class PackInstallService
                 instance.RootPath,
                 kind,
                 instance.GameVersion,
-                instance.LoaderVersion,
+                loaderVersion,
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -437,7 +455,7 @@ public sealed partial class PackInstallService
                 instance.RootPath,
                 kind,
                 instance.GameVersion,
-                instance.LoaderVersion,
+                loaderVersion,
                 installerPath,
                 platform,
                 preferMavenMirror: await PreferMirrorAsync(cancellationToken)

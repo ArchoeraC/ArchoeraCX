@@ -1766,10 +1766,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get developmentBuildBadge => 'DEV';
 
   @override
-  String get developmentBuildWarning =>
-      'Development build — incomplete and may corrupt data. Do not use it for production or important instances.';
-
-  @override
   String get launchOnlineSessionExpired =>
       'Your Minecraft session expired. Sign in again.';
 
@@ -2026,6 +2022,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String gameLogClearDone(int count, String size) {
     return 'Deleted $count logs, freed $size.';
   }
+
+  @override
+  String get gameLogForceStop => 'Force stop';
+
+  @override
+  String get gameLogForceStopTitle => 'Force stop the game?';
+
+  @override
+  String gameLogForceStopBody(String name) {
+    return '\"$name\" is running. Force stopping it ends the game immediately and any unsaved world progress is lost.';
+  }
+
+  @override
+  String get gameLogForceStopContinue => 'Continue';
+
+  @override
+  String get gameLogForceStopAgainTitle => 'Terminate anyway?';
+
+  @override
+  String get gameLogForceStopAgainBody =>
+      'This cannot be undone. The game process will be killed immediately.';
+
+  @override
+  String gameLogForceStopAgainBodyPid(int pid) {
+    return 'This cannot be undone. Process $pid will be killed immediately.';
+  }
+
+  @override
+  String get gameLogForceStopConfirm => 'Force stop';
+
+  @override
+  String get gameLogForceStopped => 'Game process terminated.';
+
+  @override
+  String get gameLogAlreadyStopped => 'The game had already stopped.';
 
   @override
   String get settingsClearLogs => 'Clear launch logs';

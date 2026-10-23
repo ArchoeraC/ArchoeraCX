@@ -2,7 +2,9 @@ using System.Text.Json;
 using Archoera.Application.Instances;
 using Archoera.Domain;
 using Archoera.Domain.Instances;
+using Archoera.Domain.Loaders;
 using Archoera.Infrastructure.Settings;
+using Archoera.Infrastructure.Storage;
 using Microsoft.Data.Sqlite;
 
 namespace Archoera.Infrastructure.Instances;
@@ -20,7 +22,6 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
     ];
 
     private static readonly SemaphoreSlim InitGate = new(1, 1);
-    private static bool _providerInitialized;
 
     /// <summary>
     /// Column list and parameter placeholders of the instance INSERT, shared
@@ -96,7 +97,9 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         var cleanLoader = ValidateLoader(loader);
         var cleanLoaderVersion = string.IsNullOrWhiteSpace(loaderVersion)
             ? string.Empty
-            : ValidateSegment(loaderVersion, "loaderVersion");
+            : ValidateSegment(
+                LoaderVersionText.Normalize(cleanLoader, cleanGame, loaderVersion),
+                "loaderVersion");
         var root = await ResolveRootAsync(cleanName, rootPath, cancellationToken)
             .ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(rootPath) &&
@@ -389,7 +392,7 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         {
             if (_initialized) return;
             Directory.CreateDirectory(_dataRoot);
-            EnsureSqliteProvider();
+            SqliteNativeLibrary.EnsureProvider();
 
             await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
             await using (var pragma = connection.CreateCommand())
@@ -457,26 +460,6 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         }
     }
 
-    private static void EnsureSqliteProvider()
-    {
-        if (_providerInitialized) return;
-
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
-        {
-            // Use the system SQLite already loaded by the OS/Flutter runtime
-            // instead of shipping a second e_sqlite3 copy with different global
-            // symbols. Windows has no system SQLite; the bundled provider is
-            // used there.
-            SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
-        }
-        else
-        {
-            SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
-        }
-
-        _providerInitialized = true;
-    }
-
     private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
     {
         var builder = new SqliteConnectionStringBuilder
@@ -512,12 +495,17 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
     private static GameInstanceRecord ReadRecord(SqliteDataReader reader)
     {
         var lastPlayed = reader.IsDBNull(10) ? null : ParseDate(reader.GetString(10));
+        var gameVersion = reader.GetString(2);
+        var loader = reader.GetString(3);
+        var loaderVersion = reader.IsDBNull(4)
+            ? string.Empty
+            : LoaderVersionText.Normalize(loader, gameVersion, reader.GetString(4));
         return new GameInstanceRecord(
             reader.GetString(0),
             reader.GetString(1),
-            reader.GetString(2),
-            reader.GetString(3),
-            reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+            gameVersion,
+            loader,
+            loaderVersion,
             reader.GetString(5),
             reader.GetInt32(6),
             reader.GetInt32(7) != 0,

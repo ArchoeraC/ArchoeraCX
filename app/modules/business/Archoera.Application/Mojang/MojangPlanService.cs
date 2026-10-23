@@ -13,12 +13,21 @@ namespace Archoera.Application.Mojang;
 public sealed class MojangPlanService
 {
     private readonly IMojangMetadataClient _client;
+    private readonly LibraryArtifactResolver? _libraryResolver;
 
     /// <summary>Creates the service over a metadata client.</summary>
-    public MojangPlanService(IMojangMetadataClient client)
+    /// <param name="client">Mojang metadata transport.</param>
+    /// <param name="libraryResolver">
+    /// Optional Maven sidecar resolver for loader profiles whose libraries only
+    /// carry a coordinate.
+    /// </param>
+    public MojangPlanService(
+        IMojangMetadataClient client,
+        LibraryArtifactResolver? libraryResolver = null)
     {
         ArgumentNullException.ThrowIfNull(client);
         _client = client;
+        _libraryResolver = libraryResolver;
     }
 
     /// <summary>
@@ -67,6 +76,10 @@ public sealed class MojangPlanService
                 $"version '{version.Id}' inherits from '{version.InheritsFrom}'; " +
                 "loader/version merging is not implemented yet");
         }
+
+        version = await MojangLibraryPlanResolver
+            .ApplyAsync(version, _libraryResolver, cancellationToken)
+            .ConfigureAwait(false);
 
         MojangAssetIndex? assetIndex = null;
         if (version.AssetIndex is not null)
@@ -130,6 +143,10 @@ public sealed class MojangPlanService
                 $"version '{version.Id}' still inherits from " +
                 $"'{version.InheritsFrom}'; run VersionMergeService first");
         }
+
+        version = await MojangLibraryPlanResolver
+            .ApplyAsync(version, _libraryResolver, cancellationToken)
+            .ConfigureAwait(false);
 
         MojangAssetIndex? assetIndex = null;
         if (version.AssetIndex is not null)

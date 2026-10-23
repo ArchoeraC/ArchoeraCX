@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../render/app_shaders.dart';
+import '../render/dissolve_mask.dart';
 import '../services/core/settings/app_settings.dart';
 import '../services/core/core_client.dart';
 import '../services/core/system/system_memory.dart';

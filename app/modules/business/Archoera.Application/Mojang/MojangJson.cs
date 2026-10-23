@@ -171,6 +171,7 @@ public static class MojangJson
     {
         RequireObject(root, "library");
 
+        var name = RequireNonEmptyString(root, "name");
         var downloads = default(MojangLibraryDownloads);
         if (root.TryGetProperty("downloads", out var downloadsElement)
             && downloadsElement.ValueKind != JsonValueKind.Null)
@@ -180,13 +181,44 @@ public static class MojangJson
                 ParseDownload(downloadsElement, "artifact"),
                 ParseClassifierDownloads(downloadsElement));
         }
+        else
+        {
+            // Fabric/Quilt profiles and profiles merged by other launchers may
+            // keep only a Maven coordinate (and optionally a repository URL).
+            // Synthesize the artifact URL/path so the plan builder can download
+            // it; a missing hash/size is filled by the Maven sidecar resolver.
+            downloads = ParseMavenLibrary(name, root);
+        }
 
         return new MojangLibrary(
-            Name: RequireNonEmptyString(root, "name"),
+            Name: name,
             Downloads: downloads,
             Natives: ParseNatives(root),
             Rules: ParseRules(root),
             Extract: ParseExtract(root));
+    }
+
+    private static MojangLibraryDownloads? ParseMavenLibrary(
+        string name,
+        JsonElement root)
+    {
+        if (!MojangLibraryCoordinate.TryParse(name, out var coordinate) ||
+            !MojangMavenPath.TryResolve(name, classifierOverride: null, out var path))
+        {
+            return null;
+        }
+
+        var repository = MojangRepositories.ForCoordinate(
+            GetString(root, "url"),
+            coordinate);
+        var url = new Uri(repository, path).AbsoluteUri;
+
+        return new MojangLibraryDownloads(
+            new MojangDownload(
+                Url: url,
+                Sha1: GetString(root, "sha1"),
+                Size: GetInt64OrNull(root, "size"),
+                Path: path));
     }
 
     private static MojangDownload? ParseDownload(JsonElement parent, string name)
