@@ -49,56 +49,13 @@
   "filterAll": "All",
   "createInstance": "Create instance",
   "importPack": "Import pack",
-  "packInstallTitle": "Install modpack",
-  "@packInstallTitle": {
-    "description": "Progress dialog title for Modrinth .mrpack installation."
-  },
-  "packImportTitle": "Import modpack",
-  "@packImportTitle": {
-    "description": "Dialog title when installing a local .mrpack file."
-  },
-  "packInstallHint": "A new instance will be created. Minecraft and the pack loader are installed from the pack dependencies, then bundled overrides are merged.",
-  "@packInstallHint": {
-    "description": "Explains that pack installation creates a new isolated instance."
-  },
-  "packInstallRunning": "Installing modpack…",
-  "@packInstallRunning": {
-    "description": "Progress dialog status while a pack installs."
-  },
   "packInstallDone": "Modpack installed.",
   "@packInstallDone": {
-    "description": "Progress dialog success status."
+    "description": "Toast shown when a background pack install finishes."
   },
   "packInstallFailed": "Modpack installation failed.",
   "@packInstallFailed": {
-    "description": "Progress dialog failure status."
-  },
-  "packInspectMeta": "{game} · {loader} {loaderVersion}",
-  "@packInspectMeta": {
-    "description": "Pack details line: Minecraft version and loader build.",
-    "placeholders": {
-      "game": {
-        "type": "String"
-      },
-      "loader": {
-        "type": "String"
-      },
-      "loaderVersion": {
-        "type": "String"
-      }
-    }
-  },
-  "packInspectFiles": "{count} index files · {overrides} bundled overrides",
-  "@packInspectFiles": {
-    "description": "Pack details line: download count and bundled override count.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "overrides": {
-        "type": "int"
-      }
-    }
+    "description": "Toast shown when a background pack install fails."
   },
   "packInspectFailed": "This file is not a valid Modrinth modpack.",
   "@packInspectFailed": {
@@ -106,14 +63,6 @@
   },
   "packLoaderUnsupported": "This pack loader is not supported. Supported loaders: vanilla, Fabric, Quilt, Forge and NeoForge.",
   "packJavaMissing": "This pack needs a Java runtime for its loader processors. Install or select a matching Java in Settings first.",
-  "packCancelling": "Cancelling…",
-  "@packCancelling": {
-    "description": "Shown while a modpack task is being cancelled."
-  },
-  "packCancelled": "Modpack installation was cancelled.",
-  "@packCancelled": {
-    "description": "Shown after a modpack task is cancelled."
-  },
   "@packJavaMissing": {
     "description": "Shown when Forge/NeoForge processors have no usable Java."
   },
@@ -123,18 +72,6 @@
   "packTargetNewInstance": "Creates a new instance",
   "@packTargetNewInstance": {
     "description": "Modpack search header: no existing instance is used."
-  },
-  "packResultSummary": "{downloaded} files downloaded · {bundled} bundled",
-  "@packResultSummary": {
-    "description": "Success summary after a pack install.",
-    "placeholders": {
-      "downloaded": {
-        "type": "int"
-      },
-      "bundled": {
-        "type": "int"
-      }
-    }
   },
   "instanceCreateTitle": "Create instance",
   "instanceNameLabel": "Name",
@@ -242,9 +179,9 @@
   "@instanceCheckRepairHint": {
     "description": "Explains what the dependency repair action does."
   },
-  "instanceCheckRepairing": "Repairing dependencies…",
-  "@instanceCheckRepairing": {
-    "description": "Progress text while repairing loader dependencies."
+  "instanceCheckRepairQueued": "Repair started in the background. Track it in Tasks.",
+  "@instanceCheckRepairQueued": {
+    "description": "Shown after a dependency repair was handed to the task center."
   },
   "instanceCheckRepairDone": "Dependencies repaired.",
   "@instanceCheckRepairDone": {
@@ -253,6 +190,14 @@
   "instanceCheckRepairFailed": "Dependency repair failed.",
   "@instanceCheckRepairFailed": {
     "description": "Failure text after dependency repair."
+  },
+  "instanceCheckRecheck": "Check again",
+  "@instanceCheckRecheck": {
+    "description": "Re-runs the read-only verification after a background repair."
+  },
+  "instanceCheckRechecking": "Checking again…",
+  "@instanceCheckRechecking": {
+    "description": "Status while the dialog re-runs the dependency check."
   },
   "instanceManifestMissing": "Loader installer not found in this instance.",
   "@instanceCheckMissing": {
@@ -1009,10 +954,6 @@
       }
     }
   },
-  "loaderProcessorsDone": "Forge/NeoForge processors completed with the selected Java.",
-  "@loaderProcessorsDone": {
-    "description": "Loader install processor completion note."
-  },
   "instancesCount": "{count, plural, =0{No instances} =1{1 instance} other{{count} instances}}",
   "@instancesCount": {
     "description": "Instance count label.",
@@ -1286,6 +1227,7 @@
     "description": "Loader task label."
   },
   "taskCenterModpack": "Modpack",
+  "taskCenterInstanceDuplicate": "Duplicate instance",
   "@taskCenterModpack": {
     "description": "Task centre label for .mrpack installation."
   },

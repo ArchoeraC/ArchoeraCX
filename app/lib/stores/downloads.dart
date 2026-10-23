@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/game_instance.dart';
 import '../services/core/core_client.dart';
 import '../services/core/java_runtime_plan.dart';
+import '../services/core/pack_install_result.dart';
 import '../services/core/resource_models.dart';
 import '../services/core/task_update.dart';
 import '../widgets/common/toast.dart';
@@ -166,6 +167,185 @@ class DownloadsNotifier extends Notifier<void> {
     );
   }
 
+  /// Local `.mrpack` import: inspect first so an unreadable or invalid file
+  /// fails before a queue entry appears, then install in the background.
+  ///
+  /// Returns the inspection so the caller can name the pack in its "queued"
+  /// toast, or null when the file was rejected (already reported).
+  Future<PackInspection?> installModpackFromFile(
+    String path, {
+    required String label,
+    required String successMessage,
+    required String failureMessage,
+    required String cancelledMessage,
+    required String inspectFailedMessage,
+    String? Function(CoreException error)? describeError,
+  }) async {
+    final client = _client();
+    final PackInspection inspection;
+    try {
+      inspection = await client.inspectModpack(path, label: label);
+    } catch (error) {
+      final described = error is CoreException
+          ? describeError?.call(error)
+          : null;
+      toast(
+        described ?? '$inspectFailedMessage\n$error',
+        type: ToastType.error,
+      );
+      return null;
+    }
+
+    _detach(
+      () async {
+        final result = await client.installModpackLocal(
+          path: path,
+          label: label,
+        );
+        await ref.read(instancesProvider.notifier).sync();
+        ref
+            .read(selectedInstanceIdProvider.notifier)
+            .select(result.instance.id);
+      },
+      successMessage: successMessage,
+      failureMessage: failureMessage,
+      cancelledMessage: cancelledMessage,
+      describeError: describeError,
+    );
+
+    return inspection;
+  }
+
+  /// Forge/NeoForge loader install into [instance].
+  ///
+  /// Java selection and plan construction are awaited so a missing runtime or
+  /// an unusable installer still fails while the caller can explain it; the
+  /// transfer, the version commit and the processor repair then run as native
+  /// tasks the task center owns.
+  Future<void> installLoader({
+    required GameInstance instance,
+    required String kind,
+    required String gameVersion,
+    required String loaderVersion,
+    required String installerPath,
+    required String successMessage,
+    required String failureMessage,
+    required String cancelledMessage,
+    String? Function(CoreException error)? describeError,
+  }) async {
+    final client = _client();
+    final label = '${kind[0].toUpperCase()}${kind.substring(1)} $loaderVersion';
+
+    // Forge/NeoForge processors need a JVM; fail before the large download
+    // when no suitable runtime is installed.
+    final java = await client.selectJava(gameVersion: gameVersion);
+    final plan = await client.planLoaderInstall(
+      root: instance.rootPath,
+      installerPath: installerPath,
+      kind: kind,
+      gameVersion: gameVersion,
+      loaderVersion: loaderVersion,
+      label: label,
+    );
+
+    _detach(
+      () async {
+        final result = await client.executeDownload(plan.plan, label: label);
+        if (!result.ok) {
+          throw StateError(
+            result.stderr?.trim().isNotEmpty == true
+                ? result.stderr!.trim()
+                : 'Loader download failed (${result.status}).',
+          );
+        }
+        await client.commitLoaderVersion(
+          root: instance.rootPath,
+          versionId: plan.versionId,
+          versionJson: plan.versionJson,
+          label: label,
+        );
+        if (plan.requiresJava) {
+          final generated = plan.installerPath;
+          if (generated == null || generated.isEmpty) {
+            throw StateError('The loader plan produced no installer to run.');
+          }
+          final repair = await client.repairLoader(
+            installerPath: generated,
+            root: instance.rootPath,
+            kind: kind,
+            javaPath: java.path,
+            label: label,
+          );
+          if (repair['ok'] != true) {
+            final error = repair['error'];
+            final detail = error is Map ? error['message']?.toString() : null;
+            throw StateError(detail ?? 'Loader processor repair failed.');
+          }
+        }
+        await ref.read(instancesProvider.notifier).reload();
+      },
+      successMessage: successMessage,
+      failureMessage: failureMessage,
+      cancelledMessage: cancelledMessage,
+      describeError: describeError,
+    );
+  }
+
+  /// Copies [instance] into a new folder under [name], in the background.
+  ///
+  /// A duplicate walks the whole instance directory, which is minutes of work
+  /// for a large pack, so it runs as a native task instead of holding a dialog
+  /// open.
+  Future<void> duplicateInstance(
+    GameInstance instance, {
+    required String name,
+    required String successMessage,
+    required String failureMessage,
+    required String cancelledMessage,
+    String? Function(CoreException error)? describeError,
+  }) async {
+    final client = _client();
+    _detach(
+      () async {
+        await client.duplicateInstance(
+          id: instance.id,
+          name: name,
+          label: name,
+        );
+        await ref.read(instancesProvider.notifier).reload();
+      },
+      successMessage: successMessage,
+      failureMessage: failureMessage,
+      cancelledMessage: cancelledMessage,
+      describeError: describeError,
+    );
+  }
+
+  /// Repairs an existing Forge/NeoForge instance (missing downloads plus a
+  /// loader processor rerun) without holding a dialog open.
+  Future<void> repairInstance(
+    GameInstance instance, {
+    required String successMessage,
+    required String failureMessage,
+    required String cancelledMessage,
+    String? Function(CoreException error)? describeError,
+  }) async {
+    final client = _client();
+    _detach(
+      () async {
+        await client.repairInstanceDependencies(
+          instance.id,
+          label: instance.name,
+        );
+        await ref.read(instancesProvider.notifier).reload();
+      },
+      successMessage: successMessage,
+      failureMessage: failureMessage,
+      cancelledMessage: cancelledMessage,
+      describeError: describeError,
+    );
+  }
+
   /// Installs a Mojang Java runtime (e.g. Java 21) under the data root.
   ///
   /// The plan is built first so a missing component fails before the UI claims
@@ -192,9 +372,11 @@ class DownloadsNotifier extends Notifier<void> {
           label: 'Java $major',
         );
         if (!result.ok) {
-          throw StateError(result.stderr?.trim().isNotEmpty == true
-              ? result.stderr!.trim()
-              : 'Java runtime download failed (${result.status}).');
+          throw StateError(
+            result.stderr?.trim().isNotEmpty == true
+                ? result.stderr!.trim()
+                : 'Java runtime download failed (${result.status}).',
+          );
         }
       },
       successMessage: successMessage,
@@ -212,6 +394,7 @@ class DownloadsNotifier extends Notifier<void> {
     required String successMessage,
     required String failureMessage,
     required String cancelledMessage,
+    String? Function(CoreException error)? describeError,
   }) {
     unawaited(
       _runDetached(
@@ -219,17 +402,23 @@ class DownloadsNotifier extends Notifier<void> {
         successMessage: successMessage,
         failureMessage: failureMessage,
         cancelledMessage: cancelledMessage,
+        describeError: describeError,
       ),
     );
   }
 
   /// Same as [_detach] but the caller may await completion (for follow-up
   /// work such as rescanning for the newly installed runtime).
+  ///
+  /// [describeError] lets a caller map backend codes (`PACK_LOADER_UNSUPPORTED`
+  /// …) to a localized sentence; returning null falls back to the generic
+  /// failure message plus the raw error.
   Future<void> _runDetached(
     Future<void> Function() job, {
     required String successMessage,
     required String failureMessage,
     required String cancelledMessage,
+    String? Function(CoreException error)? describeError,
   }) {
     return (() async {
       try {
@@ -237,10 +426,13 @@ class DownloadsNotifier extends Notifier<void> {
         toast(successMessage, type: ToastType.success);
         _notifyDesktop(successMessage);
       } on CoreException catch (error) {
-        final cancelled = error.code == 'E_CANCELLED';
+        if (error.code == 'E_CANCELLED') {
+          toast(cancelledMessage, type: ToastType.info);
+          return;
+        }
         toast(
-          cancelled ? cancelledMessage : '$failureMessage\n$error',
-          type: cancelled ? ToastType.info : ToastType.error,
+          describeError?.call(error) ?? '$failureMessage\n$error',
+          type: ToastType.error,
         );
       } catch (error) {
         toast('$failureMessage\n$error', type: ToastType.error);
@@ -253,9 +445,7 @@ class DownloadsNotifier extends Notifier<void> {
     if (!ref.read(preferencesProvider).downloadNotifications) return;
     final client = ref.read(coreClientProvider);
     if (client == null) return;
-    unawaited(
-      client.showSystemNotification(title: 'ArchoeraCX', body: body),
-    );
+    unawaited(client.showSystemNotification(title: 'ArchoeraCX', body: body));
   }
 
   CoreClient _client() {

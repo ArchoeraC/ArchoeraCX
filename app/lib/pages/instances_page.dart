@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../l10n/l10n_labels.dart';
 import '../models/game_instance.dart';
 import '../services/core/build_policy.dart';
 import '../services/core/core_client.dart';
+import '../services/core/task_update.dart';
 import '../services/launch/launch_action.dart';
 import '../stores/downloads.dart';
 import '../stores/instances.dart';
@@ -16,7 +19,6 @@ import '../stores/settings.dart';
 import '../stores/tasks.dart';
 import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
-import '../widgets/common/app_progress_bar.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/common/loader_mark.dart';
@@ -25,7 +27,6 @@ import '../widgets/instances/instance_duplicate_dialog.dart';
 import '../widgets/instances/instance_mods_dialog.dart';
 import '../widgets/instances/instance_settings_dialog.dart';
 import '../widgets/instances/loader_install_dialog.dart';
-import '../widgets/download/pack_install_dialog.dart';
 import '../widgets/common/app_panel.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/instances/create_instance_dialog.dart';
@@ -77,6 +78,11 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
     }
   }
 
+  /// Queues a local `.mrpack` import in the background.
+  ///
+  /// The file is inspected first so an invalid pack is rejected immediately;
+  /// the install itself becomes a native task, so the page never holds a modal
+  /// dialog open while the pack downloads and unpacks.
   Future<void> _importPack(AppLocalizations l10n) async {
     const typeGroup = XTypeGroup(
       label: 'Modrinth modpack',
@@ -84,12 +90,40 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
     );
     final file = await openFile(acceptedTypeGroups: const [typeGroup]);
     if (file == null || !mounted) return;
-    await showPackInstallDialog(
-      context,
-      localPath: file.path,
-      title: l10n.packImportTitle,
-      taskLabel: file.name,
-    );
+
+    try {
+      final inspection = await ref
+          .read(downloadsProvider.notifier)
+          .installModpackFromFile(
+            file.path,
+            label: file.name,
+            successMessage: l10n.packInstallDone,
+            failureMessage: l10n.packInstallFailed,
+            cancelledMessage: l10n.downloadCancelled(file.name),
+            inspectFailedMessage: l10n.packInspectFailed,
+            describeError: (error) => switch (error) {
+              CoreException(
+                code: 'PACK_INVALID' ||
+                    'PACK_UNSUPPORTED' ||
+                    'PACK_ARCHIVE_INVALID' ||
+                    'PACK_PATH_ESCAPE' ||
+                    'PACK_TOO_LARGE' ||
+                    'PACK_DUPLICATE_FILE',
+              ) =>
+                l10n.packInspectFailed,
+              CoreException(code: 'PACK_LOADER_UNSUPPORTED') =>
+                l10n.packLoaderUnsupported,
+              CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
+                l10n.packJavaMissing,
+              _ => null,
+            },
+          );
+      if (!mounted || inspection == null) return;
+      toast(l10n.downloadQueued(inspection.name), type: ToastType.success);
+    } catch (error) {
+      if (!mounted) return;
+      toast('${l10n.packInstallFailed}\n$error', type: ToastType.error);
+    }
   }
 
   @override
@@ -286,8 +320,10 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                               onInstallGame: () => _installGame(instance, l10n),
                               onManageMods: () =>
                                   showInstanceModsDialog(context, instance),
-                              onDuplicate: () =>
-                                  showInstanceDuplicateDialog(context, instance),
+                              onDuplicate: () => showInstanceDuplicateDialog(
+                                context,
+                                instance,
+                              ),
                               onViewLogs: () =>
                                   showGameLogDialog(context, instance),
                               onOpenFolder: () =>
@@ -818,12 +854,16 @@ class _DependencyCheckDialog extends ConsumerStatefulWidget {
 class _DependencyCheckDialogState
     extends ConsumerState<_DependencyCheckDialog> {
   late Map<String, Object?> _envelope;
-  bool _busy = false;
   bool _repaired = false;
+  bool _queued = false;
+  bool _checking = false;
   String? _error;
-  String? _phase;
-  int _done = 0;
-  int _total = 0;
+
+  /// Highest task id seen before the repair was queued. The repair task has a
+  /// larger id, which lets this dialog recognise it without relying on stream
+  /// delivery order (the task center also keeps old repairs with the same
+  /// label).
+  int _sinceTaskId = 0;
 
   @override
   void initState() {
@@ -833,58 +873,91 @@ class _DependencyCheckDialogState
 
   bool get _canRepair => true;
 
-  void _cancelRepair() {
+  /// Queues the repair instead of running it here.
+  ///
+  /// The dialog stays open and read-only: progress, cancellation and history
+  /// belong to the task center, and [_onTaskUpdate] re-runs the check once the
+  /// native task finishes so the verdict refreshes on its own.
+  Future<void> _repair() async {
+    final l10n = widget.l10n;
     final client = ref.read(coreClientProvider);
-    if (client == null) return;
-    for (final task in ref.read(taskCenterProvider)) {
-      if (task.isTerminal || task.method != 'loader.autoRepair') continue;
-      try {
-        client.cancel(task.taskId);
-        setState(() => _phase = widget.l10n.instanceCheckRepairing);
-      } catch (error) {
-        if (mounted) setState(() => _error = error.toString());
-      }
+    if (client == null) {
+      setState(() => _error = l10n.commonCoreNotConnected);
+      return;
+    }
 
+    _sinceTaskId = ref
+        .read(taskCenterProvider)
+        .fold<int>(0, (max, task) => task.taskId > max ? task.taskId : max);
+    setState(() {
+      _error = null;
+      _queued = true;
+    });
+
+    try {
+      await ref
+          .read(downloadsProvider.notifier)
+          .repairInstance(
+            widget.instance,
+            successMessage: l10n.instanceCheckRepairDone,
+            failureMessage: l10n.instanceCheckRepairFailed,
+            cancelledMessage: l10n.downloadCancelled(widget.instance.name),
+            describeError: (error) => switch (error) {
+              CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
+                l10n.launchJavaMissing,
+              CoreException(code: 'DOWNLOAD_DISABLED') =>
+                l10n.downloadUnavailableTitle,
+              _ => null,
+            },
+          );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _queued = false;
+        _error = '${l10n.instanceCheckRepairFailed} $error';
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    toast(l10n.instanceCheckRepairQueued, type: ToastType.success);
+    // A tiny repair can reach a terminal state before the next build, so check
+    // the current snapshot as well as listening for future updates.
+    _onTaskUpdate(ref.read(taskCenterProvider));
+  }
+
+  /// Refreshes the verdict once the background repair lands.
+  void _onTaskUpdate(List<TaskUpdate> tasks) {
+    if (!_queued || _checking) return;
+    for (final task in tasks) {
+      if (task.taskId <= _sinceTaskId) continue;
+      if (task.method != 'loader.autoRepair') continue;
+      if (!task.isTerminal) continue;
+      if (task.label != null && task.label != widget.instance.name) continue;
+
+      _sinceTaskId = task.taskId;
+      if (task.state == TaskUpdateState.completed) {
+        unawaited(_recheck());
+      } else if (mounted) {
+        setState(() => _queued = false);
+      }
       return;
     }
   }
 
-  Future<void> _repair() async {
+  /// Re-runs the read-only verification so the verdict reflects the repair.
+  Future<void> _recheck() async {
+    final l10n = widget.l10n;
     final client = ref.read(coreClientProvider);
     if (client == null) {
-      setState(() => _error = widget.l10n.commonCoreNotConnected);
+      setState(() => _error = l10n.commonCoreNotConnected);
       return;
     }
-
     setState(() {
-      _busy = true;
+      _checking = true;
       _error = null;
-      _phase = widget.l10n.instanceCheckRepairing;
-      _done = 0;
-      _total = 0;
     });
-
     try {
-      await client.repairInstanceDependencies(
-        widget.instance.id,
-        label: widget.instance.name,
-        onDetailedProgress: (done, total, message) {
-          if (!mounted) return;
-          setState(() {
-            _done = done;
-            _total = total;
-            if (message != null && message.isNotEmpty) _phase = message;
-          });
-        },
-        onProgress: (done, total) {
-          if (!mounted) return;
-          setState(() {
-            _done = done;
-            _total = total;
-          });
-        },
-      );
-
       final envelope = await client.checkLoader(
         root: widget.instance.rootPath,
         kind: widget.instance.loader.name,
@@ -895,23 +968,16 @@ class _DependencyCheckDialogState
       if (!mounted) return;
       setState(() {
         _envelope = envelope;
-        _busy = false;
+        _checking = false;
+        _queued = false;
         _repaired = true;
-        _phase = null;
       });
     } catch (error) {
       if (!mounted) return;
-      final l10n = widget.l10n;
       setState(() {
-        _busy = false;
-        _phase = null;
-        _error = switch (error) {
-          CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
-            l10n.launchJavaMissing,
-          CoreException(code: 'DOWNLOAD_DISABLED') =>
-            l10n.downloadUnavailableTitle,
-          _ => '${l10n.instanceCheckRepairFailed} $error',
-        };
+        _checking = false;
+        _queued = false;
+        _error = '${l10n.instanceCheckFailed} $error';
       });
     }
   }
@@ -948,7 +1014,7 @@ class _DependencyCheckDialogState
         ? l10n.instanceManifestMissing
         : error?['message']?.toString() ?? l10n.instanceCheckFailed;
     final downloadsEnabled = ref.watch(downloadEnabledProvider);
-    final progress = _total > 0 ? (_done / _total).clamp(0.0, 1.0) : null;
+    ref.listen(taskCenterProvider, (_, tasks) => _onTaskUpdate(tasks));
 
     return AlertDialog(
       title: Text(l10n.instanceCheckTitle),
@@ -992,14 +1058,13 @@ class _DependencyCheckDialogState
                     ?.copyWith(color: tokens.textTertiary),
               ),
             ],
-            if (_busy) ...[
+            if (_queued || _checking) ...[
               const SizedBox(height: AppSpacing.md),
-              AppProgressBar(value: progress),
-              const SizedBox(height: AppSpacing.xxs),
               Text(
-                _phase ?? l10n.instanceCheckRepairing,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                _checking
+                    ? l10n.instanceCheckRechecking
+                    : l10n.instanceCheckRepairQueued,
+                maxLines: 3,
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: tokens.textTertiary),
               ),
@@ -1017,21 +1082,20 @@ class _DependencyCheckDialogState
         ),
       ),
       actions: [
-        if (_busy)
-          OutlinedButton(
-            onPressed: _cancelRepair,
-            child: Text(l10n.commonCancel),
+        if (_repaired)
+          OutlinedButton.icon(
+            onPressed: _checking ? null : _recheck,
+            icon: const Icon(AppIcons.refresh, size: 18),
+            label: Text(l10n.instanceCheckRecheck),
           ),
-        if (!ok && _canRepair && downloadsEnabled)
+        if (!ok && _canRepair && downloadsEnabled && !_queued)
           FilledButton.icon(
-            onPressed: _busy ? null : _repair,
+            onPressed: _checking ? null : _repair,
             icon: const Icon(AppIcons.repair, size: 18),
-            label: Text(
-              _busy ? l10n.instanceCheckRepairing : l10n.instanceCheckRepair,
-            ),
+            label: Text(l10n.instanceCheckRepair),
           ),
         TextButton(
-          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.commonClose),
         ),
       ],
@@ -1127,7 +1191,10 @@ class _InstanceRow extends StatelessWidget {
                             ),
                             if (_hasOverrides(instance)) ...[
                               const SizedBox(width: AppSpacing.xxs),
-                              _OverridesBadge(l10n: l10n, overrides: instance.overrides!),
+                              _OverridesBadge(
+                                l10n: l10n,
+                                overrides: instance.overrides!,
+                              ),
                             ],
                           ],
                         ),
@@ -1458,7 +1525,10 @@ class _InstanceCard extends StatelessWidget {
                         ),
                         if (_hasOverrides(instance)) ...[
                           const SizedBox(width: AppSpacing.xxs),
-                          _OverridesBadge(l10n: l10n, overrides: instance.overrides!),
+                          _OverridesBadge(
+                            l10n: l10n,
+                            overrides: instance.overrides!,
+                          ),
                         ],
                       ],
                     ),

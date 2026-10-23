@@ -356,53 +356,17 @@ abstract class AppLocalizations {
   /// **'Import pack'**
   String get importPack;
 
-  /// Progress dialog title for Modrinth .mrpack installation.
-  ///
-  /// In en, this message translates to:
-  /// **'Install modpack'**
-  String get packInstallTitle;
-
-  /// Dialog title when installing a local .mrpack file.
-  ///
-  /// In en, this message translates to:
-  /// **'Import modpack'**
-  String get packImportTitle;
-
-  /// Explains that pack installation creates a new isolated instance.
-  ///
-  /// In en, this message translates to:
-  /// **'A new instance will be created. Minecraft and the pack loader are installed from the pack dependencies, then bundled overrides are merged.'**
-  String get packInstallHint;
-
-  /// Progress dialog status while a pack installs.
-  ///
-  /// In en, this message translates to:
-  /// **'Installing modpack…'**
-  String get packInstallRunning;
-
-  /// Progress dialog success status.
+  /// Toast shown when a background pack install finishes.
   ///
   /// In en, this message translates to:
   /// **'Modpack installed.'**
   String get packInstallDone;
 
-  /// Progress dialog failure status.
+  /// Toast shown when a background pack install fails.
   ///
   /// In en, this message translates to:
   /// **'Modpack installation failed.'**
   String get packInstallFailed;
-
-  /// Pack details line: Minecraft version and loader build.
-  ///
-  /// In en, this message translates to:
-  /// **'{game} · {loader} {loaderVersion}'**
-  String packInspectMeta(String game, String loader, String loaderVersion);
-
-  /// Pack details line: download count and bundled override count.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} index files · {overrides} bundled overrides'**
-  String packInspectFiles(int count, int overrides);
 
   /// shown when a local .mrpack cannot be parsed.
   ///
@@ -422,29 +386,11 @@ abstract class AppLocalizations {
   /// **'This pack needs a Java runtime for its loader processors. Install or select a matching Java in Settings first.'**
   String get packJavaMissing;
 
-  /// Shown while a modpack task is being cancelled.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancelling…'**
-  String get packCancelling;
-
-  /// Shown after a modpack task is cancelled.
-  ///
-  /// In en, this message translates to:
-  /// **'Modpack installation was cancelled.'**
-  String get packCancelled;
-
   /// Modpack search header: no existing instance is used.
   ///
   /// In en, this message translates to:
   /// **'Creates a new instance'**
   String get packTargetNewInstance;
-
-  /// Success summary after a pack install.
-  ///
-  /// In en, this message translates to:
-  /// **'{downloaded} files downloaded · {bundled} bundled'**
-  String packResultSummary(int downloaded, int bundled);
 
   /// No description provided for @instanceCreateTitle.
   ///
@@ -770,11 +716,11 @@ abstract class AppLocalizations {
   /// **'Restores missing libraries/assets and reruns loader processors when needed.'**
   String get instanceCheckRepairHint;
 
-  /// Progress text while repairing loader dependencies.
+  /// Shown after a dependency repair was handed to the task center.
   ///
   /// In en, this message translates to:
-  /// **'Repairing dependencies…'**
-  String get instanceCheckRepairing;
+  /// **'Repair started in the background. Track it in Tasks.'**
+  String get instanceCheckRepairQueued;
 
   /// Success text after dependency repair.
   ///
@@ -787,6 +733,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dependency repair failed.'**
   String get instanceCheckRepairFailed;
+
+  /// Re-runs the read-only verification after a background repair.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get instanceCheckRecheck;
+
+  /// Status while the dialog re-runs the dependency check.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking again…'**
+  String get instanceCheckRechecking;
 
   /// No description provided for @instanceManifestMissing.
   ///
@@ -2540,12 +2498,6 @@ abstract class AppLocalizations {
   /// **'Minecraft {version} · Iris'**
   String resourceTargetShader(String version);
 
-  /// Loader install processor completion note.
-  ///
-  /// In en, this message translates to:
-  /// **'Forge/NeoForge processors completed with the selected Java.'**
-  String get loaderProcessorsDone;
-
   /// Instance count label.
   ///
   /// In en, this message translates to:
@@ -2917,6 +2869,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Modpack'**
   String get taskCenterModpack;
+
+  /// No description provided for @taskCenterInstanceDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate instance'**
+  String get taskCenterInstanceDuplicate;
 
   /// Vanilla install task label.
   ///
