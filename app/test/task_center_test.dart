@@ -2,6 +2,7 @@ import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/services/core/task_update.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/stores/tasks.dart';
+import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -128,7 +129,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.downloading_rounded));
+    await tester.tap(find.byIcon(AppIcons.running));
     await tester.pumpAndSettle();
 
     expect(find.text('Modpack · AutumnTown'), findsOneWidget);

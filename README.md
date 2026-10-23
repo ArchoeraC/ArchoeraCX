@@ -18,10 +18,11 @@ ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，�
 - 原版文件安装与启动，Java 自动扫描（含手动回退）
 - 加载器：Fabric / Quilt / Forge / NeoForge 安装、生成物校验与按 processor 重跑修复
 - Microsoft 登录：Authorization Code + PKCE（loopback）→ XBL → XSTS → Minecraft，支持在线 / 离线启动
-- Modrinth 搜索与下载；Modrinth 版本或本地 `.mrpack` 整合包安装（原版 + 加载器 + overrides）
+- Modrinth 搜索与下载；Modrinth 版本或本地 `.mrpack` 整合包安装（原版 + 加载器 + overrides）；安装一律转后台任务，可边浏览边下载，页面底部队列条与任务中心实时显示进度
 - Rust `DownloadPlan` 执行器：HTTP、hash 校验、原子落盘、进度与取消
 - 界面：底部 CommandBar 的 AppShell、5 个页面、明暗主题、中英文 i18n
 - 外观：浅色 / 深色 / 跟随系统、系统或自定义主题色（C++ 读取 XDG Portal / Windows 注册表 / AppKit）、全局着色与减少动效；关于页含环境信息复制与许可入口
+- 图标：Tabler Icons 3.49.0（MIT）裁剪子集字体 + `AppIcons` 语义层，构建与运行都不联网、不依赖图标包
 - 系统集成：登录授权页由 C++ 调系统 API 打开默认浏览器，登录成功后发送系统桌面通知（显示账户名）
 
 > 当前为 GitHub-only alpha：上述能力已贯通；CurseForge 源尚未完成。当前基线为 340 个 C# 测试、37 个 Flutter 测试、21 个 Rust 测试通过（Linux x64）。
@@ -92,12 +93,26 @@ C# NativeAOT    Rust
 - [技术预研](docs/08-technical-research/README.md) —— 设计输入与验证记录
 - 历史设计稿见 [`docs/archive/`](docs/archive/README.md)（仅作溯源，不是现行规范）
 
+## 特别致谢
+
+启动器现在的样子离不开这些项目和人（应用内也会在 **设置 → 关于 → 特别致谢** 列出）：
+
+- **Tabler Icons** — Paweł Kuna 与贡献者（MIT）。界面里的线性图标全部来自这套图标，随包分发的 `app/assets/fonts/AppIcons.ttf` 是裁剪后的子集；喜欢的话可以去 <https://github.com/tabler/tabler-icons> 点个 star。
+- **Noto Sans SC** — Google Fonts / notofonts（OFL-1.1），界面字体。
+- **Flutter**、**.NET**、**Rust** — 启动器赖以构建的三个运行时。
+- **Modrinth** — Mod / 整合包 / 资源包 / 光影的元数据与下载。
+- **BMCLAPI** — 官方 Mojang / Forge 源不可达时使用的大陆镜像。
+
+各资产的来源与许可证逐项记录在 `app/assets/icons/*/SOURCES.md` 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
 ## 许可证
 
 代码以 **AGPL-3.0-only** 发布，正文见 [LICENSE](LICENSE)。
 在遵守 AGPL 义务（分发时开放源码、保留声明并标注修改）的前提下，可自由使用、学习、修改与再分发；本项目不提供闭源商业授权。
 
 第三方依赖与随发布产物分发的内嵌运行库见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)；许可证与资产边界细则见 [docs/04-licensing.md](docs/04-licensing.md)。
+
+> 图标字体单独遵循上游 **MIT**（© 2020-2026 Paweł Kuna），正文随应用分发于 `app/assets/licenses/Tabler-Icons-MIT.txt`，不适用 AGPL-3.0-only。仓库只提交打包好的子集字体，不提交上游图标集本身。
 
 ## 隐私与安全
 

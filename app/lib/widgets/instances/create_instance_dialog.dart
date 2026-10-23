@@ -9,6 +9,7 @@ import '../../services/core/loader_versions.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import 'loader_picker_panel.dart';
 import '../common/toast.dart';
@@ -167,7 +168,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                   IconButton(
                     onPressed: _chooseRoot,
                     tooltip: l10n.instanceChooseLocation,
-                    icon: const Icon(Icons.folder_open_rounded),
+                    icon: const Icon(AppIcons.folderOpen),
                   ),
                 ],
               ),

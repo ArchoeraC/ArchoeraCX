@@ -1,11 +1,13 @@
 /*
- * Linux native system actions: default browser + desktop notification.
+ * Linux native system actions: default browser, file manager + desktop
+ * notification.
  * SPDX-License-Identifier: AGPL-3.0-only
  *
- * Both go through standard freedesktop D-Bus interfaces:
+ * All go through standard freedesktop D-Bus interfaces:
  *   - org.freedesktop.portal.OpenURI.OpenURI
  *   - org.freedesktop.Notifications.Notify
- * No shell process is started.
+ * No shell process is started, so no shell metacharacters can reach a program
+ * name and a directory cannot be mistaken for an executable.
  */
 
 #include "platform_system.h"
@@ -54,14 +56,8 @@ DBusMessage* call_with_reply(DBusConnection* connection,
   return reply;
 }
 
-}  // namespace
-
-bool open_external_url(const std::string& url, std::string* error) {
-  if (!is_safe_external_url(url)) {
-    if (error != nullptr) *error = "invalid url";
-    return false;
-  }
-
+// Opens any portal URI (http(s) or file). Callers validate the URI first.
+bool open_uri_via_portal(const std::string& uri, std::string* error) {
   DBusConnection* connection = open_session_bus();
   if (connection == nullptr) {
     if (error != nullptr) *error = "session bus unavailable";
@@ -78,12 +74,12 @@ bool open_external_url(const std::string& url, std::string* error) {
   }
 
   const char* parent_window = "";
-  const char* uri = url.c_str();
+  const char* target = uri.c_str();
   DBusMessageIter iterator;
   DBusMessageIter options;
   dbus_message_iter_init_append(message, &iterator);
   dbus_message_iter_append_basic(&iterator, DBUS_TYPE_STRING, &parent_window);
-  dbus_message_iter_append_basic(&iterator, DBUS_TYPE_STRING, &uri);
+  dbus_message_iter_append_basic(&iterator, DBUS_TYPE_STRING, &target);
   dbus_message_iter_open_container(&iterator, DBUS_TYPE_ARRAY, "{sv}",
                                    &options);
   dbus_message_iter_close_container(&iterator, &options);
@@ -98,6 +94,54 @@ bool open_external_url(const std::string& url, std::string* error) {
   }
   dbus_message_unref(reply);
   return true;
+}
+
+// RFC 3986 encoding for the path part of a file URI: unreserved characters
+// and '/' stay literal, everything else (spaces, UTF-8 bytes, '#', '?') is
+// percent encoded so the portal sees exactly one path.
+std::string encode_uri_path(const std::string& path) {
+  static constexpr char kHex[] = "0123456789ABCDEF";
+  std::string encoded;
+  encoded.reserve(path.size());
+  for (const unsigned char ch : path) {
+    const bool unreserved =
+        (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+        (ch >= '0' && ch <= '9') || ch == '-' || ch == '.' || ch == '_' ||
+        ch == '~' || ch == '/';
+    if (unreserved) {
+      encoded.push_back(static_cast<char>(ch));
+    } else {
+      encoded.push_back('%');
+      encoded.push_back(kHex[ch >> 4]);
+      encoded.push_back(kHex[ch & 0x0f]);
+    }
+  }
+  return encoded;
+}
+
+}  // namespace
+
+bool open_external_url(const std::string& url, std::string* error) {
+  if (!is_safe_external_url(url)) {
+    if (error != nullptr) *error = "invalid url";
+    return false;
+  }
+  return open_uri_via_portal(url, error);
+}
+
+bool open_path(const std::string& path, std::string* error) {
+  if (!is_safe_directory_path(path)) {
+    if (error != nullptr) *error = "invalid directory";
+    return false;
+  }
+
+  std::string uri = "file://";
+  uri.append(encode_uri_path(path));
+  // Trailing slash tells the portal (and the file manager) this is a folder.
+  if (uri.back() != '/') {
+    uri.push_back('/');
+  }
+  return open_uri_via_portal(uri, error);
 }
 
 bool send_system_notification(const std::string& title,

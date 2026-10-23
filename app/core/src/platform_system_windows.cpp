@@ -1,10 +1,12 @@
 /*
- * Windows native system actions: default browser + tray balloon notification.
+ * Windows native system actions: default browser, file manager + tray balloon
+ * notification.
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * ShellExecuteW is the documented way to hand an http(s) URL to the default
- * browser. Notifications use Shell_NotifyIcon with NIF_INFO, which does not
- * require an installer-created Start Menu shortcut or AppUserModelID.
+ * browser and a directory to Explorer. Notifications use Shell_NotifyIcon with
+ * NIF_INFO, which does not require an installer-created Start Menu shortcut or
+ * AppUserModelID.
  */
 
 #include "platform_system.h"
@@ -114,6 +116,26 @@ bool open_external_url(const std::string& url, std::string* error) {
     if (error != nullptr) *error = "invalid encoding";
     return false;
   }
+  const auto result = reinterpret_cast<INT_PTR>(ShellExecuteW(
+      nullptr, L"open", wide.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+  if (result <= 32) {
+    if (error != nullptr) *error = "ShellExecuteW failed";
+    return false;
+  }
+  return true;
+}
+
+bool open_path(const std::string& path, std::string* error) {
+  if (!is_safe_directory_path(path)) {
+    if (error != nullptr) *error = "invalid directory";
+    return false;
+  }
+  const std::wstring wide = widen(path);
+  if (wide.empty()) {
+    if (error != nullptr) *error = "invalid encoding";
+    return false;
+  }
+  // The "open" verb on a directory starts Explorer at that folder.
   const auto result = reinterpret_cast<INT_PTR>(ShellExecuteW(
       nullptr, L"open", wide.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
   if (result <= 32) {

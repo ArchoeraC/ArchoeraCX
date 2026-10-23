@@ -10,7 +10,9 @@ import '../models/account.dart';
 import '../services/core/core_client.dart';
 import '../stores/account_policy.dart';
 import '../stores/accounts.dart';
+import '../stores/preferences.dart';
 import '../stores/providers.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/accounts/accounts_list.dart';
 import '../widgets/accounts/accounts_status_panel.dart';
@@ -46,13 +48,13 @@ class AccountsPage extends ConsumerWidget {
     final Widget body;
     if (accountsAsync.isLoading && accounts.isEmpty) {
       body = AccountsStatusPanel(
-        icon: Icons.person_rounded,
+        icon: AppIcons.accounts,
         message: l10n.accountsTitle,
         busy: true,
       );
     } else if (loadFailed) {
       body = AccountsStatusPanel(
-        icon: Icons.error_outline_rounded,
+        icon: AppIcons.error,
         message: l10n.accountsLoadFailed('${accountsAsync.error}'),
         danger: true,
         onRetry: () => ref.read(accountsProvider.notifier).reload(),
@@ -131,7 +133,7 @@ class AccountsPage extends ConsumerWidget {
             actions: [
               FilledButton.icon(
                 onPressed: () => _addAccount(context, ref),
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: const Icon(AppIcons.add, size: 18),
                 label: Text(l10n.addAccount),
               ),
             ],
@@ -149,7 +151,7 @@ class AccountsPage extends ConsumerWidget {
               child: Row(
                 children: [
                   Icon(
-                    Icons.verified_user_outlined,
+                    AppIcons.warning,
                     size: 18,
                     color: context.tokens.warning,
                   ),
@@ -397,16 +399,16 @@ class AccountsPage extends ConsumerWidget {
 /// system browser, and waits for the C# module to complete the token chain.
 /// When the backend falls back to device code, the code UI is shown instead.
 /// Closing it cancels the flow.
-class DeviceLoginDialog extends StatefulWidget {
+class DeviceLoginDialog extends ConsumerStatefulWidget {
   const DeviceLoginDialog({super.key, required this.client});
 
   final CoreClient client;
 
   @override
-  State<DeviceLoginDialog> createState() => _DeviceLoginDialogState();
+  ConsumerState<DeviceLoginDialog> createState() => _DeviceLoginDialogState();
 }
 
-class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
+class _DeviceLoginDialogState extends ConsumerState<DeviceLoginDialog> {
   MicrosoftDeviceCodeStart? _start;
   String? _error;
   String? _flowId;
@@ -440,12 +442,14 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
       final account = await widget.client.pollMicrosoftLogin(start.flowId);
       if (!mounted) return;
       final l10n = AppLocalizations.of(context);
-      unawaited(
-        widget.client.showSystemNotification(
-          title: l10n.accountLoginSuccessNotificationTitle,
-          body: l10n.accountLoginSuccessNotificationBody(account.displayName),
-        ),
-      );
+      if (ref.read(preferencesProvider).desktopNotifications) {
+        unawaited(
+          widget.client.showSystemNotification(
+            title: l10n.accountLoginSuccessNotificationTitle,
+            body: l10n.accountLoginSuccessNotificationBody(account.displayName),
+          ),
+        );
+      }
       _completed = true;
       Navigator.of(context).pop(account);
     } catch (error) {
@@ -648,7 +652,7 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
         if (start != null && start.isAuthorizationCode)
           TextButton.icon(
             onPressed: () => _openAuthorizationUrl(start),
-            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            icon: const Icon(AppIcons.externalLink, size: 18),
             label: Text(l10n.accountOpenBrowser),
           ),
         if (start != null && !start.isAuthorizationCode)
@@ -659,7 +663,7 @@ class _DeviceLoginDialogState extends State<DeviceLoginDialog> {
                 toast(l10n.accountDeviceCodeCopied, type: ToastType.success);
               }
             },
-            icon: const Icon(Icons.copy_rounded, size: 18),
+            icon: const Icon(AppIcons.copy, size: 18),
             label: Text(l10n.commonCopy),
           ),
         TextButton(

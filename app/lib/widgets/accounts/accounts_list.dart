@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_labels.dart';
 import '../../models/account.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/app_panel.dart';
 import 'account_avatar.dart';
@@ -217,7 +218,7 @@ class AccountRow extends StatelessWidget {
                       ),
                     const SizedBox(width: AppSpacing.xxs),
                     Icon(
-                      Icons.check_circle_rounded,
+                      AppIcons.completed,
                       size: 17,
                       color: tokens.accent,
                     ),
@@ -225,7 +226,7 @@ class AccountRow extends StatelessWidget {
                   PopupMenuButton<String>(
                     tooltip: l10n.accountsTitle,
                     icon: Icon(
-                      Icons.more_horiz_rounded,
+                      AppIcons.more,
                       color: tokens.textSecondary,
                     ),
                     onSelected: (value) {
@@ -238,7 +239,7 @@ class AccountRow extends StatelessWidget {
                           value: 'refresh',
                           child: Row(
                             children: [
-                              const Icon(Icons.refresh_rounded, size: 20),
+                              const Icon(AppIcons.refresh, size: 20),
                               const SizedBox(width: AppSpacing.xs),
                               Text(l10n.accountRefresh),
                             ],
@@ -249,7 +250,7 @@ class AccountRow extends StatelessWidget {
                         child: Row(
                           children: [
                             Icon(
-                              Icons.delete_outline_rounded,
+                              AppIcons.delete,
                               size: 20,
                               color: tokens.danger,
                             ),

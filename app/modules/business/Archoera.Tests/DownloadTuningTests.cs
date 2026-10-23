@@ -42,6 +42,31 @@ public sealed class DownloadTuningTests
     }
 
     [Fact]
+    public void Chunk_size_and_threshold_follow_settings()
+    {
+        var settings = Settings(16, 16) with
+        {
+            DownloadChunkSizeKb = 1024,
+            DownloadRangeThresholdKb = 4096,
+        };
+
+        var tuned = DownloadPlanRunner.ApplyTuning(Plan(), settings);
+
+        Assert.Equal(1024L * 1024, tuned.Options.ChunkSize);
+        Assert.Equal(4096L * 1024, tuned.Options.RangeThreshold);
+    }
+
+    [Fact]
+    public void Disabling_ranges_keeps_the_plan_single_stream()
+    {
+        var tuned = DownloadPlanRunner.ApplyTuning(
+            Plan(),
+            Settings(16, 16) with { DownloadRangeThresholdKb = 0 });
+
+        Assert.Equal(0, tuned.Options.RangeThreshold);
+    }
+
+    [Fact]
     public void Zero_disables_the_per_host_cap()
     {
         var tuned = DownloadPlanRunner.ApplyTuning(Plan(), Settings(16, 0));

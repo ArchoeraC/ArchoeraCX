@@ -29,7 +29,7 @@ flutter gen-l10n
 dart analyze            # 中文路径下不要用 flutter analyze
 flutter test
 flutter build linux --release
-python3 tool/check_icons.py   # 校验 release 图标子集包含所有 Icons.*
+python3 tool/check_icons.py   # 校验 AppIcons 与自带图标字体一致
 ```
 
 Microsoft 登录的 client ID 必须在 C# 构建步骤注入：
@@ -128,20 +128,39 @@ logs/account.log              脱敏的账户诊断日志
 发行通道、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
 
 
-## 图标子集与增量构建
+## 图标字体
 
-Release 构建会把 `MaterialIcons-Regular.otf` 按实际引用的 `Icons.*` 裁成子集。两类问题会让界面出现空方块：
+界面图标不再使用 Material 图标，而是仓库自带的子集字体 `assets/fonts/AppIcons.ttf`（Tabler Icons 3.49.0 裁剪，MIT）。运行时与构建期都不需要联网，也不依赖图标 pub 包。
 
-- **增量构建复用了旧子集**：新增图标后若 `flutter build` 跳过了 AOT/字体子集步骤，字体仍是旧的。
-  处理：`rm -rf build/flutter_assets` 后再构建（或 `flutter clean`）。
-- **SDK 图标字体缺少该字形**：`Icons.*` 常量存在但字体里没有对应 glyph（较少见）。
-  处理：换用已有图标。
+三层结构：
+
+| 层 | 文件 | 说明 |
+|---|---|---|
+| 字形清单 | `tool/icons/tabler-icons.txt` | 唯一事实源：Tabler 图标名 + 码位 |
+| 生成物 | `assets/fonts/AppIcons.ttf`、`lib/theme/icons/app_icon_data.dart` | 由脚本生成，禁止手改 |
+| 语义层 | `lib/theme/icons/app_icons.dart` | 页面只引用 `AppIcons.xxx` |
+
+新增图标：
+
+```bash
+# 1. 在 tool/icons/tabler-icons.txt 追加 <tabler-name>\t<codepoint>
+#    （码位见上游 tabler-icons.css）
+# 2. 生成字体与 Dart 表
+./tool/build-icons.sh
+# 3. 在 lib/theme/icons/app_icons.dart 里给新字形起一个语义名
+```
+
+`build-icons.sh` 首次运行会从 npmmirror（回退 jsDelivr）下载钉住版本的 Tabler webfont 到 `app/.cache/icons/`，并在同一目录建 venv 安装 fontTools；两者都不入库，只有改动图标集时才需要。
+
+常见问题：
+
+- **界面出现空方块**：语义名对应的字形不在字体里。跑 `python3 tool/check_icons.py` 定位；补清单后重跑 `build-icons.sh`。
+- **改了清单但忘记重跑脚本**：`dart analyze` 会报 `AppIcons` 里引用了不存在的 `AppIconData` 常量。
+- **release bundle 仍是旧字形**：`rm -rf build/flutter_assets` 后重新构建（或 `flutter clean`）。
 
 每次 release 构建后运行：
 
 ```bash
-python3 tool/check_icons.py            # 默认检查 linux bundle
+python3 tool/check_icons.py            # 默认同时检查源字体与 linux bundle
 python3 tool/check_icons.py <assets-dir>
 ```
-
-失败时按提示清理 `build/flutter_assets` 重新构建。

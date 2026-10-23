@@ -259,10 +259,17 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             settings.DownloadPerHost,
             0,
             DownloadPlanLimits.MaxPerHostConcurrency);
+        var chunkSizeKb = Math.Clamp(settings.DownloadChunkSizeKb, 128, 8192);
+        var rangeThresholdKb = Math.Clamp(settings.DownloadRangeThresholdKb, 0, 65536);
         return plan with
         {
             Concurrency = concurrency,
-            Options = plan.Options with { PerHostConcurrency = perHost },
+            Options = plan.Options with
+            {
+                PerHostConcurrency = perHost,
+                ChunkSize = chunkSizeKb * 1024L,
+                RangeThreshold = rangeThresholdKb * 1024L,
+            },
         };
     }
 

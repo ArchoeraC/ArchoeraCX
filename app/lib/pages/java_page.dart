@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,8 +9,10 @@ import '../l10n/generated/app_localizations.dart';
 import '../services/core/core_client.dart';
 import '../services/core/java_scan.dart';
 import '../services/java/java_path_store.dart';
+import '../stores/downloads.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_progress_bar.dart';
 import '../widgets/common/app_empty_state.dart';
@@ -387,6 +391,71 @@ class _JavaPageState extends ConsumerState<JavaPage> {
     }
   }
 
+  /// Installs a Mojang Java runtime in the background and rescans afterwards.
+  Future<void> _installJavaRuntime() async {
+    final l10n = AppLocalizations.of(context);
+    final major = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        final textTheme = Theme.of(context).textTheme;
+        final tokens = context.tokens;
+        return SimpleDialog(
+          title: Text(l10n.javaInstallTitle),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                0,
+                AppSpacing.lg,
+                AppSpacing.sm,
+              ),
+              child: Text(
+                l10n.javaInstallHint,
+                style: textTheme.bodySmall?.copyWith(
+                  color: tokens.textTertiary,
+                ),
+              ),
+            ),
+            for (final value in const [8, 17, 21, 25])
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(context).pop(value),
+                child: Row(
+                  children: [
+                    Icon(AppIcons.java, size: 18, color: tokens.accent),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text('Java $value', style: textTheme.titleSmall),
+                    if (value == 21) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        l10n.javaInstallRecommended,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: tokens.accent,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+    if (major == null || !mounted) return;
+
+    toast(l10n.javaInstallQueued(major), type: ToastType.success);
+    unawaited(() async {
+      await ref
+          .read(downloadsProvider.notifier)
+          .installJavaRuntime(
+            major,
+            successMessage: l10n.javaInstallDone(major),
+            failureMessage: l10n.javaInstallFailed(major),
+            cancelledMessage: l10n.javaInstallCancelled(major),
+          );
+      if (mounted) await _runScan();
+    }());
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -408,11 +477,17 @@ class _JavaPageState extends ConsumerState<JavaPage> {
             leading: IconButton.filledTonal(
               onPressed: () => context.go('/settings'),
               tooltip: l10n.back,
-              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              icon: const Icon(AppIcons.back, size: 18),
             ),
             title: l10n.settingsJava,
             subtitle: l10n.javaPageSubtitle,
             actions: [
+              OutlinedButton.icon(
+                onPressed: _installJavaRuntime,
+                icon: const Icon(AppIcons.download, size: 18),
+                label: Text(l10n.javaInstallAction),
+              ),
+              const SizedBox(width: AppSpacing.xs),
               OutlinedButton.icon(
                 onPressed: scanning ? null : () => _runScan(),
                 icon: scanning
@@ -421,7 +496,7 @@ class _JavaPageState extends ConsumerState<JavaPage> {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.manage_search_rounded, size: 18),
+                    : const Icon(AppIcons.scan, size: 18),
                 label: Text(
                   scanning ? l10n.javaStatusScanning : l10n.javaStatusScan,
                 ),
@@ -466,7 +541,7 @@ class _JavaPageState extends ConsumerState<JavaPage> {
           ],
           if (_state == _JavaState.unavailable) ...[
             _Notice(
-              icon: Icons.error_outline_rounded,
+              icon: AppIcons.error,
               color: tokens.danger,
               message: _reason != null
                   ? l10n.javaStatusScanFailed(_reason!)
@@ -477,7 +552,7 @@ class _JavaPageState extends ConsumerState<JavaPage> {
           ],
           if (_invalidExecutablePath != null) ...[
             _Notice(
-              icon: Icons.terminal_rounded,
+              icon: AppIcons.terminal,
               color: tokens.danger,
               message: l10n.javaStatusNoValidExecutable(
                 _invalidExecutablePath!,
@@ -526,7 +601,7 @@ class _JavaPageState extends ConsumerState<JavaPage> {
             )
           else if (visible.isEmpty && _state != _JavaState.scanning)
             AppEmptyState(
-              icon: Icons.coffee_rounded,
+              icon: AppIcons.java,
               title: _query.trim().isNotEmpty
                   ? l10n.javaFilteredEmpty
                   : l10n.javaStatusNoResultsTitle,
@@ -615,7 +690,7 @@ class _CurrentJavaPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                auto ? Icons.auto_awesome_rounded : Icons.coffee_rounded,
+                auto ? AppIcons.autoPick : AppIcons.java,
                 size: 18,
                 color: tokens.accent,
               ),
@@ -678,7 +753,7 @@ class _Toolbar extends StatelessWidget {
         isDense: true,
         hintText: l10n.javaSearchHint,
         prefixIcon: Icon(
-          Icons.search_rounded,
+          AppIcons.search,
           size: 18,
           color: tokens.textTertiary,
         ),
@@ -690,7 +765,7 @@ class _Toolbar extends StatelessWidget {
                   controller.clear();
                   onQueryChanged('');
                 },
-                icon: const Icon(Icons.close_rounded, size: 16),
+                icon: const Icon(AppIcons.close, size: 16),
               ),
       ),
     );
@@ -698,12 +773,12 @@ class _Toolbar extends StatelessWidget {
     final actions = <Widget>[
       OutlinedButton.icon(
         onPressed: onAddFolder,
-        icon: const Icon(Icons.folder_open_rounded, size: 18),
+        icon: const Icon(AppIcons.folderOpen, size: 18),
         label: Text(l10n.javaStatusAddFolder),
       ),
       OutlinedButton.icon(
         onPressed: onPickExecutable,
-        icon: const Icon(Icons.terminal_rounded, size: 18),
+        icon: const Icon(AppIcons.terminal, size: 18),
         label: Text(l10n.javaStatusSelectExecutable),
       ),
     ];
@@ -874,7 +949,7 @@ class _RuntimeTile extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_rounded, size: 16, color: tokens.accent),
+                Icon(AppIcons.check, size: 16, color: tokens.accent),
                 const SizedBox(width: 2),
                 Text(
                   l10n.javaSelectedBadge,
@@ -884,7 +959,7 @@ class _RuntimeTile extends StatelessWidget {
             )
           else
             Icon(
-              Icons.chevron_right_rounded,
+              AppIcons.chevronRight,
               size: 18,
               color: tokens.textTertiary,
             ),
@@ -930,7 +1005,7 @@ class _Notice extends StatelessWidget {
           Tooltip(
             message: detail,
             child: Icon(
-              Icons.info_outline_rounded,
+              AppIcons.info,
               size: 16,
               color: tokens.textTertiary,
             ),
@@ -1017,7 +1092,7 @@ class _PathChip extends StatelessWidget {
         ),
       ),
       tooltip: path,
-      deleteIcon: const Icon(Icons.close_rounded, size: 14),
+      deleteIcon: const Icon(AppIcons.close, size: 14),
       deleteButtonTooltipMessage: removeLabel,
       onDeleted: onDeleted,
       backgroundColor: tokens.surface2,

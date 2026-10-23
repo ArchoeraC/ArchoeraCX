@@ -6,6 +6,7 @@ import 'package:archoera_cx/services/java/java_path_store.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/stores/settings.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
+import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,6 +92,27 @@ void main() {
     }
     // The old "view all" dialog (and its trigger) is gone.
     expect(find.textContaining('View all'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the Java runtime install picker', (tester) async {
+    await pumpPage(
+      tester,
+      scan: _scanOf(
+        scanResult([runtime('/opt/jdk-21/bin/java', '21.0.1', 'amd64')]),
+      ),
+    );
+
+    await tester.tap(find.text('Install Java'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Install a Java runtime'), findsOneWidget);
+    // Java 21 also labels the scanned runtime, so only assert presence.
+    expect(find.text('Java 8'), findsWidgets);
+    expect(find.text('Java 17'), findsWidgets);
+    expect(find.text('Java 21'), findsWidgets);
+    expect(find.text('Java 25'), findsWidgets);
+    expect(find.text('Recommended'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -218,7 +240,7 @@ void main() {
     );
 
     expect(find.textContaining('java.scan is not supported'), findsOneWidget);
-    expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+    expect(find.byIcon(AppIcons.info), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

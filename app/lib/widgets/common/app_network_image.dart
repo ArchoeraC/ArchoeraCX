@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 
 /// Network image with the launcher's neutral loading/error surfaces.
@@ -25,7 +26,7 @@ class AppNetworkImage extends StatelessWidget {
     // `image_outlined` is not emitted by the release icon tree shaker in this
     // SDK, so the placeholder uses a glyph that is already part of the subset
     // (and matches the download page's broken-image placeholder).
-    final placeholderIcon = fallbackIcon ?? Icons.broken_image_outlined;
+    final placeholderIcon = fallbackIcon ?? AppIcons.imagePlaceholder;
     final image = Image.network(
       url,
       fit: fit,

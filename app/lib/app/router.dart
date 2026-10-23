@@ -11,14 +11,21 @@ import '../pages/settings_page.dart';
 import '../pages/wiki_page.dart';
 import 'shell.dart';
 
-GoRouter buildAppRouter() {
-  final configured = Platform.environment['ARCHOERACX_INITIAL_ROUTE']?.trim();
-  final initialLocation = configured != null && configured.startsWith('/')
+/// Builds the app router.
+///
+/// [initialLocation] wins over the `ARCHOERACX_INITIAL_ROUTE` environment
+/// variable, which wins over the dashboard (`/`). Invalid values fall back to
+/// the dashboard so a bad preference can never leave the shell without a page.
+GoRouter buildAppRouter({String? initialLocation}) {
+  final configured =
+      initialLocation ??
+      Platform.environment['ARCHOERACX_INITIAL_ROUTE']?.trim();
+  final location = configured != null && configured.startsWith('/')
       ? configured
       : '/';
 
   return GoRouter(
-    initialLocation: initialLocation,
+    initialLocation: location,
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

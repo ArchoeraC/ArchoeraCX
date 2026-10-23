@@ -6,6 +6,7 @@ using Archoera.Application.Modules;
 using Archoera.Domain.Instances;
 using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Modules;
+using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Launch;
 
@@ -25,7 +26,7 @@ namespace Archoera.Infrastructure.Launch;
 public sealed class LaunchLogModuleService : IModuleMethodHandler
 {
     private static readonly string[] SupportedMethods =
-        ["launch.logs", "launch.log.read", "launch.log.tail"];
+        ["launch.logs", "launch.log.read", "launch.log.tail", "launch.logs.clear"];
 
     /// <summary>How many past launches are offered in the file picker.</summary>
     private const int MaxLogFiles = 50;
@@ -49,10 +50,14 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
     private static readonly TimeSpan MaxFollowDuration = TimeSpan.FromHours(6);
 
     private readonly IInstanceRepository _instances;
+    private readonly JsonAppSettingsStore _settings;
 
-    public LaunchLogModuleService(IInstanceRepository? instances = null)
+    public LaunchLogModuleService(
+        IInstanceRepository? instances = null,
+        JsonAppSettingsStore? settings = null)
     {
         _instances = instances ?? new SqliteInstanceRepository();
+        _settings = settings ?? new JsonAppSettingsStore();
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -71,6 +76,8 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
                 "launch.log.read" => await ReadAsync(paramsJson, cancellationToken)
                     .ConfigureAwait(false),
                 "launch.log.tail" => await TailAsync(paramsJson, cancellationToken)
+                    .ConfigureAwait(false),
+                "launch.logs.clear" => await ClearAsync(paramsJson, cancellationToken)
                     .ConfigureAwait(false),
                 _ => ModuleJson.Error(
                     "E_UNSUPPORTED",
@@ -113,6 +120,7 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
         var all = EnumerateLogs(target.Directory).ToList();
         var files = all.Take(MaxLogFiles).ToList();
         var totalSize = all.Sum(SafeLength);
+        var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
 
         return ModuleJson.Envelope(writer =>
         {
@@ -121,8 +129,10 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
             writer.WriteString("logDirectory", target.Directory);
             writer.WriteBoolean("running", running is not null);
             writer.WriteNumber("totalSize", totalSize);
-            writer.WriteNumber("retentionMaxFiles", LaunchLogFiles.MaxFiles);
-            writer.WriteNumber("retentionMaxBytes", LaunchLogFiles.MaxTotalBytes);
+            writer.WriteNumber("retentionMaxFiles", settings.LogRetentionFiles);
+            writer.WriteNumber(
+                "retentionMaxBytes",
+                settings.LogRetentionMegabytes * 1024L * 1024L);
             if (running is not null)
             {
                 writer.WriteNumber("pid", running.Pid);
@@ -463,6 +473,78 @@ public sealed class LaunchLogModuleService : IModuleMethodHandler
         }
 
         return EnumerateLogs(target.Directory).FirstOrDefault()?.FullName;
+    }
+
+    /// <summary>
+    /// Deletes stored launch logs. A log that belongs to a running game is
+    /// always kept, so the viewer keeps following a live process.
+    /// </summary>
+    private async Task<byte[]> ClearAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        var all = ReadBool(paramsJson, "all");
+        IReadOnlyList<LogTarget> targets;
+        if (all)
+        {
+            var instances = await _instances
+                .ListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            targets = instances
+                .Select(instance => new LogTarget(
+                    instance,
+                    Path.Combine(
+                        LaunchPaths.Resolve(instance.RootPath).InstanceRoot,
+                        ".archoera",
+                        "logs")))
+                .ToList();
+        }
+        else
+        {
+            targets = [await ResolveAsync(paramsJson, cancellationToken).ConfigureAwait(false)];
+        }
+
+        var deletedFiles = 0;
+        long freedBytes = 0;
+        var touchedInstances = 0;
+        foreach (var target in targets)
+        {
+            var running = LaunchProcessRegistry.TryGet(target.Instance.Id);
+            var keep = running is null ? null : Path.GetFileName(running.LogPath);
+            var removedAny = false;
+            foreach (var file in EnumerateLogs(target.Directory))
+            {
+                if (keep is not null &&
+                    string.Equals(file.Name, keep, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var size = SafeLength(file);
+                try
+                {
+                    file.Delete();
+                }
+                catch (Exception exception) when (
+                    exception is IOException or UnauthorizedAccessException)
+                {
+                    continue;
+                }
+
+                deletedFiles++;
+                freedBytes += size;
+                removedAny = true;
+            }
+
+            if (removedAny) touchedInstances++;
+        }
+
+        return ModuleJson.Envelope(writer =>
+        {
+            writer.WriteNumber("deletedFiles", deletedFiles);
+            writer.WriteNumber("freedBytes", freedBytes);
+            writer.WriteNumber("instances", touchedInstances);
+        });
     }
 
     private async Task<LogTarget> ResolveAsync(

@@ -20,7 +20,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.grid_view_outlined));
+    await tester.tap(find.byKey(const ValueKey('nav-/instances')));
     await tester.pumpAndSettle();
 
     final refresh = find.widgetWithText(OutlinedButton, 'Refresh');

@@ -77,6 +77,13 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         int? downloadPerHost = null;
         string? downloadProxy = null;
         var downloadProxyPresent = false;
+        int? windowWidth = null;
+        int? windowHeight = null;
+        bool? fullscreen = null;
+        int? downloadChunkSizeKb = null;
+        int? downloadRangeThresholdKb = null;
+        int? logRetentionFiles = null;
+        int? logRetentionMb = null;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -191,6 +198,86 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 if (downloadConcurrency is < 1 or > 64)
                 {
                     return Error("E_INVALID", "downloadConcurrency must be within 1..64");
+                }
+            }
+
+            if (root.TryGetProperty("windowWidth", out var widthElement))
+            {
+                windowWidth = widthElement.ValueKind == JsonValueKind.Number &&
+                              widthElement.TryGetInt32(out var width)
+                    ? width
+                    : throw new ArgumentException("windowWidth must be an integer");
+                if (windowWidth is < 640 or > 7680)
+                {
+                    return Error("E_INVALID", "windowWidth must be within 640..7680");
+                }
+            }
+
+            if (root.TryGetProperty("windowHeight", out var heightElement))
+            {
+                windowHeight = heightElement.ValueKind == JsonValueKind.Number &&
+                               heightElement.TryGetInt32(out var height)
+                    ? height
+                    : throw new ArgumentException("windowHeight must be an integer");
+                if (windowHeight is < 480 or > 4320)
+                {
+                    return Error("E_INVALID", "windowHeight must be within 480..4320");
+                }
+            }
+
+            if (root.TryGetProperty("fullscreen", out var fullscreenElement))
+            {
+                fullscreen = fullscreenElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? fullscreenElement.GetBoolean()
+                    : throw new ArgumentException("fullscreen must be a boolean");
+            }
+
+            if (root.TryGetProperty("downloadChunkSizeKb", out var chunkElement))
+            {
+                downloadChunkSizeKb = chunkElement.ValueKind == JsonValueKind.Number &&
+                                     chunkElement.TryGetInt32(out var chunk)
+                    ? chunk
+                    : throw new ArgumentException("downloadChunkSizeKb must be an integer");
+                if (downloadChunkSizeKb is < 128 or > 8192)
+                {
+                    return Error("E_INVALID", "downloadChunkSizeKb must be within 128..8192");
+                }
+            }
+
+            if (root.TryGetProperty("downloadRangeThresholdKb", out var thresholdElement))
+            {
+                downloadRangeThresholdKb =
+                    thresholdElement.ValueKind == JsonValueKind.Number &&
+                    thresholdElement.TryGetInt32(out var threshold)
+                        ? threshold
+                        : throw new ArgumentException("downloadRangeThresholdKb must be an integer");
+                if (downloadRangeThresholdKb is < 0 or > 65536)
+                {
+                    return Error("E_INVALID", "downloadRangeThresholdKb must be within 0..65536");
+                }
+            }
+
+            if (root.TryGetProperty("logRetentionFiles", out var logFilesElement))
+            {
+                logRetentionFiles = logFilesElement.ValueKind == JsonValueKind.Number &&
+                                    logFilesElement.TryGetInt32(out var logFiles)
+                    ? logFiles
+                    : throw new ArgumentException("logRetentionFiles must be an integer");
+                if (logRetentionFiles is < 2 or > 50)
+                {
+                    return Error("E_INVALID", "logRetentionFiles must be within 2..50");
+                }
+            }
+
+            if (root.TryGetProperty("logRetentionMb", out var logMbElement))
+            {
+                logRetentionMb = logMbElement.ValueKind == JsonValueKind.Number &&
+                                 logMbElement.TryGetInt32(out var logMb)
+                    ? logMb
+                    : throw new ArgumentException("logRetentionMb must be an integer");
+                if (logRetentionMb is < 8 or > 512)
+                {
+                    return Error("E_INVALID", "logRetentionMb must be within 8..512");
                 }
             }
 
@@ -311,6 +398,31 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             };
         }
 
+        if (windowWidth is not null || windowHeight is not null || fullscreen is not null)
+        {
+            current = current with
+            {
+                WindowWidth = windowWidth ?? current.WindowWidth,
+                WindowHeight = windowHeight ?? current.WindowHeight,
+                Fullscreen = fullscreen ?? current.Fullscreen,
+            };
+        }
+
+        if (downloadChunkSizeKb is not null ||
+            downloadRangeThresholdKb is not null ||
+            logRetentionFiles is not null ||
+            logRetentionMb is not null)
+        {
+            current = current with
+            {
+                DownloadChunkSizeKb = downloadChunkSizeKb ?? current.DownloadChunkSizeKb,
+                DownloadRangeThresholdKb =
+                    downloadRangeThresholdKb ?? current.DownloadRangeThresholdKb,
+                LogRetentionFiles = logRetentionFiles ?? current.LogRetentionFiles,
+                LogRetentionMegabytes = logRetentionMb ?? current.LogRetentionMegabytes,
+            };
+        }
+
         if (downloadProxyPresent)
         {
             current = current with
@@ -333,7 +445,14 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             downloadSource is null &&
             downloadConcurrency is null &&
             downloadPerHost is null &&
-            !downloadProxyPresent)
+            !downloadProxyPresent &&
+            windowWidth is null &&
+            windowHeight is null &&
+            fullscreen is null &&
+            downloadChunkSizeKb is null &&
+            downloadRangeThresholdKb is null &&
+            logRetentionFiles is null &&
+            logRetentionMb is null)
         {
             return Error("E_INVALID", "settings.set requires at least one field");
         }
@@ -395,6 +514,13 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             writer.WriteString("downloadSource", settings.DownloadSource);
             writer.WriteNumber("downloadConcurrency", settings.DownloadConcurrency);
             writer.WriteNumber("downloadPerHost", settings.DownloadPerHost);
+            writer.WriteNumber("windowWidth", settings.WindowWidth);
+            writer.WriteNumber("windowHeight", settings.WindowHeight);
+            writer.WriteBoolean("fullscreen", settings.Fullscreen);
+            writer.WriteNumber("downloadChunkSizeKb", settings.DownloadChunkSizeKb);
+            writer.WriteNumber("downloadRangeThresholdKb", settings.DownloadRangeThresholdKb);
+            writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
+            writer.WriteNumber("logRetentionMb", settings.LogRetentionMegabytes);
             if (string.IsNullOrWhiteSpace(settings.DownloadProxy))
             {
                 writer.WriteNull("downloadProxy");

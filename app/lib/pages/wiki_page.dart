@@ -6,6 +6,7 @@ import '../l10n/generated/app_localizations.dart';
 import '../services/core/system_status.dart';
 import '../services/core/wiki_feed.dart';
 import '../stores/wiki.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_empty_state.dart';
 import '../widgets/common/app_page_header.dart';
@@ -49,7 +50,7 @@ class WikiPage extends ConsumerWidget {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.refresh_rounded, size: 18),
+                    : const Icon(AppIcons.refresh, size: 18),
                 label: Text(l10n.wikiRefresh),
               ),
             ],
@@ -391,7 +392,7 @@ class _FeedPanel extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         if (feed.hasError)
           AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.offline,
             title: l10n.wikiFeedFailed,
             message: feed.error.toString(),
             primaryAction: OutlinedButton(
@@ -406,7 +407,7 @@ class _FeedPanel extends StatelessWidget {
           )
         else if (value.isEmpty)
           AppEmptyState(
-            icon: Icons.article_outlined,
+            icon: AppIcons.news,
             title: l10n.wikiFeedEmpty,
             message: l10n.wikiFeedSubtitle,
             primaryAction: OutlinedButton(
@@ -575,7 +576,7 @@ class _FeedRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: AppSpacing.sm, top: 2),
               child: Icon(
-                Icons.north_east_rounded,
+                AppIcons.openExternal,
                 size: 15,
                 color: tokens.textTertiary,
               ),
@@ -683,7 +684,7 @@ class _InlineFailure extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(Icons.error_outline_rounded, size: 16, color: tokens.danger),
+        Icon(AppIcons.error, size: 16, color: tokens.danger),
         const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Text(

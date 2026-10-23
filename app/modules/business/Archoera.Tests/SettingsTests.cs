@@ -422,6 +422,84 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public async Task Module_persists_window_and_fullscreen_settings()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var store = new JsonAppSettingsStore(Path.Combine(directory, "data"));
+            var service = new SettingsModuleService(store);
+
+            using var setDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"windowWidth":1920,"windowHeight":1080,"fullscreen":true}""",
+                    CancellationToken.None));
+            Assert.True(setDocument.RootElement.GetProperty("ok").GetBoolean());
+
+            using var getDocument = JsonDocument.Parse(
+                await service.HandleAsync("settings.get", "{}", CancellationToken.None));
+            var settings = getDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("settings");
+            Assert.Equal(1920, settings.GetProperty("windowWidth").GetInt32());
+            Assert.Equal(1080, settings.GetProperty("windowHeight").GetInt32());
+            Assert.True(settings.GetProperty("fullscreen").GetBoolean());
+
+            // Out-of-range values are rejected instead of silently clamped.
+            using var invalid = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"windowWidth":100}""",
+                    CancellationToken.None));
+            Assert.False(invalid.RootElement.GetProperty("ok").GetBoolean());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Module_persists_download_tuning_and_log_retention()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var service = new SettingsModuleService(
+                new JsonAppSettingsStore(Path.Combine(directory, "data")));
+
+            using var setDocument = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"downloadChunkSizeKb":2048,"downloadRangeThresholdKb":0,"logRetentionFiles":20,"logRetentionMb":64}""",
+                    CancellationToken.None));
+            Assert.True(setDocument.RootElement.GetProperty("ok").GetBoolean());
+
+            using var getDocument = JsonDocument.Parse(
+                await service.HandleAsync("settings.get", "{}", CancellationToken.None));
+            var settings = getDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("settings");
+            Assert.Equal(2048, settings.GetProperty("downloadChunkSizeKb").GetInt32());
+            Assert.Equal(0, settings.GetProperty("downloadRangeThresholdKb").GetInt32());
+            Assert.Equal(20, settings.GetProperty("logRetentionFiles").GetInt32());
+            Assert.Equal(64, settings.GetProperty("logRetentionMb").GetInt32());
+
+            using var invalid = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.set",
+                    """{"logRetentionFiles":500}""",
+                    CancellationToken.None));
+            Assert.False(invalid.RootElement.GetProperty("ok").GetBoolean());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Module_returns_settings_json_and_updates_it()
     {
         var directory = TempDirectory();

@@ -24,10 +24,13 @@ internal static class LaunchLogFiles
     private const string Pattern = "launch-*.log";
 
     /// <summary>Creates the log directory and applies retention in one step.</summary>
-    public static void Prepare(string directory)
+    public static void Prepare(
+        string directory,
+        int maxFiles = MaxFiles,
+        long maxTotalBytes = MaxTotalBytes)
     {
         Directory.CreateDirectory(directory);
-        Prune(directory, MaxFiles, MaxTotalBytes);
+        Prune(directory, maxFiles, maxTotalBytes);
     }
 
     /// <summary>

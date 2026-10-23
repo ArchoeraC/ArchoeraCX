@@ -1,6 +1,7 @@
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/stores/settings.dart';
+import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -70,7 +71,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('download-concurrency-stepper')),
-        matching: find.byIcon(Icons.add_rounded),
+        matching: find.byIcon(AppIcons.add),
       ),
     );
     await tester.pumpAndSettle();
@@ -94,7 +95,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('download-concurrency-stepper')),
-        matching: find.byIcon(Icons.add_rounded),
+        matching: find.byIcon(AppIcons.add),
       ),
     );
     await tester.pumpAndSettle();
@@ -113,7 +114,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('download-concurrency-stepper')),
-        matching: find.byIcon(Icons.add_rounded),
+        matching: find.byIcon(AppIcons.add),
       ),
     );
     await tester.pumpAndSettle();

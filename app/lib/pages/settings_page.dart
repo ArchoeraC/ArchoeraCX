@@ -10,13 +10,17 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../services/core/app_settings.dart';
+import '../services/core/core_client.dart';
 import '../services/core/system_memory.dart';
+import '../services/core/update_check.dart';
 import '../stores/account_policy.dart';
 import '../stores/appearance.dart';
 import '../stores/instances.dart';
 import '../stores/locale.dart';
+import '../stores/preferences.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
+import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_progress_bar.dart';
 import '../utils/app_info.dart';
@@ -27,7 +31,16 @@ import 'package:go_router/go_router.dart';
 
 import '../widgets/common/app_page_header.dart';
 
-enum _SettingsSection { appearance, storage, download, java, about }
+enum _SettingsSection {
+  appearance,
+  launch,
+  download,
+  storage,
+  java,
+  tasks,
+  notifications,
+  about,
+}
 
 /// Sentinel for "follow the system proxy" in the proxy dialog.
 const Object _clearProxy = Object();
@@ -150,6 +163,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         systemAccent,
         locale,
       ),
+      _SettingsSection.launch => _LaunchSettingsPanel(settings: settings),
       _SettingsSection.download => _downloadContent(context, l10n, settings),
       _SettingsSection.storage => _SettingsCard(
         children: [
@@ -163,9 +177,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _makeDefaultInstancesRoot(context, l10n, root),
           ),
           _SettingRow(
-            icon: Icons.storage_outlined,
+            icon: AppIcons.storage,
             title: l10n.settingsDataRoot,
             value: settings?.dataRoot ?? '—',
+          ),
+          if (settings != null) ...[
+            _AppearanceTile(
+              icon: AppIcons.folder,
+              title: l10n.settingsOpenDataRoot,
+              subtitle: l10n.settingsOpenDataRootDesc,
+              trailing: Icon(
+                AppIcons.chevronRight,
+                size: 18,
+                color: context.tokens.textTertiary,
+              ),
+              onTap: () => _openPath(context, l10n, settings.dataRoot),
+            ),
+            _AppearanceTile(
+              icon: AppIcons.folder,
+              title: l10n.settingsOpenInstanceRoot,
+              subtitle: l10n.settingsOpenInstanceRootDesc,
+              trailing: Icon(
+                AppIcons.chevronRight,
+                size: 18,
+                color: context.tokens.textTertiary,
+              ),
+              onTap: () => _openPath(context, l10n, settings.instancesRoot),
+            ),
+          ],
+          _AppearanceTile(
+            icon: AppIcons.delete,
+            title: l10n.settingsCleanPartials,
+            subtitle: l10n.settingsCleanPartialsDesc,
+            trailing: Icon(
+              AppIcons.chevronRight,
+              size: 18,
+              color: context.tokens.textTertiary,
+            ),
+            onTap: () => _cleanPartialDownloads(context, ref, l10n),
           ),
         ],
       ),
@@ -176,7 +225,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           // dedicated Java page; this section only links to it and keeps the
           // memory/GC/JVM/game argument panel.
           _SettingRow(
-            icon: Icons.developer_board_rounded,
+            icon: AppIcons.java,
             title: l10n.javaPageManage,
             subtitle: l10n.javaPageManageHint,
             onTap: () => context.go('/settings/java'),
@@ -185,6 +234,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _RuntimeSettingsPanel(settings: settings),
         ],
       ),
+      _SettingsSection.tasks => const _TasksSettingsPanel(),
+      _SettingsSection.notifications => const _NotificationsSettingsPanel(),
       _SettingsSection.about => _AboutPanel(settings: settings),
     };
   }
@@ -195,10 +246,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AppSettings? settings,
   ) {
     final notifier = ref.read(appSettingsProvider.notifier);
+    final tokens = context.tokens;
     final source = settings?.downloadSource ?? 'auto';
     final concurrency = settings?.downloadConcurrency ?? 16;
     final perHost = settings?.downloadPerHost ?? 16;
     final proxy = settings?.downloadProxy;
+    final chunkKb = settings?.downloadChunkSizeKb ?? 512;
+    final rangeThresholdKb = settings?.downloadRangeThresholdKb ?? 1024;
 
     // `auto` follows the detected region; show what it actually resolves to.
     final region = ref.watch(regionPolicyProvider).value;
@@ -242,7 +296,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       note: l10n.settingsDownloadSourceDesc,
       children: [
         _AppearanceTile(
-          icon: Icons.dns_outlined,
+          icon: AppIcons.source,
           title: l10n.settingsDownloadSource,
           // Only `auto` needs an explanation: it hides a region decision.
           subtitle: source == 'auto' ? autoSubtitle : null,
@@ -269,7 +323,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       note: l10n.settingsDownloadNote,
       children: [
         _AppearanceTile(
-          icon: Icons.speed_rounded,
+          icon: AppIcons.throughput,
           title: l10n.settingsDownloadConcurrency,
           subtitle: l10n.settingsDownloadConcurrencyDesc,
           trailing: _NumberStepper(
@@ -281,7 +335,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         _AppearanceTile(
-          icon: Icons.hub_outlined,
+          icon: AppIcons.perHost,
           title: l10n.settingsDownloadPerHost,
           subtitle: l10n.settingsDownloadPerHostDesc,
           trailing: _NumberStepper(
@@ -293,13 +347,68 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         _AppearanceTile(
-          icon: Icons.route_outlined,
+          icon: AppIcons.throughput,
+          title: l10n.settingsDownloadRangeThreshold,
+          subtitle: l10n.settingsDownloadRangeThresholdDesc,
+          trailing: DropdownButton<int>(
+            value: rangeThresholdKb,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            borderRadius: BorderRadius.circular(tokens.radiusM),
+            items: [
+              DropdownMenuItem(
+                value: 0,
+                child: Text(l10n.settingsRangeDisabled),
+              ),
+              const DropdownMenuItem(value: 1024, child: Text('1 MiB')),
+              const DropdownMenuItem(value: 4096, child: Text('4 MiB')),
+              const DropdownMenuItem(value: 8192, child: Text('8 MiB')),
+            ],
+            onChanged: (value) async {
+              if (value == null) return;
+              await notifier.setDownloadPreferences(
+                downloadRangeThresholdKb: value,
+              );
+              if (context.mounted) {
+                _notify(context, l10n.settingsSaved, type: ToastType.success);
+              }
+            },
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.download,
+          title: l10n.settingsDownloadChunk,
+          subtitle: l10n.settingsDownloadChunkDesc,
+          trailing: DropdownButton<int>(
+            value: chunkKb,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            borderRadius: BorderRadius.circular(tokens.radiusM),
+            items: const [
+              DropdownMenuItem(value: 256, child: Text('256 KiB')),
+              DropdownMenuItem(value: 512, child: Text('512 KiB')),
+              DropdownMenuItem(value: 1024, child: Text('1 MiB')),
+              DropdownMenuItem(value: 2048, child: Text('2 MiB')),
+            ],
+            onChanged: (value) async {
+              if (value == null) return;
+              await notifier.setDownloadPreferences(
+                downloadChunkSizeKb: value,
+              );
+              if (context.mounted) {
+                _notify(context, l10n.settingsSaved, type: ToastType.success);
+              }
+            },
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.proxy,
           title: l10n.settingsDownloadProxy,
           subtitle: proxy == null || proxy.isEmpty
               ? l10n.settingsDownloadProxySystem
               : proxy,
           trailing: Icon(
-            Icons.chevron_right_rounded,
+            AppIcons.chevronRight,
             size: 18,
             color: context.tokens.textTertiary,
           ),
@@ -354,7 +463,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        icon: Icon(Icons.warning_amber_rounded, color: tokens.warning),
+        icon: Icon(AppIcons.warning, color: tokens.warning),
         title: Text(l10n.settingsDownloadHighConcurrencyTitle),
         content: Text(l10n.settingsDownloadHighConcurrencyWarning),
         actions: [
@@ -383,13 +492,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     Locale? locale,
   ) {
     final notifier = ref.read(appearanceProvider.notifier);
+    final prefs = ref.watch(preferencesProvider);
     final customized = appearance.accentMode == AccentMode.custom;
 
     final themeGroup = _SettingsGroup(
       title: l10n.settingsSectionTheme,
       children: [
         _AppearanceTile(
-          icon: Icons.contrast_rounded,
+          icon: AppIcons.globalTint,
           title: l10n.settingsThemeMode,
           subtitle: l10n.settingsThemeModeDesc,
           trailing: _SegmentedControl<ThemeMode>(
@@ -408,7 +518,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       title: l10n.settingsSectionAccent,
       children: [
         _AppearanceTile(
-          icon: Icons.palette_outlined,
+          icon: AppIcons.appearance,
           title: l10n.settingsThemeAccent,
           subtitle: customized
               ? l10n.settingsThemeAccentCustomDesc
@@ -443,7 +553,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       note: l10n.settingsAppearanceNote,
       children: [
         _AppearanceTile(
-          icon: Icons.tonality_rounded,
+          icon: AppIcons.globalTint,
           title: l10n.settingsGlobalTint,
           subtitle: l10n.settingsGlobalTintDesc,
           trailing: Switch(
@@ -452,7 +562,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         _AppearanceTile(
-          icon: Icons.view_agenda_outlined,
+          icon: AppIcons.density,
           title: l10n.settingsDensity,
           subtitle: l10n.settingsDensityDesc,
           trailing: _SegmentedControl<UiDensity>(
@@ -472,7 +582,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         _AppearanceTile(
-          icon: Icons.animation_rounded,
+          icon: AppIcons.reduceMotion,
           title: l10n.settingsMotion,
           subtitle: l10n.settingsMotionDesc,
           trailing: Switch(
@@ -481,10 +591,77 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         _AppearanceTile(
-          icon: Icons.restart_alt_rounded,
+          icon: AppIcons.window,
+          title: l10n.settingsCloseToTray,
+          subtitle: l10n.settingsCloseToTrayDesc,
+          trailing: Switch(
+            value: prefs.closeToTray,
+            onChanged: ref
+                .read(preferencesProvider.notifier)
+                .setCloseToTray,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.notifications,
+          title: l10n.settingsToastDuration,
+          subtitle: l10n.settingsToastDurationDesc,
+          trailing: _SegmentedControl<int>(
+            selected: prefs.toastSeconds,
+            options: const [
+              _SegmentedOption(2, '2s'),
+              _SegmentedOption(3, '3s'),
+              _SegmentedOption(5, '5s'),
+              _SegmentedOption(8, '8s'),
+            ],
+            onChanged: ref
+                .read(preferencesProvider.notifier)
+                .setToastSeconds,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.instances,
+          title: l10n.settingsStartPage,
+          subtitle: l10n.settingsStartPageDesc,
+          trailing: DropdownButton<String>(
+            key: const ValueKey('start-page-dropdown'),
+            value: prefs.startPage,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            borderRadius: BorderRadius.circular(context.tokens.radiusM),
+            items: [
+              DropdownMenuItem(
+                value: '/',
+                child: Text(l10n.startPageDashboard),
+              ),
+              DropdownMenuItem(
+                value: '/instances',
+                child: Text(l10n.startPageInstances),
+              ),
+              DropdownMenuItem(
+                value: '/download',
+                child: Text(l10n.startPageDownload),
+              ),
+              DropdownMenuItem(
+                value: '/accounts',
+                child: Text(l10n.startPageAccounts),
+              ),
+              DropdownMenuItem(value: '/wiki', child: Text(l10n.startPageWiki)),
+              DropdownMenuItem(
+                value: '/settings',
+                child: Text(l10n.startPageSettings),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              ref.read(preferencesProvider.notifier).setStartPage(value);
+            },
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.reset,
           title: l10n.settingsResetAppearance,
           trailing: Icon(
-            Icons.chevron_right_rounded,
+            AppIcons.chevronRight,
             size: 18,
             color: context.tokens.textTertiary,
           ),
@@ -496,11 +673,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       title: l10n.settingsAppearanceLanguage,
       children: [
         _AppearanceTile(
-          icon: Icons.translate_rounded,
+          icon: AppIcons.language,
           title: l10n.settingsLanguage,
           subtitle: _languageLabel(l10n, locale),
           trailing: Icon(
-            Icons.chevron_right_rounded,
+            AppIcons.chevronRight,
             size: 18,
             color: context.tokens.textTertiary,
           ),
@@ -741,6 +918,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }) {
     toast(message, type: type);
   }
+
+  /// Asks the core to reveal [path] in the OS file manager.
+  Future<void> _openPath(
+    BuildContext context,
+    AppLocalizations l10n,
+    String path,
+  ) async {
+    final client = ref.read(coreClientProvider);
+    final opened = client != null && await client.openSystemPath(path);
+    if (!opened && context.mounted) {
+      _notify(context, l10n.settingsOpenFailed, type: ToastType.error);
+    }
+  }
 }
 
 class _InstanceRootsEditor extends StatelessWidget {
@@ -775,7 +965,7 @@ class _InstanceRootsEditor extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                Icons.folder_outlined,
+                AppIcons.folder,
                 size: 20,
                 color: tokens.textSecondary,
               ),
@@ -788,7 +978,7 @@ class _InstanceRootsEditor extends StatelessWidget {
               ),
               TextButton.icon(
                 onPressed: onAdd,
-                icon: const Icon(Icons.add_rounded, size: 17),
+                icon: const Icon(AppIcons.add, size: 17),
                 label: Text(l10n.settingsAddRoot),
               ),
             ],
@@ -800,7 +990,7 @@ class _InstanceRootsEditor extends StatelessWidget {
               horizontal: AppSpacing.sm,
             ),
             leading: Icon(
-              Icons.folder_open_rounded,
+              AppIcons.folderOpen,
               size: 20,
               color: root == defaultRoot ? tokens.accent : tokens.textSecondary,
             ),
@@ -824,14 +1014,14 @@ class _InstanceRootsEditor extends StatelessWidget {
                   IconButton(
                     onPressed: () => onMakeDefault(root),
                     tooltip: l10n.settingsMakeDefault,
-                    icon: const Icon(Icons.star_outline_rounded, size: 19),
+                    icon: const Icon(AppIcons.defaultItem, size: 19),
                   ),
                 if (roots.length > 1)
                   IconButton(
                     onPressed: () => onRemove(root),
                     tooltip: l10n.settingsRemoveRoot,
                     icon: Icon(
-                      Icons.remove_circle_outline_rounded,
+                      AppIcons.removeItem,
                       size: 19,
                       color: tokens.danger,
                     ),
@@ -978,23 +1168,30 @@ List<_SettingsItem> _settingsItems(AppLocalizations l10n) => [
   _SettingsItem(
     _SettingsSection.appearance,
     l10n.settingsAppearance,
-    Icons.palette_outlined,
+    AppIcons.appearance,
   ),
+  _SettingsItem(_SettingsSection.launch, l10n.settingsSectionLaunch, AppIcons.play),
   _SettingsItem(
     _SettingsSection.storage,
     l10n.settingsStorage,
-    Icons.folder_outlined,
+    AppIcons.folder,
   ),
   _SettingsItem(
     _SettingsSection.download,
     l10n.settingsDownload,
-    Icons.download_outlined,
+    AppIcons.download,
   ),
-  _SettingsItem(_SettingsSection.java, l10n.settingsJava, Icons.coffee_rounded),
+  _SettingsItem(_SettingsSection.java, l10n.settingsJava, AppIcons.java),
+  _SettingsItem(_SettingsSection.tasks, l10n.settingsSectionTasks, AppIcons.list),
+  _SettingsItem(
+    _SettingsSection.notifications,
+    l10n.settingsSectionNotifications,
+    AppIcons.notifications,
+  ),
   _SettingsItem(
     _SettingsSection.about,
     l10n.settingsAbout,
-    Icons.info_outline_rounded,
+    AppIcons.info,
   ),
 ];
 
@@ -1012,11 +1209,9 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
   final _min = TextEditingController();
   final _max = TextEditingController();
   final _jvm = TextEditingController();
-  final _game = TextEditingController();
   final _minFocus = FocusNode();
   final _maxFocus = FocusNode();
   final _jvmFocus = FocusNode();
-  final _gameFocus = FocusNode();
 
   Timer? _debounce;
   String _gcMode = 'auto';
@@ -1032,7 +1227,7 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
     super.initState();
     _syncControllers();
     _loadMemory();
-    for (final focus in [_minFocus, _maxFocus, _jvmFocus, _gameFocus]) {
+    for (final focus in [_minFocus, _maxFocus, _jvmFocus]) {
       focus.addListener(() {
         if (!focus.hasFocus) _saveNow();
       });
@@ -1050,7 +1245,6 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
     if (!_minFocus.hasFocus) _min.text = '${settings?.memoryMinMb ?? 512}';
     if (!_maxFocus.hasFocus) _max.text = '${settings?.memoryMaxMb ?? 2048}';
     if (!_jvmFocus.hasFocus) _jvm.text = settings?.jvmArgs ?? '';
-    if (!_gameFocus.hasFocus) _game.text = settings?.gameArgs ?? '';
     _gcMode = settings?.gcMode ?? 'auto';
   }
 
@@ -1107,7 +1301,6 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
             memoryMaxMb: max,
             jvmArgs: _jvm.text.trim(),
             gcMode: _gcMode,
-            gameArgs: _game.text.trim(),
           );
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -1129,11 +1322,9 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
     _min.dispose();
     _max.dispose();
     _jvm.dispose();
-    _game.dispose();
     _minFocus.dispose();
     _maxFocus.dispose();
     _jvmFocus.dispose();
-    _gameFocus.dispose();
     super.dispose();
   }
 
@@ -1177,7 +1368,7 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
               Row(
                 children: [
                   Icon(
-                    Icons.memory_rounded,
+                    AppIcons.memory,
                     size: 19,
                     color: tokens.textSecondary,
                   ),
@@ -1197,7 +1388,7 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
                     IconButton(
                       onPressed: _loadMemory,
                       tooltip: l10n.refresh,
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      icon: const Icon(AppIcons.refresh, size: 18),
                     ),
                 ],
               ),
@@ -1329,17 +1520,6 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
                   hintText: l10n.settingsJvmArgsHint,
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: _game,
-                focusNode: _gameFocus,
-                onChanged: (_) => _scheduleSave(),
-                onSubmitted: (_) => _saveNow(),
-                decoration: InputDecoration(
-                  labelText: l10n.settingsGameArgs,
-                  hintText: l10n.settingsGameArgsHint,
-                ),
-              ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(
@@ -1391,6 +1571,352 @@ class _MemoryMetric extends StatelessWidget {
           value,
           style: Theme.of(context).textTheme.titleSmall
               ?.copyWith(color: color ?? tokens.textPrimary),
+        ),
+      ],
+    );
+  }
+}
+
+
+/// Game window size, fullscreen and extra game arguments.
+///
+/// These are C#-owned settings because the launch plan builder turns them into
+/// `--width`/`--height` substitutions and `--fullscreen`.
+class _LaunchSettingsPanel extends ConsumerStatefulWidget {
+  const _LaunchSettingsPanel({this.settings});
+
+  final AppSettings? settings;
+
+  @override
+  ConsumerState<_LaunchSettingsPanel> createState() =>
+      _LaunchSettingsPanelState();
+}
+
+class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
+  static const _presets = <(int, int)>[
+    (854, 480),
+    (1280, 720),
+    (1600, 900),
+    (1920, 1080),
+  ];
+
+  final _game = TextEditingController();
+  final _gameFocus = FocusNode();
+  Timer? _debounce;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+    _gameFocus.addListener(() {
+      if (!_gameFocus.hasFocus) _saveNow();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _LaunchSettingsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.settings != widget.settings) _sync();
+  }
+
+  void _sync() {
+    if (!_gameFocus.hasFocus) _game.text = widget.settings?.gameArgs ?? '';
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _game.dispose();
+    _gameFocus.dispose();
+    super.dispose();
+  }
+
+  void _scheduleSave() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), _saveNow);
+  }
+
+  Future<void> _saveNow() async {
+    if (!mounted) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(gameArgs: _game.text.trim());
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _applyWindow(int width, int height) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(windowWidth: width, windowHeight: height);
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
+  }
+
+  Future<void> _setFullscreen(bool enabled) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(fullscreen: enabled);
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final settings = widget.settings;
+    final width = settings?.windowWidth ?? 854;
+    final height = settings?.windowHeight ?? 480;
+    final fullscreen = settings?.fullscreen ?? false;
+    final current = '${width}x$height';
+    final knownPreset = _presets.any((p) => '${p.$1}x${p.$2}' == current);
+
+    final windowGroup = _SettingsGroup(
+      title: l10n.settingsSectionWindow,
+      note: l10n.settingsWindowNote,
+      children: [
+        _AppearanceTile(
+          icon: AppIcons.window,
+          title: l10n.settingsFullscreen,
+          subtitle: l10n.settingsFullscreenDesc,
+          trailing: Switch(value: fullscreen, onChanged: _setFullscreen),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.density,
+          title: l10n.settingsWindowSize,
+          subtitle: fullscreen
+              ? l10n.settingsWindowSizeFullscreen
+              : l10n.settingsWindowSizeDesc,
+          trailing: DropdownButton<String>(
+            value: current,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            borderRadius: BorderRadius.circular(tokens.radiusM),
+            items: [
+              for (final preset in _presets)
+                DropdownMenuItem(
+                  value: '${preset.$1}x${preset.$2}',
+                  child: Text('${preset.$1} × ${preset.$2}'),
+                ),
+              if (!knownPreset)
+                DropdownMenuItem(
+                  value: current,
+                  child: Text('$width × $height'),
+                ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              final parts = value.split('x');
+              final w = int.tryParse(parts.first);
+              final h = int.tryParse(parts.last);
+              if (w == null || h == null) return;
+              _applyWindow(w, h);
+            },
+          ),
+        ),
+      ],
+    );
+
+    final argsGroup = _SettingsGroup(
+      title: l10n.settingsSectionGameArgs,
+      note: l10n.settingsGameArgsNote,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.sm,
+            AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _game,
+                focusNode: _gameFocus,
+                onChanged: (_) => _scheduleSave(),
+                onSubmitted: (_) => _saveNow(),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsGameArgs,
+                  hintText: l10n.settingsGameArgsHint,
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  _error!,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.danger),
+                ),
+              ],
+              if (_saving)
+                const Padding(
+                  padding: EdgeInsets.only(top: AppSpacing.xs),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        windowGroup,
+        const SizedBox(height: AppSpacing.lg),
+        argsGroup,
+      ],
+    );
+  }
+}
+
+/// Task center history length and the log viewer's default tail size.
+class _TasksSettingsPanel extends ConsumerWidget {
+  const _TasksSettingsPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final prefs = ref.watch(preferencesProvider);
+    final settings = ref.watch(appSettingsProvider).value;
+    final notifier = ref.read(preferencesProvider.notifier);
+
+    return _SettingsGroup(
+      title: l10n.settingsSectionTasks,
+      note: l10n.settingsTasksNote,
+      children: [
+        _AppearanceTile(
+          icon: AppIcons.list,
+          title: l10n.settingsTaskHistory,
+          subtitle: l10n.settingsTaskHistoryDesc,
+          trailing: _SegmentedControl<int>(
+            selected: prefs.taskHistoryLimit,
+            options: const [
+              _SegmentedOption(6, '6'),
+              _SegmentedOption(12, '12'),
+              _SegmentedOption(24, '24'),
+              _SegmentedOption(40, '40'),
+            ],
+            onChanged: notifier.setTaskHistoryLimit,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.terminal,
+          title: l10n.settingsLogLines,
+          subtitle: l10n.settingsLogLinesDesc,
+          trailing: _SegmentedControl<int>(
+            selected: prefs.logLineLimit,
+            options: const [
+              _SegmentedOption(200, '200'),
+              _SegmentedOption(400, '400'),
+              _SegmentedOption(800, '800'),
+              _SegmentedOption(1200, '1200'),
+            ],
+            onChanged: notifier.setLogLineLimit,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.storage,
+          title: l10n.settingsLogRetentionFiles,
+          subtitle: l10n.settingsLogRetentionFilesDesc,
+          trailing: _SegmentedControl<int>(
+            selected: settings?.logRetentionFiles ?? 10,
+            options: const [
+              _SegmentedOption(5, '5'),
+              _SegmentedOption(10, '10'),
+              _SegmentedOption(20, '20'),
+            ],
+            onChanged: (value) =>
+                ref.read(appSettingsProvider.notifier).setRuntimeOptions(
+                  logRetentionFiles: value,
+                ),
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.storage,
+          title: l10n.settingsLogRetentionTotal,
+          subtitle: l10n.settingsLogRetentionTotalDesc,
+          trailing: _SegmentedControl<int>(
+            selected: settings?.logRetentionMegabytes ?? 32,
+            options: const [
+              _SegmentedOption(16, '16 MiB'),
+              _SegmentedOption(32, '32 MiB'),
+              _SegmentedOption(64, '64 MiB'),
+            ],
+            onChanged: (value) =>
+                ref.read(appSettingsProvider.notifier).setRuntimeOptions(
+                  logRetentionMegabytes: value,
+                ),
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.delete,
+          title: l10n.settingsClearLogs,
+          subtitle: l10n.settingsClearLogsDesc,
+          trailing: const Icon(AppIcons.chevronRight, size: 18),
+          onTap: () => _clearAllLaunchLogs(context, ref, l10n),
+        ),
+      ],
+    );
+  }
+}
+
+/// Desktop notifications the shell can raise without a native module change.
+class _NotificationsSettingsPanel extends ConsumerWidget {
+  const _NotificationsSettingsPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final prefs = ref.watch(preferencesProvider);
+    final notifier = ref.read(preferencesProvider.notifier);
+
+    return _SettingsGroup(
+      title: l10n.settingsSectionNotifications,
+      note: l10n.settingsNotificationsNote,
+      children: [
+        _AppearanceTile(
+          icon: AppIcons.notifications,
+          title: l10n.settingsNotifyDesktop,
+          subtitle: l10n.settingsNotifyDesktopDesc,
+          trailing: Switch(
+            value: prefs.desktopNotifications,
+            onChanged: notifier.setDesktopNotifications,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.download,
+          title: l10n.settingsNotifyDownloads,
+          subtitle: l10n.settingsNotifyDownloadsDesc,
+          trailing: Switch(
+            value: prefs.downloadNotifications,
+            onChanged: notifier.setDownloadNotifications,
+          ),
         ),
       ],
     );
@@ -1736,7 +2262,7 @@ class _HighConcurrencyNotice extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.warning_amber_rounded, size: 16, color: tokens.warning),
+        Icon(AppIcons.warning, size: 16, color: tokens.warning),
         const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Text(
@@ -1780,7 +2306,7 @@ class _NumberStepper extends StatelessWidget {
         children: [
           IconButton(
             onPressed: value > min ? () => onChanged(value - 1) : null,
-            icon: const Icon(Icons.remove_rounded, size: 16),
+            icon: const Icon(AppIcons.remove, size: 16),
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints.tightFor(width: 28, height: 28),
             padding: EdgeInsets.zero,
@@ -1795,7 +2321,7 @@ class _NumberStepper extends StatelessWidget {
           ),
           IconButton(
             onPressed: value < max ? () => onChanged(value + 1) : null,
-            icon: const Icon(Icons.add_rounded, size: 16),
+            icon: const Icon(AppIcons.add, size: 16),
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints.tightFor(width: 28, height: 28),
             padding: EdgeInsets.zero,
@@ -1932,7 +2458,7 @@ class _AccentSwatchRow extends StatelessWidget {
                         border: Border.all(color: tokens.borderStrong),
                       ),
                       child: Icon(
-                        Icons.colorize_rounded,
+                        AppIcons.colorPicker,
                         size: 14,
                         color: tokens.textSecondary,
                       ),
@@ -2034,7 +2560,7 @@ class _AccentSwatch extends StatelessWidget {
           ),
           child: selected
               ? Icon(
-                  Icons.check_rounded,
+                  AppIcons.check,
                   size: size * 0.6,
                   color: color.computeLuminance() > 0.55
                       ? const Color(0xFF0B1020)
@@ -2070,6 +2596,11 @@ const _thanks = <(String, String, String)>[
     'Noto Sans SC',
     'Google Fonts',
     'https://fonts.google.com/noto/specimen/Noto+Sans+SC',
+  ),
+  (
+    'Tabler Icons',
+    'Paweł Kuna · MIT',
+    'https://github.com/tabler/tabler-icons',
   ),
 ];
 
@@ -2200,32 +2731,33 @@ class _AboutPanel extends ConsumerWidget {
         _SettingsCard(
           children: [
             _AboutEnvRow(
-              icon: Icons.tag_rounded,
+              icon: AppIcons.version,
               label: l10n.settingsVersion,
               value: AppInfo.version,
             ),
             _AboutEnvRow(
-              icon: Icons.devices_rounded,
+              icon: AppIcons.platform,
               label: l10n.settingsAboutPlatform,
               value:
                   '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
             ),
             _AboutEnvRow(
-              icon: Icons.memory_rounded,
+              icon: AppIcons.memory,
               label: l10n.settingsAboutRuntime,
               value: 'Dart ${Platform.version.split(' ').first}',
             ),
             _AboutEnvRow(
-              icon: Icons.settings_suggest_rounded,
+              icon: AppIcons.core,
               label: l10n.settingsAboutCore,
               value: coreLabel,
             ),
             if (settings?.dataRoot != null)
               _AboutEnvRow(
-                icon: Icons.storage_rounded,
+                icon: AppIcons.storage,
                 label: l10n.settingsDataRoot,
                 value: settings!.dataRoot,
               ),
+            const _UpdateCheckRow(),
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xs,
@@ -2244,7 +2776,7 @@ class _AboutPanel extends ConsumerWidget {
                       type: ToastType.success,
                     );
                   },
-                  icon: const Icon(Icons.copy_rounded, size: 17),
+                  icon: const Icon(AppIcons.copy, size: 17),
                   label: Text(l10n.settingsAboutCopyEnvironment),
                 ),
               ),
@@ -2257,13 +2789,13 @@ class _AboutPanel extends ConsumerWidget {
         _SettingsCard(
           children: [
             _AboutLinkRow(
-              icon: Icons.code_rounded,
+              icon: AppIcons.repository,
               title: l10n.settingsAboutRepository,
               value: 'github.com/BetaStudio2/ArchoeraCX',
               onTap: () => _openExternal(context, l10n, _repoUrl),
             ),
             _AboutLinkRow(
-              icon: Icons.bug_report_outlined,
+              icon: AppIcons.issues,
               title: l10n.settingsAboutIssues,
               value: 'github.com/BetaStudio2/ArchoeraCX/issues',
               onTap: () => _openExternal(context, l10n, _issuesUrl),
@@ -2277,7 +2809,7 @@ class _AboutPanel extends ConsumerWidget {
           children: [
             for (final item in _thanks)
               _AboutLinkRow(
-                icon: Icons.favorite_outline_rounded,
+                icon: AppIcons.credits,
                 title: item.$1,
                 value: item.$2,
                 onTap: () => _openExternal(context, l10n, item.$3),
@@ -2290,13 +2822,13 @@ class _AboutPanel extends ConsumerWidget {
         _SettingsCard(
           children: [
             _AboutLinkRow(
-              icon: Icons.gavel_rounded,
+              icon: AppIcons.license,
               title: l10n.settingsLicense,
               value: 'AGPL-3.0-only',
               onTap: () => _openExternal(context, l10n, _licenseUrl),
             ),
             _AboutLinkRow(
-              icon: Icons.inventory_2_outlined,
+              icon: AppIcons.thirdParty,
               title: l10n.settingsAboutThirdParty,
               value: l10n.settingsAboutThirdPartyDesc,
               onTap: () => showLicensePage(
@@ -2312,13 +2844,13 @@ class _AboutPanel extends ConsumerWidget {
               ),
             ),
             _AboutLinkRow(
-              icon: Icons.privacy_tip_outlined,
+              icon: AppIcons.privacy,
               title: l10n.settingsAboutPrivacy,
               value: 'PRIVACY.md',
               onTap: () => _openExternal(context, l10n, _privacyUrl),
             ),
             _AboutLinkRow(
-              icon: Icons.security_rounded,
+              icon: AppIcons.security,
               title: l10n.settingsAboutSecurity,
               value: 'SECURITY.md',
               onTap: () => _openExternal(context, l10n, _securityUrl),
@@ -2450,6 +2982,197 @@ class _AboutEnvRow extends StatelessWidget {
   }
 }
 
+/// "Check for updates" row in the About panel.
+///
+/// The check only asks the core (`update.check`) and never downloads or
+/// installs anything; the release page opens through the core too, so the UI
+/// stays free of direct network access.
+class _UpdateCheckRow extends ConsumerStatefulWidget {
+  const _UpdateCheckRow();
+
+  @override
+  ConsumerState<_UpdateCheckRow> createState() => _UpdateCheckRowState();
+}
+
+class _UpdateCheckRowState extends ConsumerState<_UpdateCheckRow> {
+  bool _checking = false;
+
+  Future<void> _check() async {
+    if (_checking) return;
+    final l10n = AppLocalizations.of(context);
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      toast(l10n.updateCheckFailed, type: ToastType.error);
+      return;
+    }
+
+    setState(() => _checking = true);
+    try {
+      final result = await client.checkForUpdate();
+      if (!mounted) return;
+      if (result.hasUpdate) {
+        await _showUpdateDialog(client, result);
+      } else {
+        toast(
+          l10n.updateUpToDate(result.current),
+          type: ToastType.success,
+        );
+      }
+    } on CoreException catch (error) {
+      if (mounted) {
+        toast(
+          '${l10n.updateCheckFailed} (${error.code})',
+          type: ToastType.error,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        toast(
+          '${l10n.updateCheckFailed} (${error.runtimeType})',
+          type: ToastType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  /// Shows the release summary and opens the release page on request.
+  Future<void> _showUpdateDialog(
+    CoreClient client,
+    UpdateCheckResult result,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final notes = result.notes?.trim();
+    final openRelease = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final tokens = dialogContext.tokens;
+        return AlertDialog(
+          title: Text(l10n.updateAvailableTitle),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.updateAvailableBody(result.current, result.latest)),
+                if (notes != null && notes.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 160),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        notes,
+                        style: Theme.of(dialogContext).textTheme.bodySmall
+                            ?.copyWith(color: tokens.textSecondary),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.commonClose),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(AppIcons.externalLink, size: 17),
+              label: Text(l10n.updateOpenRelease),
+            ),
+          ],
+        );
+      },
+    );
+    if (openRelease != true || !mounted) return;
+
+    final url = result.url;
+    if (url == null || url.isEmpty) {
+      toast(l10n.settingsAboutOpenFailed, type: ToastType.error);
+      return;
+    }
+    final opened = await client.openExternalUrl(url);
+    if (!opened && mounted) {
+      toast(l10n.settingsAboutOpenFailed, type: ToastType.error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _checking ? null : _check,
+        borderRadius: BorderRadius.circular(tokens.radiusS),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xs,
+            vertical: AppSpacing.xs,
+          ),
+          child: Row(
+            children: [
+              Icon(AppIcons.refresh, size: 18, color: tokens.textSecondary),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.settingsCheckUpdate,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.settingsCheckUpdateDesc,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: tokens.textTertiary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              if (_checking)
+                Tooltip(
+                  message: l10n.updateChecking,
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: tokens.accent,
+                    ),
+                  ),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      l10n.updateCurrentVersion,
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(color: tokens.textTertiary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      AppInfo.version,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: tokens.textSecondary),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AboutLinkRow extends StatelessWidget {
   const _AboutLinkRow({
     required this.icon,
@@ -2479,7 +3202,7 @@ class _AboutLinkRow extends StatelessWidget {
             ?.copyWith(color: tokens.textTertiary),
       ),
       trailing: Icon(
-        Icons.open_in_new_rounded,
+        AppIcons.externalLink,
         size: 16,
         color: tokens.textTertiary,
       ),
@@ -2493,4 +3216,112 @@ void _notify(
   ToastType type = ToastType.info,
 }) {
   toast(message, type: type);
+}
+
+/// Deletes archived launch logs of every instance; a running game keeps its
+/// active log so the viewer can keep following.
+Future<void> _clearAllLaunchLogs(
+  BuildContext context,
+  WidgetRef ref,
+  AppLocalizations l10n,
+) async {
+  final client = ref.read(coreClientProvider);
+  if (client == null) {
+    toast(l10n.commonCoreNotConnected, type: ToastType.error);
+    return;
+  }
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.gameLogClearTitle),
+      content: Text(l10n.settingsClearLogsBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(l10n.commonDelete),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  try {
+    final result = await client.clearLaunchLogs(all: true);
+    if (!context.mounted) return;
+    toast(
+      l10n.gameLogClearDone(
+        result.deletedFiles,
+        _formatFreedBytes(result.freedBytes),
+      ),
+      type: ToastType.success,
+    );
+  } catch (error) {
+    if (!context.mounted) return;
+    toast('$error', type: ToastType.error);
+  }
+}
+
+/// Deletes stale `.part` files of interrupted downloads.
+///
+/// Only files untouched for a few days are removed, so in-flight transfers
+/// (which keep their `.part` fresh) are never touched.
+Future<void> _cleanPartialDownloads(
+  BuildContext context,
+  WidgetRef ref,
+  AppLocalizations l10n,
+) async {
+  final client = ref.read(coreClientProvider);
+  if (client == null) {
+    toast(l10n.commonCoreNotConnected, type: ToastType.error);
+    return;
+  }
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.settingsCleanPartials),
+      content: Text(l10n.settingsCleanPartialsBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(l10n.commonDelete),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  try {
+    final result = await client.cleanPartialDownloads();
+    if (!context.mounted) return;
+    if (result.deletedFiles == 0) {
+      toast(l10n.settingsCleanPartialsNone, type: ToastType.info);
+      return;
+    }
+    toast(
+      l10n.settingsCleanPartialsDone(
+        result.deletedFiles,
+        _formatFreedBytes(result.freedBytes),
+      ),
+      type: ToastType.success,
+    );
+  } catch (error) {
+    if (!context.mounted) return;
+    toast('$error', type: ToastType.error);
+  }
+}
+
+String _formatFreedBytes(int bytes) {
+  if (bytes >= 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  return '$bytes B';
 }

@@ -572,6 +572,66 @@ abstract class AppLocalizations {
   /// **'Delete instance'**
   String get instanceDelete;
 
+  /// No description provided for @instanceDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate instance'**
+  String get instanceDuplicate;
+
+  /// No description provided for @instanceDuplicateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate instance'**
+  String get instanceDuplicateTitle;
+
+  /// No description provided for @instanceDuplicateName.
+  ///
+  /// In en, this message translates to:
+  /// **'New name'**
+  String get instanceDuplicateName;
+
+  /// No description provided for @instanceDuplicateNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 1.21.4 · Fabric copy'**
+  String get instanceDuplicateNameHint;
+
+  /// No description provided for @instanceDuplicateSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'copy'**
+  String get instanceDuplicateSuffix;
+
+  /// No description provided for @instanceDuplicateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the game folder, mods and configs (logs excluded) and keeps the instance settings.'**
+  String get instanceDuplicateHint;
+
+  /// No description provided for @instanceDuplicateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get instanceDuplicateAction;
+
+  /// Toast after duplicating an instance.
+  ///
+  /// In en, this message translates to:
+  /// **'Created “{name}”.'**
+  String instanceDuplicateDone(String name);
+
+  /// No description provided for @instanceDuplicateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not duplicate the instance.'**
+  String get instanceDuplicateFailed;
+
+  /// No description provided for @instanceDuplicateInvalidName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an instance name.'**
+  String get instanceDuplicateInvalidName;
+
   /// Confirmation before removing an instance.
   ///
   /// In en, this message translates to:
@@ -1070,6 +1130,48 @@ abstract class AppLocalizations {
   /// **'Result: {status}'**
   String downloadResult(String status);
 
+  /// Toast after a background download starts.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” queued. Track it in Tasks or the queue strip below.'**
+  String downloadQueued(String name);
+
+  /// Toast when a background download finishes.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” finished downloading.'**
+  String downloadFinished(String name);
+
+  /// Toast when a background download fails.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” failed to download.'**
+  String downloadFailed(String name);
+
+  /// Toast when the user cancels a background download.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” download cancelled.'**
+  String downloadCancelled(String name);
+
+  /// Active transfers shown in the download page queue strip.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 download in progress} other{{count} downloads in progress}}'**
+  String downloadQueueActive(int count);
+
+  /// Byte progress shown in the download page queue strip.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total}'**
+  String downloadQueueProgress(String done, String total);
+
+  /// Opens the task center from the queue strip.
+  ///
+  /// In en, this message translates to:
+  /// **'View tasks'**
+  String get downloadQueueOpen;
+
   /// No description provided for @downloadRootLabel.
   ///
   /// In en, this message translates to:
@@ -1177,6 +1279,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Appearance'**
   String get settingsAppearance;
+
+  /// How the launcher starts the game: window and extra arguments.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch'**
+  String get settingsSectionLaunch;
+
+  /// No description provided for @settingsSectionWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Game window'**
+  String get settingsSectionWindow;
+
+  /// No description provided for @settingsWindowNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Window settings are written as vanilla launch arguments (--width / --height / --fullscreen) and apply to versions that accept them.'**
+  String get settingsWindowNote;
+
+  /// No description provided for @settingsFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Start fullscreen'**
+  String get settingsFullscreen;
+
+  /// No description provided for @settingsFullscreenDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the game fullscreen; the window size is still passed as a fallback.'**
+  String get settingsFullscreenDesc;
+
+  /// No description provided for @settingsWindowSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Window size'**
+  String get settingsWindowSize;
+
+  /// No description provided for @settingsWindowSizeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Initial size of the game window.'**
+  String get settingsWindowSizeDesc;
+
+  /// No description provided for @settingsWindowSizeFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignored while starting fullscreen.'**
+  String get settingsWindowSizeFullscreen;
+
+  /// No description provided for @settingsSectionGameArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra game arguments'**
+  String get settingsSectionGameArgs;
+
+  /// No description provided for @settingsGameArgsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Appended after the vanilla arguments and split on spaces; leave empty for none.'**
+  String get settingsGameArgsNote;
+
+  /// No description provided for @settingsSectionTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks & logs'**
+  String get settingsSectionTasks;
+
+  /// No description provided for @settingsTasksNote.
+  ///
+  /// In en, this message translates to:
+  /// **'These preferences only affect the interface and are not written to settings.json.'**
+  String get settingsTasksNote;
+
+  /// No description provided for @settingsTaskHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Task history'**
+  String get settingsTaskHistory;
+
+  /// No description provided for @settingsTaskHistoryDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'How many finished tasks stay in the task center; running tasks are never pruned.'**
+  String get settingsTaskHistoryDesc;
+
+  /// No description provided for @settingsLogLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Default log lines'**
+  String get settingsLogLines;
+
+  /// No description provided for @settingsLogLinesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tail size loaded when the log viewer opens.'**
+  String get settingsLogLinesDesc;
+
+  /// No description provided for @settingsSectionNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsSectionNotifications;
+
+  /// No description provided for @settingsNotificationsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop notifications use the system notification center, which can mute them separately.'**
+  String get settingsNotificationsNote;
+
+  /// No description provided for @settingsNotifyDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop notifications'**
+  String get settingsNotifyDesktop;
+
+  /// No description provided for @settingsNotifyDesktopDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify on sign-in and similar events.'**
+  String get settingsNotifyDesktopDesc;
+
+  /// No description provided for @settingsNotifyDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Download notifications'**
+  String get settingsNotifyDownloads;
+
+  /// No description provided for @settingsNotifyDownloadsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify when a background download finishes or fails.'**
+  String get settingsNotifyDownloadsDesc;
+
+  /// No description provided for @settingsToastDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Toast duration'**
+  String get settingsToastDuration;
+
+  /// No description provided for @settingsToastDurationDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'How long success/info toasts stay; errors stay longer.'**
+  String get settingsToastDurationDesc;
 
   /// No description provided for @settingsStorage.
   ///
@@ -1304,6 +1550,60 @@ abstract class AppLocalizations {
   /// **'Download proxy'**
   String get settingsDownloadProxy;
 
+  /// Files larger than this use ranged chunks; turn it off to always download a single stream.
+  ///
+  /// In en, this message translates to:
+  /// **'Range threshold'**
+  String get settingsDownloadRangeThreshold;
+
+  /// No description provided for @settingsDownloadRangeThresholdDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Size above which a file is split into parallel chunks.'**
+  String get settingsDownloadRangeThresholdDesc;
+
+  /// No description provided for @settingsRangeDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Chunking off'**
+  String get settingsRangeDisabled;
+
+  /// Size of each ranged request; smaller chunks resume more cheaply but need more requests.
+  ///
+  /// In en, this message translates to:
+  /// **'Chunk size'**
+  String get settingsDownloadChunk;
+
+  /// No description provided for @settingsDownloadChunkDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Size of one ranged request.'**
+  String get settingsDownloadChunkDesc;
+
+  /// Launch logs kept per instance.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs kept'**
+  String get settingsLogRetentionFiles;
+
+  /// No description provided for @settingsLogRetentionFilesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest logs are deleted first; the newest one is always kept.'**
+  String get settingsLogRetentionFilesDesc;
+
+  /// Total size of all launch logs per instance.
+  ///
+  /// In en, this message translates to:
+  /// **'Log storage cap'**
+  String get settingsLogRetentionTotal;
+
+  /// No description provided for @settingsLogRetentionTotalDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Pruning also starts from the oldest log.'**
+  String get settingsLogRetentionTotalDesc;
+
   /// No description provided for @settingsDownloadProxySystem.
   ///
   /// In en, this message translates to:
@@ -1375,6 +1675,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Application data'**
   String get settingsDataRoot;
+
+  /// Opens the application data folder in the system file manager.
+  ///
+  /// In en, this message translates to:
+  /// **'Open data folder'**
+  String get settingsOpenDataRoot;
+
+  /// No description provided for @settingsOpenDataRootDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Show settings, logs and cached files.'**
+  String get settingsOpenDataRootDesc;
+
+  /// Opens the default instance root in the system file manager.
+  ///
+  /// In en, this message translates to:
+  /// **'Open default instances folder'**
+  String get settingsOpenInstanceRoot;
+
+  /// No description provided for @settingsOpenInstanceRootDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the folder that holds your instances.'**
+  String get settingsOpenInstanceRootDesc;
+
+  /// No description provided for @settingsOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open that folder.'**
+  String get settingsOpenFailed;
+
+  /// Page opened when the launcher starts; applied on the next launch.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup page'**
+  String get settingsStartPage;
+
+  /// No description provided for @settingsStartPageDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied the next time the launcher starts.'**
+  String get settingsStartPageDesc;
+
+  /// No description provided for @startPageDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get startPageDashboard;
+
+  /// No description provided for @startPageInstances.
+  ///
+  /// In en, this message translates to:
+  /// **'Instances'**
+  String get startPageInstances;
+
+  /// No description provided for @startPageDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get startPageDownload;
+
+  /// No description provided for @startPageAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get startPageAccounts;
+
+  /// No description provided for @startPageWiki.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiki'**
+  String get startPageWiki;
+
+  /// No description provided for @startPageSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get startPageSettings;
 
   /// No description provided for @settingsChooseFolder.
   ///
@@ -1556,6 +1934,60 @@ abstract class AppLocalizations {
   /// **'Reduce motion'**
   String get settingsMotion;
 
+  /// No description provided for @settingsCloseToTray.
+  ///
+  /// In en, this message translates to:
+  /// **'Close to tray'**
+  String get settingsCloseToTray;
+
+  /// No description provided for @settingsCloseToTrayDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the main window in the system tray instead of quitting.'**
+  String get settingsCloseToTrayDesc;
+
+  /// No description provided for @trayShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show window'**
+  String get trayShow;
+
+  /// No description provided for @trayQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit'**
+  String get trayQuit;
+
+  /// No description provided for @settingsCleanPartials.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean partial downloads'**
+  String get settingsCleanPartials;
+
+  /// No description provided for @settingsCleanPartialsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes `.part` files untouched for more than three days; active downloads are kept.'**
+  String get settingsCleanPartialsDesc;
+
+  /// No description provided for @settingsCleanPartialsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every partial download untouched for more than three days is deleted from the instance folders. This cannot be undone.'**
+  String get settingsCleanPartialsBody;
+
+  /// Toast after cleaning partial downloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} partial files, freed {size}.'**
+  String settingsCleanPartialsDone(int count, String size);
+
+  /// No description provided for @settingsCleanPartialsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No stale partial downloads found.'**
+  String get settingsCleanPartialsNone;
+
   /// No description provided for @settingsMotionDesc.
   ///
   /// In en, this message translates to:
@@ -1651,6 +2083,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scan Java'**
   String get javaStatusScan;
+
+  /// No description provided for @javaInstallAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Java'**
+  String get javaInstallAction;
+
+  /// No description provided for @javaInstallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install a Java runtime'**
+  String get javaInstallTitle;
+
+  /// No description provided for @javaInstallHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads the runtime from Mojang\'s official catalog and rescans when it finishes; the transfer runs in the background.'**
+  String get javaInstallHint;
+
+  /// No description provided for @javaInstallRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get javaInstallRecommended;
+
+  /// Toast after starting a Java runtime install.
+  ///
+  /// In en, this message translates to:
+  /// **'Java {major} queued for download.'**
+  String javaInstallQueued(int major);
+
+  /// Toast when the Java runtime download finishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Java {major} installed.'**
+  String javaInstallDone(int major);
+
+  /// Toast when the Java runtime download fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Java {major} installation failed.'**
+  String javaInstallFailed(int major);
+
+  /// Toast when the Java runtime download is cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Java {major} installation cancelled.'**
+  String javaInstallCancelled(int major);
 
   /// No description provided for @javaStatusSelect.
   ///
@@ -2107,6 +2587,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage mods'**
   String get instanceManageMods;
+
+  /// Opens the instance directory in the system file manager.
+  ///
+  /// In en, this message translates to:
+  /// **'Open instance folder'**
+  String get instanceOpenFolder;
+
+  /// Tooltip of the marker shown when an instance overrides launch settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Overrides global settings'**
+  String get instanceOverridesBadge;
 
   /// Title of the instance mod manager.
   ///
@@ -2804,6 +3296,60 @@ abstract class AppLocalizations {
   /// **'Thanks'**
   String get settingsAboutThanks;
 
+  /// No description provided for @settingsCheckUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get settingsCheckUpdate;
+
+  /// No description provided for @settingsCheckUpdateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Compares against the newest GitHub release (check only, no auto-install).'**
+  String get settingsCheckUpdateDesc;
+
+  /// No description provided for @updateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get updateChecking;
+
+  /// Toast when the build is current.
+  ///
+  /// In en, this message translates to:
+  /// **'You are up to date ({version}).'**
+  String updateUpToDate(String version);
+
+  /// No description provided for @updateAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get updateAvailableTitle;
+
+  /// Shown when a newer release exists.
+  ///
+  /// In en, this message translates to:
+  /// **'Current {current}, latest {latest}.'**
+  String updateAvailableBody(String current, String latest);
+
+  /// No description provided for @updateOpenRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Open release page'**
+  String get updateOpenRelease;
+
+  /// No description provided for @updateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check for updates.'**
+  String get updateCheckFailed;
+
+  /// No description provided for @updateCurrentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Current version'**
+  String get updateCurrentVersion;
+
   /// No description provided for @settingsAboutThanksDesc.
   ///
   /// In en, this message translates to:
@@ -2929,6 +3475,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Showing the last {count} lines.'**
   String gameLogTruncated(int count);
+
+  /// No description provided for @gameLogOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open log folder'**
+  String get gameLogOpenFolder;
+
+  /// No description provided for @gameLogOpenFolderFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the log folder.'**
+  String get gameLogOpenFolderFailed;
+
+  /// No description provided for @gameLogClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear old logs'**
+  String get gameLogClear;
+
+  /// No description provided for @gameLogClearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear old launch logs?'**
+  String get gameLogClearTitle;
+
+  /// No description provided for @gameLogClearBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every archived launch log of this instance is deleted; a running log is kept. This cannot be undone.'**
+  String get gameLogClearBody;
+
+  /// Toast after clearing launch logs.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} logs, freed {size}.'**
+  String gameLogClearDone(int count, String size);
+
+  /// No description provided for @settingsClearLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear launch logs'**
+  String get settingsClearLogs;
+
+  /// No description provided for @settingsClearLogsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes archived launch logs of every instance; running logs are kept.'**
+  String get settingsClearLogsDesc;
+
+  /// No description provided for @settingsClearLogsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every archived launch log is deleted (running logs are kept). This cannot be undone.'**
+  String get settingsClearLogsBody;
 
   /// Retention note under the log file picker.
   ///
@@ -3271,6 +3871,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No builds match this search.'**
   String get loaderVersionNoMatch;
+
+  /// Dialog title and instance menu entry for per-instance launch overrides.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance settings'**
+  String get instanceSettingsTitle;
+
+  /// Subtitle explaining that empty override fields inherit the global value.
+  ///
+  /// In en, this message translates to:
+  /// **'Blank fields follow the global settings.'**
+  String get instanceSettingsDesc;
+
+  /// Per-instance minimum heap size override.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum memory (MB)'**
+  String get instanceSettingsMemoryMin;
+
+  /// Per-instance maximum heap size override.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum memory (MB)'**
+  String get instanceSettingsMemoryMax;
+
+  /// Per-instance garbage collector override.
+  ///
+  /// In en, this message translates to:
+  /// **'Garbage collector'**
+  String get instanceSettingsGc;
+
+  /// Per-instance JVM argument override.
+  ///
+  /// In en, this message translates to:
+  /// **'JVM arguments'**
+  String get instanceSettingsJvmArgs;
+
+  /// Per-instance extra game argument override.
+  ///
+  /// In en, this message translates to:
+  /// **'Game arguments'**
+  String get instanceSettingsGameArgs;
+
+  /// Per-instance Java runtime override.
+  ///
+  /// In en, this message translates to:
+  /// **'Java executable'**
+  String get instanceSettingsJava;
+
+  /// Helper under the per-instance Java path field.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to the java binary; leave blank to follow the global selection.'**
+  String get instanceSettingsJavaHint;
+
+  /// Per-instance window mode override.
+  ///
+  /// In en, this message translates to:
+  /// **'Game window'**
+  String get instanceSettingsWindow;
+
+  /// Window mode option that clears the per-instance override.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow global'**
+  String get instanceSettingsWindowInherit;
+
+  /// Window mode option that always starts fullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen'**
+  String get instanceSettingsWindowFullscreen;
+
+  /// Window mode option that always starts in a window.
+  ///
+  /// In en, this message translates to:
+  /// **'Windowed'**
+  String get instanceSettingsWindowWindowed;
+
+  /// Per-instance initial window width override.
+  ///
+  /// In en, this message translates to:
+  /// **'Window width'**
+  String get instanceSettingsWindowWidth;
+
+  /// Per-instance initial window height override.
+  ///
+  /// In en, this message translates to:
+  /// **'Window height'**
+  String get instanceSettingsWindowHeight;
+
+  /// Hint on empty override fields meaning the global setting is used.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow global'**
+  String get instanceSettingsFollowGlobal;
+
+  /// Save button in the instance settings dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get instanceSettingsSave;
+
+  /// Toast after per-instance overrides are written.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance settings saved.'**
+  String get instanceSettingsSaved;
+
+  /// Shown as the hint while an instance override is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow global ({value})'**
+  String instanceSettingsFollowGlobalWith(String value);
+
+  /// No description provided for @instanceSettingsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to global'**
+  String get instanceSettingsReset;
+
+  /// No description provided for @instanceSettingsResetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Clears every override so this instance follows the global settings again.'**
+  String get instanceSettingsResetBody;
+
+  /// No description provided for @instanceSettingsResetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to the global settings.'**
+  String get instanceSettingsResetDone;
+
+  /// No description provided for @instanceOverridesMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'memory'**
+  String get instanceOverridesMemory;
+
+  /// No description provided for @instanceOverridesGc.
+  ///
+  /// In en, this message translates to:
+  /// **'GC'**
+  String get instanceOverridesGc;
+
+  /// No description provided for @instanceOverridesJvm.
+  ///
+  /// In en, this message translates to:
+  /// **'JVM args'**
+  String get instanceOverridesJvm;
+
+  /// No description provided for @instanceOverridesGameArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'game args'**
+  String get instanceOverridesGameArgs;
+
+  /// No description provided for @instanceOverridesJava.
+  ///
+  /// In en, this message translates to:
+  /// **'Java'**
+  String get instanceOverridesJava;
+
+  /// No description provided for @instanceOverridesWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'window'**
+  String get instanceOverridesWindow;
+
+  /// Inline validation error for non-numeric override values.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory and window sizes must be whole numbers.'**
+  String get instanceSettingsInvalidNumbers;
+
+  /// Inline validation error for out-of-range override values.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory must be 128–65536 MB with min ≤ max; the window must be 640–7680 × 480–4320.'**
+  String get instanceSettingsInvalidRange;
+
+  /// Inline validation error for a relative Java path.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an absolute path to the Java executable.'**
+  String get instanceSettingsInvalidPath;
+
+  /// Inline validation error for an unknown garbage collector.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported garbage collector.'**
+  String get instanceSettingsInvalidGc;
+
+  /// Failure toast when the override update call fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save instance settings: {message}'**
+  String instanceSettingsSaveFailed(String message);
 }
 
 class _AppLocalizationsDelegate

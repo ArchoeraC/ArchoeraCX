@@ -226,6 +226,33 @@ int main(void) {
                       &rejected_task, &err) == ARCHOERA_E_INVALID);
   CHECK(rejected_task == 0);
 
+  /*
+   * system.openPath is directory only: relative, empty, missing and
+   * non-existent paths are rejected before any work is spawned. A real
+   * directory is never opened here, that would touch the host desktop.
+   */
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.openPath", "{\"path\":\"relative/dir\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.openPath", "{\"path\":\"\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.openPath", "{}", &rejected_task, &err) ==
+        ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.openPath",
+                      "{\"path\":\"/archoera-cx/no-such-directory\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.openPath", "{\"path\":\"/tmp\\u0001bad\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+
   /* Cancel is idempotent for terminal tasks. */
   CHECK(archoera_cancel(core, ping_task) == ARCHOERA_OK);
   CHECK(archoera_cancel(core, ping_task) == ARCHOERA_OK);

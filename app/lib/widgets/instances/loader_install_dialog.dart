@@ -9,6 +9,7 @@ import '../../models/game_instance.dart';
 import '../../services/core/loader_versions.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import 'loader_version_picker.dart';
 
@@ -301,7 +302,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                   IconButton(
                     onPressed: _busy ? null : () => Navigator.of(context).pop(),
                     tooltip: l10n.commonClose,
-                    icon: const Icon(Icons.close_rounded),
+                    icon: const Icon(AppIcons.close),
                   ),
                 ],
               ),
@@ -377,7 +378,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(Icons.list_rounded, size: 19),
+                              : const Icon(AppIcons.list, size: 19),
                         ),
                       ),
                     ),
@@ -407,7 +408,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                   const SizedBox(width: AppSpacing.xs),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : () => _chooseInstaller(l10n),
-                    icon: const Icon(Icons.file_open_outlined, size: 18),
+                    icon: const Icon(AppIcons.modpackFile, size: 18),
                     label: Text(l10n.loaderChooseInstaller),
                   ),
                 ],
@@ -445,7 +446,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.build_circle_outlined, size: 18),
+                        : const Icon(AppIcons.repair, size: 18),
                     label: Text(
                       _busy ? l10n.loaderInstalling : l10n.loaderInstallAction,
                     ),

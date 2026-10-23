@@ -285,7 +285,7 @@
 |---|---|---|---|
 | UI isolate | Flutter | 渲染、输入、`poll`、状态合并 | 阻塞调用、文件/网络 |
 | Hub 线程 | C++ | 路由、任务状态、效果、事件队列 | 业务解析、阻塞 I/O |
-| C++ 平台线程 | C++ | 托盘、单实例、窗口消息、深链 | 业务 |
+| C++ 平台线程 | C++ | 单实例、窗口消息、深链 | 业务 |
 | .NET 线程池 | C# | API、文件、安装、启动、SQLite | 直接调 Dart |
 | tokio runtime | Rust | 下载、校验、落盘 | 写 SQLite、理解业务 |
 | JVM 主线程 | 子进程 | 游戏 | — |
@@ -416,7 +416,7 @@ ArchoeraCX/
 | `Config` | 分层配置、schema 校验、热更新（只降权） | 密钥不落日志 |
 | `Log` | 结构化日志、轮转、脱敏 | 不记录 token |
 | `Crash` | 信号/SEH、minidump、日志 flush | 安装于模块加载之前 |
-| `Platform` | 托盘、单实例、深链、文件关联、窗口 | 平台差异集中于此 |
+| `Platform` | 单实例、深链、文件关联、窗口消息 | 平台差异集中于此；托盘与窗口外壳由 Flutter 负责 |
 
 ### 5.3 启动序列
 
@@ -426,7 +426,7 @@ ArchoeraCX/
    a. 解析配置：dataDir/cacheDir/logDir/moduleDir/channel/locale/safeMode
    b. 初始化日志（先写启动日志）
    c. 安装崩溃处理器（Crashpad + signal/SEH）
-   d. 初始化平台服务（单实例、深链、托盘延迟）
+   d. 初始化平台服务（单实例、深链）
    e. 加载并握手 archoera_cs（关键模块）
    f. C# 打开 SQLite、迁移、加载设置/合规状态
    g. 加载并握手 archoera_dl（非关键，失败降级）
@@ -454,7 +454,7 @@ ArchoeraCX/
 3. 通知模块 shutdown：
    - C#：停止 HTTP、flush SQLite、关闭日志
    - Rust：取消 token、等待 JoinSet、写 .part.meta
-4. 停止平台服务（托盘/单实例）
+4. 停止平台服务（单实例、深链）
 5. flush 日志/崩溃处理器
 6. 不 dlclose；返回；进程退出
 ```
@@ -620,6 +620,7 @@ Flutter 热重启
 ```
 
 - `config.json` 用 JSON Schema 校验；未知字段保留并警告。
+- 实例级覆盖只写 `instance.json` 的 `overrides`（§11.2）；启动时由 C# `InstanceOverrides.ApplyTo` 合并到全局设置，缺省/`null` 回落全局。
 - 合规配置独立：`compliance.json`（用户手写）+ `state/consent.json`（应用写）+ `audit/*.jsonl`。
 - 配置写入原子化：`.tmp` → fsync → rename；保留 `.bak`。
 - 任何“升权”配置（下载等级）只让 UI 出现确认入口，不直接生效。
@@ -629,13 +630,16 @@ Flutter 热重启
 | 能力 | 实现 | 说明 |
 |---|---|---|
 | 单实例 | C++ 命名互斥/文件锁 + 本地 socket | 第二实例唤醒第一个并传参 |
-| 托盘 | C++ 原生 API | 最小化到托盘、菜单、通知 |
+| 托盘 | Flutter 插件（`tray_manager` + `window_manager`） | 图标 `assets/branding/tray_icon.png`（32×32 PNG）；Windows 只接受 PNG，且右键菜单必须在代码里显式 `setContextMenu`，否则不显示；不经 C# |
 | 深链 | C++ 注册协议 | 只接受白名单动作（导入/启动/登录回调） |
 | 文件关联 | C++ 注册 | `.mrpack`/zip 导入；不自动执行 |
 | 开机自启 | C++ | 注册表/LaunchAgent/.desktop |
 | 窗口 | Flutter 插件 + C++ 平台调用 | 无边框、Mica/Acrylic、DPI |
-| 打开路径/URL | C++ | 只允许 `https` 白名单与本地路径；禁止 `file:` 任意执行 |
+| 打开路径/URL | C++ | `system.openUrl` 只允许 `https` 白名单；`system.openPath` 只接受已存在、绝对路径的目录，用于打开数据目录/实例目录（Linux XDG Portal OpenURI 的 `file:` URI、Windows `ShellExecute`、macOS `NSWorkspace`）；`file:` 只用于目录定位，不作为可执行入口 |
 | 通知 | C++/系统 API | 下载完成、崩溃、更新 |
+
+- 托盘与窗口是 Flutter 进程内能力：托盘菜单、显示/隐藏窗口与关闭行为都由 Dart 处理，不经过 C#，也不新增 ABI 方法；C++ 只保留单实例、深链、文件关联与更新。
+- 关闭窗口默认退出；开启「关闭窗口时最小化到托盘」（`shared_preferences` 的 `ui.closeToTray`，默认 false）后只隐藏窗口，下载/后台任务继续；托盘菜单提供「显示主窗口」「退出」。
 
 ### 5.15 错误映射
 
@@ -1234,6 +1238,7 @@ JavaLocator
 - 候选：`JAVA_HOME`、PATH、`/usr/lib/jvm`、`/opt/java`（含 `vendor/jdk` 嵌套）、`/opt`、Windows 注册表、macOS `java_home`；详见 `08/08-java-scan.md`。
 - 缓存：按路径 + mtime + size 缓存版本；PATH 变化时失效。
 - 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；设置页 Java 分区提供 `/settings/java` 子页入口，子页平铺展示全部扫描结果（带搜索与自定义路径管理）。
+- 托管运行时：`java.runtime.plan` 生成的计划由 `download.execute` 执行，默认根为 `<dataRoot>/runtime`；`java.scan` 与自动选择都会附带该根，装完即可被发现。
 - 手动路径：`java.scan {roots, executables, includeDefaults}`；默认扫描为空时 UI 提示“选择目录搜索”，仍为空再提示“选择 JDK 目录 / java 可执行文件”；用户选择后用 `includeDefaults:false` 验证，路径持久化并随扫描带上。
 - 安装：Mojang runtime 优先；Adoptium 作为可选源；校验 SHA-256/签名；不打包 Oracle JDK。
 - 选择：`majorVersion` 必须匹配；Forge/NeoForge processors 用同一 JRE；不匹配时预检失败，不进入 processor。
@@ -1524,6 +1529,7 @@ JavaLocator
 - `shutdown`：取消 token → 等待 JoinSet 2s → 超时 abort；abort 前必须写完 `.part.meta`。
 - 不调用 `std::process::exit`；让 C++ 统一收尾。
 - 退出后保留 `.part` 7 天；`purge=true` 才删。
+- 用户清理：`maintenance.cleanPartials` 扫描配置的实例根，删除超过 N 天（默认 3）未修改的 `.part` / `.part.meta` / `.part.lock`；同组 10 分钟内有 `.part.lock` 更新的视为仍在下载并跳过。
 - 恢复时 `(dest, hash, size)` 匹配即可复用，不要求同一 planId。
 
 ### 9.10 内存与性能
@@ -1654,15 +1660,23 @@ void _drain() {
 
 | 插件 | 用途 | 备注 |
 |---|---|---|
-| `window_manager` | 窗口尺寸/位置/无边框 | 平台差异集中 |
+| `window_manager` | 窗口尺寸/位置/无边框、关闭拦截 | 平台差异集中 |
+| `tray_manager` | 系统托盘图标与右键菜单 | Windows 只接受 PNG；菜单必须显式 `setContextMenu` |
 | `file_selector` | 文件/目录选择 | 官方 |
 | `desktop_drop` | 拖拽导入 | `.mrpack`/zip |
 | `url_launcher` | 外部链接兜底 | 业务统一走 C++ `system.openUrl`（https 白名单）；插件仅兜底 |
 | `webview_*`（按需） | Mod 描述/OAuth 回调 | 仅展示/回调；域名白名单、独立 Cookie；不承载业务 API |
 | `shared_preferences`（可选） | 轻量 UI 偏好 | 业务配置走核心 |
 
-- 托盘/单实例/文件关联/更新不放 Dart 插件，放 C++。
+- 托盘与窗口归 Flutter（`tray_manager`/`window_manager`），单实例/文件关联/更新放 C++；托盘与窗口操作不经过 C#。
 - 插件升级与 Flutter 大版本绑定；升级前跑 PoC 清单（`01` §6）。
+
+**托盘与关闭行为**
+
+- 托盘图标固定为 `assets/branding/tray_icon.png`（32×32 PNG）。Windows 托盘只接受 PNG（不要传 ICO 或其它格式），且右键菜单不会自动出现，必须在 Dart 里显式 `setContextMenu`，否则 Windows 上只有图标、没有菜单。
+- 关闭窗口默认退出应用；开启「关闭窗口时最小化到托盘」（`shared_preferences` 的 `ui.closeToTray`，默认 false）后，点关闭只隐藏窗口，下载与后台任务继续。
+- 托盘菜单固定为「显示主窗口」「退出」；「退出」走正常收尾流程，不绕过核心任务取消。
+- 托盘/窗口状态不进 C#、不进 SQLite；隐藏窗口不影响任务生命周期。
 
 ### 10.10 i18n 与无障碍
 
@@ -1737,7 +1751,7 @@ void _drain() {
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "01J8Z9K3Q7",
   "name": "1.21.4 Fabric",
   "createdAt": "2026-10-20T12:00:00Z",
@@ -1754,7 +1768,13 @@ void _drain() {
   "icon": "icon.png",
   "notes": "",
   "playTimeSec": 0,
-  "lastPlayedAt": null
+  "lastPlayedAt": null,
+  "overrides": {
+    "memoryMaxMb": 6144,
+    "gcMode": "g1gc",
+    "windowWidth": 1280,
+    "windowHeight": 720
+  }
 }
 ```
 
@@ -1766,6 +1786,57 @@ void _drain() {
   - DB 有、目录无 → 标 `missing`，不自动删；
   - 两边字段冲突 → 以 `instance.json` 为准，DB 更新；`playTimeSec` 取较大值。
 - 实例 ID 用 ULID/时间有序 ID；不可变。
+
+**每实例覆盖（`overrides`，schema 2）**
+
+- 新增可选对象 `overrides`，字段全部可空；缺省或 `null` = 跟随全局 `settings.json`。
+- 字段与范围：
+
+| 字段 | 类型 / 范围 | 说明 |
+|---|---|---|
+| `memoryMinMb` / `memoryMaxMb` | int，128–65536 | 最小/最大内存 |
+| `jvmArgs` | string ≤ 8192 | 附加 JVM 参数 |
+| `gcMode` | `auto` / `g1gc` / `zgc` / `parallel` / `serial` / `shenandoah` / `epsilon` | GC 预设 |
+| `gameArgs` | string ≤ 8192 | 附加游戏参数 |
+| `javaPath` | 绝对路径 | 固定 Java；等价于该实例 `javaAuto=false` |
+| `windowWidth` / `windowHeight` | int，640–7680 / 480–4320 | 游戏窗口尺寸 |
+| `fullscreen` | bool | 全屏 |
+
+```jsonc
+// instance.json 片段（其余字段省略）
+"overrides": {
+  "memoryMaxMb": 6144,
+  "gcMode": "g1gc",
+  "windowWidth": 1280,
+  "windowHeight": 720
+}
+```
+
+- `instance.update` 新增可选 `overrides` 对象，语义是 **merge patch**：键缺省 = 不改变，显式 `null` = 清除，有值 = 设置；`instance.list` / `instance.create` / `instance.update` 返回的实例对象**始终**带 `overrides`（无覆盖为 `{}`）。
+- 启动时 C# 用 `InstanceOverrides.ApplyTo(AppSettings)` 把实例覆盖合到全局设置，再选 Java、构建 LaunchPlan。
+- SQLite 只做索引，**不存** `overrides`；权威源仍是 `<instance root>/.archoera/instance.json`。
+
+```json
+{
+  "schemaVersion": 1,
+  "params": {
+    "id": "01J8Z9K3Q7",
+    "overrides": {
+      "memoryMaxMb": null,
+      "jvmArgs": "-XX:+UseG1GC",
+      "javaPath": "/usr/lib/jvm/java-21-openjdk/bin/java"
+    }
+  }
+}
+```
+
+**复制实例（`instance.duplicate`）**
+
+- 参数 `{"id":"<源实例>","name":"<新实例名>"}`，返回 `{"instance":{...}}`，实例对象与其他 instance 方法一样**始终**带 `overrides`。
+- 新实例由仓储按源实例的 `gameVersion` / `loader` / `loaderVersion` 创建，未显式指定根时使用默认实例根（版本隔离规则同 `instance.create`）。
+- 复制是目录递归：排除 `.archoera/logs` 与 `.archoera/instance.json`，其余内容（`.minecraft`、Mod、配置等）原样复制；源实例的每实例 `overrides` 原样保留。
+- 名称校验沿用 `instance.create`；目标落在源目录自身或内部时直接拒绝。
+- 任一步失败时尽力删除已创建的新目录并清理索引，避免留下半个实例。
 
 ### 11.3 共享存储与去重
 
@@ -1780,6 +1851,7 @@ void _drain() {
 - 默认不对整个 `.minecraft` 做 symlink；用启动参数指向共享 assets/libraries，避免 Windows 权限与反作弊问题。
 - 可选“磁盘高效模式”：对不可变 jar 使用硬链接；失败降级复制。
 - 删除实例只删实例目录与 DB 行；共享库由 GC 按引用/时间清理。
+- 实例根内的 `.part` / `.part.meta` / `.part.lock` 是下载器临时文件，不属于实例内容；`maintenance.cleanPartials` 只按修改时间清理过期项，进行中的下载保持不动。
 
 ### 11.4 SQLite schema（v1）
 
@@ -2185,11 +2257,18 @@ C#: 写 crash_reports
 ### 12.9 启动器更新
 
 ```
-UI/后台 → update.check（签名 manifest）
-updater.exe：下载 → 验签 → 关闭主程序 → 替换 → 失败回滚 → 重启
+UI（设置 → 关于「检查更新」）→ update.check
+C#: GET api.github.com/repos/BetaStudio2/ArchoeraCX/releases/latest
+    → 解析 current/latest/hasUpdate/url/name/publishedAt/notes
+    → 无更新：Toast；有更新：弹窗 + 打开 release 页面（system.openUrl）
+（待接）updater：下载 → 验签 → 关闭主程序 → 替换 → 失败回滚 → 重启
 主程序：启动时检查上次更新结果
 ```
 
+- `update.check` 只做版本发现：不下载、不安装、不写文件；Release 说明截断到 4000 字符。
+- 版本比较按 `major.minor.patch` 数字段，忽略 `+build` 与 `-pre` 后缀；无法解析时返回 `E_INVALID`。
+- 网络或解析失败返回 `E_NETWORK` / `E_INVALID`，UI 说明原因并允许重试。
+- 正式自更新仍走独立 updater + 签名 manifest（`update.download` / `update.apply`）；GitHub Release 只作为检查来源。
 - 更新器独立进程；不占用自身文件。
 - 签名：Ed25519 manifest + Windows Authenticode/macOS notarization。
 - 不更新正在运行的游戏；提示先退出。
@@ -2222,7 +2301,7 @@ Rust: 验签 → 下载
 | 业务 API（清单/搜索/详情/认证/更新检查） | C# | 唯一 API owner；统一代理/证书/限流/缓存/错误 |
 | 文件下载（游戏/库/资源/Mod/整合包/Java） | Rust | 只执行 `DownloadPlan`；不解析业务 |
 | 图片 | Flutter | 唯一例外；本地缓存优先，失败占位 |
-| 启动器自更新 | 独立 updater | 签名 manifest；不经过业务 API |
+| 启动器更新 | C# / 独立 updater | `update.check` 走 C# 统一 HTTP；下载/替换仍由 updater + 签名 manifest（待接） |
 | 游戏自身联网 | JVM | 启动器不代理、不注入（authlib 除外） |
 
 ### 13.2 两套 HTTP 栈
@@ -2253,7 +2332,8 @@ Rust: 验签 → 下载
 | 搜索 | 总 20s | 3 次；429 尊重 `Retry-After` | 搜索/详情/标签分桶 |
 | 登录轮询 | 单次 15s | 按协议 `interval` | 不并发轮询 |
 | 文件下载 | 见 §9.5 | 同源 3–4 次，换源 | 全局/每 host/每文件三层 |
-| 更新检查 | 30s | 2 次 | 独立桶，避免挤占搜索 |
+| 更新检查（签名 manifest，待接） | 30s | 2 次 | 独立桶，避免挤占搜索 |
+| 更新检查（GitHub Release） | 10s | 不重试 | 只读公开 API，失败即返回 `E_NETWORK` |
 
 ### 13.4 Provider 抽象
 
@@ -2316,7 +2396,7 @@ public interface IDownloadProvider {
 | `system.status.unwatch` | C++ | 停止采样线程并 join |
 | `wiki.feed` | C# | Wiki 页社区流：Mojang 官方新闻、Java 版本补丁说明、Minecraft Wiki 最近编辑；逐源独立失败 + 5 分钟缓存 |
 | `system.diagnostics` | C++/C# | 生成诊断包 |
-| `system.openPath` | C++ | 打开本地路径（校验） |
+| `system.openPath` | C++ | 打开本地目录（核心自有方法，不经 C#）：参数 `{"path":"/absolute/dir"}`，返回 `{"opened":bool}`；只接受已存在、绝对路径的目录，文件/不存在/非绝对路径返回 `E_INVALID`（`system.openPath requires an absolute existing directory`）；Linux 走 XDG Portal OpenURI 的 `file:` URI，Windows `ShellExecute`，macOS `NSWorkspace`，无实现返回 `opened:false` |
 | `system.openUrl` | C++ | 打开 https 白名单 |
 | `download.policy` | C# | 中国大陆本地下载风险门槛状态/配置路径 |
 | `settings.get` | C# | 应用设置 |
@@ -2325,18 +2405,20 @@ public interface IDownloadProvider {
 | `instance.list` | C# | 实例列表/分组/搜索 |
 | `instance.get` | C# | 详情 |
 | `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离） |
-| `instance.update` | C# | 名称/内存/Java/参数 |
+| `instance.update` | C# | 名称/内存/Java/参数；`overrides` 走 merge patch（缺省不改、`null` 清除），返回实例始终带 `overrides` |
 | `instance.delete` | C# | 移除索引；`deleteFiles: true` 时同时删除实例目录（需 `.archoera/instance.json` 标记，且不与实例根或其它实例重叠，否则保留并在 `filesSkippedReason` 返回原因） |
 | `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |
 | `instance.mods.list` | C# | 列出实例 `mods/` 中的 jar 与 `.disabled` 文件 |
 | `instance.mods.setEnabled` | C# | 通过 `.disabled` 后缀启停 Mod |
 | `instance.mods.remove` | C# | 删除实例中的单个 Mod 文件 |
-| `instance.duplicate` | C# | 复制（可选链接） |
+| `instance.duplicate` | C# | 复制实例：参数 `{"id":"<源实例>","name":"<新实例名>"}`，返回 `{"instance":{...含 overrides...}}`；按源实例的 gameVersion/loader/loaderVersion 经仓储创建新实例（默认实例根），递归复制源目录但排除 `.archoera/logs` 与 `.archoera/instance.json`，保留每实例 `overrides`；失败时尽力清理新目录；拒绝复制到自身/自身内部；名称校验沿用 `instance.create` |
 | `instance.import` | C# | 导入现有目录/压缩包 |
 | `instance.export` | C# | 导出整合包/目录 |
 | `instance.repair` | C# | 校验/重建有效版本/补文件 |
 | `instance.openFolder` | C#/C++ | 打开实例目录 |
+| `maintenance.cleanPartials` | C# | 清理未完成下载的临时文件：参数 `{olderThanDays?: int}`（默认 3，范围 1–365），返回 `deletedFiles` / `freedBytes` / `scannedFiles`；递归扫描配置的实例根（最多 20 万条目），匹配 `.part` / `.part.meta` / `.part.lock`，只删超过 `olderThanDays` 未修改的文件；同组存在 10 分钟内修改的 `.part.lock` 则跳过；跳过 symlink 与无权限项 |
 | `java.scan` | C# | 扫描本机 Java |
+| `java.runtime.plan` | C# | 生成 Mojang 官方 Java 运行时下载计划：`{major}` 必填、`{root}` 可选（默认 `<dataRoot>`，计划内前缀为 `runtime/java-<major>/`），返回 `plan` / `component` / `version` / `fileCount` / `totalBytes`；落在 `runtime/java-<major>/`，`java.scan` 与自动选择都扫描该目录 |
 | `java.list` | C# | 已知/托管 runtime |
 | `java.validate` | C# | 校验路径/版本/架构 |
 | `java.install` | C# | 下载/安装 runtime |
@@ -2377,6 +2459,7 @@ public interface IDownloadProvider {
 | `launch.logs` | C# | 列出实例最近的启动日志（含运行中标记） |
 | `launch.log.read` | C# | 读取单个日志尾部（默认 400 行，256 KiB 窗口） |
 | `launch.log.tail` | C# | 跟随日志：经 ABI 进度回调推送新行，进程退出或取消时结束 |
+| `launch.logs.clear` | C# | 删除旧启动日志：`{instanceId}` 单个实例或 `{all:true}` 全部实例；运行中的当前日志始终保留，返回 `deletedFiles` / `freedBytes` / `instances` |
 | `resource.search` | C# | 统一搜索（当前 Modrinth；支持排序/分页） |
 | `resource.project` | C# | 项目详情与画廊（当前 Modrinth） |
 | `resource.detail` | C# | 项目详情 |
@@ -2408,15 +2491,15 @@ public interface IDownloadProvider {
 | `compliance.openConfigDir` | C# | 打开配置目录 |
 | `cache.stats` | C# | 缓存占用 |
 | `cache.clear` | C# | 按类型清理 |
-| `update.check` | C# | 检查启动器更新（签名 manifest） |
-| `update.download` | updater | 独立进程下载/验签，不复用主进程 HTTP |
-| `update.apply` | updater | 退出后替换/回滚 |
+| `update.check` | C# | 检查启动器更新：参数 `{}`，返回 `current`、`latest`（去 `v` 前缀）、`hasUpdate`、`url`、`name`、`publishedAt`、`notes`（≤4000 字符）；数据源 `https://api.github.com/repos/BetaStudio2/ArchoeraCX/releases/latest`（仅发布 pre-release 时该端点返回 404，此时回退 `GET /releases?per_page=1` 取最新一条；列表为空视为已是当前版本），带 User-Agent 与 `Accept: application/vnd.github+json`，10 秒超时；按 `major.minor.patch` 比较（忽略 `+build`/`-pre`），网络或解析失败返回 `E_NETWORK`/`E_INVALID`；只检查不自动安装 |
+| `update.download` | updater | 独立进程下载/验签，不复用主进程 HTTP（待接） |
+| `update.apply` | updater | 退出后替换/回滚（待接） |
 | `crash.list` | C# | 崩溃报告列表 |
 | `crash.analyze` | C# | 重新分析 |
 | `crash.exportDiagnostics` | C# | 诊断包 |
 | `platform.singleInstance` | C++ | 单实例状态/唤醒 |
-| `platform.tray` | C++ | 托盘菜单 |
-| `platform.window` | C++ | 窗口状态 |
+| `platform.tray` | Flutter（非 ABI） | 托盘菜单由 Flutter `tray_manager` 直接提供，不经过 C#/ABI；Windows 只接受 PNG 图标，右键菜单需显式 `setContextMenu` |
+| `platform.window` | Flutter（非 ABI） | 窗口显示/隐藏与关闭行为由 `window_manager` 负责，不经过 C# |
 | `platform.revealPath` | C++ | 文件管理器定位 |
 
 ### 13.7 Envelope 与错误
@@ -2539,6 +2622,7 @@ public interface IDownloadProvider {
 | CurseForge | `https://api.curseforge.com/v1/` | `x-api-key`；用户 key/网关 |
 | BMCLAPI | `https://bmclapi2.bangbang93.com/` | 白名单镜像；失败回退官方 |
 | Adoptium | `https://api.adoptium.net/v3/` | 可选 Java 源 |
+| 启动器更新（Release 检查） | `https://api.github.com/repos/BetaStudio2/ArchoeraCX/releases/latest` | `Accept: application/vnd.github+json` + UA；10s 超时；只读 |
 
 - 端点/字段可能变化；以 `06` 与官方文档为准；集成测试用固定快照。
 - 镜像必须带官方 hash 校验；不自建游戏文件镜像。

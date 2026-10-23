@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/game_instance.dart';
+import '../../theme/icons/app_icons.dart';
 
 /// Loader identity mark.
 ///
@@ -25,7 +26,7 @@ class LoaderMark extends StatelessWidget {
           fit: BoxFit.contain,
           filterQuality: FilterQuality.none,
           errorBuilder: (context, error, stackTrace) => Icon(
-            Icons.extension_rounded,
+            AppIcons.mod,
             size: size,
             color: Theme.of(context).colorScheme.primary,
           ),

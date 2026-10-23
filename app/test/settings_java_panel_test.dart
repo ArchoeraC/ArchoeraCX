@@ -39,7 +39,8 @@ void main() {
     expect(find.text('Scan Java'), findsNothing);
     expect(find.text('System memory'), findsOneWidget);
     expect(find.text('Minimum memory (MB)'), findsOneWidget);
-    expect(find.text('Additional game arguments'), findsOneWidget);
+    // Game arguments moved to the Launch section.
+    expect(find.text('Additional game arguments'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Java runtimes'));
@@ -51,6 +52,50 @@ void main() {
     );
     expect(find.byTooltip('Back'), findsOneWidget);
     expect(find.text('System memory'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings exposes launch, task and notification options', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    // Launch: window size, fullscreen and the game argument field.
+    await tester.tap(find.text('Launch').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Game window'), findsOneWidget);
+    expect(find.text('Start fullscreen'), findsOneWidget);
+    expect(find.text('Window size'), findsOneWidget);
+    expect(find.text('854 × 480'), findsOneWidget);
+    expect(find.text('Additional game arguments'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // Tasks & logs: both limits are segmented controls.
+    await tester.tap(find.text('Tasks & logs').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Task history'), findsOneWidget);
+    expect(find.text('Default log lines'), findsOneWidget);
+    expect(find.text('400'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // Notifications: login and download notifications can be muted.
+    await tester.tap(find.text('Notifications').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Desktop notifications'), findsOneWidget);
+    expect(find.text('Download notifications'), findsOneWidget);
+    expect(find.byType(Switch), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

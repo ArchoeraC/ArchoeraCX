@@ -14,6 +14,13 @@ namespace Archoera.Domain.Settings;
 /// <param name="DownloadConcurrency">Global download streams (1..64).</param>
 /// <param name="DownloadPerHost">Streams per host (0..64, 0 = unlimited).</param>
 /// <param name="DownloadProxy">Manual proxy URL (http/https); null follows the system.</param>
+/// <param name="WindowWidth">Game window width in pixels when not fullscreen.</param>
+/// <param name="WindowHeight">Game window height in pixels when not fullscreen.</param>
+/// <param name="Fullscreen">Starts the game with the window maximized to fullscreen.</param>
+/// <param name="DownloadChunkSizeKb">Chunk size for ranged downloads, in KiB.</param>
+/// <param name="DownloadRangeThresholdKb">Files above this size use ranged chunks (0 disables).</param>
+/// <param name="LogRetentionFiles">Launch logs kept per instance.</param>
+/// <param name="LogRetentionMegabytes">Total launch-log budget per instance, in MiB.</param>
 public sealed record AppSettings(
     string InstancesRoot,
     string DataRoot,
@@ -29,10 +36,17 @@ public sealed record AppSettings(
     string DownloadSource = "auto",
     int DownloadConcurrency = 16,
     int DownloadPerHost = 16,
-    string? DownloadProxy = null)
+    string? DownloadProxy = null,
+    int WindowWidth = 854,
+    int WindowHeight = 480,
+    bool Fullscreen = false,
+    int DownloadChunkSizeKb = 512,
+    int DownloadRangeThresholdKb = 1024,
+    int LogRetentionFiles = 10,
+    int LogRetentionMegabytes = 32)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 7;
+    public const int CurrentSchemaVersion = 9;
 
     /// <summary>Configured roots, falling back to the legacy primary root.</summary>
     public IReadOnlyList<string> Roots =>

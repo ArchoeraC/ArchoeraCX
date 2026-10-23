@@ -108,6 +108,133 @@ public sealed class LaunchOnlinePlanTests
         }
     }
 
+    [Fact]
+    public void Window_size_and_fullscreen_reach_the_game_arguments()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var (instance, version, paths) = CreateFixture(
+                root,
+                new MojangArguments(
+                    Game:
+                    [
+                        new MojangArgument(
+                            [],
+                            [
+                                "--width", "${resolution_width}",
+                                "--height", "${resolution_height}",
+                            ]),
+                    ],
+                    Jvm: []));
+
+            var settings = CreateSettings(root) with
+            {
+                WindowWidth = 1600,
+                WindowHeight = 900,
+                Fullscreen = true,
+            };
+
+            var plan = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                settings,
+                paths);
+
+            AssertArgument(plan, "--width", "1600");
+            AssertArgument(plan, "--height", "900");
+            Assert.Contains("--fullscreen", plan.Arguments);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Instance_overrides_win_over_global_settings()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var (instance, version, paths) = CreateFixture(root, arguments: null);
+            var global = CreateSettings(root) with
+            {
+                MemoryMaxMb = 2048,
+                GameArgs = "--global",
+            };
+            var effective = new InstanceOverrides(
+                MemoryMaxMb: 6144,
+                GameArgs: "--instance",
+                Fullscreen: true).ApplyTo(global);
+
+            var plan = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                effective,
+                paths);
+
+            Assert.Contains("-Xmx6144M", plan.Arguments);
+            Assert.Contains("--instance", plan.Arguments);
+            Assert.Contains("--fullscreen", plan.Arguments);
+            Assert.DoesNotContain("--global", plan.Arguments);
+            // The global document is untouched.
+            Assert.Equal(2048, global.MemoryMaxMb);
+            Assert.Equal("--global", global.GameArgs);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Missing_instance_overrides_fall_back_to_global_settings()
+    {
+        var global = new AppSettings(
+            InstancesRoot: Path.GetTempPath(),
+            DataRoot: Path.GetTempPath(),
+            SettingsPath: string.Empty,
+            MemoryMinMb: 1024,
+            MemoryMaxMb: 4096,
+            GcMode: "g1gc",
+            GameArgs: "--global",
+            WindowWidth: 1600,
+            WindowHeight: 900,
+            Fullscreen: false);
+
+        var effective = new InstanceOverrides().ApplyTo(global);
+
+        Assert.Equal(1024, effective.MemoryMinMb);
+        Assert.Equal(4096, effective.MemoryMaxMb);
+        Assert.Equal("g1gc", effective.GcMode);
+        Assert.Equal("--global", effective.GameArgs);
+        Assert.Equal(1600, effective.WindowWidth);
+        Assert.Equal(900, effective.WindowHeight);
+        Assert.False(effective.Fullscreen);
+    }
+
+    [Fact]
+    public void Instance_java_override_forces_manual_selection()
+    {
+        var java = OperatingSystem.IsWindows()
+            ? @"C:\Java\bin\java.exe"
+            : "/opt/java/bin/java";
+        var effective = new InstanceOverrides(JavaPath: java).ApplyTo(
+            new AppSettings(
+                InstancesRoot: Path.GetTempPath(),
+                DataRoot: Path.GetTempPath(),
+                SettingsPath: string.Empty,
+                JavaAuto: true));
+
+        Assert.False(effective.JavaAuto);
+        Assert.Equal(java, effective.JavaPath);
+    }
+
     private static void AssertArgument(LaunchPlan plan, string name, string expected)
     {
         var arguments = plan.Arguments.ToList();

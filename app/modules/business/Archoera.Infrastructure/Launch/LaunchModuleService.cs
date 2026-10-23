@@ -143,8 +143,19 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             {
                 try
                 {
+                    var repairSettings = await _settings
+                        .LoadAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    if (instance.Overrides is { } repairOverrides)
+                    {
+                        repairSettings = repairOverrides.ApplyTo(repairSettings);
+                    }
                     repairJava = await _javaSelection
-                        .SelectAsync(null, instance.GameVersion, cancellationToken)
+                        .SelectAsync(
+                            null,
+                            instance.GameVersion,
+                            cancellationToken,
+                            repairSettings.JavaAuto ? null : repairSettings.JavaPath)
                         .ConfigureAwait(false);
                 }
                 catch (JavaSelectionException selectionError)
@@ -446,6 +457,13 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 .FirstOrDefault(item => string.Equals(item.Id, instanceId, StringComparison.Ordinal))
                 ?? throw new LaunchException("INSTANCE_NOT_FOUND", $"instance not found: {instanceId}");
             var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            // Per-instance overrides win over the global document. The global
+            // object stays untouched so every instance keeps its own effective
+            // memory/args/window values.
+            if (instance.Overrides is { } overrides)
+            {
+                settings = overrides.ApplyTo(settings);
+            }
             var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false)
                 ?? throw new LaunchException("ACCOUNT_REQUIRED", "add an account before launching");
             if (mode == "online" && requirePremium &&
@@ -496,9 +514,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             var version = await LoadOrRepairVersionAsync(instance, paths, cancellationToken)
                 .ConfigureAwait(false);
 
+            var instanceJavaPath = settings.JavaAuto ? null : settings.JavaPath;
             var java = !string.IsNullOrWhiteSpace(version.InheritsFrom)
                 ? await _javaSelection
-                    .SelectAsync(null, instance.GameVersion, cancellationToken)
+                    .SelectAsync(
+                        null,
+                        instance.GameVersion,
+                        cancellationToken,
+                        instanceJavaPath)
                     .ConfigureAwait(false)
                 : await SelectJavaAsync(settings, version, cancellationToken)
                     .ConfigureAwait(false);
@@ -594,7 +617,11 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 accessToken: accessToken,
                 clientId: clientId,
                 userType: userType);
-            var (process, logPath) = Start(instance.Id, plan);
+            var (process, logPath) = Start(
+                instance.Id,
+                plan,
+                settings.LogRetentionFiles,
+                settings.LogRetentionMegabytes);
             return ModuleJson.Envelope(writer =>
             {
                 writer.WriteNumber("pid", process.Id);
@@ -1072,9 +1099,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
 
     private static (Process Process, string LogPath) Start(
         string instanceId,
-        LaunchPlan plan)
+        LaunchPlan plan,
+        int logRetentionFiles,
+        int logRetentionMegabytes)
     {
-        LaunchLogFiles.Prepare(plan.LogDirectory);
+        LaunchLogFiles.Prepare(
+            plan.LogDirectory,
+            logRetentionFiles,
+            logRetentionMegabytes * 1024L * 1024L);
         var startInfo = new ProcessStartInfo
         {
             FileName = plan.JavaPath,

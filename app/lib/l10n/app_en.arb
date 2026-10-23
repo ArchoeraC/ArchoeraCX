@@ -179,6 +179,24 @@
   "instanceEmptyMessage": "Create a vanilla or modded instance to get started.",
   "instanceNoMatches": "No instances match your search.",
   "instanceDelete": "Delete instance",
+  "instanceDuplicate": "Duplicate instance",
+  "instanceDuplicateTitle": "Duplicate instance",
+  "instanceDuplicateName": "New name",
+  "instanceDuplicateNameHint": "e.g. 1.21.4 · Fabric copy",
+  "instanceDuplicateSuffix": "copy",
+  "instanceDuplicateHint": "Copies the game folder, mods and configs (logs excluded) and keeps the instance settings.",
+  "instanceDuplicateAction": "Duplicate",
+  "instanceDuplicateDone": "Created “{name}”.",
+  "@instanceDuplicateDone": {
+    "description": "Toast after duplicating an instance.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "instanceDuplicateFailed": "Could not duplicate the instance.",
+  "instanceDuplicateInvalidName": "Enter an instance name.",
   "instanceDeleteConfirm": "Delete “{name}”?",
   "instanceDeleteBody": "The instance is removed from the launcher list.",
   "instanceDeleteFiles": "Also delete local files",
@@ -343,6 +361,67 @@
   "downloadSelectVersion": "Select version",
   "downloadNoVersions": "No compatible versions.",
   "downloadResult": "Result: {status}",
+  "downloadQueued": "“{name}” queued. Track it in Tasks or the queue strip below.",
+  "@downloadQueued": {
+    "description": "Toast after a background download starts.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadFinished": "“{name}” finished downloading.",
+  "@downloadFinished": {
+    "description": "Toast when a background download finishes.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadFailed": "“{name}” failed to download.",
+  "@downloadFailed": {
+    "description": "Toast when a background download fails.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadCancelled": "“{name}” download cancelled.",
+  "@downloadCancelled": {
+    "description": "Toast when the user cancels a background download.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadQueueActive": "{count, plural, =1{1 download in progress} other{{count} downloads in progress}}",
+  "@downloadQueueActive": {
+    "description": "Active transfers shown in the download page queue strip.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueProgress": "{done} / {total}",
+  "@downloadQueueProgress": {
+    "description": "Byte progress shown in the download page queue strip.",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadQueueOpen": "View tasks",
+  "@downloadQueueOpen": {
+    "description": "Opens the task center from the queue strip."
+  },
   "@downloadResult": {
     "description": "Download result status.",
     "placeholders": {
@@ -369,6 +448,33 @@
   "settingsSubtitle": "Appearance, storage, Java, and about.",
   "settingsGeneral": "General",
   "settingsAppearance": "Appearance",
+  "settingsSectionLaunch": "Launch",
+  "@settingsSectionLaunch": {
+    "description": "How the launcher starts the game: window and extra arguments."
+  },
+  "settingsSectionWindow": "Game window",
+  "settingsWindowNote": "Window settings are written as vanilla launch arguments (--width / --height / --fullscreen) and apply to versions that accept them.",
+  "settingsFullscreen": "Start fullscreen",
+  "settingsFullscreenDesc": "Enter the game fullscreen; the window size is still passed as a fallback.",
+  "settingsWindowSize": "Window size",
+  "settingsWindowSizeDesc": "Initial size of the game window.",
+  "settingsWindowSizeFullscreen": "Ignored while starting fullscreen.",
+  "settingsSectionGameArgs": "Extra game arguments",
+  "settingsGameArgsNote": "Appended after the vanilla arguments and split on spaces; leave empty for none.",
+  "settingsSectionTasks": "Tasks & logs",
+  "settingsTasksNote": "These preferences only affect the interface and are not written to settings.json.",
+  "settingsTaskHistory": "Task history",
+  "settingsTaskHistoryDesc": "How many finished tasks stay in the task center; running tasks are never pruned.",
+  "settingsLogLines": "Default log lines",
+  "settingsLogLinesDesc": "Tail size loaded when the log viewer opens.",
+  "settingsSectionNotifications": "Notifications",
+  "settingsNotificationsNote": "Desktop notifications use the system notification center, which can mute them separately.",
+  "settingsNotifyDesktop": "Desktop notifications",
+  "settingsNotifyDesktopDesc": "Notify on sign-in and similar events.",
+  "settingsNotifyDownloads": "Download notifications",
+  "settingsNotifyDownloadsDesc": "Notify when a background download finishes or fails.",
+  "settingsToastDuration": "Toast duration",
+  "settingsToastDurationDesc": "How long success/info toasts stay; errors stay longer.",
   "settingsStorage": "Storage",
   "settingsDownload": "Downloads",
   "settingsDownloadSource": "Source priority",
@@ -400,6 +506,32 @@
     }
   },
   "settingsDownloadProxy": "Download proxy",
+  "settingsDownloadRangeThreshold": "Range threshold",
+  "@settingsDownloadRangeThreshold": {
+    "description": "Files larger than this use ranged chunks; turn it off to always download a single stream."
+  },
+  "settingsDownloadRangeThresholdDesc": "Size above which a file is split into parallel chunks.",
+  "@settingsDownloadRangeThresholdDesc": {},
+  "settingsRangeDisabled": "Chunking off",
+  "@settingsRangeDisabled": {},
+  "settingsDownloadChunk": "Chunk size",
+  "@settingsDownloadChunk": {
+    "description": "Size of each ranged request; smaller chunks resume more cheaply but need more requests."
+  },
+  "settingsDownloadChunkDesc": "Size of one ranged request.",
+  "@settingsDownloadChunkDesc": {},
+  "settingsLogRetentionFiles": "Logs kept",
+  "@settingsLogRetentionFiles": {
+    "description": "Launch logs kept per instance."
+  },
+  "settingsLogRetentionFilesDesc": "Oldest logs are deleted first; the newest one is always kept.",
+  "@settingsLogRetentionFilesDesc": {},
+  "settingsLogRetentionTotal": "Log storage cap",
+  "@settingsLogRetentionTotal": {
+    "description": "Total size of all launch logs per instance."
+  },
+  "settingsLogRetentionTotalDesc": "Pruning also starts from the oldest log.",
+  "@settingsLogRetentionTotalDesc": {},
   "settingsDownloadProxySystem": "Follow the system proxy",
   "settingsDownloadProxyHint": "http://host:port or socks5h://host:port. Leave empty to follow the system proxy.",
   "settingsDownloadProxyInvalid": "Enter an http(s) or socks5 proxy URL, e.g. http://127.0.0.1:7890.",
@@ -412,6 +544,28 @@
   "settingsRemoveRoot": "Remove folder",
   "settingsRootsUpdated": "Instance folders updated.",
   "settingsDataRoot": "Application data",
+  "settingsOpenDataRoot": "Open data folder",
+  "@settingsOpenDataRoot": {
+    "description": "Opens the application data folder in the system file manager."
+  },
+  "settingsOpenDataRootDesc": "Show settings, logs and cached files.",
+  "settingsOpenInstanceRoot": "Open default instances folder",
+  "@settingsOpenInstanceRoot": {
+    "description": "Opens the default instance root in the system file manager."
+  },
+  "settingsOpenInstanceRootDesc": "Show the folder that holds your instances.",
+  "settingsOpenFailed": "Could not open that folder.",
+  "settingsStartPage": "Startup page",
+  "@settingsStartPage": {
+    "description": "Page opened when the launcher starts; applied on the next launch."
+  },
+  "settingsStartPageDesc": "Applied the next time the launcher starts.",
+  "startPageDashboard": "Dashboard",
+  "startPageInstances": "Instances",
+  "startPageDownload": "Download",
+  "startPageAccounts": "Accounts",
+  "startPageWiki": "Wiki",
+  "startPageSettings": "Settings",
   "settingsChooseFolder": "Choose folder",
   "settingsSaved": "Saved",
   "settingsJava": "Java",
@@ -442,6 +596,26 @@
   "settingsThemeSystem": "Follow system",
   "settingsLanguage": "Language",
   "settingsMotion": "Reduce motion",
+  "settingsCloseToTray": "Close to tray",
+  "settingsCloseToTrayDesc": "Hide the main window in the system tray instead of quitting.",
+  "trayShow": "Show window",
+  "trayQuit": "Quit",
+  "settingsCleanPartials": "Clean partial downloads",
+  "settingsCleanPartialsDesc": "Removes `.part` files untouched for more than three days; active downloads are kept.",
+  "settingsCleanPartialsBody": "Every partial download untouched for more than three days is deleted from the instance folders. This cannot be undone.",
+  "settingsCleanPartialsDone": "Deleted {count} partial files, freed {size}.",
+  "@settingsCleanPartialsDone": {
+    "description": "Toast after cleaning partial downloads.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsCleanPartialsNone": "No stale partial downloads found.",
   "settingsMotionDesc": "Limit page transitions and background effects.",
   "settingsDiagnostics": "Diagnostics",
   "settingsDiagnosticsDesc": "Logs, module versions, and crash reports.",
@@ -493,6 +667,46 @@
     "description": "Generic explanation when Java scanning cannot run."
   },
   "javaStatusScan": "Scan Java",
+  "javaInstallAction": "Install Java",
+  "javaInstallTitle": "Install a Java runtime",
+  "javaInstallHint": "Downloads the runtime from Mojang's official catalog and rescans when it finishes; the transfer runs in the background.",
+  "javaInstallRecommended": "Recommended",
+  "javaInstallQueued": "Java {major} queued for download.",
+  "@javaInstallQueued": {
+    "description": "Toast after starting a Java runtime install.",
+    "placeholders": {
+      "major": {
+        "type": "int"
+      }
+    }
+  },
+  "javaInstallDone": "Java {major} installed.",
+  "@javaInstallDone": {
+    "description": "Toast when the Java runtime download finishes.",
+    "placeholders": {
+      "major": {
+        "type": "int"
+      }
+    }
+  },
+  "javaInstallFailed": "Java {major} installation failed.",
+  "@javaInstallFailed": {
+    "description": "Toast when the Java runtime download fails.",
+    "placeholders": {
+      "major": {
+        "type": "int"
+      }
+    }
+  },
+  "javaInstallCancelled": "Java {major} installation cancelled.",
+  "@javaInstallCancelled": {
+    "description": "Toast when the Java runtime download is cancelled.",
+    "placeholders": {
+      "major": {
+        "type": "int"
+      }
+    }
+  },
   "javaStatusSelect": "Use this Java",
   "@javaStatusScan": {
     "description": "Button label that calls java.scan."
@@ -844,6 +1058,14 @@
   "instanceManageMods": "Manage mods",
   "@instanceManageMods": {
     "description": "Instance overflow action that opens the mod manager."
+  },
+  "instanceOpenFolder": "Open instance folder",
+  "@instanceOpenFolder": {
+    "description": "Opens the instance directory in the system file manager."
+  },
+  "instanceOverridesBadge": "Overrides global settings",
+  "@instanceOverridesBadge": {
+    "description": "Tooltip of the marker shown when an instance overrides launch settings."
   },
   "instanceModsTitle": "Installed mods",
   "@instanceModsTitle": {
@@ -1209,15 +1431,40 @@
   "settingsAboutRuntime": "Runtime",
   "settingsAboutCore": "Native core",
   "settingsAboutCoreUnknown": "Not connected",
-
-
-
   "settingsAboutCopyEnvironment": "Copy environment",
   "settingsAboutCopied": "Environment copied to the clipboard.",
   "settingsAboutCommunity": "Community & support",
   "settingsAboutRepository": "Source code",
   "settingsAboutIssues": "Report an issue",
   "settingsAboutThanks": "Thanks",
+  "settingsCheckUpdate": "Check for updates",
+  "settingsCheckUpdateDesc": "Compares against the newest GitHub release (check only, no auto-install).",
+  "updateChecking": "Checking for updates…",
+  "updateUpToDate": "You are up to date ({version}).",
+  "@updateUpToDate": {
+    "description": "Toast when the build is current.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateAvailableTitle": "Update available",
+  "updateAvailableBody": "Current {current}, latest {latest}.",
+  "@updateAvailableBody": {
+    "description": "Shown when a newer release exists.",
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "latest": {
+        "type": "String"
+      }
+    }
+  },
+  "updateOpenRelease": "Open release page",
+  "updateCheckFailed": "Could not check for updates.",
+  "updateCurrentVersion": "Current version",
   "settingsAboutThanksDesc": "Open-source projects and services this build relies on.",
   "settingsAboutLegal": "Legal",
   "settingsAboutPrivacy": "Privacy policy",
@@ -1239,6 +1486,34 @@
   "gameLogCopied": "Log copied to the clipboard.",
   "gameLogFileLabel": "Log file",
   "gameLogTruncated": "Showing the last {count} lines.",
+  "gameLogOpenFolder": "Open log folder",
+  "@gameLogOpenFolder": {},
+  "gameLogOpenFolderFailed": "Could not open the log folder.",
+  "@gameLogOpenFolderFailed": {},
+  "gameLogClear": "Clear old logs",
+  "@gameLogClear": {},
+  "gameLogClearTitle": "Clear old launch logs?",
+  "@gameLogClearTitle": {},
+  "gameLogClearBody": "Every archived launch log of this instance is deleted; a running log is kept. This cannot be undone.",
+  "@gameLogClearBody": {},
+  "gameLogClearDone": "Deleted {count} logs, freed {size}.",
+  "@gameLogClearDone": {
+    "description": "Toast after clearing launch logs.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsClearLogs": "Clear launch logs",
+  "@settingsClearLogs": {},
+  "settingsClearLogsDesc": "Deletes archived launch logs of every instance; running logs are kept.",
+  "@settingsClearLogsDesc": {},
+  "settingsClearLogsBody": "Every archived launch log is deleted (running logs are kept). This cannot be undone.",
+  "@settingsClearLogsBody": {},
   "@gameLogTruncated": {
     "description": "Shown when the log is larger than the read window.",
     "placeholders": {
@@ -1553,5 +1828,120 @@
   "loaderVersionNoMatch": "No builds match this search.",
   "@loaderVersionNoMatch": {
     "description": "Empty state when the loader version search matches nothing."
+  },
+  "instanceSettingsTitle": "Instance settings",
+  "@instanceSettingsTitle": {
+    "description": "Dialog title and instance menu entry for per-instance launch overrides."
+  },
+  "instanceSettingsDesc": "Blank fields follow the global settings.",
+  "@instanceSettingsDesc": {
+    "description": "Subtitle explaining that empty override fields inherit the global value."
+  },
+  "instanceSettingsMemoryMin": "Minimum memory (MB)",
+  "@instanceSettingsMemoryMin": {
+    "description": "Per-instance minimum heap size override."
+  },
+  "instanceSettingsMemoryMax": "Maximum memory (MB)",
+  "@instanceSettingsMemoryMax": {
+    "description": "Per-instance maximum heap size override."
+  },
+  "instanceSettingsGc": "Garbage collector",
+  "@instanceSettingsGc": {
+    "description": "Per-instance garbage collector override."
+  },
+  "instanceSettingsJvmArgs": "JVM arguments",
+  "@instanceSettingsJvmArgs": {
+    "description": "Per-instance JVM argument override."
+  },
+  "instanceSettingsGameArgs": "Game arguments",
+  "@instanceSettingsGameArgs": {
+    "description": "Per-instance extra game argument override."
+  },
+  "instanceSettingsJava": "Java executable",
+  "@instanceSettingsJava": {
+    "description": "Per-instance Java runtime override."
+  },
+  "instanceSettingsJavaHint": "Absolute path to the java binary; leave blank to follow the global selection.",
+  "@instanceSettingsJavaHint": {
+    "description": "Helper under the per-instance Java path field."
+  },
+  "instanceSettingsWindow": "Game window",
+  "@instanceSettingsWindow": {
+    "description": "Per-instance window mode override."
+  },
+  "instanceSettingsWindowInherit": "Follow global",
+  "@instanceSettingsWindowInherit": {
+    "description": "Window mode option that clears the per-instance override."
+  },
+  "instanceSettingsWindowFullscreen": "Fullscreen",
+  "@instanceSettingsWindowFullscreen": {
+    "description": "Window mode option that always starts fullscreen."
+  },
+  "instanceSettingsWindowWindowed": "Windowed",
+  "@instanceSettingsWindowWindowed": {
+    "description": "Window mode option that always starts in a window."
+  },
+  "instanceSettingsWindowWidth": "Window width",
+  "@instanceSettingsWindowWidth": {
+    "description": "Per-instance initial window width override."
+  },
+  "instanceSettingsWindowHeight": "Window height",
+  "@instanceSettingsWindowHeight": {
+    "description": "Per-instance initial window height override."
+  },
+  "instanceSettingsFollowGlobal": "Follow global",
+  "@instanceSettingsFollowGlobal": {
+    "description": "Hint on empty override fields meaning the global setting is used."
+  },
+  "instanceSettingsSave": "Save",
+  "@instanceSettingsSave": {
+    "description": "Save button in the instance settings dialog."
+  },
+  "instanceSettingsSaved": "Instance settings saved.",
+  "instanceSettingsFollowGlobalWith": "Follow global ({value})",
+  "@instanceSettingsFollowGlobalWith": {
+    "description": "Shown as the hint while an instance override is empty.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "instanceSettingsReset": "Reset to global",
+  "instanceSettingsResetBody": "Clears every override so this instance follows the global settings again.",
+  "instanceSettingsResetDone": "Reset to the global settings.",
+  "instanceOverridesMemory": "memory",
+  "instanceOverridesGc": "GC",
+  "instanceOverridesJvm": "JVM args",
+  "instanceOverridesGameArgs": "game args",
+  "instanceOverridesJava": "Java",
+  "instanceOverridesWindow": "window",
+  "@instanceSettingsSaved": {
+    "description": "Toast after per-instance overrides are written."
+  },
+  "instanceSettingsInvalidNumbers": "Memory and window sizes must be whole numbers.",
+  "@instanceSettingsInvalidNumbers": {
+    "description": "Inline validation error for non-numeric override values."
+  },
+  "instanceSettingsInvalidRange": "Memory must be 128–65536 MB with min ≤ max; the window must be 640–7680 × 480–4320.",
+  "@instanceSettingsInvalidRange": {
+    "description": "Inline validation error for out-of-range override values."
+  },
+  "instanceSettingsInvalidPath": "Enter an absolute path to the Java executable.",
+  "@instanceSettingsInvalidPath": {
+    "description": "Inline validation error for a relative Java path."
+  },
+  "instanceSettingsInvalidGc": "Unsupported garbage collector.",
+  "@instanceSettingsInvalidGc": {
+    "description": "Inline validation error for an unknown garbage collector."
+  },
+  "instanceSettingsSaveFailed": "Could not save instance settings: {message}",
+  "@instanceSettingsSaveFailed": {
+    "description": "Failure toast when the override update call fails.",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -1,4 +1,5 @@
 using Archoera.Application.Java;
+using Archoera.Application.JavaRuntime;
 using Archoera.Domain.Java;
 using Archoera.Infrastructure.Settings;
 
@@ -35,33 +36,47 @@ public sealed class JavaRuntimeSelectionService
     public async Task<JavaRuntimeInfo> SelectAsync(
         int? requiredMajor,
         string? gameVersion,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? forcedJavaPath = null)
     {
         requiredMajor ??= InferMajor(gameVersion);
         var settings = await _settings
             .LoadAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        // An instance-level override arrives here: it must win over the global
+        // manual selection, which is why it is checked first.
+        var manualPath = string.IsNullOrWhiteSpace(forcedJavaPath)
+            ? (settings.JavaAuto ? null : settings.JavaPath)
+            : forcedJavaPath;
+
         IReadOnlyList<JavaRuntimeInfo> items;
-        if (!settings.JavaAuto && !string.IsNullOrWhiteSpace(settings.JavaPath))
+        if (!string.IsNullOrWhiteSpace(manualPath))
         {
             items = _scanner.Scan(
                 new JavaScanRequest
                 {
                     IncludeDefaults = false,
-                    Executables = [settings.JavaPath],
+                    Executables = [manualPath],
                 },
                 cancellationToken);
             if (items.Count == 0)
             {
                 throw new JavaSelectionException(
                     "JAVA_MISSING",
-                    $"configured Java is not usable: {settings.JavaPath}");
+                    $"configured Java is not usable: {manualPath}");
             }
         }
         else
         {
-            items = _scanner.Scan(JavaScanRequest.Default, cancellationToken);
+            // Launcher-installed runtimes live under <dataRoot>/runtime; the
+            // automatic path must consider them like any other JVM.
+            items = _scanner.Scan(
+                new JavaScanRequest
+                {
+                    Roots = [ManagedJavaRuntimes.Root(settings.DataRoot)],
+                },
+                cancellationToken);
         }
 
         var selected = JavaSelector.Select(items, requiredMajor);

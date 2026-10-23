@@ -5,11 +5,13 @@ using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Launch;
 using Archoera.Infrastructure.Loaders;
+using Archoera.Infrastructure.Maintenance;
 using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Packs;
 using Archoera.Infrastructure.Resources;
 using Archoera.Infrastructure.Settings;
 using Archoera.Infrastructure.SystemInfo;
+using Archoera.Infrastructure.Update;
 
 namespace Archoera.Infrastructure.Modules;
 
@@ -39,7 +41,8 @@ public static class BusinessModuleRegistry
         var handlers = new List<IModuleMethodHandler>
         {
             new JavaModuleService(
-                settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
+                settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot),
+                dataRoot: dataRoot),
             new VersionModuleService(policy: policy),
             new LaunchModuleService(
                 dataRoot: dataRoot,
@@ -59,6 +62,8 @@ public static class BusinessModuleRegistry
                 dataRoot: dataRoot),
             new SystemModuleService(),
             new CommunityModuleService(),
+            new UpdateModuleService(),
+            new MaintenanceModuleService(settings),
             new SettingsModuleService(
                 dataRoot is null ? null : new JsonAppSettingsStore(dataRoot)),
             new InstanceModuleService(

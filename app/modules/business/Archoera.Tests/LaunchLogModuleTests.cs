@@ -271,6 +271,72 @@ public sealed class LaunchLogModuleTests
         }
     }
 
+    [Fact]
+    public async Task Clear_deletes_archived_logs_and_keeps_unrelated_files()
+    {
+        var root = TempDirectory();
+        try
+        {
+            var logDirectory = Path.Combine(root, ".archoera", "logs");
+            Directory.CreateDirectory(logDirectory);
+            var first = Path.Combine(logDirectory, "launch-20260101-120000.log");
+            var second = Path.Combine(logDirectory, "launch-20260102-120000.log");
+            File.WriteAllText(first, "old\n");
+            File.WriteAllText(second, "new\n");
+            var notes = Path.Combine(logDirectory, "notes.txt");
+            File.WriteAllText(notes, "keep me");
+
+            var service = CreateService(root);
+            var data = await CallAsync(
+                service,
+                "launch.logs.clear",
+                """{"instanceId":"instance"}""");
+
+            Assert.Equal(2, data.GetProperty("deletedFiles").GetInt32());
+            Assert.True(data.GetProperty("freedBytes").GetInt64() > 0);
+            Assert.Equal(1, data.GetProperty("instances").GetInt32());
+            Assert.False(File.Exists(first));
+            Assert.False(File.Exists(second));
+            Assert.True(File.Exists(notes));
+
+            // Nothing left to delete on the second pass.
+            var again = await CallAsync(
+                service,
+                "launch.logs.clear",
+                """{"instanceId":"instance"}""");
+            Assert.Equal(0, again.GetProperty("deletedFiles").GetInt32());
+            Assert.Equal(0, again.GetProperty("instances").GetInt32());
+        }
+        finally
+        {
+            Delete(root);
+        }
+    }
+
+    [Fact]
+    public async Task Clear_all_sweeps_the_known_instances()
+    {
+        var root = TempDirectory();
+        try
+        {
+            var logDirectory = Path.Combine(root, ".archoera", "logs");
+            Directory.CreateDirectory(logDirectory);
+            var log = Path.Combine(logDirectory, "launch-20260103-120000.log");
+            File.WriteAllText(log, "line\n");
+
+            var service = CreateService(root);
+            var data = await CallAsync(service, "launch.logs.clear", """{"all":true}""");
+
+            Assert.Equal(1, data.GetProperty("deletedFiles").GetInt32());
+            Assert.Equal(1, data.GetProperty("instances").GetInt32());
+            Assert.False(File.Exists(log));
+        }
+        finally
+        {
+            Delete(root);
+        }
+    }
+
     private static LaunchLogModuleService CreateService(string root)
         => new(new StubInstances(Instance(root)));
 
@@ -385,6 +451,8 @@ public sealed class LaunchLogModuleTests
             string? name,
             bool? favorite,
             DateTimeOffset? lastPlayedAt,
+            Archoera.Domain.Instances.InstanceOverrides? overrides = null,
+            bool setOverrides = false,
             CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 

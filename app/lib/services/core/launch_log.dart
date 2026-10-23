@@ -27,6 +27,38 @@ class LaunchLogFile {
   }
 }
 
+/// Result of `launch.logs.clear`.
+class LaunchLogClearResult {
+  const LaunchLogClearResult({
+    required this.deletedFiles,
+    required this.freedBytes,
+    this.instances = 0,
+  });
+
+  final int deletedFiles;
+  final int freedBytes;
+
+  /// Instances whose log directory actually lost at least one file.
+  final int instances;
+
+  static LaunchLogClearResult fromNative(Object? value) {
+    if (value is! Map) {
+      return const LaunchLogClearResult(deletedFiles: 0, freedBytes: 0);
+    }
+    return LaunchLogClearResult(
+      deletedFiles: value['deletedFiles'] is num
+          ? (value['deletedFiles'] as num).toInt()
+          : 0,
+      freedBytes: value['freedBytes'] is num
+          ? (value['freedBytes'] as num).toInt()
+          : 0,
+      instances: value['instances'] is num
+          ? (value['instances'] as num).toInt()
+          : 0,
+    );
+  }
+}
+
 /// Result of `launch.logs`: the instance's recent launches.
 class LaunchLogList {
   const LaunchLogList({

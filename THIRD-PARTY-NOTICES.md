@@ -3,9 +3,11 @@
 **Project:** ArchoeraCX  
 **Project license:** AGPL-3.0-only, see [`LICENSE`](LICENSE).  
 **Release channel:** GitHub pre-releases only.  
-**Inventory date:** 2026-10-21
+**Inventory date:** 2026-10-23
 
-This file is an inventory of third-party components used by the ArchoeraCX desktop build. It does not replace the full license text shipped by each upstream package. Before publishing a GitHub Release, include this file, `app/assets/fonts/OFL.txt`, and the loader-icon license files in the release archive.
+This file is an inventory of third-party components used by the ArchoeraCX desktop build. It does not replace the full license text shipped by each upstream package. Before publishing a GitHub Release, include this file, `app/assets/fonts/OFL.txt`, `app/assets/licenses/Tabler-Icons-MIT.txt`, and the loader-icon license files in the release archive.
+
+Only the packaged icon font (`app/assets/fonts/AppIcons.ttf`) is part of this repository. The upstream Tabler Icons package, its webfont and any per-icon SVG artwork are never committed; `tool/build-icons.sh` fetches them into the ignored `app/.cache/` directory on demand.
 
 The application icon, the default offline skin, and ArchoeraCX-owned source code are original project assets and are distributed under AGPL-3.0-only. No Mojang, Microsoft, Microsoft Windows, or Minecraft logo/asset is included in the application icon.
 
@@ -16,6 +18,7 @@ The application icon, the default offline skin, and ArchoeraCX-owned source code
 | ArchoeraCX application icon | `app/assets/branding/archoera_icon.svg` | AGPL-3.0-only | Original flat viewfinder frame with an amber diamond core; no Mojang/Microsoft/Windows elements |
 | Default offline skin | `app/assets/skins/default-offline.png` | AGPL-3.0-only | Original neutral local character; not a Mojang asset |
 | Noto Sans SC Medium | `app/assets/fonts/NotoSansSC-Medium.otf` | OFL-1.1 | License text: `app/assets/fonts/OFL.txt` |
+| UI icon font (AppIcons) | `app/assets/fonts/AppIcons.ttf` — Tabler Icons 3.49.0 outline subset, 81 glyphs | MIT | License text: `app/assets/licenses/Tabler-Icons-MIT.txt`; source/attribution: `app/assets/icons/ui/SOURCES.md` |
 | Fabric loader icon | `app/assets/icons/loaders/fabric.png` | Apache-2.0 | Source/attribution: `app/assets/icons/loaders/SOURCES.md` |
 | Quilt loader icon | `app/assets/icons/loaders/quilt.png` | Apache-2.0 | Source/attribution: `app/assets/icons/loaders/SOURCES.md` |
 | Forge loader icon | `app/assets/icons/loaders/forge.png` | LGPL-2.1 | Source/attribution: `app/assets/icons/loaders/SOURCES.md` |
@@ -337,4 +340,21 @@ Generated from `app/modules/downloader/Cargo.lock` and `cargo metadata`; dev-onl
 Run the release build from the tagged source, regenerate this file from `pubspec.lock`, `Cargo.lock`, and the project files, then attach it to the GitHub Release together with the source tag. Do not add private API keys, client IDs, tokens, or CI secrets to this file.
 
 Third-party license texts are retained in their upstream source/package archives. The project does not relicense those components under AGPL-3.0-only.
+
+## 7. Special thanks / 特别致谢
+
+The launcher would not exist in its current form without these projects and
+people. This list is also shown in the app under **设置 → 关于 → 特别致谢**.
+
+- **Tabler Icons** — Paweł Kuna and contributors (MIT). Every outline icon in the
+  UI comes from this set; the shipped `AppIcons.ttf` is a curated subset. If you
+  like it, star <https://github.com/tabler/tabler-icons>.
+- **Noto Sans SC** — Google Fonts / notofonts (OFL-1.1). The interface typeface.
+- **Flutter**, **.NET**, **Rust** — the three runtimes the launcher is built on.
+- **Modrinth** — mod, modpack, resource-pack and shader metadata.
+- **BMCLAPI** — China-mainland mirror used when official Mojang/Forge endpoints
+  are unreachable.
+
+Attribution for each asset (including loader icons) is recorded next to the
+asset in `app/assets/icons/*/SOURCES.md`.
 

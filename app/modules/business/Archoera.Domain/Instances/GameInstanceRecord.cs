@@ -16,7 +16,8 @@ public sealed record GameInstanceRecord(
     bool Favorite,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? LastPlayedAt)
+    DateTimeOffset? LastPlayedAt,
+    InstanceOverrides? Overrides = null)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 }

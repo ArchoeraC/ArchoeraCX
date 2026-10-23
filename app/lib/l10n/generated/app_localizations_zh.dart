@@ -280,6 +280,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceDelete => '删除实例';
 
   @override
+  String get instanceDuplicate => '复制实例';
+
+  @override
+  String get instanceDuplicateTitle => '复制实例';
+
+  @override
+  String get instanceDuplicateName => '新名称';
+
+  @override
+  String get instanceDuplicateNameHint => '例如 1.21.4 · Fabric 副本';
+
+  @override
+  String get instanceDuplicateSuffix => '副本';
+
+  @override
+  String get instanceDuplicateHint => '复制游戏目录、Mod 与配置（不含日志），并保留实例设置。';
+
+  @override
+  String get instanceDuplicateAction => '复制';
+
+  @override
+  String instanceDuplicateDone(String name) {
+    return '已创建“$name”。';
+  }
+
+  @override
+  String get instanceDuplicateFailed => '复制实例失败。';
+
+  @override
+  String get instanceDuplicateInvalidName => '请输入实例名称。';
+
+  @override
   String instanceDeleteConfirm(String name) {
     return '删除“$name”？';
   }
@@ -546,6 +578,45 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String downloadQueued(String name) {
+    return '“$name”已加入下载队列，可在任务或页面底部查看进度。';
+  }
+
+  @override
+  String downloadFinished(String name) {
+    return '“$name”下载完成。';
+  }
+
+  @override
+  String downloadFailed(String name) {
+    return '“$name”下载失败。';
+  }
+
+  @override
+  String downloadCancelled(String name) {
+    return '“$name”的下载已取消。';
+  }
+
+  @override
+  String downloadQueueActive(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个下载进行中',
+      one: '1 个下载进行中',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String downloadQueueProgress(String done, String total) {
+    return '$done / $total';
+  }
+
+  @override
+  String get downloadQueueOpen => '查看任务';
+
+  @override
   String get downloadRootLabel => '安装目录';
 
   @override
@@ -598,6 +669,79 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAppearance => '外观';
+
+  @override
+  String get settingsSectionLaunch => '启动';
+
+  @override
+  String get settingsSectionWindow => '游戏窗口';
+
+  @override
+  String get settingsWindowNote =>
+      '窗口设置写入原版启动参数（--width / --height / --fullscreen），对支持这些参数的版本生效。';
+
+  @override
+  String get settingsFullscreen => '全屏启动';
+
+  @override
+  String get settingsFullscreenDesc => '进入游戏后直接全屏；窗口尺寸仍会写入参数作为回退。';
+
+  @override
+  String get settingsWindowSize => '窗口尺寸';
+
+  @override
+  String get settingsWindowSizeDesc => '游戏窗口的初始大小。';
+
+  @override
+  String get settingsWindowSizeFullscreen => '全屏启动时忽略该尺寸。';
+
+  @override
+  String get settingsSectionGameArgs => '附加游戏参数';
+
+  @override
+  String get settingsGameArgsNote => '追加到原版参数之后，按空格拆分；留空表示不加。';
+
+  @override
+  String get settingsSectionTasks => '任务与日志';
+
+  @override
+  String get settingsTasksNote => '这些偏好只影响界面，不写入 settings.json。';
+
+  @override
+  String get settingsTaskHistory => '任务中心保留记录';
+
+  @override
+  String get settingsTaskHistoryDesc => '已完成任务最多保留多少条；进行中的任务永远不会被清理。';
+
+  @override
+  String get settingsLogLines => '日志默认行数';
+
+  @override
+  String get settingsLogLinesDesc => '打开日志查看器时加载的末尾行数。';
+
+  @override
+  String get settingsSectionNotifications => '通知';
+
+  @override
+  String get settingsNotificationsNote => '桌面通知使用系统通知中心，可在系统设置里单独静音。';
+
+  @override
+  String get settingsNotifyDesktop => '桌面通知';
+
+  @override
+  String get settingsNotifyDesktopDesc => '登录成功等事件发送系统通知。';
+
+  @override
+  String get settingsNotifyDownloads => '下载完成通知';
+
+  @override
+  String get settingsNotifyDownloadsDesc => '后台下载结束或失败时发送系统通知。';
+
+  @override
+  String get settingsToastDuration => '提示停留时长';
+
+  @override
+  String get settingsToastDurationDesc => '成功/提示类 Toast 的自动消失时间；错误提示会停留更久。';
 
   @override
   String get settingsStorage => '存储';
@@ -666,6 +810,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDownloadProxy => '下载代理';
 
   @override
+  String get settingsDownloadRangeThreshold => '大文件分片阈值';
+
+  @override
+  String get settingsDownloadRangeThresholdDesc => '大文件改用并发分片下载的体积门槛。';
+
+  @override
+  String get settingsRangeDisabled => '关闭分片';
+
+  @override
+  String get settingsDownloadChunk => '分片大小';
+
+  @override
+  String get settingsDownloadChunkDesc => '单个分片请求的体积。';
+
+  @override
+  String get settingsLogRetentionFiles => '日志保留数量';
+
+  @override
+  String get settingsLogRetentionFilesDesc => '超出后删除最旧的日志，最新一份始终保留。';
+
+  @override
+  String get settingsLogRetentionTotal => '日志总量上限';
+
+  @override
+  String get settingsLogRetentionTotalDesc => '超过后同样从最旧开始删除。';
+
+  @override
   String get settingsDownloadProxySystem => '跟随系统代理';
 
   @override
@@ -702,6 +873,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDataRoot => '应用数据目录';
+
+  @override
+  String get settingsOpenDataRoot => '打开数据目录';
+
+  @override
+  String get settingsOpenDataRootDesc => '在文件管理器中查看设置、日志与缓存文件。';
+
+  @override
+  String get settingsOpenInstanceRoot => '打开默认实例目录';
+
+  @override
+  String get settingsOpenInstanceRootDesc => '在文件管理器中查看存放实例的目录。';
+
+  @override
+  String get settingsOpenFailed => '无法打开该目录。';
+
+  @override
+  String get settingsStartPage => '启动页';
+
+  @override
+  String get settingsStartPageDesc => '下次启动启动器时生效。';
+
+  @override
+  String get startPageDashboard => '主页';
+
+  @override
+  String get startPageInstances => '实例';
+
+  @override
+  String get startPageDownload => '下载';
+
+  @override
+  String get startPageAccounts => '账户';
+
+  @override
+  String get startPageWiki => 'Wiki';
+
+  @override
+  String get startPageSettings => '设置';
 
   @override
   String get settingsChooseFolder => '选择目录';
@@ -794,6 +1004,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsMotion => '减少动效';
 
   @override
+  String get settingsCloseToTray => '关闭窗口时最小化到托盘';
+
+  @override
+  String get settingsCloseToTrayDesc => '关闭主窗口时隐藏到系统托盘，而不是退出启动器。';
+
+  @override
+  String get trayShow => '显示主窗口';
+
+  @override
+  String get trayQuit => '退出';
+
+  @override
+  String get settingsCleanPartials => '清理未完成的下载';
+
+  @override
+  String get settingsCleanPartialsDesc =>
+      '删除过期（默认 3 天未更新）的 .part 临时文件；进行中的下载会保留。';
+
+  @override
+  String get settingsCleanPartialsBody => '将删除所有实例目录中超过 3 天未更新的未完成下载临时文件，无法恢复。';
+
+  @override
+  String settingsCleanPartialsDone(int count, String size) {
+    return '已删除 $count 个临时文件，释放 $size。';
+  }
+
+  @override
+  String get settingsCleanPartialsNone => '没有需要清理的临时文件。';
+
+  @override
   String get settingsMotionDesc => '降低页面过渡与背景效果的强度。';
 
   @override
@@ -842,6 +1082,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get javaStatusScan => '扫描 Java';
+
+  @override
+  String get javaInstallAction => '安装 Java';
+
+  @override
+  String get javaInstallTitle => '安装 Java 运行时';
+
+  @override
+  String get javaInstallHint => '从 Mojang 官方源下载运行时，完成后自动重新扫描；下载在后台进行。';
+
+  @override
+  String get javaInstallRecommended => '推荐';
+
+  @override
+  String javaInstallQueued(int major) {
+    return '已加入下载队列：Java $major。';
+  }
+
+  @override
+  String javaInstallDone(int major) {
+    return 'Java $major 安装完成。';
+  }
+
+  @override
+  String javaInstallFailed(int major) {
+    return 'Java $major 安装失败。';
+  }
+
+  @override
+  String javaInstallCancelled(int major) {
+    return 'Java $major 安装已取消。';
+  }
 
   @override
   String get javaStatusSelect => '使用此 Java';
@@ -1122,6 +1394,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceManageMods => '管理 Mod';
+
+  @override
+  String get instanceOpenFolder => '打开实例目录';
+
+  @override
+  String get instanceOverridesBadge => '已覆盖全局设置';
 
   @override
   String get instanceModsTitle => '已安装 Mod';
@@ -1509,6 +1787,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutThanks => '特别致谢';
 
   @override
+  String get settingsCheckUpdate => '检查更新';
+
+  @override
+  String get settingsCheckUpdateDesc => '与 GitHub 最新发布比较（只检查，不自动安装）。';
+
+  @override
+  String get updateChecking => '正在检查更新…';
+
+  @override
+  String updateUpToDate(String version) {
+    return '已是最新版本（$version）。';
+  }
+
+  @override
+  String get updateAvailableTitle => '发现新版本';
+
+  @override
+  String updateAvailableBody(String current, String latest) {
+    return '当前 $current，最新 $latest。';
+  }
+
+  @override
+  String get updateOpenRelease => '打开下载页';
+
+  @override
+  String get updateCheckFailed => '检查更新失败。';
+
+  @override
+  String get updateCurrentVersion => '当前版本';
+
+  @override
   String get settingsAboutThanksDesc => '本构建依赖的开源项目与服务。';
 
   @override
@@ -1573,6 +1882,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String gameLogTruncated(int count) {
     return '仅显示最后 $count 行。';
   }
+
+  @override
+  String get gameLogOpenFolder => '打开日志目录';
+
+  @override
+  String get gameLogOpenFolderFailed => '无法打开日志目录。';
+
+  @override
+  String get gameLogClear => '清理旧日志';
+
+  @override
+  String get gameLogClearTitle => '清理旧启动日志？';
+
+  @override
+  String get gameLogClearBody => '将删除该实例除当前运行日志外的全部启动日志，无法恢复。';
+
+  @override
+  String gameLogClearDone(int count, String size) {
+    return '已删除 $count 个日志，释放 $size。';
+  }
+
+  @override
+  String get settingsClearLogs => '清理启动日志';
+
+  @override
+  String get settingsClearLogsDesc => '删除所有实例的旧启动日志；运行中的日志会保留。';
+
+  @override
+  String get settingsClearLogsBody => '将删除全部实例的旧启动日志（运行中的日志保留），无法恢复。';
 
   @override
   String gameLogRetentionInfo(String size, int max) {
@@ -1778,4 +2116,108 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loaderVersionNoMatch => '没有匹配的版本。';
+
+  @override
+  String get instanceSettingsTitle => '实例设置';
+
+  @override
+  String get instanceSettingsDesc => '留空的项跟随全局设置。';
+
+  @override
+  String get instanceSettingsMemoryMin => '最小内存（MB）';
+
+  @override
+  String get instanceSettingsMemoryMax => '最大内存（MB）';
+
+  @override
+  String get instanceSettingsGc => '垃圾回收器';
+
+  @override
+  String get instanceSettingsJvmArgs => 'JVM 参数';
+
+  @override
+  String get instanceSettingsGameArgs => '游戏参数';
+
+  @override
+  String get instanceSettingsJava => 'Java 可执行文件';
+
+  @override
+  String get instanceSettingsJavaHint => '填写 java 可执行文件的绝对路径；留空跟随全局选择。';
+
+  @override
+  String get instanceSettingsWindow => '游戏窗口';
+
+  @override
+  String get instanceSettingsWindowInherit => '跟随全局';
+
+  @override
+  String get instanceSettingsWindowFullscreen => '全屏';
+
+  @override
+  String get instanceSettingsWindowWindowed => '窗口化';
+
+  @override
+  String get instanceSettingsWindowWidth => '窗口宽度';
+
+  @override
+  String get instanceSettingsWindowHeight => '窗口高度';
+
+  @override
+  String get instanceSettingsFollowGlobal => '跟随全局';
+
+  @override
+  String get instanceSettingsSave => '保存';
+
+  @override
+  String get instanceSettingsSaved => '实例设置已保存。';
+
+  @override
+  String instanceSettingsFollowGlobalWith(String value) {
+    return '跟随全局（$value）';
+  }
+
+  @override
+  String get instanceSettingsReset => '恢复全局设置';
+
+  @override
+  String get instanceSettingsResetBody => '清除该实例的全部覆盖，改为跟随全局设置。';
+
+  @override
+  String get instanceSettingsResetDone => '已恢复为全局设置。';
+
+  @override
+  String get instanceOverridesMemory => '内存';
+
+  @override
+  String get instanceOverridesGc => 'GC';
+
+  @override
+  String get instanceOverridesJvm => 'JVM 参数';
+
+  @override
+  String get instanceOverridesGameArgs => '游戏参数';
+
+  @override
+  String get instanceOverridesJava => 'Java';
+
+  @override
+  String get instanceOverridesWindow => '窗口';
+
+  @override
+  String get instanceSettingsInvalidNumbers => '内存与窗口尺寸必须是整数。';
+
+  @override
+  String get instanceSettingsInvalidRange =>
+      '内存需在 128–65536 MB 之间且最小值不大于最大值，窗口需在 640–7680 × 480–4320 之间。';
+
+  @override
+  String get instanceSettingsInvalidPath => '请填写 Java 可执行文件的绝对路径。';
+
+  @override
+  String get instanceSettingsInvalidGc => '不支持的垃圾回收器。';
+
+  @override
+  String instanceSettingsSaveFailed(String message) {
+    return '保存实例设置失败：$message';
+  }
 }

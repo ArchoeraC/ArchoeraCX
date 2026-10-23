@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/account.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 
 /// Visual mapping for account kinds. Kept out of the model so the model stays
@@ -13,8 +14,8 @@ extension AccountKindVisuals on AccountKind {
   };
 
   IconData get icon => switch (this) {
-    AccountKind.microsoft => Icons.window_rounded,
-    AccountKind.offline => Icons.person_rounded,
-    AccountKind.authlib => Icons.hub_rounded,
+    AccountKind.microsoft => AppIcons.microsoft,
+    AccountKind.offline => AppIcons.accounts,
+    AccountKind.authlib => AppIcons.thirdPartyAuth,
   };
 }

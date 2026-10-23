@@ -5,6 +5,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
 import '../../services/core/installed_mod.dart';
 import '../../stores/providers.dart';
+import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 
 Future<void> showInstanceModsDialog(
@@ -186,12 +187,12 @@ class _InstanceModsDialogState extends ConsumerState<InstanceModsDialog> {
                   IconButton(
                     onPressed: _loading ? null : _load,
                     tooltip: l10n.refresh,
-                    icon: const Icon(Icons.refresh_rounded),
+                    icon: const Icon(AppIcons.refresh),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     tooltip: l10n.commonClose,
-                    icon: const Icon(Icons.close_rounded),
+                    icon: const Icon(AppIcons.close),
                   ),
                 ],
               ),
@@ -282,7 +283,7 @@ class _ModRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            mod.enabled ? Icons.extension_rounded : Icons.extension_off_rounded,
+            mod.enabled ? AppIcons.mod : AppIcons.modDisabled,
             size: 20,
             color: mod.enabled ? tokens.accent : tokens.textTertiary,
           ),
@@ -326,7 +327,7 @@ class _ModRow extends StatelessWidget {
               onPressed: onRemove,
               tooltip: l10n.instanceModDelete,
               icon: Icon(
-                Icons.delete_outline_rounded,
+                AppIcons.delete,
                 size: 19,
                 color: tokens.danger,
               ),

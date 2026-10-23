@@ -13,6 +13,24 @@ app/.packages
 app/coverage/
 **/ephemeral/
 
+# --- Icon font tooling ----------------------------------------------------
+# Only the packaged subset font is committed:
+#   app/assets/fonts/AppIcons.ttf          (built artifact, MIT)
+#   app/lib/theme/icons/app_icon_data.dart (generated glyph table)
+# Everything needed to *build* it stays on this machine: the generator venv,
+# the pinned upstream webfont/tarball, and any extracted SVG artwork.
+app/.cache/
+app/tool/icons/*.ttf
+app/tool/icons/*.otf
+app/tool/icons/*.tgz
+app/tool/icons/*.zip
+app/tool/icons/*.zipx
+app/assets/icons/ui/*.svg
+app/assets/icons/ui/*.ttf
+app/assets/icons/ui/*.otf
+app/assets/icons/ui/*.woff
+app/assets/icons/ui/*.woff2
+
 # --- .NET (business modules only) ----------------------------------------
 app/modules/business/**/bin/
 app/modules/business/**/obj/

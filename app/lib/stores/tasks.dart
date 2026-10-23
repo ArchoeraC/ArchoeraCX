@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/core/task_update.dart';
+import 'preferences.dart';
 import 'providers.dart';
 
 /// Methods whose work is long enough to belong in the task center.
@@ -62,10 +63,12 @@ class TaskCenterNotifier extends Notifier<List<TaskUpdate>> {
     }
 
     // Keep the panel useful without growing forever; preserve running tasks.
+    // The cap is a user preference (Tasks & logs in Settings).
+    final limit = ref.read(preferencesProvider).taskHistoryLimit;
     final terminal = next.where((task) => task.isTerminal).toList();
-    if (terminal.length > 12) {
+    if (terminal.length > limit) {
       final remove = terminal
-          .take(terminal.length - 12)
+          .take(terminal.length - limit)
           .map((t) => t.taskId)
           .toSet();
       next.removeWhere((task) => remove.contains(task.taskId));

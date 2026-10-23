@@ -101,6 +101,23 @@ public sealed class JsonAppSettingsStore
             if (downloadConcurrency is < 1 or > 64) downloadConcurrency = fallback.DownloadConcurrency;
             var downloadPerHost = ReadInt(root, "downloadPerHost") ?? fallback.DownloadPerHost;
             if (downloadPerHost is < 0 or > 64) downloadPerHost = fallback.DownloadPerHost;
+            var windowWidth = ReadInt(root, "windowWidth") ?? fallback.WindowWidth;
+            var windowHeight = ReadInt(root, "windowHeight") ?? fallback.WindowHeight;
+            if (windowWidth is < 640 or > 7680) windowWidth = fallback.WindowWidth;
+            if (windowHeight is < 480 or > 4320) windowHeight = fallback.WindowHeight;
+            var fullscreen = root.TryGetProperty("fullscreen", out var fullscreenElement) &&
+                             fullscreenElement.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                             fullscreenElement.GetBoolean();
+            var downloadChunkSizeKb = ReadInt(root, "downloadChunkSizeKb") ?? fallback.DownloadChunkSizeKb;
+            if (downloadChunkSizeKb is < 128 or > 8192) downloadChunkSizeKb = fallback.DownloadChunkSizeKb;
+            var downloadRangeThresholdKb =
+                ReadInt(root, "downloadRangeThresholdKb") ?? fallback.DownloadRangeThresholdKb;
+            if (downloadRangeThresholdKb is < 0 or > 65536)
+                downloadRangeThresholdKb = fallback.DownloadRangeThresholdKb;
+            var logRetentionFiles = ReadInt(root, "logRetentionFiles") ?? fallback.LogRetentionFiles;
+            if (logRetentionFiles is < 2 or > 50) logRetentionFiles = fallback.LogRetentionFiles;
+            var logRetentionMb = ReadInt(root, "logRetentionMb") ?? fallback.LogRetentionMegabytes;
+            if (logRetentionMb is < 8 or > 512) logRetentionMb = fallback.LogRetentionMegabytes;
             var downloadProxy = ReadString(root, "downloadProxy")?.Trim();
             if (!string.IsNullOrEmpty(downloadProxy) &&
                 (!Uri.TryCreate(downloadProxy, UriKind.Absolute, out var proxyUri) ||
@@ -134,6 +151,13 @@ public sealed class JsonAppSettingsStore
                 DownloadConcurrency = downloadConcurrency,
                 DownloadPerHost = downloadPerHost,
                 DownloadProxy = string.IsNullOrEmpty(downloadProxy) ? null : downloadProxy,
+                WindowWidth = windowWidth,
+                WindowHeight = windowHeight,
+                Fullscreen = fullscreen,
+                DownloadChunkSizeKb = downloadChunkSizeKb,
+                DownloadRangeThresholdKb = downloadRangeThresholdKb,
+                LogRetentionFiles = logRetentionFiles,
+                LogRetentionMegabytes = logRetentionMb,
             };
         }
         catch (Exception exception) when (
@@ -262,6 +286,13 @@ public sealed class JsonAppSettingsStore
             writer.WriteString("downloadSource", settings.DownloadSource);
             writer.WriteNumber("downloadConcurrency", settings.DownloadConcurrency);
             writer.WriteNumber("downloadPerHost", settings.DownloadPerHost);
+            writer.WriteNumber("windowWidth", settings.WindowWidth);
+            writer.WriteNumber("windowHeight", settings.WindowHeight);
+            writer.WriteBoolean("fullscreen", settings.Fullscreen);
+            writer.WriteNumber("downloadChunkSizeKb", settings.DownloadChunkSizeKb);
+            writer.WriteNumber("downloadRangeThresholdKb", settings.DownloadRangeThresholdKb);
+            writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
+            writer.WriteNumber("logRetentionMb", settings.LogRetentionMegabytes);
             if (!string.IsNullOrWhiteSpace(settings.DownloadProxy))
             {
                 writer.WriteString("downloadProxy", settings.DownloadProxy);
