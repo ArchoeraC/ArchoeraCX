@@ -73,6 +73,10 @@ Thumbs.db
 desktop.ini
 
 # --- Credentials and runtime data ---------------------------------------
+# Public OAuth client ID for local builds. CI injects the same value from
+# repository secrets; the file stays on this machine only.
+client_id.key
+*.key
 *.log
 accounts.json
 accounts.credentials.json

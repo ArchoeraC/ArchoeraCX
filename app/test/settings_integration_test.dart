@@ -39,6 +39,30 @@ void main() {
       final reloaded = await client.getSettings();
       expect(reloaded.instancesRoot, target);
       expect(File('${reloaded.dataRoot}/settings.json').existsSync(), isTrue);
+
+      // Loader sharing defaults on and survives the C++/C# boundary.
+      expect(reloaded.shareLoaderFiles, isTrue);
+      final isolated = await client.setRuntimeOptions(shareLoaderFiles: false);
+      expect(isolated.shareLoaderFiles, isFalse);
+      final afterToggle = await client.getSettings();
+      expect(afterToggle.shareLoaderFiles, isFalse);
+      // Put the default back so repeated runs stay deterministic.
+      await client.setRuntimeOptions(shareLoaderFiles: true);
+
+      // Automatic memory and game optimization are the new defaults and round
+      // trip through settings.set/get as well.
+      expect(reloaded.memoryAuto, isTrue);
+      expect(reloaded.gameOptimization, isTrue);
+      final manual = await client.setRuntimeOptions(
+        memoryMode: 'manual',
+        gameOptimization: false,
+      );
+      expect(manual.memoryAuto, isFalse);
+      expect(manual.gameOptimization, isFalse);
+      final afterMemory = await client.getSettings();
+      expect(afterMemory.memoryMode, 'manual');
+      expect(afterMemory.gameOptimization, isFalse);
+      await client.setRuntimeOptions(memoryMode: 'auto', gameOptimization: true);
     },
     skip: enabled && core.existsSync() && module.existsSync()
         ? false

@@ -23,6 +23,9 @@ class AppSettings {
     this.downloadRangeThresholdKb = 1024,
     this.logRetentionFiles = 10,
     this.logRetentionMegabytes = 32,
+    this.shareLoaderFiles = true,
+    this.memoryMode = 'auto',
+    this.gameOptimization = true,
   });
 
   /// Primary/legacy root. Always the first entry of [instancesRoots].
@@ -79,6 +82,22 @@ class AppSettings {
 
   /// Total launch-log budget per instance in MiB (8..512).
   final int logRetentionMegabytes;
+
+  /// Installs Forge/NeoForge libraries and the merged loader profile once in
+  /// the game root, shared by every instance of that loader build. When false
+  /// each instance keeps its own `libraries/` and `versions/<id>/`.
+  final bool shareLoaderFiles;
+
+  /// `auto` derives the heap from the version, loader, mod count and installed
+  /// RAM; `manual` uses [memoryMinMb] / [memoryMaxMb] and only warns when they
+  /// are too small.
+  final String memoryMode;
+
+  /// Lets the launcher add JVM tuning and prefer the discrete GPU.
+  final bool gameOptimization;
+
+  /// True when the launcher picks the heap itself.
+  bool get memoryAuto => memoryMode == 'auto';
 
   /// Human readable source label for tooltips/diagnostics.
   String get downloadSourceLabel => switch (downloadSource) {
@@ -141,6 +160,9 @@ class AppSettings {
         8,
         512,
       ),
+      shareLoaderFiles: value['shareLoaderFiles'] != false,
+      memoryMode: value['memoryMode'] == 'manual' ? 'manual' : 'auto',
+      gameOptimization: value['gameOptimization'] != false,
     );
   }
 

@@ -38,9 +38,19 @@ void main() {
     expect(find.textContaining('View all'), findsNothing);
     expect(find.text('Scan Java'), findsNothing);
     expect(find.text('System memory'), findsOneWidget);
-    expect(find.text('Minimum memory (MB)'), findsOneWidget);
+    expect(find.text('Automatic memory'), findsOneWidget);
+    // Automatic sizing hides the manual heap fields by default.
+    expect(find.text('Minimum memory (MB)'), findsNothing);
+    expect(find.text('Maximum memory (MB)'), findsNothing);
     // Game arguments moved to the Launch section.
     expect(find.text('Additional game arguments'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    // Switching to manual brings the fields back so a value can be forced.
+    await tester.tap(find.byKey(const ValueKey('settings-memory-auto')));
+    await tester.pumpAndSettle();
+    expect(find.text('Minimum memory (MB)'), findsOneWidget);
+    expect(find.text('Maximum memory (MB)'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Java runtimes'));

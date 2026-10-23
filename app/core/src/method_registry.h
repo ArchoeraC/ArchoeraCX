@@ -27,6 +27,7 @@ enum class MethodRouteKind {
   kCoreStatus,
   kCoreStatusWatch,
   kCoreStatusUnwatch,
+  kCoreGpu,
   kModule,
 };
 

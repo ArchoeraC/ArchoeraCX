@@ -88,6 +88,20 @@ public sealed class JsonAppSettingsStore
             var memoryMax = ReadInt(root, "memoryMaxMb") ?? fallback.MemoryMaxMb;
             if (memoryMin < 128) memoryMin = fallback.MemoryMinMb;
             if (memoryMax < memoryMin) memoryMax = Math.Max(memoryMin, fallback.MemoryMaxMb);
+            // Schema 10 had no automatic sizing. Keep a heap the user actually
+            // changed on manual so the upgrade does not silently ignore it.
+            var schemaVersion = ReadInt(root, "schemaVersion") ?? 0;
+            var memoryMode = ReadString(root, "memoryMode") is { } mode &&
+                             mode is AppSettings.MemoryModes.Auto or AppSettings.MemoryModes.Manual
+                ? mode
+                : schemaVersion < 11 &&
+                  (memoryMin != fallback.MemoryMinMb || memoryMax != fallback.MemoryMaxMb)
+                    ? AppSettings.MemoryModes.Manual
+                    : fallback.MemoryMode;
+            var gameOptimization =
+                !root.TryGetProperty("gameOptimization", out var optimizeElement) ||
+                optimizeElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                optimizeElement.GetBoolean();
             var jvmArgs = ReadString(root, "jvmArgs");
             var gcMode = ReadString(root, "gcMode") is { } gc && IsGcMode(gc)
                 ? gc
@@ -118,6 +132,10 @@ public sealed class JsonAppSettingsStore
             if (logRetentionFiles is < 2 or > 50) logRetentionFiles = fallback.LogRetentionFiles;
             var logRetentionMb = ReadInt(root, "logRetentionMb") ?? fallback.LogRetentionMegabytes;
             if (logRetentionMb is < 8 or > 512) logRetentionMb = fallback.LogRetentionMegabytes;
+            var shareLoaderFiles =
+                !root.TryGetProperty("shareLoaderFiles", out var shareElement) ||
+                shareElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                shareElement.GetBoolean();
             var downloadProxy = ReadString(root, "downloadProxy")?.Trim();
             if (!string.IsNullOrEmpty(downloadProxy) &&
                 (!Uri.TryCreate(downloadProxy, UriKind.Absolute, out var proxyUri) ||
@@ -130,7 +148,6 @@ public sealed class JsonAppSettingsStore
 
             // Schema 6 stored the old default of 6; raise it to the new default
             // so existing installs also use the wider per-host budget.
-            var schemaVersion = ReadInt(root, "schemaVersion") ?? 0;
             if (schemaVersion < 7 && downloadPerHost == 6)
             {
                 downloadPerHost = fallback.DownloadPerHost;
@@ -158,6 +175,9 @@ public sealed class JsonAppSettingsStore
                 DownloadRangeThresholdKb = downloadRangeThresholdKb,
                 LogRetentionFiles = logRetentionFiles,
                 LogRetentionMegabytes = logRetentionMb,
+                ShareLoaderFiles = shareLoaderFiles,
+                MemoryMode = memoryMode,
+                GameOptimization = gameOptimization,
             };
         }
         catch (Exception exception) when (
@@ -293,6 +313,9 @@ public sealed class JsonAppSettingsStore
             writer.WriteNumber("downloadRangeThresholdKb", settings.DownloadRangeThresholdKb);
             writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
             writer.WriteNumber("logRetentionMb", settings.LogRetentionMegabytes);
+            writer.WriteBoolean("shareLoaderFiles", settings.ShareLoaderFiles);
+            writer.WriteString("memoryMode", settings.MemoryMode);
+            writer.WriteBoolean("gameOptimization", settings.GameOptimization);
             if (!string.IsNullOrWhiteSpace(settings.DownloadProxy))
             {
                 writer.WriteString("downloadProxy", settings.DownloadProxy);

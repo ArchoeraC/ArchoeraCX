@@ -46,6 +46,14 @@ void main() {
       final listed = await client.listInstances();
       expect(listed.any((instance) => instance.id == created.id), isTrue);
 
+      // The heap preview crosses the C++ route into the C# launch module.
+      final memory = await client.getLaunchMemory(created.id);
+      expect(memory, isNotNull);
+      expect(memory!.isAuto, isTrue);
+      expect(memory.modCount, 0);
+      expect(memory.recommendedMb, greaterThanOrEqualTo(1024));
+      expect(memory.systemTotalMb, greaterThan(0));
+
       final offline = await client.prepareLaunch(created.id);
       expect(offline.ready, isFalse);
       expect(offline.reason, 'ACCOUNT_REQUIRED');

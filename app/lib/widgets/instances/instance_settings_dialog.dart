@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
+import '../../services/core/launch_memory.dart';
 import '../../stores/instances.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';
@@ -61,25 +62,41 @@ class _InstanceSettingsDialogState
   String _windowMode = _windowInherit;
   String? _error;
   bool _saving = false;
+  LaunchMemoryPlan? _memoryPlan;
 
   @override
   void initState() {
     super.initState();
     final overrides = widget.instance.overrides;
-    if (overrides == null) return;
-    _minController.text = overrides.memoryMinMb?.toString() ?? '';
-    _maxController.text = overrides.memoryMaxMb?.toString() ?? '';
-    _jvmController.text = overrides.jvmArgs ?? '';
-    _gameArgsController.text = overrides.gameArgs ?? '';
-    _javaController.text = overrides.javaPath ?? '';
-    _widthController.text = overrides.windowWidth?.toString() ?? '';
-    _heightController.text = overrides.windowHeight?.toString() ?? '';
-    _gcMode = overrides.gcMode;
-    _windowMode = switch (overrides.fullscreen) {
-      true => _windowFullscreen,
-      false => _windowWindowed,
-      null => _windowInherit,
-    };
+    if (overrides != null) {
+      _minController.text = overrides.memoryMinMb?.toString() ?? '';
+      _maxController.text = overrides.memoryMaxMb?.toString() ?? '';
+      _jvmController.text = overrides.jvmArgs ?? '';
+      _gameArgsController.text = overrides.gameArgs ?? '';
+      _javaController.text = overrides.javaPath ?? '';
+      _widthController.text = overrides.windowWidth?.toString() ?? '';
+      _heightController.text = overrides.windowHeight?.toString() ?? '';
+      _gcMode = overrides.gcMode;
+      _windowMode = switch (overrides.fullscreen) {
+        true => _windowFullscreen,
+        false => _windowWindowed,
+        null => _windowInherit,
+      };
+    }
+    _loadMemoryPlan();
+  }
+
+  /// The recommendation is advisory: it tells the user what the launcher would
+  /// pick so an override can be judged against it.
+  Future<void> _loadMemoryPlan() async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) return;
+    try {
+      final plan = await client.getLaunchMemory(widget.instance.id);
+      if (mounted) setState(() => _memoryPlan = plan);
+    } catch (_) {
+      // The dialog still works without the preview.
+    }
   }
 
   @override
@@ -269,9 +286,21 @@ class _InstanceSettingsDialogState
     final global = ref.watch(appSettingsProvider).value;
     final memoryHint = global == null
         ? l10n.instanceSettingsFollowGlobal
+        : global.memoryAuto
+        ? _memoryPlan == null
+              ? l10n.settingsMemoryAuto
+              : l10n.instanceSettingsMemoryAuto(_memoryPlan!.recommendedMb)
         : l10n.instanceSettingsFollowGlobalWith(
             '${global.memoryMinMb}–${global.memoryMaxMb} MB',
           );
+    // A typed override far below the recommendation is worth flagging before
+    // the game crashes on it; the value is still saved as-is.
+    final typedMax = int.tryParse(_maxController.text.trim());
+    final plan = _memoryPlan;
+    final lowMemory =
+        plan != null &&
+        typedMax != null &&
+        (typedMax < 1024 || typedMax * 10 < plan.recommendedMb * 6);
     final gcHint = global == null
         ? l10n.instanceSettingsFollowGlobal
         : l10n.instanceSettingsFollowGlobalWith(_gcLabel(l10n, global.gcMode));
@@ -369,10 +398,23 @@ class _InstanceSettingsDialogState
                             controller: _maxController,
                             label: l10n.instanceSettingsMemoryMax,
                             hint: memoryHint,
+                            // Rebuild so the low-memory hint follows the input.
+                            onChanged: (_) => setState(() {}),
                           ),
                         ),
                       ],
                     ),
+                    if (lowMemory) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        l10n.instanceSettingsMemoryLow(
+                          _memoryPlan!.recommendedMb,
+                        ),
+                        style: textTheme.bodySmall?.copyWith(
+                          color: tokens.warning,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.md),
                     DropdownButtonFormField<String>(
                       key: const ValueKey('instance-gc-mode'),
@@ -382,10 +424,7 @@ class _InstanceSettingsDialogState
                         prefixIcon: const Icon(AppIcons.settings, size: 18),
                       ),
                       items: [
-                        DropdownMenuItem(
-                          value: '',
-                          child: Text(gcHint),
-                        ),
+                        DropdownMenuItem(value: '', child: Text(gcHint)),
                         for (final option in _gcOptions(l10n))
                           DropdownMenuItem(
                             value: option.$1,
@@ -541,12 +580,14 @@ class _InstanceSettingsDialogState
     required TextEditingController controller,
     required String label,
     required String hint,
+    ValueChanged<String>? onChanged,
   }) {
     return TextField(
       controller: controller,
       enabled: !_saving,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: onChanged,
       decoration: InputDecoration(labelText: label, hintText: hint),
     );
   }

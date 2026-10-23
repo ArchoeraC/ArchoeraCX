@@ -253,6 +253,21 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
             .Select(record => new InstanceSyncMissing(record.Id, record.RootPath))
             .ToArray();
 
+        // Rows adopted from a folder that turned out to be a shared loader
+        // profile are not instances. Drop the index entry; the folder itself
+        // stays because other instances launch from it.
+        var staleProfiles = existing
+            .Where(record => !found.ContainsKey(record.Id) &&
+                             InstanceDiscovery.IsLoaderProfileDirectory(record.RootPath))
+            .ToArray();
+        if (!dryRun)
+        {
+            foreach (var record in staleProfiles)
+            {
+                await DeleteAsync(record.Id, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
         IReadOnlyList<GameInstanceRecord> items;
         if (dryRun)
         {
@@ -263,6 +278,9 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
                 if (index >= 0) merged[index] = record;
                 else merged.Add(record);
             }
+
+            merged.RemoveAll(item => staleProfiles.Any(
+                stale => string.Equals(stale.Id, item.Id, StringComparison.Ordinal)));
             items = merged;
         }
         else

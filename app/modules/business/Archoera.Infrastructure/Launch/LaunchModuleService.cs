@@ -26,7 +26,8 @@ namespace Archoera.Infrastructure.Launch;
 /// </summary>
 public sealed class LaunchModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods = ["launch.start", "launch.prepare"];
+    private static readonly string[] SupportedMethods =
+        ["launch.start", "launch.prepare", "launch.memory"];
 
     private static readonly HttpClient Http = new()
     {
@@ -389,6 +390,83 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     }
 
     /// <summary>
+    /// Heap preview shared by the settings panel, the instance dialog and the
+    /// pre-launch warning. Manual values are returned as-is together with a
+    /// warning code; automatic values are derived from the version, loader,
+    /// enabled mods and installed RAM.
+    /// </summary>
+    private async Task<byte[]> MemoryAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var instanceId = ReadRequired(paramsJson, "instanceId");
+            var instance = (await _instances.ListAsync(cancellationToken).ConfigureAwait(false))
+                .FirstOrDefault(item => string.Equals(item.Id, instanceId, StringComparison.Ordinal))
+                ?? throw new LaunchException(
+                    "INSTANCE_NOT_FOUND",
+                    $"instance not found: {instanceId}");
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            if (instance.Overrides is { } overrides)
+            {
+                settings = overrides.ApplyTo(settings);
+            }
+
+            var plan = LaunchMemoryPlanner.Resolve(
+                settings,
+                instance,
+                instance.RootPath);
+            return ModuleJson.Envelope(writer => WriteMemoryPlan(writer, plan));
+        }
+        catch (LaunchException exception)
+        {
+            return ModuleJson.Error(exception.Code, exception.Message);
+        }
+        catch (ArgumentException exception)
+        {
+            return ModuleJson.Error("E_INVALID", exception.Message);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return ModuleJson.Error("E_INTERNAL", exception.Message);
+        }
+    }
+
+    private static void WriteMemoryPlan(Utf8JsonWriter writer, LaunchMemoryPlan plan)
+    {
+        writer.WriteString("mode", plan.Mode);
+        writer.WriteNumber("minMb", plan.MinMb);
+        writer.WriteNumber("maxMb", plan.MaxMb);
+        writer.WriteNumber("recommendedMb", plan.RecommendedMb);
+        writer.WriteNumber("systemTotalMb", plan.SystemTotalMb);
+        if (plan.SystemAvailableMb is { } available)
+        {
+            writer.WriteNumber("systemAvailableMb", available);
+        }
+        else
+        {
+            writer.WriteNull("systemAvailableMb");
+        }
+
+        writer.WriteNumber("modCount", plan.ModCount);
+        if (plan.WarningCode is null)
+        {
+            writer.WriteNull("warningCode");
+            writer.WriteNull("warning");
+        }
+        else
+        {
+            writer.WriteString("warningCode", plan.WarningCode);
+            writer.WriteString("warning", plan.WarningMessage);
+        }
+    }
+
+    /// <summary>
     /// Read-only readiness probe. A credential is usable when it still has a
     /// Minecraft access token and either is not near expiry or can be refreshed.
     /// </summary>
@@ -430,6 +508,11 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             return await PrepareAsync(paramsJson, cancellationToken).ConfigureAwait(false);
         }
 
+        if (string.Equals(method, "launch.memory", StringComparison.Ordinal))
+        {
+            return await MemoryAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        }
+
         if (!string.Equals(method, "launch.start", StringComparison.Ordinal))
         {
             return ModuleJson.Error("E_UNSUPPORTED", $"unsupported launch method '{method}'");
@@ -464,6 +547,12 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             {
                 settings = overrides.ApplyTo(settings);
             }
+            // One heap decision for the whole launch: the command line, the
+            // task-center label and the pre-launch warning share these numbers.
+            var memoryPlan = LaunchMemoryPlanner.Resolve(
+                settings,
+                instance,
+                instance.RootPath);
             var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false)
                 ?? throw new LaunchException("ACCOUNT_REQUIRED", "add an account before launching");
             if (mode == "online" && requirePremium &&
@@ -607,6 +696,20 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     loaderCheck.Message ?? "loader files are missing");
             }
 
+            // Optimization depends on the hardware the caller probed through
+            // the C++ bridge (`system.gpu`). Without it we still get the
+            // heap-based JVM tuning.
+            var hardware = ReadHardware(paramsJson);
+            var optimizationPlan = LaunchOptimizationPlanner.Build(
+                settings,
+                memoryPlan,
+                hardware,
+                Environment.ProcessorCount);
+            if (optimizationPlan.Notes.Contains("windows-gpu-preference", StringComparer.Ordinal))
+            {
+                WindowsGpuPreference.TryPreferHighPerformance(java.Path);
+            }
+
             var plan = LaunchPlanBuilder.Build(
                 instance,
                 version,
@@ -616,7 +719,10 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 paths,
                 accessToken: accessToken,
                 clientId: clientId,
-                userType: userType);
+                userType: userType,
+                memoryPlan: memoryPlan,
+                optimizationPlan: optimizationPlan,
+                cores: Environment.ProcessorCount);
             var (process, logPath) = Start(
                 instance.Id,
                 plan,
@@ -630,6 +736,16 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 writer.WriteString("javaVersion", java.Version);
                 writer.WriteString("accountName", launchAccount.DisplayName);
                 writer.WriteString("logPath", logPath);
+                writer.WriteString("memoryMode", memoryPlan.Mode);
+                writer.WriteNumber("memoryMaxMb", memoryPlan.MaxMb);
+                writer.WriteNumber("memoryRecommendedMb", memoryPlan.RecommendedMb);
+                writer.WriteStartArray("optimizations");
+                foreach (var note in optimizationPlan.Notes)
+                {
+                    writer.WriteStringValue(note);
+                }
+
+                writer.WriteEndArray();
             });
         }
         catch (LaunchException exception)
@@ -1129,6 +1245,13 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             startInfo.Environment.Remove(name);
         }
 
+        // Optimization environment (PRIME offload, DRI_PRIME) is decided by the
+        // launch module and applied here so the child JVM inherits it.
+        foreach (var pair in plan.Environment)
+        {
+            startInfo.Environment[pair.Key] = pair.Value;
+        }
+
         var logPath = Path.Combine(
             plan.LogDirectory,
             $"launch-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}.log");
@@ -1175,6 +1298,26 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     }
 
     private sealed record OnlineSession(AccountRecord Account, string AccessToken);
+
+    /// <summary>
+    /// Optional `hardware` object forwarded from the C++ `system.gpu` probe.
+    /// Missing or malformed input just means "no GPU-specific optimization".
+    /// </summary>
+    private static HardwareProfile? ReadHardware(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.TryGetProperty("hardware", out var element)
+                ? HardwareProfile.TryParse(element)
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 
     private static bool ReadBool(string? json, string name)
     {

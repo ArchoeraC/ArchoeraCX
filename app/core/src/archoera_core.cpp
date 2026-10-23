@@ -11,6 +11,7 @@
 #include "method_registry.h"
 #include "module_registry.h"
 #include "platform_appearance.h"
+#include "platform_gpu.h"
 #include "platform_status.h"
 #include "platform_system.h"
 
@@ -295,7 +296,8 @@ std::string make_modules_result(const archoera_core& core) {
       "\"system.info\",\"system.modules\",\"system.appearance\","
       "\"system.openUrl\",\"system.openPath\",\"system.notify\","
       "\"system.status\","
-      "\"system.status.watch\",\"system.status.unwatch\"]}";
+      "\"system.status.watch\",\"system.status.unwatch\","
+      "\"system.gpu\"]}";
   if (core.module_registry != nullptr) {
     for (const auto& module : core.module_registry->modules()) {
       json.append(",{\"name\":\"");
@@ -304,6 +306,39 @@ std::string make_modules_result(const archoera_core& core) {
       append_json_escaped(json, module.version.c_str());
       json.append("\",\"state\":\"ready\"}");
     }
+  }
+  json.append("]},\"meta\":{\"schemaVersion\":1}}");
+  return json;
+}
+
+std::string make_gpu_result() {
+  const auto& gpu = archoera::sample_gpu_status();
+  std::string json = "{\"ok\":true,\"data\":{\"platform\":\"";
+  append_json_escaped(json, gpu.platform.c_str());
+  json.append("\",\"primaryVendor\":");
+  if (gpu.primary_vendor.empty()) {
+    json.append("null");
+  } else {
+    json.append("\"");
+    append_json_escaped(json, gpu.primary_vendor.c_str());
+    json.append("\"");
+  }
+  json.append(",\"hybrid\":");
+  json.append(gpu.hybrid ? "true" : "false");
+  json.append(",\"gpus\":[");
+  bool first = true;
+  for (const auto& device : gpu.gpus) {
+    if (!first) json.append(",");
+    first = false;
+    json.append("{\"vendor\":\"");
+    append_json_escaped(json, device.vendor.c_str());
+    json.append("\",\"name\":\"");
+    append_json_escaped(json, device.name.c_str());
+    json.append("\",\"discrete\":");
+    json.append(device.discrete ? "true" : "false");
+    json.append(",\"driverLoaded\":");
+    json.append(device.driver_loaded ? "true" : "false");
+    json.append("}");
   }
   json.append("]},\"meta\":{\"schemaVersion\":1}}");
   return json;
@@ -2023,6 +2058,8 @@ ARCHOERA_API archoera_status archoera_call(archoera_core* core,
       result = make_info_result();
     } else if (route->kind == MethodRouteKind::kCoreModules) {
       result = make_modules_result(*core);
+    } else if (route->kind == MethodRouteKind::kCoreGpu) {
+      result = make_gpu_result();
     } else {
       archoera::SystemAppearance state;
       if (core->appearance != nullptr) {

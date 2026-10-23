@@ -17,6 +17,7 @@ import 'java_runtime_plan.dart';
 import 'java_scan.dart';
 import 'maintenance.dart';
 import 'launch_preparation.dart';
+import 'launch_memory.dart';
 import 'launch_result.dart';
 import 'launch_log.dart';
 import 'loader_versions.dart';
@@ -486,6 +487,7 @@ final class CoreClient {
     String mode = 'offline',
     bool requirePremium = false,
     bool requireMicrosoft = false,
+    Map<String, Object?>? hardware,
     void Function(int done, int total)? onProgress,
     String? label,
   }) async {
@@ -497,6 +499,7 @@ final class CoreClient {
         'mode': mode,
         'requirePremium': requirePremium,
         'requireMicrosoft': requireMicrosoft,
+        'hardware': ?hardware,
       }),
       onProgress: onProgress,
       label: label,
@@ -519,6 +522,25 @@ final class CoreClient {
       accountName: _asString(data['accountName']),
       logPath: _asString(data['logPath']),
     );
+  }
+
+  /// Heap the launcher would use for this instance, plus a warning code when
+  /// the user forced a value that is too small for the game.
+  ///
+  /// The native module owns the sizing algorithm: version baseline + loader +
+  /// enabled mods, capped by installed RAM.
+  Future<LaunchMemoryPlan?> getLaunchMemory(
+    String instanceId, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'launch.memory';
+    final jsonText = await _runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
+      onProgress: onProgress,
+    );
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return LaunchMemoryPlan.tryParse(decoded['data']);
   }
 
   /// List the recent launch logs of an instance.
@@ -698,6 +720,7 @@ final class CoreClient {
     required String kind,
     required String gameVersion,
     required String loaderVersion,
+    bool shareLoaderFiles = true,
     void Function(int done, int total)? onProgress,
     String? label,
   }) async {
@@ -710,6 +733,7 @@ final class CoreClient {
         'kind': kind,
         'gameVersion': gameVersion,
         'loaderVersion': loaderVersion,
+        'shareLoaderFiles': shareLoaderFiles,
       }),
       onProgress: onProgress,
       label: label,
@@ -732,6 +756,8 @@ final class CoreClient {
       versionJson: versionJson,
       requiresJava: data['requiresJava'] == true,
       installerPath: _asString(data['installerPath']),
+      installRoot: _asString(data['installRoot']) ?? root,
+      shareLoaderFiles: data['shareLoaderFiles'] != false,
     );
   }
 
@@ -1322,6 +1348,20 @@ final class CoreClient {
     return SystemMemoryInfo.tryParse(data);
   }
 
+  /// Read the display adapters from the C++ core.
+  ///
+  /// The payload is forwarded to `launch.start` as `hardware`; the launch
+  /// module decides whether to prefer the dedicated GPU.
+  Future<Map<String, Object?>?> getSystemGpu({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.gpu';
+    final jsonText = await _runAsync(methodName, onProgress: onProgress);
+    final decoded = _decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = decoded['data'];
+    return data is Map ? Map<String, Object?>.from(data) : null;
+  }
+
   /// Read build provenance (official build badge) through the native module.
   ///
   /// Only the SHA-256 of the compiled-in Microsoft client id is returned; the
@@ -1509,6 +1549,9 @@ final class CoreClient {
     bool? fullscreen,
     int? logRetentionFiles,
     int? logRetentionMegabytes,
+    bool? shareLoaderFiles,
+    String? memoryMode,
+    bool? gameOptimization,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'settings.set';
@@ -1525,6 +1568,9 @@ final class CoreClient {
         'fullscreen': ?fullscreen,
         'logRetentionFiles': ?logRetentionFiles,
         'logRetentionMb': ?logRetentionMegabytes,
+        'shareLoaderFiles': ?shareLoaderFiles,
+        'memoryMode': ?memoryMode,
+        'gameOptimization': ?gameOptimization,
       }),
       onProgress: onProgress,
     );

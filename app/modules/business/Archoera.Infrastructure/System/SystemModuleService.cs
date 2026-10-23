@@ -73,7 +73,7 @@ public sealed class SystemModuleService : IModuleMethodHandler
         : OperatingSystem.IsMacOS() ? "macos" : "linux";
 
     /// <summary>Total and available memory in MB; available is null when unknown.</summary>
-    private static (long TotalMb, long? AvailableMb) ReadMemory()
+    internal static (long TotalMb, long? AvailableMb) ReadMemory()
     {
         if (OperatingSystem.IsWindows())
         {

@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _RecordingDownloads extends DownloadsNotifier {
   final List<String> kinds = <String>[];
   final List<String> installerPaths = <String>[];
+  final List<bool?> shares = <bool?>[];
   CoreException? failure;
 
   @override
@@ -26,6 +27,7 @@ class _RecordingDownloads extends DownloadsNotifier {
     required String gameVersion,
     required String loaderVersion,
     required String installerPath,
+    bool? shareLoaderFiles,
     required String successMessage,
     required String failureMessage,
     required String cancelledMessage,
@@ -33,6 +35,7 @@ class _RecordingDownloads extends DownloadsNotifier {
   }) async {
     kinds.add(kind);
     installerPaths.add(installerPath);
+    shares.add(shareLoaderFiles);
     final failure = this.failure;
     if (failure != null) throw failure;
   }
@@ -115,9 +118,48 @@ void main() {
 
     expect(downloads.kinds, ['neoforge']);
     expect(downloads.installerPaths, ['/tmp/forge-installer.jar']);
+    // Untouched, the dialog defers to the global preference (null), which the
+    // queue resolves against the current settings.
+    expect(downloads.shares, [null]);
     // The regression: the dialog used to stay open for the whole download.
     expect(find.byType(LoaderInstallDialog), findsNothing);
     expect(find.textContaining('queued'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('the sharing checkbox overrides the default for one install', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final downloads = _RecordingDownloads();
+    FileSelectorPlatform.instance = _FakeFileSelector(
+      '/tmp/forge-installer.jar',
+    );
+
+    await tester.pumpWidget(_host(downloads));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    final sharing = find.byType(CheckboxListTile);
+    expect(sharing, findsOneWidget);
+    expect(tester.widget<CheckboxListTile>(sharing).value, isTrue);
+
+    await tester.ensureVisible(sharing);
+    await tester.tap(sharing);
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(sharing).value, isFalse);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Choose installer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Download and commit'));
+    await tester.pumpAndSettle();
+
+    expect(downloads.shares, [false]);
 
     await tester.pump(const Duration(seconds: 4));
   });

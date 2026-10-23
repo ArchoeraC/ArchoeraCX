@@ -219,7 +219,20 @@ public sealed class JsonInstanceRepository : IInstanceRepository
             .Select(record => new InstanceSyncMissing(record.Id, record.RootPath))
             .ToArray();
 
-        if (!dryRun && (adopted.Count > 0 || updated.Count > 0))
+        // Drop rows that point at a shared loader profile: the folder is a
+        // launch target for other instances, not an instance of its own.
+        var staleProfiles = registry
+            .Where(record => !found.ContainsKey(record.Id) &&
+                             InstanceDiscovery.IsLoaderProfileDirectory(record.RootPath))
+            .ToArray();
+        if (staleProfiles.Length > 0)
+        {
+            registry.RemoveAll(record => staleProfiles.Any(
+                stale => string.Equals(stale.Id, record.Id, StringComparison.Ordinal)));
+        }
+
+        if (!dryRun &&
+            (adopted.Count > 0 || updated.Count > 0 || staleProfiles.Length > 0))
         {
             await WriteRegistryAsync(registry, cancellationToken).ConfigureAwait(false);
         }

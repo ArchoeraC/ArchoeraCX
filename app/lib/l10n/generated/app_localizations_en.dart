@@ -428,6 +428,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'This instance has no loader installed. Install Forge/NeoForge from the instance menu, then launch again.';
 
   @override
+  String get launchMemoryWarningTitle => 'Low memory';
+
+  @override
+  String launchMemoryWarningLow(int max, int recommended) {
+    return 'Only $max MB is allocated but $recommended MB is recommended. The game may stutter or crash.';
+  }
+
+  @override
+  String launchMemoryWarningOver(int max, int available) {
+    return 'A $max MB heap leaves little room for the system ($available MB available).';
+  }
+
+  @override
+  String launchMemoryWarningSystem(int total, int max) {
+    return 'This machine has $total MB of RAM, so the heap is capped at $max MB. Heavy modpacks may not fit.';
+  }
+
+  @override
+  String get launchAnyway => 'Launch anyway';
+
+  @override
   String launchLog(String path) {
     return 'Log: $path';
   }
@@ -541,6 +562,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loaderInstallFailed => 'Loader install failed.';
+
+  @override
+  String get loaderShareFiles => 'Share loader files';
+
+  @override
+  String get loaderShareFilesHint =>
+      'Reuses one libraries/versions copy in the game folder for every instance of this loader build. Untick to keep them inside this instance.';
 
   @override
   String get searchDownload => 'Search resources';
@@ -695,6 +723,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsWindowSizeFullscreen =>
       'Ignored while starting fullscreen.';
+
+  @override
+  String get settingsShareLoaderFiles => 'Share loader files';
+
+  @override
+  String get settingsShareLoaderFilesDesc =>
+      'Forge/NeoForge libraries and the merged loader profile are installed once in the game folder and reused by every instance of that loader build. Untick to keep them inside each instance.';
 
   @override
   String get settingsSectionGameArgs => 'Extra game arguments';
@@ -1493,6 +1528,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Estimated usage exceeds available memory.';
 
   @override
+  String get settingsMemoryAuto => 'Automatic memory';
+
+  @override
+  String get settingsMemoryAutoDesc =>
+      'Picks the heap from the game version, loader, enabled mods and installed RAM.';
+
+  @override
+  String get settingsMemoryAutoHint =>
+      'Each instance gets the heap it needs; the manual numbers above are kept but no longer applied.';
+
+  @override
+  String get settingsGameOptimization => 'Game optimization';
+
+  @override
+  String get settingsGameOptimizationDesc =>
+      'Adds tuned G1 flags and prefers the dedicated GPU when starting the game.';
+
+  @override
   String downloadResults(num count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -2254,6 +2307,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String instanceSettingsFollowGlobalWith(String value) {
     return 'Follow global ($value)';
+  }
+
+  @override
+  String instanceSettingsMemoryAuto(int mb) {
+    return 'Automatic · $mb MB recommended';
+  }
+
+  @override
+  String instanceSettingsMemoryLow(int recommended) {
+    return 'Below the recommended $recommended MB; the game may stutter or crash.';
   }
 
   @override

@@ -2391,6 +2391,7 @@ public interface IDownloadProvider {
 | `system.status` | C++ | 机器负载快照（异步任务）：CPU 采样/核数/负载、内存、指定路径所在磁盘、启动器进程与系统运行时长；平台 API 在 `platform_status_*`，未知值写 null |
 | `system.status.watch` | C++ | 启动原生采样线程，按 `intervalMs`（默认 5000，范围 1000–60000）推送 `system.status` 域事件；条件变量等待，不做 Dart 轮询 |
 | `system.status.unwatch` | C++ | 停止采样线程并 join |
+| `system.gpu` | C++ | 显示适配器快照：`platform`、`gpus[]`（`vendor`/`name`/`discrete`/`driverLoaded`）、`primaryVendor`、`hybrid`；Linux 读 `/sys/class/drm`，Windows 走 `EnumDisplayDevicesW`，macOS 返回空列表（系统自行切换）；进程内缓存，不做轮询 |
 | `wiki.feed` | C# | Wiki 页社区流：Mojang 官方新闻、Java 版本补丁说明、Minecraft Wiki 最近编辑；逐源独立失败 + 5 分钟缓存 |
 | `system.diagnostics` | C++/C# | 生成诊断包 |
 | `system.openPath` | C++ | 打开本地目录（核心自有方法，不经 C#）：参数 `{"path":"/absolute/dir"}`，返回 `{"opened":bool}`；只接受已存在、绝对路径的目录，文件/不存在/非绝对路径返回 `E_INVALID`（`system.openPath requires an absolute existing directory`）；Linux 走 XDG Portal OpenURI 的 `file:` URI，Windows `ShellExecute`，macOS `NSWorkspace`，无实现返回 `opened:false` |
@@ -2450,7 +2451,8 @@ public interface IDownloadProvider {
 | `account.logout` | C# | 清 token/保留元数据可选 |
 | `account.remove` | C# | 删除账户 |
 | `launch.prepare` | C# | 构建/预检 LaunchPlan（不启动） |
-| `launch.start` | C# | spawn JVM |
+| `launch.memory` | C# | 内存预览：`{instanceId}` → `{mode,minMb,maxMb,recommendedMb,systemTotalMb,systemAvailableMb,modCount,warningCode,warning}`；`auto` 按版本基线 + 加载器开销 + 模组数推算并按本机内存封顶，`manual` 原样返回用户值并给出 `LOW_MEMORY`/`BELOW_RECOMMENDED`/`OVER_SYSTEM`/`OVER_AVAILABLE` 警告码；实例显式覆盖内存即视为该实例 `manual` |
+| `launch.start` | C# | spawn JVM（可选参数 `hardware`：`system.gpu` 的 `data` 原样转发，用于独显偏好） |
 | `launch.stop` | C# | 优雅停止/杀进程树 |
 | `launch.status` | C# | 运行状态/pid |
 | `launch.logs` | C# | 列出实例最近的启动日志（含运行中标记） |
@@ -2567,6 +2569,31 @@ public interface IDownloadProvider {
 
 ```json
 { "pid": 12345, "startedAt": "2026-10-20T12:34:56Z", "logTaskId": 42 }
+```
+
+可选参数 `hardware` 为 `system.gpu` 的 `data` 原样转发（Dart 不做裁剪），例如
+`{"platform":"linux","hybrid":true,"primaryVendor":"intel","gpus":[{"vendor":"nvidia","discrete":true,"driverLoaded":true}]}`。
+`launch.start` 结果额外返回 `memoryMode` / `memoryMaxMb` / `memoryRecommendedMb` / `optimizations`（已应用的优化项名称），便于任务中心与日志核对。
+
+**堆内存与游戏优化**
+
+- `memoryMode=auto`（默认）：`2048`（1.18+）/`1536`（1.13–1.17）/`1024`（更早）为基础，Forge/NeoForge `+512`、Fabric/Quilt `+256`，每个启用模组 `+8 MB`（上限 400 个）；再按本机内存封顶（≥8 GB 时 `总量-2048`，否则 `总量/2`），最终夹在 `1024–8192 MB` 并对齐 256 MB。`-Xms` 取 `min(推荐值, 1024)`。
+- `memoryMode=manual`：完全尊重用户数值，不静默修改，只返回警告码；实例显式覆盖内存时该实例按 `manual` 处理。启动前 UI 依据 `launch.memory` 弹出确认框，实例设置对话框也会就地提示。
+- `gameOptimization=true`（默认）且 GC 为 G1 时，堆 ≥ 4096 MB 追加 Aikar 风格 G1 参数并按堆大小选择 `G1HeapRegionSize`；核数 > 8 时按 `8 + (核数-8)*5/8` 设置 `ParallelGCThreads`；`AlwaysPreTouch` 仅在 `堆 + 3072 ≤ 物理内存` 时启用；用户自选 GC（设置或自定义 `-XX:+Use*GC`）时不覆盖。
+- 独显优先：Linux + NVIDIA（驱动已加载）设置 `__NV_PRIME_RENDER_OFFLOAD=1` / `__GLX_VENDOR_LIBRARY_NAME=nvidia` / `__VK_LAYER_NV_optimus=NVIDIA_only`；Linux + AMD 混合显卡设置 `DRI_PRIME=1`；Windows 为当前 Java 可执行文件写入 `HKCU\Software\Microsoft\DirectX\UserGpuPreferences` 的 `GpuPreference=2;`；macOS 不做干预。优化参数排在用户自定义 JVM 参数之前，用户仍可覆盖。
+
+**`launch.memory`**
+
+```json
+{ "schemaVersion": 1, "params": { "instanceId": "01J8Z9K3Q7" } }
+```
+
+```json
+{ "ok": true, "data": {
+  "mode": "manual", "minMb": 1024, "maxMb": 512, "recommendedMb": 3584,
+  "systemTotalMb": 32768, "systemAvailableMb": 16384, "modCount": 126,
+  "warningCode": "LOW_MEMORY", "warning": "heap 512 MB is below 1024 MB"
+} }
 ```
 
 **`download.submit`**

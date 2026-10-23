@@ -187,6 +187,41 @@
   "launchAutoRepairBlocked": "启动文件缺失，但下载已禁用，无法自动补全。请先启用下载。",
   "launchJavaMissing": "没有找到合适的 Java 运行时。",
   "launchLoaderNotInstalled": "该实例尚未安装加载器：请先在实例菜单中安装 Forge/NeoForge，再启动。",
+  "launchMemoryWarningTitle": "内存偏低",
+  "launchMemoryWarningLow": "当前只分配 {max} MB，推荐 {recommended} MB。继续启动可能卡顿或崩溃。",
+  "@launchMemoryWarningLow": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      },
+      "recommended": {
+        "type": "int"
+      }
+    }
+  },
+  "launchMemoryWarningOver": "分配 {max} MB 后系统可用内存不足（当前可用 {available} MB）。",
+  "@launchMemoryWarningOver": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "launchMemoryWarningSystem": "本机内存仅 {total} MB，自动分配已限制为 {max} MB，重型整合包可能不够。",
+  "@launchMemoryWarningSystem": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "launchAnyway": "仍然启动",
   "launchLog": "日志：{path}",
   "@launchStarted": {
     "placeholders": {
@@ -237,6 +272,12 @@
   "loaderInstallDone": "加载器文件已下载，版本 JSON 已写入，processors 已完成。",
   "loaderInstallPickInstaller": "请先选择 Forge/NeoForge 安装包。",
   "loaderInstallFailed": "加载器安装失败。",
+  "loaderShareFiles": "共享加载器文件",
+  "@loaderShareFiles": {
+    "description": "Forge/NeoForge 安装弹窗中的勾选项，仅对本次安装覆盖全局设置。"
+  },
+  "loaderShareFilesHint": "同一加载器版本的所有实例共用游戏目录下的一份 libraries/versions；取消勾选则只装进本实例。",
+  "@loaderShareFilesHint": {},
   "searchDownload": "搜索资源",
   "downloadSearchAction": "搜索",
   "downloadSearchEmpty": "没有找到兼容的项目。",
@@ -345,6 +386,12 @@
   "settingsWindowSize": "窗口尺寸",
   "settingsWindowSizeDesc": "游戏窗口的初始大小。",
   "settingsWindowSizeFullscreen": "全屏启动时忽略该尺寸。",
+  "settingsShareLoaderFiles": "共享加载器文件",
+  "settingsShareLoaderFilesDesc": "Forge/NeoForge 的库与合并后的加载器 profile 只装一份在游戏目录，同版本的实例共用；取消勾选则每个实例各存一份。",
+  "@settingsShareLoaderFiles": {
+    "description": "Forge/NeoForge 安装弹窗勾选项的全局默认值。"
+  },
+  "@settingsShareLoaderFilesDesc": {},
   "settingsSectionGameArgs": "附加游戏参数",
   "settingsGameArgsNote": "追加到原版参数之后，按空格拆分；留空表示不加。",
   "settingsSectionTasks": "任务与日志",
@@ -719,6 +766,11 @@
   "settingsMemoryEstimated": "启动后预计",
   "settingsMemoryUnavailable": "暂不可用",
   "settingsMemoryOverAvailable": "预计占用超过当前可用内存。",
+  "settingsMemoryAuto": "自动内存",
+  "settingsMemoryAutoDesc": "根据游戏版本、加载器、启用的模组与本机内存自动决定堆大小。",
+  "settingsMemoryAutoHint": "每个实例按自身需要分配；上面的手动数值会保留但不再生效。",
+  "settingsGameOptimization": "游戏优化",
+  "settingsGameOptimizationDesc": "启动时添加调优过的 G1 参数，并优先使用独立显卡。",
   "downloadResults": "{count, plural, =0{没有结果} =1{1 个结果} other{{count} 个结果}}",
   "downloadSort": "排序",
   "downloadSortRelevance": "相关度",
@@ -990,6 +1042,24 @@
     }
   },
   "instanceSettingsReset": "恢复全局设置",
+  "instanceSettingsMemoryAuto": "自动 · 推荐 {mb} MB",
+  "@instanceSettingsMemoryAuto": {
+    "description": "自动分配时内存字段的提示。",
+    "placeholders": {
+      "mb": {
+        "type": "int"
+      }
+    }
+  },
+  "instanceSettingsMemoryLow": "低于推荐的 {recommended} MB，可能卡顿或崩溃。",
+  "@instanceSettingsMemoryLow": {
+    "description": "手动内存覆盖过低时的行内警告。",
+    "placeholders": {
+      "recommended": {
+        "type": "int"
+      }
+    }
+  },
   "instanceSettingsResetBody": "清除该实例的全部覆盖，改为跟随全局设置。",
   "instanceSettingsResetDone": "已恢复为全局设置。",
   "instanceOverridesMemory": "内存",

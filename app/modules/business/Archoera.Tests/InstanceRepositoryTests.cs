@@ -647,6 +647,172 @@ public sealed class InstanceRepositoryTests
         }
     }
 
+    [Fact]
+    public async Task Sqlite_sync_ignores_shared_loader_profiles()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "minecraft");
+
+            var instanceDir = Path.Combine(root, "versions", "AutumnTown");
+            Directory.CreateDirectory(Path.Combine(instanceDir, "mods"));
+            await File.WriteAllTextAsync(
+                Path.Combine(instanceDir, "mods", "example.jar"),
+                "not a real jar");
+            await File.WriteAllTextAsync(
+                Path.Combine(instanceDir, "AutumnTown.json"),
+                """
+                {"id":"AutumnTown","inheritsFrom":"1.21.1",
+                 "mainClass":"cpw.mods.bootstraplauncher.BootstrapLauncher"}
+                """);
+
+            // What installing a pack with a bundled NeoForge leaves behind: a
+            // launch profile shared by every instance of that loader build.
+            var profileDir = Path.Combine(root, "versions", "neoforge-21.1.176");
+            Directory.CreateDirectory(profileDir);
+            await File.WriteAllTextAsync(
+                Path.Combine(profileDir, "neoforge-21.1.176.json"),
+                """
+                {"id":"neoforge-21.1.176","inheritsFrom":"1.21.1",
+                 "mainClass":"cpw.mods.bootstraplauncher.BootstrapLauncher",
+                 "libraries":[{"name":"net.neoforged:neoforge:21.1.176"}]}
+                """);
+            await File.WriteAllTextAsync(
+                Path.Combine(profileDir, "neoforge-21.1.176.jar"),
+                "not a real jar");
+
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootAsync(root);
+            var repository = new SqliteInstanceRepository(dataRoot, settings);
+            var report = await repository.SyncAsync(null, dryRun: false);
+
+            var item = Assert.Single(report.Items);
+            Assert.Equal("AutumnTown", item.Name);
+            Assert.Equal("1.21.1", item.GameVersion);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Sqlite_sync_keeps_a_loader_profile_that_became_an_instance()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "minecraft");
+            var profileDir = Path.Combine(root, "versions", "1.21.1-forge-52.0.1");
+            Directory.CreateDirectory(Path.Combine(profileDir, "config"));
+            await File.WriteAllTextAsync(
+                Path.Combine(profileDir, "1.21.1-forge-52.0.1.json"),
+                """
+                {"id":"1.21.1-forge-52.0.1","inheritsFrom":"1.21.1",
+                 "mainClass":"cpw.mods.bootstraplauncher.BootstrapLauncher"}
+                """);
+
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootAsync(root);
+            var repository = new SqliteInstanceRepository(dataRoot, settings);
+            var report = await repository.SyncAsync(null, dryRun: false);
+
+            var item = Assert.Single(report.Items);
+            Assert.Equal("1.21.1-forge-52.0.1", item.Name);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Sqlite_sync_drops_a_row_that_turned_out_to_be_a_loader_profile()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "minecraft");
+            var profileDir = Path.Combine(root, "versions", "neoforge-21.1.176");
+            var mods = Path.Combine(profileDir, "mods");
+            Directory.CreateDirectory(mods);
+            await File.WriteAllTextAsync(Path.Combine(mods, "example.jar"), "not a real jar");
+            await File.WriteAllTextAsync(
+                Path.Combine(profileDir, "neoforge-21.1.176.json"),
+                """
+                {"id":"neoforge-21.1.176","inheritsFrom":"1.21.1",
+                 "mainClass":"cpw.mods.bootstraplauncher.BootstrapLauncher"}
+                """);
+
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootAsync(root);
+            var repository = new SqliteInstanceRepository(dataRoot, settings);
+
+            // An older build adopted the profile because it carried mods.
+            var adopted = await repository.SyncAsync(null, dryRun: false);
+            Assert.Single(adopted.Items);
+
+            Directory.Delete(mods, recursive: true);
+            var cleaned = await repository.SyncAsync(null, dryRun: false);
+
+            Assert.Empty(cleaned.Items);
+            Assert.Empty(await repository.ListAsync());
+            // The profile folder is a launch target, not data to delete.
+            Assert.True(Directory.Exists(profileDir));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Json_sync_drops_a_row_that_turned_out_to_be_a_loader_profile()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "minecraft");
+            var profileDir = Path.Combine(root, "versions", "neoforge-21.1.176");
+            Directory.CreateDirectory(profileDir);
+            await File.WriteAllTextAsync(
+                Path.Combine(profileDir, "neoforge-21.1.176.json"),
+                """
+                {"id":"neoforge-21.1.176","inheritsFrom":"1.21.1",
+                 "mainClass":"cpw.mods.bootstraplauncher.BootstrapLauncher"}
+                """);
+            await File.WriteAllTextAsync(
+                Path.Combine(profileDir, "neoforge-21.1.176.jar"),
+                "not a real jar");
+
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootAsync(root);
+            var repository = new JsonInstanceRepository(dataRoot, settings);
+            await repository.CreateAsync(
+                "neoforge-21.1.176",
+                "1.21.1",
+                "neoforge",
+                "21.1.176",
+                profileDir);
+
+            // The registry entry survived after the metadata went away.
+            Directory.Delete(Path.Combine(profileDir, ".archoera"), recursive: true);
+            var cleaned = await repository.SyncAsync(null, dryRun: false);
+
+            Assert.Empty(cleaned.Items);
+            Assert.True(Directory.Exists(profileDir));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
     private static async Task<string> CreateAsync(
         InstanceModuleService service,
         string rootPath,

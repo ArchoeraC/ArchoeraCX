@@ -408,6 +408,27 @@ class AppLocalizationsZh extends AppLocalizations {
       '该实例尚未安装加载器：请先在实例菜单中安装 Forge/NeoForge，再启动。';
 
   @override
+  String get launchMemoryWarningTitle => '内存偏低';
+
+  @override
+  String launchMemoryWarningLow(int max, int recommended) {
+    return '当前只分配 $max MB，推荐 $recommended MB。继续启动可能卡顿或崩溃。';
+  }
+
+  @override
+  String launchMemoryWarningOver(int max, int available) {
+    return '分配 $max MB 后系统可用内存不足（当前可用 $available MB）。';
+  }
+
+  @override
+  String launchMemoryWarningSystem(int total, int max) {
+    return '本机内存仅 $total MB，自动分配已限制为 $max MB，重型整合包可能不够。';
+  }
+
+  @override
+  String get launchAnyway => '仍然启动';
+
+  @override
   String launchLog(String path) {
     return '日志：$path';
   }
@@ -516,6 +537,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loaderInstallFailed => '加载器安装失败。';
+
+  @override
+  String get loaderShareFiles => '共享加载器文件';
+
+  @override
+  String get loaderShareFilesHint =>
+      '同一加载器版本的所有实例共用游戏目录下的一份 libraries/versions；取消勾选则只装进本实例。';
 
   @override
   String get searchDownload => '搜索资源';
@@ -666,6 +694,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsWindowSizeFullscreen => '全屏启动时忽略该尺寸。';
+
+  @override
+  String get settingsShareLoaderFiles => '共享加载器文件';
+
+  @override
+  String get settingsShareLoaderFilesDesc =>
+      'Forge/NeoForge 的库与合并后的加载器 profile 只装一份在游戏目录，同版本的实例共用；取消勾选则每个实例各存一份。';
 
   @override
   String get settingsSectionGameArgs => '附加游戏参数';
@@ -1419,6 +1454,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsMemoryOverAvailable => '预计占用超过当前可用内存。';
 
   @override
+  String get settingsMemoryAuto => '自动内存';
+
+  @override
+  String get settingsMemoryAutoDesc => '根据游戏版本、加载器、启用的模组与本机内存自动决定堆大小。';
+
+  @override
+  String get settingsMemoryAutoHint => '每个实例按自身需要分配；上面的手动数值会保留但不再生效。';
+
+  @override
+  String get settingsGameOptimization => '游戏优化';
+
+  @override
+  String get settingsGameOptimizationDesc => '启动时添加调优过的 G1 参数，并优先使用独立显卡。';
+
+  @override
   String downloadResults(num count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -2145,6 +2195,16 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String instanceSettingsFollowGlobalWith(String value) {
     return '跟随全局（$value）';
+  }
+
+  @override
+  String instanceSettingsMemoryAuto(int mb) {
+    return '自动 · 推荐 $mb MB';
+  }
+
+  @override
+  String instanceSettingsMemoryLow(int recommended) {
+    return '低于推荐的 $recommended MB，可能卡顿或崩溃。';
   }
 
   @override
