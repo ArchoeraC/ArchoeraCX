@@ -51,13 +51,13 @@ bool ModuleRegistry::any_loaded() const noexcept {
   return (cs_ != nullptr && cs_->loaded()) || (dl_ != nullptr && dl_->loaded());
 }
 
-std::vector<ModuleInfo> ModuleRegistry::modules() const {
-  std::vector<ModuleInfo> result;
+std::vector<LoadedHost> ModuleRegistry::loaded_hosts() const {
+  std::vector<LoadedHost> result;
   if (cs_ != nullptr && cs_->loaded()) {
-    result.push_back({cs_->name(), cs_->version()});
+    result.push_back({cs_->name(), cs_->version(), cs_->base_name()});
   }
   if (dl_ != nullptr && dl_->loaded()) {
-    result.push_back({dl_->name(), dl_->version()});
+    result.push_back({dl_->name(), dl_->version(), dl_->base_name()});
   }
   return result;
 }

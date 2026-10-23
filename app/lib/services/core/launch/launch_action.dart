@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../l10n/generated/app_localizations.dart';
-import '../../models/account.dart';
-import '../../models/game_instance.dart';
-import '../../stores/account_policy.dart';
-import '../../stores/accounts.dart';
-import '../../stores/providers.dart';
-import '../../stores/settings.dart';
-import '../core/core_client.dart';
-import '../core/launch_memory.dart';
-import '../../widgets/common/toast.dart';
+import '../../../l10n/generated/app_localizations.dart';
+import '../../../models/account.dart';
+import '../../../models/game_instance.dart';
+import '../../../stores/account_policy.dart';
+import '../../../stores/accounts.dart';
+import '../../../stores/providers.dart';
+import '../../../stores/settings.dart';
+import '../core_client.dart';
+import 'launch_memory.dart';
+import '../../../widgets/common/toast.dart';
 
 /// Build and start a basic offline launch. UI code only calls this helper;
 /// business decisions remain in the C# launch module.

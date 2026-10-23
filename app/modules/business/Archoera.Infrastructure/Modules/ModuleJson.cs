@@ -1,46 +1,18 @@
 using System.Text.Json;
+using Archoera.Application.Json;
 
 namespace Archoera.Infrastructure.Modules;
 
-/// <summary>Shared JSON envelope helpers for module handlers.</summary>
+/// <summary>
+/// Shared JSON envelope helpers for module handlers. The serialization lives in
+/// <see cref="JsonEnvelope"/> so the Application layer can use the same
+/// primitive; this facade is the single entry point for Infrastructure.
+/// </summary>
 public static class ModuleJson
 {
     public static byte[] Envelope(Action<Utf8JsonWriter> data, bool ok = true)
-    {
-        using var memory = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(memory))
-        {
-            writer.WriteStartObject();
-            writer.WriteBoolean("ok", ok);
-            writer.WriteStartObject("data");
-            data(writer);
-            writer.WriteEndObject();
-            writer.WriteStartObject("meta");
-            writer.WriteNumber("schemaVersion", 1);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-        }
-
-        return memory.ToArray();
-    }
+        => JsonEnvelope.Envelope(data, ok);
 
     public static byte[] Error(string code, string message)
-    {
-        using var memory = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(memory))
-        {
-            writer.WriteStartObject();
-            writer.WriteBoolean("ok", false);
-            writer.WriteStartObject("error");
-            writer.WriteString("code", code);
-            writer.WriteString("message", message);
-            writer.WriteEndObject();
-            writer.WriteStartObject("meta");
-            writer.WriteNumber("schemaVersion", 1);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-        }
-
-        return memory.ToArray();
-    }
+        => JsonEnvelope.Error(code, message);
 }

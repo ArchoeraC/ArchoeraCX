@@ -1,5 +1,6 @@
 using Archoera.Application.Downloads;
 using Archoera.Application.Resources;
+using Archoera.Domain;
 using Archoera.Domain.Downloads;
 
 namespace Archoera.Application.Packs;
@@ -12,11 +13,7 @@ namespace Archoera.Application.Packs;
 /// </summary>
 public static class ModpackPlanBuilder
 {
-    /// <summary>Path comparer used for exclusion, matching filesystem rules.</summary>
-    public static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
+    private static StringComparer PathComparer => Archoera.Domain.PathSemantics.Comparer;
 
     /// <summary>
     /// Builds a plan rooted at the instance directory.

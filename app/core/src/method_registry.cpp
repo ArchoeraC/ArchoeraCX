@@ -5,7 +5,12 @@
 
 #include "method_registry.h"
 
-#include <array>
+#include "core_actions.h"
+#include "core_appearance.h"
+#include "core_module_bridge.h"
+#include "core_result.h"
+#include "core_status.h"
+#include "core_tasks.h"
 
 namespace archoera {
 namespace {
@@ -18,79 +23,83 @@ constexpr std::string_view kCsModule = "archoera_cs";
  * business semantics.
  */
 constexpr MethodRoute kRoutes[] = {
-    {"system.ping", MethodRouteKind::kCorePing, {}},
-    {"system.pingAsync", MethodRouteKind::kCorePingAsync, {}},
-    {"system.info", MethodRouteKind::kCoreInfo, {}},
-    {"system.modules", MethodRouteKind::kCoreModules, {}},
-    {"system.appearance", MethodRouteKind::kCoreAppearance, {}},
-    {"system.openUrl", MethodRouteKind::kCoreOpenUrl, {}},
-    {"system.openPath", MethodRouteKind::kCoreOpenPath, {}},
-    {"system.notify", MethodRouteKind::kCoreNotify, {}},
-    {"system.status", MethodRouteKind::kCoreStatus, {}},
-    {"system.status.watch", MethodRouteKind::kCoreStatusWatch, {}},
-    {"system.status.unwatch", MethodRouteKind::kCoreStatusUnwatch, {}},
-    {"system.gpu", MethodRouteKind::kCoreGpu, {}},
+    {"system.ping", &handle_system_ping, {}},
+    {"system.pingAsync", &handle_system_ping_async, {}},
+    {"system.info", &handle_system_info, {}},
+    {"system.modules", &handle_system_modules, {}},
+    {"system.appearance", &handle_system_appearance, {}},
+    {"system.openUrl", &handle_system_open_url, {}},
+    {"system.openPath", &handle_system_open_path, {}},
+    {"system.notify", &handle_system_notify, {}},
+    {"system.status", &handle_system_status, {}},
+    {"system.status.watch", &handle_system_status_watch, {}},
+    {"system.status.unwatch", &handle_system_status_unwatch, {}},
+    {"system.gpu", &handle_system_gpu, {}},
 
-    {"java.scan", MethodRouteKind::kModule, kCsModule},
-    {"java.select", MethodRouteKind::kModule, kCsModule},
-    {"java.runtime.plan", MethodRouteKind::kModule, kCsModule},
-    {"version.list", MethodRouteKind::kModule, kCsModule},
-    {"version.plan", MethodRouteKind::kModule, kCsModule},
-    {"version.commit", MethodRouteKind::kModule, kCsModule},
-    {"launch.start", MethodRouteKind::kModule, kCsModule},
-    {"launch.prepare", MethodRouteKind::kModule, kCsModule},
-    {"launch.memory", MethodRouteKind::kModule, kCsModule},
-    {"launch.logs", MethodRouteKind::kModule, kCsModule},
-    {"launch.log.read", MethodRouteKind::kModule, kCsModule},
-    {"launch.log.tail", MethodRouteKind::kModule, kCsModule},
-    {"launch.logs.clear", MethodRouteKind::kModule, kCsModule},
-    {"loader.verify", MethodRouteKind::kModule, kCsModule},
-    {"loader.repair", MethodRouteKind::kModule, kCsModule},
-    {"loader.check", MethodRouteKind::kModule, kCsModule},
-    {"loader.versions", MethodRouteKind::kModule, kCsModule},
-    {"loader.plan", MethodRouteKind::kModule, kCsModule},
-    {"loader.commit", MethodRouteKind::kModule, kCsModule},
+    {"java.scan", &handle_module_method, kCsModule},
+    {"java.select", &handle_module_method, kCsModule},
+    {"java.runtime.plan", &handle_module_method, kCsModule},
+    {"version.list", &handle_module_method, kCsModule},
+    {"version.plan", &handle_module_method, kCsModule},
+    {"version.commit", &handle_module_method, kCsModule},
+    {"launch.start", &handle_module_method, kCsModule},
+    {"launch.prepare", &handle_module_method, kCsModule},
+    {"launch.memory", &handle_module_method, kCsModule},
+    {"launch.logs", &handle_module_method, kCsModule},
+    {"launch.log.read", &handle_module_method, kCsModule},
+    {"launch.log.tail", &handle_module_method, kCsModule},
+    {"launch.logs.clear", &handle_module_method, kCsModule},
+    {"loader.verify", &handle_module_method, kCsModule},
+    {"loader.repair", &handle_module_method, kCsModule},
+    {"loader.check", &handle_module_method, kCsModule},
+    {"loader.versions", &handle_module_method, kCsModule},
+    {"loader.plan", &handle_module_method, kCsModule},
+    {"loader.commit", &handle_module_method, kCsModule},
 
-    {"resource.search", MethodRouteKind::kModule, kCsModule},
-    {"resource.versions", MethodRouteKind::kModule, kCsModule},
-    {"resource.project", MethodRouteKind::kModule, kCsModule},
-    {"resource.plan", MethodRouteKind::kModule, kCsModule},
-    {"download.execute", MethodRouteKind::kModule, kCsModule},
-    {"download.policy", MethodRouteKind::kModule, kCsModule},
-    {"region.policy", MethodRouteKind::kModule, kCsModule},
-    {"update.check", MethodRouteKind::kModule, kCsModule},
-    {"maintenance.cleanPartials", MethodRouteKind::kModule, kCsModule},
-    {"modpack.inspect", MethodRouteKind::kModule, kCsModule},
-    {"modpack.install", MethodRouteKind::kModule, kCsModule},
-    {"modpack.installLocal", MethodRouteKind::kModule, kCsModule},
-    {"loader.autoRepair", MethodRouteKind::kModule, kCsModule},
+    {"resource.search", &handle_module_method, kCsModule},
+    {"resource.versions", &handle_module_method, kCsModule},
+    {"resource.project", &handle_module_method, kCsModule},
+    {"resource.plan", &handle_module_method, kCsModule},
+    {"download.execute", &handle_module_method, kCsModule},
+    {"download.policy", &handle_module_method, kCsModule},
+    {"region.policy", &handle_module_method, kCsModule},
+    {"update.check", &handle_module_method, kCsModule},
+    {"maintenance.cleanPartials", &handle_module_method, kCsModule},
+    {"modpack.inspect", &handle_module_method, kCsModule},
+    {"modpack.install", &handle_module_method, kCsModule},
+    {"modpack.installLocal", &handle_module_method, kCsModule},
+    {"loader.autoRepair", &handle_module_method, kCsModule},
 
-    {"system.memory", MethodRouteKind::kModule, kCsModule},
-    {"system.identity", MethodRouteKind::kModule, kCsModule},
-    {"wiki.feed", MethodRouteKind::kModule, kCsModule},
-    {"settings.get", MethodRouteKind::kModule, kCsModule},
-    {"settings.set", MethodRouteKind::kModule, kCsModule},
+    {"system.memory", &handle_module_method, kCsModule},
+    {"system.identity", &handle_module_method, kCsModule},
+    {"wiki.feed", &handle_module_method, kCsModule},
+    {"settings.get", &handle_module_method, kCsModule},
+    {"settings.set", &handle_module_method, kCsModule},
 
-    {"instance.list", MethodRouteKind::kModule, kCsModule},
-    {"instance.create", MethodRouteKind::kModule, kCsModule},
-    {"instance.update", MethodRouteKind::kModule, kCsModule},
-    {"instance.duplicate", MethodRouteKind::kModule, kCsModule},
-    {"instance.delete", MethodRouteKind::kModule, kCsModule},
-    {"instance.sync", MethodRouteKind::kModule, kCsModule},
-    {"instance.mods.list", MethodRouteKind::kModule, kCsModule},
-    {"instance.mods.setEnabled", MethodRouteKind::kModule, kCsModule},
-    {"instance.mods.remove", MethodRouteKind::kModule, kCsModule},
+    {"instance.list", &handle_module_method, kCsModule},
+    {"instance.create", &handle_module_method, kCsModule},
+    {"instance.update", &handle_module_method, kCsModule},
+    {"instance.duplicate", &handle_module_method, kCsModule},
+    {"instance.delete", &handle_module_method, kCsModule},
+    {"instance.sync", &handle_module_method, kCsModule},
+    {"instance.mods.list", &handle_module_method, kCsModule},
+    {"instance.mods.setEnabled", &handle_module_method, kCsModule},
+    {"instance.mods.remove", &handle_module_method, kCsModule},
 
-    {"account.list", MethodRouteKind::kModule, kCsModule},
-    {"account.current", MethodRouteKind::kModule, kCsModule},
-    {"account.select", MethodRouteKind::kModule, kCsModule},
-    {"account.login.microsoft.start", MethodRouteKind::kModule, kCsModule},
-    {"account.login.microsoft.poll", MethodRouteKind::kModule, kCsModule},
-    {"account.login.microsoft.cancel", MethodRouteKind::kModule, kCsModule},
-    {"account.login.offline", MethodRouteKind::kModule, kCsModule},
-    {"account.refresh", MethodRouteKind::kModule, kCsModule},
-    {"account.remove", MethodRouteKind::kModule, kCsModule},
+    {"account.list", &handle_module_method, kCsModule},
+    {"account.current", &handle_module_method, kCsModule},
+    {"account.select", &handle_module_method, kCsModule},
+    {"account.login.microsoft.start", &handle_module_method, kCsModule},
+    {"account.login.microsoft.poll", &handle_module_method, kCsModule},
+    {"account.login.microsoft.cancel", &handle_module_method, kCsModule},
+    {"account.login.offline", &handle_module_method, kCsModule},
+    {"account.refresh", &handle_module_method, kCsModule},
+    {"account.remove", &handle_module_method, kCsModule},
 };
+
+std::span<const MethodRoute> route_span() noexcept {
+  return {kRoutes, sizeof(kRoutes) / sizeof(kRoutes[0])};
+}
 
 }  // namespace
 
@@ -101,6 +110,10 @@ const MethodRoute* find_method_route(std::string_view method) noexcept {
     }
   }
   return nullptr;
+}
+
+std::span<const MethodRoute> method_routes() noexcept {
+  return route_span();
 }
 
 }  // namespace archoera

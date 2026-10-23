@@ -5,6 +5,9 @@
 
 #include "module_host.h"
 
+#include "core_internal.h"
+#include "core_json.h"
+
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -64,36 +67,13 @@ std::wstring utf8_to_wide(const std::string& text) {
 }
 #endif
 
-void append_json_escaped(std::string& out, const std::string& text) {
-  for (const char ch : text) {
-    switch (ch) {
-      case '\\':
-        out.append("\\\\");
-        break;
-      case '"':
-        out.append("\\\"");
-        break;
-      case '\n':
-        out.append("\\n");
-        break;
-      case '\r':
-        out.append("\\r");
-        break;
-      case '\t':
-        out.append("\\t");
-        break;
-      default:
-        out.push_back(ch);
-        break;
-    }
-  }
-}
-
 std::string make_module_config() {
   // The host treats the module config as opaque data. dataDir is currently
   // derived from the environment; an empty value is valid for the smoke
   // tests and for development runs that do not need persistent storage.
-  std::string json = "{\"schemaVersion\":1,\"appVersion\":\"0.0.1+1\",\"dataDir\":\"";
+  std::string json = "{\"schemaVersion\":1,\"appVersion\":\"";
+  append_json_escaped(json, kArchoeraVersion);
+  json.append("\",\"dataDir\":\"");
   append_json_escaped(json, get_env(kEnvDataDir));
   json.append("\"}");
   return json;
@@ -167,14 +147,6 @@ std::vector<std::string> module_candidates(const std::string& base_name,
     candidates.push_back(
         (fs::path(dir) / lib_module_file_name(base_name)).string());
   }
-
-  candidates.emplace_back("./build/native/" + module_file_name(base_name));
-  candidates.emplace_back("./build/native/" + lib_module_file_name(base_name));
-  candidates.emplace_back("../app/build/native/" + module_file_name(base_name));
-  candidates.emplace_back("../app/build/native/" +
-                          lib_module_file_name(base_name));
-  candidates.emplace_back("./" + module_file_name(base_name));
-  candidates.emplace_back("./" + lib_module_file_name(base_name));
 
   return candidates;
 }

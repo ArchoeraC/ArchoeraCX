@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Archoera.Application.Java;
+using Archoera.Domain;
 using Archoera.Infrastructure.Processes;
 using Microsoft.Win32;
 
@@ -13,10 +14,7 @@ internal sealed record JavaCandidate(string ExecutablePath, string Source);
 /// </summary>
 internal static class JavaCandidateLocator
 {
-    private static readonly StringComparer PathComparer =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
+    private static StringComparer PathComparer => PathSemantics.Comparer;
 
     private static readonly string[] LinuxRoots = ["/usr/lib/jvm", "/usr/java", "/opt/java", "/opt"];
     private static readonly string[] LinuxUserRoots =

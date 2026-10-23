@@ -21,9 +21,12 @@ namespace archoera {
 
 class ModuleHost;
 
-struct ModuleInfo {
+/* A loaded host as seen by the method layer: reported name/version plus the
+ * module file stem that method routes refer to. */
+struct LoadedHost {
   std::string name;
   std::string version;
+  std::string base_name;
 };
 
 class ModuleRegistry {
@@ -40,7 +43,8 @@ class ModuleRegistry {
   bool loaded(std::string_view name) const noexcept;
   bool any_loaded() const noexcept;
 
-  std::vector<ModuleInfo> modules() const;
+  /* Loaded hosts in registration order (list only loaded entries). */
+  std::vector<LoadedHost> loaded_hosts() const;
 
   int32_t call(std::string_view module,
                uint64_t task_id,

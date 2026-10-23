@@ -1,4 +1,4 @@
-import '../../models/game_instance.dart';
+import '../../../models/game_instance.dart';
 
 /// Result of installing a Modrinth `.mrpack` into a new instance.
 class PackInstallResult {

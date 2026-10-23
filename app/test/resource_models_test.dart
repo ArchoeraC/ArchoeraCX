@@ -1,4 +1,4 @@
-import 'package:archoera_cx/services/core/resource_models.dart';
+import 'package:archoera_cx/services/core/resources/resource_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,6 +1,6 @@
 import 'package:archoera_cx/app/app.dart';
-import 'package:archoera_cx/services/core/system_status.dart';
-import 'package:archoera_cx/services/core/wiki_feed.dart';
+import 'package:archoera_cx/services/core/system/system_status.dart';
+import 'package:archoera_cx/services/core/wiki/wiki_feed.dart';
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/pages/wiki_page.dart';
 import 'package:archoera_cx/stores/providers.dart';

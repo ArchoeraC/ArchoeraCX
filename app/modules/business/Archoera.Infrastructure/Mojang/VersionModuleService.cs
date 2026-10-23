@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text;
+using Archoera.Application;
 using Archoera.Application.Downloads;
 using Archoera.Application.Modules;
 using Archoera.Application.Mojang;
@@ -40,7 +41,7 @@ public sealed class VersionModuleService : IModuleMethodHandler
             new MojangClientOptions
             {
                 UserAgent = MojangClientOptions.CreateUserAgent(
-                    "0.0.1+1",
+                    ArchoeraBuildInfo.Version,
                     "https://github.com/BetaStudio2/ArchoeraCX"),
             });
         _planService = new MojangPlanService(_client);

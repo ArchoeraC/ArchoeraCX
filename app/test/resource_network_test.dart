@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:archoera_cx/services/core/core_client.dart';
-import 'package:archoera_cx/services/core/task_update.dart';
+import 'package:archoera_cx/services/core/downloads/task_update.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Archoera.Application.Packs;
+using Archoera.Domain;
 using Archoera.Domain.Downloads;
 
 namespace Archoera.Infrastructure.Packs;
@@ -183,7 +184,7 @@ public static class PackArchive
     {
         ignoredServer = 0;
         var byPath = new Dictionary<string, PackArchiveEntry>(
-            ModpackPlanBuilder.PathComparer);
+            PathSemantics.Comparer);
         var insertionOrder = new List<string>();
         long totalBytes = 0;
         var entries = 0;

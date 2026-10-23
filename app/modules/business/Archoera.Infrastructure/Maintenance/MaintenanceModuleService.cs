@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Archoera.Application.Modules;
+using Archoera.Domain;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Settings;
 
@@ -50,10 +51,7 @@ public sealed class MaintenanceModuleService : IModuleMethodHandler
     private const string MetaTail = ".meta";
     private const string LockSuffix = ".lock";
 
-    private static readonly StringComparer PathComparer =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
+    private static StringComparer PathComparer => PathSemantics.Comparer;
 
     private static readonly string[] SupportedMethods = [CleanPartialsMethod];
 

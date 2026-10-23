@@ -20,14 +20,21 @@
 //! # }
 //! ```
 
+mod chunk_stream;
+mod client;
 mod edge;
 mod error;
 mod executor;
 mod hash;
 mod limiter;
+mod outcome;
+mod parts;
 mod plan;
 mod progress;
+mod resume;
 mod result;
+mod single_stream;
+mod wire;
 
 pub use error::{DownloadError, ErrorCode};
 pub use plan::{

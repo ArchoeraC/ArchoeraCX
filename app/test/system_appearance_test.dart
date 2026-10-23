@@ -1,4 +1,4 @@
-import 'package:archoera_cx/services/core/system_appearance.dart';
+import 'package:archoera_cx/services/core/system/system_appearance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

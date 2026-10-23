@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
-import '../services/core/build_policy.dart';
-import '../services/core/download_policy.dart';
+import '../services/core/downloads/build_policy.dart';
+import '../services/core/downloads/download_policy.dart';
 import '../stores/downloads.dart';
 import '../stores/providers.dart';
 import '../theme/icons/app_icons.dart';
@@ -14,7 +14,7 @@ import '../widgets/common/toast.dart';
 import '../widgets/download/download_queue_bar.dart';
 import '../widgets/download/resource_search_panel.dart';
 import '../widgets/instances/create_instance_dialog.dart';
-import '../services/core/version_models.dart';
+import '../services/core/versions/version_models.dart';
 
 /// Download hub.
 ///

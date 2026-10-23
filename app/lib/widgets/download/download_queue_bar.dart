@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
-import '../../services/core/task_update.dart';
+import '../../services/core/downloads/task_update.dart';
 import '../../stores/downloads.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import '../../utils/format.dart';
 import '../common/app_progress_bar.dart';
 import '../common/task_center_button.dart';
 
@@ -101,8 +102,8 @@ class _QueueBody extends StatelessWidget {
               if (detailed && total > 0)
                 Text(
                   l10n.downloadQueueProgress(
-                    _formatBytes(done),
-                    _formatBytes(total),
+                    formatBytes(done),
+                    formatBytes(total),
                   ),
                   style: textTheme.labelSmall?.copyWith(
                     color: tokens.textTertiary,
@@ -134,17 +135,6 @@ class _QueueBody extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatBytes(int bytes) {
-  if (bytes >= 1024 * 1024 * 1024) {
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-  }
-  if (bytes >= 1024 * 1024) {
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-  return '$bytes B';
 }
 
 String _formatSpeed(int bytesPerSecond) {

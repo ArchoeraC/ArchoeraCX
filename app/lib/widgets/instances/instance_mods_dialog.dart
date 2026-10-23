@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
-import '../../services/core/installed_mod.dart';
+import '../../services/core/instances/installed_mod.dart';
 import '../../stores/providers.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import '../../utils/format.dart';
+import '../common/confirm.dart';
 
 Future<void> showInstanceModsDialog(
   BuildContext context,
@@ -100,22 +102,12 @@ class _InstanceModsDialogState extends ConsumerState<InstanceModsDialog> {
 
   Future<void> _remove(InstalledMod mod) async {
     final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.instanceModDelete),
-        content: Text(l10n.instanceModDeleteConfirm(mod.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.commonDelete),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      l10n,
+      title: l10n.instanceModDelete,
+      body: l10n.instanceModDeleteConfirm(mod.name),
+      confirmLabel: l10n.commonDelete,
     );
     if (confirmed != true || !mounted) return;
     final client = ref.read(coreClientProvider);
@@ -302,8 +294,8 @@ class _ModRow extends StatelessWidget {
                 ),
                 Text(
                   mod.enabled
-                      ? _formatBytes(mod.size)
-                      : '${l10n.instanceModDisabled} · ${_formatBytes(mod.size)}',
+                      ? formatBytes(mod.size)
+                      : '${l10n.instanceModDisabled} · ${formatBytes(mod.size)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall
@@ -326,23 +318,11 @@ class _ModRow extends StatelessWidget {
             IconButton(
               onPressed: onRemove,
               tooltip: l10n.instanceModDelete,
-              icon: Icon(
-                AppIcons.delete,
-                size: 19,
-                color: tokens.danger,
-              ),
+              icon: Icon(AppIcons.delete, size: 19, color: tokens.danger),
             ),
           ],
         ],
       ),
     );
   }
-}
-
-String _formatBytes(int bytes) {
-  if (bytes >= 1024 * 1024) {
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-  return '$bytes B';
 }

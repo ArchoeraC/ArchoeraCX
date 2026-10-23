@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Archoera.Application;
 using Archoera.Application.Downloads;
 using Archoera.Application.Java;
 using Archoera.Application.Loaders;
@@ -343,7 +344,7 @@ internal static class Program
         {
             BaseAddress = baseAddress,
             UserAgent = ModrinthClientOptions.CreateUserAgent(
-                "0.0.1+1",
+                                ArchoeraBuildInfo.Version,
                 "dev@archoera.local"),
         };
         var client = new ModrinthClient(http, options);

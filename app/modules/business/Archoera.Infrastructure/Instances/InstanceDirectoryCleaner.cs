@@ -1,3 +1,4 @@
+using Archoera.Domain;
 using Archoera.Domain.Instances;
 
 namespace Archoera.Infrastructure.Instances;
@@ -16,15 +17,6 @@ namespace Archoera.Infrastructure.Instances;
 /// </summary>
 public static class InstanceDirectoryCleaner
 {
-    private static readonly StringComparer PathComparer =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
-
-    private static readonly StringComparison PathComparison =
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
 
     /// <summary>
     /// Try to remove <paramref name="rootPath"/> recursively.
@@ -122,7 +114,7 @@ public static class InstanceDirectoryCleaner
     {
         var pathRoot = Path.GetPathRoot(fullPath);
         return string.IsNullOrEmpty(pathRoot) ||
-               PathComparer.Equals(
+               PathSemantics.Comparer.Equals(
                    Path.TrimEndingDirectorySeparator(pathRoot),
                    fullPath);
     }
@@ -147,10 +139,10 @@ public static class InstanceDirectoryCleaner
             return false;
         }
 
-        return PathComparer.Equals(candidate, other) || IsWithin(other, candidate);
+        return PathSemantics.Comparer.Equals(candidate, other) || IsWithin(other, candidate);
     }
 
     private static bool IsWithin(string candidate, string ancestor)
         => candidate.Length > ancestor.Length &&
-           candidate.StartsWith(ancestor + Path.DirectorySeparatorChar, PathComparison);
+           candidate.StartsWith(ancestor + Path.DirectorySeparatorChar, PathSemantics.Comparison);
 }

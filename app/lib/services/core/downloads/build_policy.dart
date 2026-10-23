@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../stores/providers.dart';
+import '../../../stores/providers.dart';
 import 'download_policy.dart';
 
 /// Reads the runtime region/compliance gate. Mainland-China networks default

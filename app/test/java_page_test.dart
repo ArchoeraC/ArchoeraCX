@@ -1,8 +1,8 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/pages/java_page.dart';
 import 'package:archoera_cx/services/core/core_client.dart';
-import 'package:archoera_cx/services/core/java_scan.dart';
-import 'package:archoera_cx/services/java/java_path_store.dart';
+import 'package:archoera_cx/services/core/java/java_scan.dart';
+import 'package:archoera_cx/services/core/java/java_path_store.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/stores/settings.dart';
 import 'package:archoera_cx/theme/app_theme.dart';

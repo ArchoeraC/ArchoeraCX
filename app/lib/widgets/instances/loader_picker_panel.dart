@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
-import '../../services/core/loader_versions.dart';
+import '../../services/core/loaders/loader_versions.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/loader_mark.dart';

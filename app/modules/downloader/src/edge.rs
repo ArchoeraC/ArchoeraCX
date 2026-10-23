@@ -22,7 +22,7 @@ use tokio::sync::OnceCell;
 use tokio::task::JoinSet;
 use url::Url;
 
-use crate::executor::USER_AGENT;
+use crate::client::USER_AGENT;
 
 /// Host whose edges we optimize; everything else keeps plain DNS.
 pub(crate) const EDGE_HOST: &str = "cdn.modrinth.com";

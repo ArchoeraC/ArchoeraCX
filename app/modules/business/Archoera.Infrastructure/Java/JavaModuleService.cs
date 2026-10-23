@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Archoera.Application;
 using Archoera.Application.Downloads;
 using Archoera.Application.Java;
 using Archoera.Application.JavaRuntime;
@@ -17,13 +18,18 @@ public sealed class JavaModuleService : IModuleMethodHandler
     private const string SupportedVersionsUrl =
         "https://github.com/BetaStudio2/ArchoeraCX";
 
+    private const string ScanMethod = "java.scan";
+    private const string SelectMethod = "java.select";
+    private const string PlanRuntimeMethod = "java.runtime.plan";
+
     private static readonly string[] SupportedMethods =
-        ["java.scan", "java.select", "java.runtime.plan"];
+        [ScanMethod, SelectMethod, PlanRuntimeMethod];
 
     private readonly IJavaScanner _scanner;
     private readonly JavaRuntimeSelectionService _selection;
     private readonly JavaRuntimePlanService _runtimePlans;
     private readonly string _dataRoot;
+    private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
 
     public JavaModuleService(
         IJavaScanner? scanner = null,
@@ -41,9 +47,15 @@ public sealed class JavaModuleService : IModuleMethodHandler
                 new MojangClientOptions
                 {
                     UserAgent = MojangClientOptions.CreateUserAgent(
-                        "0.0.1+1",
+                        ArchoeraBuildInfo.Version,
                         SupportedVersionsUrl),
                 }));
+        _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
+        {
+            [ScanMethod] = ScanAsync,
+            [SelectMethod] = SelectAsync,
+            [PlanRuntimeMethod] = PlanRuntimeAsync,
+        };
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -53,23 +65,17 @@ public sealed class JavaModuleService : IModuleMethodHandler
         string? paramsJson,
         CancellationToken cancellationToken)
     {
-        if (string.Equals(method, "java.select", StringComparison.Ordinal))
-        {
-            return SelectAsync(paramsJson, cancellationToken);
-        }
-
-        if (string.Equals(method, "java.runtime.plan", StringComparison.Ordinal))
-        {
-            return PlanRuntimeAsync(paramsJson, cancellationToken);
-        }
-
-        if (!string.Equals(method, "java.scan", StringComparison.Ordinal))
-        {
-            return Task.FromResult(ModuleJson.Error(
+        return _handlers.TryGetValue(method, out var handler)
+            ? handler(paramsJson, cancellationToken)
+            : Task.FromResult(ModuleJson.Error(
                 "E_UNSUPPORTED",
                 $"unsupported java method '{method}'"));
-        }
+    }
 
+    private Task<byte[]> ScanAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
         if (!JavaScanRequestJson.TryParse(paramsJson, out var request))
         {
             return Task.FromResult(ModuleJson.Error(

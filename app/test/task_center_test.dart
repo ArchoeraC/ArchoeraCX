@@ -1,5 +1,5 @@
 import 'package:archoera_cx/app/app.dart';
-import 'package:archoera_cx/services/core/task_update.dart';
+import 'package:archoera_cx/services/core/downloads/task_update.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/stores/tasks.dart';
 import 'package:archoera_cx/theme/icons/app_icons.dart';

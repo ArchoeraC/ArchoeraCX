@@ -1,7 +1,7 @@
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/app/shell.dart';
-import 'package:archoera_cx/services/core/build_policy.dart';
-import 'package:archoera_cx/services/core/download_policy.dart';
+import 'package:archoera_cx/services/core/downloads/build_policy.dart';
+import 'package:archoera_cx/services/core/downloads/download_policy.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';

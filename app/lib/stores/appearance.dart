@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/core/core_event.dart';
-import '../services/core/system_appearance.dart';
+import '../services/core/system/system_appearance.dart';
 import '../theme/tokens.dart';
 import 'providers.dart';
 

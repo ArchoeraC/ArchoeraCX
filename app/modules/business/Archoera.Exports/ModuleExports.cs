@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Archoera.Application;
 using Archoera.Application.Loaders;
 using Archoera.Application.Modules;
 using Archoera.Infrastructure.Accounts;
@@ -337,7 +338,7 @@ public static unsafe class ModuleExports
 
         table->AbiVersion = AbiVersion;
         table->Name = Marshal.StringToCoTaskMemUTF8("archoera_cs");
-        table->Version = Marshal.StringToCoTaskMemUTF8("0.0.1+1");
+        table->Version = Marshal.StringToCoTaskMemUTF8(ArchoeraBuildInfo.Version);
         table->Init = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr*, IntPtr, int>)&ModuleInit;
         table->Call = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, ulong, IntPtr, IntPtr, IntPtr, IntPtr, IntPtr, int>)&ModuleCall;
         table->Cancel = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, ulong, int>)&ModuleCancel;

@@ -1,5 +1,5 @@
-import 'package:archoera_cx/services/core/app_settings.dart';
-import 'package:archoera_cx/services/core/launch_memory.dart';
+import 'package:archoera_cx/services/core/settings/app_settings.dart';
+import 'package:archoera_cx/services/core/launch/launch_memory.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The native module owns heap sizing; the UI only parses the preview and maps

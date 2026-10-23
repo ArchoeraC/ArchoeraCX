@@ -15,8 +15,17 @@ namespace Archoera.Infrastructure.SystemInfo;
 /// </summary>
 public sealed class SystemModuleService : IModuleMethodHandler
 {
-    private static readonly string[] SupportedMethods =
-        ["system.memory", "system.identity"];
+    private const string MemoryMethod = "system.memory";
+    private const string IdentityMethod = "system.identity";
+
+    private static readonly string[] SupportedMethods = [MemoryMethod, IdentityMethod];
+
+    private static readonly Dictionary<string, ModuleMethodDelegate> Handlers =
+        new(StringComparer.Ordinal)
+        {
+            [MemoryMethod] = static (_, _) => Task.FromResult(Envelope(WriteMemory)),
+            [IdentityMethod] = static (_, _) => Task.FromResult(Envelope(WriteIdentity)),
+        };
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
 
@@ -27,13 +36,10 @@ public sealed class SystemModuleService : IModuleMethodHandler
     {
         try
         {
-            return method switch
-            {
-                "system.memory" => Task.FromResult(Envelope(WriteMemory)),
-                "system.identity" => Task.FromResult(Envelope(WriteIdentity)),
-                _ => Task.FromResult(
-                    ModuleJson.Error("E_UNSUPPORTED", $"unsupported system method '{method}'")),
-            };
+            return Handlers.TryGetValue(method, out var handler)
+                ? handler(paramsJson, cancellationToken)
+                : Task.FromResult(
+                    ModuleJson.Error("E_UNSUPPORTED", $"unsupported system method '{method}'"));
         }
         catch (Exception exception)
         {

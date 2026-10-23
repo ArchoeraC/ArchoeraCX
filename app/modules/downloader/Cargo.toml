@@ -16,7 +16,12 @@ name = "archoera-dl"
 path = "src/bin/archoera_dl.rs"
 
 [dependencies]
-reqwest = { version = "0.13.5", features = ["http2", "system-proxy", "socks"] }
+reqwest = { version = "0.13.5", default-features = false, features = [
+    "default-tls",
+    "charset",
+    "system-proxy",
+    "socks",
+] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha1 = "0.10"

@@ -1,6 +1,6 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/models/game_instance.dart';
-import 'package:archoera_cx/services/core/loader_versions.dart';
+import 'package:archoera_cx/services/core/loaders/loader_versions.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
 import 'package:archoera_cx/widgets/instances/loader_picker_panel.dart';
 import 'package:flutter/material.dart';

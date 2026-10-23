@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/account.dart';
-import '../services/core/region_policy.dart';
+import '../services/core/downloads/region_policy.dart';
 import 'accounts.dart';
 import 'providers.dart';
 
