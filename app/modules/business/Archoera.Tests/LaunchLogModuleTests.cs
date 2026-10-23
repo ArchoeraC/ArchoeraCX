@@ -4,6 +4,7 @@ using Archoera.Application.Instances;
 using Archoera.Application.Modules;
 using Archoera.Domain.Instances;
 using Archoera.Infrastructure.Launch;
+using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Tests;
 
@@ -338,7 +339,11 @@ public sealed class LaunchLogModuleTests
     }
 
     private static LaunchLogModuleService CreateService(string root)
-        => new(new StubInstances(Instance(root)));
+        => new(
+            new StubInstances(Instance(root)),
+            // Isolate from the real user settings: the defaults asserted below
+            // must not depend on whatever the developer's launcher configured.
+            new JsonAppSettingsStore(Path.Combine(root, "data")));
 
     private static GameInstanceRecord Instance(string root)
     {

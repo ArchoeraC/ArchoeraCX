@@ -9,6 +9,7 @@ import '../pages/instances_page.dart';
 import '../pages/java_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/wiki_page.dart';
+import '../widgets/common/page_surface.dart';
 import 'shell.dart';
 
 /// Builds the app router.
@@ -16,6 +17,10 @@ import 'shell.dart';
 /// [initialLocation] wins over the `ARCHOERACX_INITIAL_ROUTE` environment
 /// variable, which wins over the dashboard (`/`). Invalid values fall back to
 /// the dashboard so a bad preference can never leave the shell without a page.
+///
+/// Every page is wrapped in [AppPageSurface]: routes do not paint their own
+/// background, and without a route-scoped material the pages' ink effects land
+/// on the shell material and float above the next route.
 GoRouter buildAppRouter({String? initialLocation}) {
   final configured =
       initialLocation ??
@@ -37,7 +42,8 @@ GoRouter buildAppRouter({String? initialLocation}) {
               GoRoute(
                 path: '/',
                 name: 'dashboard',
-                builder: (context, state) => const DashboardPage(),
+                builder: (context, state) =>
+                    const AppPageSurface(child: DashboardPage()),
               ),
             ],
           ),
@@ -46,7 +52,8 @@ GoRouter buildAppRouter({String? initialLocation}) {
               GoRoute(
                 path: '/instances',
                 name: 'instances',
-                builder: (context, state) => const InstancesPage(),
+                builder: (context, state) =>
+                    const AppPageSurface(child: InstancesPage()),
               ),
             ],
           ),
@@ -55,7 +62,8 @@ GoRouter buildAppRouter({String? initialLocation}) {
               GoRoute(
                 path: '/download',
                 name: 'download',
-                builder: (context, state) => const DownloadPage(),
+                builder: (context, state) =>
+                    const AppPageSurface(child: DownloadPage()),
               ),
             ],
           ),
@@ -64,7 +72,8 @@ GoRouter buildAppRouter({String? initialLocation}) {
               GoRoute(
                 path: '/accounts',
                 name: 'accounts',
-                builder: (context, state) => const AccountsPage(),
+                builder: (context, state) =>
+                    const AppPageSurface(child: AccountsPage()),
               ),
             ],
           ),
@@ -73,7 +82,8 @@ GoRouter buildAppRouter({String? initialLocation}) {
               GoRoute(
                 path: '/wiki',
                 name: 'wiki',
-                builder: (context, state) => const WikiPage(),
+                builder: (context, state) =>
+                    const AppPageSurface(child: WikiPage()),
               ),
             ],
           ),
@@ -82,12 +92,14 @@ GoRouter buildAppRouter({String? initialLocation}) {
               GoRoute(
                 path: '/settings',
                 name: 'settings',
-                builder: (context, state) => const SettingsPage(),
+                builder: (context, state) =>
+                    const AppPageSurface(child: SettingsPage()),
                 routes: [
                   GoRoute(
                     path: 'java',
                     name: 'settings-java',
-                    builder: (context, state) => const JavaPage(),
+                    builder: (context, state) =>
+                        const AppPageSurface(child: JavaPage()),
                   ),
                 ],
               ),

@@ -39,31 +39,39 @@ class _SettingsNav extends StatelessWidget {
                   ),
                 ),
               ),
-              child: ListTile(
-                dense: true,
-                selected: item.section == selected,
-                selectedTileColor: tokens.accentSoft,
-                hoverColor: tokens.surface2,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                ),
-                leading: Icon(
-                  item.icon,
-                  size: 19,
-                  color: item.section == selected
-                      ? tokens.accent
-                      : tokens.textSecondary,
-                ),
-                title: Text(
-                  item.label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              // The tile colour and hover highlight are ink effects: without a
+              // material of their own they attach to the shell material outside
+              // the route, where they are neither clipped nor torn down with
+              // the page.
+              child: Material(
+                type: MaterialType.transparency,
+                clipBehavior: Clip.hardEdge,
+                child: ListTile(
+                  dense: true,
+                  selected: item.section == selected,
+                  selectedTileColor: tokens.accentSoft,
+                  hoverColor: tokens.surface2,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
+                  leading: Icon(
+                    item.icon,
+                    size: 19,
                     color: item.section == selected
                         ? tokens.accent
-                        : tokens.textPrimary,
-                    fontWeight: FontWeight.w500,
+                        : tokens.textSecondary,
                   ),
+                  title: Text(
+                    item.label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: item.section == selected
+                          ? tokens.accent
+                          : tokens.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onTap: () => onSelected(item.section),
                 ),
-                onTap: () => onSelected(item.section),
               ),
             ),
           ),
