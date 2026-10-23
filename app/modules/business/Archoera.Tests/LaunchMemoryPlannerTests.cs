@@ -42,13 +42,40 @@ public sealed class LaunchMemoryPlannerTests
     [Fact]
     public void Loader_and_mods_raise_the_heap()
     {
-        // 2048 (1.21) + 512 (NeoForge) + 126 * 8 = 3568, rounded to 3584.
+        // 2048 (1.21) + 512 (NeoForge) + 1260 (126 mods) = 3820, but a
+        // 75+ mod pack gets the 4 GB safety floor.
         Assert.Equal(
-            3584,
+            4096,
             LaunchMemoryPlanner.Recommend(
                 Instance("1.21.1", "neoforge"),
                 modCount: 126,
                 totalMb: 32768));
+    }
+
+    [Fact]
+    public void A_kitchen_sink_pack_gets_six_gigabytes()
+    {
+        // Better MC 5 has ~268 enabled mods and ~345 MiB of mod jars:
+        // 2048 + 512 + 2680 + 690 = 5930, raised by the 250-mod floor.
+        Assert.Equal(
+            6144,
+            LaunchMemoryPlanner.Recommend(
+                Instance("1.21.1", "neoforge"),
+                modCount: 268,
+                totalMb: 32768,
+                modBytes: 345L * 1024 * 1024));
+    }
+
+    [Fact]
+    public void A_large_mod_payload_raises_a_small_count_pack()
+    {
+        Assert.Equal(
+            6144,
+            LaunchMemoryPlanner.Recommend(
+                Instance("1.21.1", "neoforge"),
+                modCount: 20,
+                totalMb: 32768,
+                modBytes: 800L * 1024 * 1024));
     }
 
     [Fact]
@@ -102,6 +129,19 @@ public sealed class LaunchMemoryPlannerTests
 
         Assert.Equal("SYSTEM_LOW_MEMORY", plan.WarningCode);
         Assert.Equal(1792, plan.MaxMb);
+    }
+
+    [Fact]
+    public void Auto_mode_warns_when_the_machine_caps_a_heavy_pack()
+    {
+        var plan = LaunchMemoryPlanner.Resolve(
+            Settings("auto", 512, 2048),
+            Instance("1.21.1", "neoforge", modCount: 268),
+            instanceRoot: null,
+            memory: (6144, 3072));
+
+        Assert.Equal(3072, plan.MaxMb);
+        Assert.Equal("SYSTEM_LOW_MEMORY", plan.WarningCode);
     }
 
     [Fact]
@@ -180,6 +220,7 @@ public sealed class LaunchMemoryPlannerTests
             File.WriteAllText(Path.Combine(mods, "nested", "d.jar"), "x");
 
             Assert.Equal(2, LaunchMemoryPlanner.CountEnabledMods(directory));
+            Assert.Equal(2L, LaunchMemoryPlanner.MeasureEnabledMods(directory).Bytes);
             Assert.Equal(0, LaunchMemoryPlanner.CountEnabledMods(
                 Path.Combine(directory, "missing")));
         }
@@ -192,7 +233,10 @@ public sealed class LaunchMemoryPlannerTests
         }
     }
 
-    private static GameInstanceRecord Instance(string gameVersion, string loader) =>
+    private static GameInstanceRecord Instance(
+        string gameVersion,
+        string loader,
+        int modCount = 0) =>
         new(
             "instance",
             "Instance",
@@ -200,7 +244,7 @@ public sealed class LaunchMemoryPlannerTests
             loader,
             string.Empty,
             Path.Combine(Path.GetTempPath(), "archoera-memory", "instance"),
-            0,
+            modCount,
             false,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,

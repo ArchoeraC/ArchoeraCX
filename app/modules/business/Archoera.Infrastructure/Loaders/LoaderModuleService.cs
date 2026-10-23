@@ -151,15 +151,21 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             }
 
             using var http = new HttpClient();
+            var userAgent = MojangClientOptions.CreateUserAgent(
+                ArchoeraBuildInfo.Version,
+                "https://github.com/BetaStudio2/ArchoeraCX");
             var mojang = new MojangClient(
                 http,
-                new MojangClientOptions
-                {
-                    UserAgent = MojangClientOptions.CreateUserAgent(
-                        ArchoeraBuildInfo.Version,
-                        "https://github.com/BetaStudio2/ArchoeraCX"),
-                });
-            var plan = await new ForgeInstallPlanService(mojang)
+                new MojangClientOptions { UserAgent = userAgent });
+            var libraryResolver = new MojangLibraryMetadataResolver(
+                new MavenSidecarClient(http, userAgent));
+            loaderVersion = LoaderVersionText.Normalize(
+                kind.ToString(),
+                gameVersion,
+                loaderVersion);
+            var plan = await new ForgeInstallPlanService(
+                    mojang,
+                    libraryResolver.ResolveAsync)
                 .BuildAsync(
                     LaunchPaths.ResolveLoaderRoot(
                         Path.GetFullPath(instanceRoot),

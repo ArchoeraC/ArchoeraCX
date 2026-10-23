@@ -32,6 +32,8 @@ flutter build linux --release
 python3 tool/check_icons.py   # 校验 AppIcons 与自带图标字体一致
 ```
 
+`app/shaders/*.frag` 由 `pubspec.yaml` 的 `flutter: shaders:` 声明交给 `impellerc` 编译；`flutter test` 同样会编译，`test/app_shaders_test.dart` 按各着色器声明的 uniform 个数逐个绘制，索引与 GLSL 不一致会在此失败。新增或调整 uniform 时必须同步修改调用方的 `setFloat` 索引。窗口背景是纯色、没有持续动画，测试里的 `pumpAndSettle` 可正常收敛。
+
 Microsoft 登录的 client ID 必须在 C# 构建步骤注入：
 
 ```bash
@@ -111,7 +113,7 @@ archoera-vault                凭证保险库（crypto/file 免密模式）
 logs/account.log              脱敏的账户诊断日志
 ```
 
-- Flutter 不打开 SQLite；Linux/macOS 用系统 SQLite，Windows 随 C# 模块分发 `e_sqlite3.dll`。
+- Flutter 不打开 SQLite；所有平台都随 C# 模块分发 SQLitePCLRaw 的 `e_sqlite3`（Linux `libe_sqlite3.so`、macOS `libe_sqlite3.dylib`、Windows `e_sqlite3.dll`），由 C# 按绝对路径加载，宿主不再需要 `libsqlite3`。
 - 账户 token 只在 C# 使用；UI 只拿账户元数据。
 - 失败登录不会写入账户或 token。
 - OS 凭据库（DPAPI/Keychain/libsecret）尚未接入。

@@ -94,6 +94,38 @@ public sealed class LocalForgeInstallerTests
     }
 
     [Fact]
+    public void Finds_a_Forge_installer_when_the_instance_stores_the_profile_id()
+    {
+        var root = CreateRoot();
+        try
+        {
+            var installer = Path.Combine(
+                root,
+                "libraries",
+                "net",
+                "minecraftforge",
+                "forge",
+                "47.4.18-installer",
+                "forge-47.4.18-installer.jar");
+            WriteZip(installer);
+
+            // SJMCL/LauncherX imports keep "1.20.1-forge-47.4.18" in the
+            // loader version; the installer path uses the bare build.
+            var instance = Instance("forge", "1.20.1-forge-47.4.18", "1.20.1", root);
+
+            Assert.Equal(
+                installer,
+                PackInstallService.FindLocalForgeInstaller(
+                    instance,
+                    LoaderKind.Forge));
+        }
+        finally
+        {
+            Delete(root);
+        }
+    }
+
+    [Fact]
     public void Ignores_a_non_zip_file()
     {
         var root = CreateRoot();

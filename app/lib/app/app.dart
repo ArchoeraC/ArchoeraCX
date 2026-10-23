@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../render/app_shaders.dart';
 import '../stores/appearance.dart';
 import '../stores/locale.dart';
 import '../stores/providers.dart';
@@ -48,8 +49,12 @@ class ArchoeraApp extends ConsumerWidget {
       ),
       themeMode: themeMode,
       routerConfig: router,
-      builder: (context, child) =>
-          ToastOverlay(child: child ?? const SizedBox.shrink()),
+      // Shader programs are shared by the background, the page transition and
+      // interactive panels; loading them above the router keeps a single
+      // compiled copy and lets every consumer degrade to its plain fallback.
+      builder: (context, child) => AppShaderScope(
+        child: ToastOverlay(child: child ?? const SizedBox.shrink()),
+      ),
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

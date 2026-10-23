@@ -12,8 +12,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.12" />
-    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" Version="2.1.12" />
     <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.12" />
+    <!-- Portable SQLite payload: the native library is shipped with the app
+         on every platform and loaded by absolute path (SqliteNativeLibrary),
+         so the bundle never depends on the host's libsqlite3. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
   </ItemGroup>
 
   <ItemGroup>

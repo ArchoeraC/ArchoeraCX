@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Archoera.Application.Mojang;
 using Archoera.Domain.Instances;
+using Archoera.Domain.Loaders;
 using Archoera.Domain.Mojang;
 
 namespace Archoera.Infrastructure.Launch;
@@ -223,7 +224,10 @@ internal static class LaunchVersionDiscovery
     internal static IReadOnlyList<string> LoaderProfileIds(GameInstanceRecord instance)
     {
         var game = instance.GameVersion;
-        var loader = instance.LoaderVersion;
+        var loader = LoaderVersionText.Normalize(
+            instance.Loader,
+            game,
+            instance.LoaderVersion);
         if (string.IsNullOrWhiteSpace(loader)) return [];
 
         var loaderKind = instance.Loader.Trim().ToLowerInvariant();

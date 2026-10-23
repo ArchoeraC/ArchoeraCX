@@ -7,6 +7,7 @@ using Archoera.Application.Mojang;
 using Archoera.Domain.Accounts;
 using Archoera.Domain.Instances;
 using Archoera.Domain.Java;
+using Archoera.Domain.Loaders;
 using Archoera.Domain.Mojang;
 using Archoera.Domain.Settings;
 using Archoera.Infrastructure.Launch;
@@ -184,8 +185,10 @@ internal static class LaunchPlanBuilder
         }
 
         // The profile is authoritative: it is what the loader will use.
-        var loader = ArgumentValue(version, "--fml.neoForgeVersion") ??
-                     instance.LoaderVersion.Trim();
+        var loader = LoaderVersionText.Normalize(
+            instance.Loader,
+            instance.GameVersion,
+            ArgumentValue(version, "--fml.neoForgeVersion") ?? instance.LoaderVersion);
         var game = ArgumentValue(version, "--fml.mcVersion") ?? instance.GameVersion;
         var relative = string.Equals(game, "1.20.1", StringComparison.Ordinal)
             ? LegacyNeoForgeRelative(game, loader)

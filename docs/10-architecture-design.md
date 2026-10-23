@@ -1169,7 +1169,7 @@ public sealed record LaunchPlan(
 2. 标量：叶子覆盖；`minimumLauncherVersion`/`complianceLevel` 取链上最大值。
 3. libraries 键：`group:artifact:classifier:extension`；版本不参与键；叶子版本胜出、**位置不变**。
 4. `arguments.jvm/game`：父→子拼接；`rules` 与 `${}` 原样保留，**启动时**求值。
-5. 无 `downloads` 的库：按 Maven 坐标拼 URL；hash 可缺失，标记 `unverified`。
+5. 无 `downloads` 的库：按 Maven 坐标与 group 推断仓库拼 URL；缺 hash/size 时通过 Maven `.sha1` sidecar 与 `Content-Length` 补全，再进入下载计划（计划本身不允许无 hash 条目）。
 6. `url` 为空的库：本地 processor 产物，**不下载**，启动前检查存在。
 7. 缓存键：`mergeSchemaVersion + 每层 id/contentHash + 合并选项`；Fabric `releaseTime` 不参与。
 8. 有效版本缓存放 `<cache>/effective/`，不放 `versions/`，避免被“修复版本”误删。
@@ -1220,7 +1220,7 @@ public sealed record LaunchPlan(
 ```
 
 - `launch.start` 在进程成功 spawn 后返回 `{pid, startedAt}`，不等待游戏退出。
-- `launch.stop`：先请求优雅退出（如支持），5s 后杀进程树（Windows Job Object / Unix 进程组）。
+- `launch.stop`：Minecraft 客户端没有优雅退出通道，因此直接强杀本次启动登记的进程树（Windows `TerminateProcess`、Unix `SIGKILL`）；pid 只来自启动登记表，UI 不能指定任意进程；日志查看器连续两次警告后才调用。
 - 命令行包含 token，属于官方启动器同样存在的限制；**绝不**把完整 argv 写日志/显示在 UI。
 
 ### 8.7 Java 探测与运行时
@@ -1305,6 +1305,7 @@ JavaLocator
 - 写操作经 `SqliteWriteQueue` 串行化；读可用独立连接。
 - 迁移：版本表 + 事务 + 迁移前备份；失败回滚，不删用户数据。
 - 完整性：启动 `PRAGMA quick_check`；异常时备份并提示“重建索引”，从 `instance.json`/磁盘恢复。
+- 原生库：所有平台随 C# 模块分发 SQLitePCLRaw 的 `e_sqlite3`，`SqliteNativeLibrary` 解析绝对路径后加载并绑定 provider；不依赖宿主 `libsqlite3`。Linux 用 `dlopen(RTLD_DEEPBIND)` 打开自带副本：GTK/GDK 可能已先把系统 `libsqlite3.so.0` 放进全局符号表，普通 `dlopen` 会让自带副本内部的 `sqlite3_initialize` 绑定到系统副本，导致自带副本全局配置未初始化并在 `sqlite3Malloc` 崩溃；deepbind 让自引用留在本库内。macOS 两级命名空间无此问题，Windows 无第二份 SQLite。
 - Schema 见 §11.4。
 
 ### 8.15 配置与密钥
@@ -1322,7 +1323,7 @@ JavaLocator
 | 无托管调试器 | 业务纯类库 + DevHost + 单测 + 日志 |
 | 体积 | 裁剪、`InvariantGlobalization` 评估（注意中文排序/日期） |
 | 启动 | init 预热 JSON/HTTP/SQLite |
-| SQLite native | `SQLitePCLRaw` bundle 随包；AOT 链接与目标 RID 实测 |
+| SQLite native | `SQLitePCLRaw.lib.e_sqlite3` 随包；按绝对路径加载，不依赖宿主 `libsqlite3`；Linux 用 `RTLD_DEEPBIND` 避免与 GTK 已加载的系统副本串符号；AOT 链接与目标 RID 实测 |
 | 异常 | 边界 catch；禁止异常跨 ABI |
 
 ### 8.17 领域错误码
@@ -2451,7 +2452,7 @@ public interface IDownloadProvider {
 | `account.logout` | C# | 清 token/保留元数据可选 |
 | `account.remove` | C# | 删除账户 |
 | `launch.prepare` | C# | 构建/预检 LaunchPlan（不启动） |
-| `launch.memory` | C# | 内存预览：`{instanceId}` → `{mode,minMb,maxMb,recommendedMb,systemTotalMb,systemAvailableMb,modCount,warningCode,warning}`；`auto` 按版本基线 + 加载器开销 + 模组数推算并按本机内存封顶，`manual` 原样返回用户值并给出 `LOW_MEMORY`/`BELOW_RECOMMENDED`/`OVER_SYSTEM`/`OVER_AVAILABLE` 警告码；实例显式覆盖内存即视为该实例 `manual` |
+| `launch.memory` | C# | 内存预览：`{instanceId}` → `{mode,minMb,maxMb,recommendedMb,systemTotalMb,systemAvailableMb,modCount,warningCode,warning}`；`auto` 按版本基线 + 加载器开销 + 模组数量/体积推算并按本机内存封顶，`manual` 原样返回用户值并给出 `LOW_MEMORY`/`BELOW_RECOMMENDED`/`OVER_SYSTEM`/`OVER_AVAILABLE` 警告码；实例显式覆盖内存即视为该实例 `manual` |
 | `launch.start` | C# | spawn JVM（可选参数 `hardware`：`system.gpu` 的 `data` 原样转发，用于独显偏好） |
 | `launch.stop` | C# | 优雅停止/杀进程树 |
 | `launch.status` | C# | 运行状态/pid |
@@ -2577,8 +2578,8 @@ public interface IDownloadProvider {
 
 **堆内存与游戏优化**
 
-- `memoryMode=auto`（默认）：`2048`（1.18+）/`1536`（1.13–1.17）/`1024`（更早）为基础，Forge/NeoForge `+512`、Fabric/Quilt `+256`，每个启用模组 `+8 MB`（上限 400 个）；再按本机内存封顶（≥8 GB 时 `总量-2048`，否则 `总量/2`），最终夹在 `1024–8192 MB` 并对齐 256 MB。`-Xms` 取 `min(推荐值, 1024)`。
-- `memoryMode=manual`：完全尊重用户数值，不静默修改，只返回警告码；实例显式覆盖内存时该实例按 `manual` 处理。启动前 UI 依据 `launch.memory` 弹出确认框，实例设置对话框也会就地提示。
+- `memoryMode=auto`（默认）：`2048`（1.18+）/`1536`（1.13–1.17）/`1024`（更早）为基础，Forge/NeoForge `+512`、Fabric/Quilt `+256`；启用模组按 `数量 × 10 MB + 模组总 MiB × 2 MB` 计（数量上限 600、体积项上限 4096 MB），再叠加重型整合包下限（≥30/75/150/250 个模组分别为 3072/4096/5120/6144 MB；模组总字节 ≥300/512/768/1200 MiB 分别为 4096/5120/6144/8192 MB）。之后按本机内存封顶（≥8 GB 时 `总量-2048`，否则 `总量/2`），最终夹在 `1024–8192 MB` 并对齐 256 MB；若本机封顶低于整合包需求，自动模式返回 `SYSTEM_LOW_MEMORY` 警告。`-Xms` 取 `min(推荐值, 1024)`。
+- `memoryMode=manual`：完全尊重用户数值，不静默修改，只返回警告码；低于推荐值 80% 返回 `BELOW_RECOMMENDED`，实例显式覆盖内存时该实例按 `manual` 处理。启动前 UI 依据 `launch.memory` 弹出确认框，实例设置对话框也会就地提示。
 - `gameOptimization=true`（默认）且 GC 为 G1 时，堆 ≥ 4096 MB 追加 Aikar 风格 G1 参数并按堆大小选择 `G1HeapRegionSize`；核数 > 8 时按 `8 + (核数-8)*5/8` 设置 `ParallelGCThreads`；`AlwaysPreTouch` 仅在 `堆 + 3072 ≤ 物理内存` 时启用；用户自选 GC（设置或自定义 `-XX:+Use*GC`）时不覆盖。
 - 独显优先：Linux + NVIDIA（驱动已加载）设置 `__NV_PRIME_RENDER_OFFLOAD=1` / `__GLX_VENDOR_LIBRARY_NAME=nvidia` / `__VK_LAYER_NV_optimus=NVIDIA_only`；Linux + AMD 混合显卡设置 `DRI_PRIME=1`；Windows 为当前 Java 可执行文件写入 `HKCU\Software\Microsoft\DirectX\UserGpuPreferences` 的 `GpuPreference=2;`；macOS 不做干预。优化参数排在用户自定义 JVM 参数之前，用户仍可覆盖。
 
@@ -3128,7 +3129,7 @@ ArchoeraCX/
 | D1 | 默认发行通道 | **`official-cn`（L0）**；`official-global` 作为单独构建保留（L1/L2） |
 | D2 | macOS 架构 | **仅 Apple Silicon arm64**；不做 x64/universal，下载页明确标注 |
 | D3 | 微软 OAuth 重定向 | **默认 Device Code Flow（无 redirect URI）**；浏览器备选用 **loopback + auth code + PKCE**（`http://localhost:<ephemeral>/callback`）；自定义协议不作为主方案 |
-| D4 | SQLite 归属 | **只由 C# 持有**；Flutter 不引入数据库插件/不直接读 SQLite；C++ 只路由。Linux/macOS 用系统 SQLite，Windows 随 C# 模块分发 `e_sqlite3.dll` |
+| D4 | SQLite 归属 | **只由 C# 持有**；Flutter 不引入数据库插件/不直接读 SQLite；C++ 只路由。各平台随 C# 模块分发 SQLitePCLRaw `e_sqlite3` 并按绝对路径加载，不使用宿主 `libsqlite3` |
 | D5 | 账户凭据 | device code/access/refresh token **不跨 ABI、不写日志**；C# `VaultCredentialStore` 经 `archoera-vault` 加密存储，旧 `accounts.credentials.json` 首次迁移后删除 |
 
 ### 21.3 待决策

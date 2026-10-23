@@ -112,6 +112,61 @@ public sealed class MojangJsonTests
     }
 
     [Fact]
+    public void ParseVersion_synthesizes_maven_only_library_artifacts()
+    {
+        const string json = """
+            {
+              "id": "fabric-loader-0.19.3-1.21.8",
+              "libraries": [
+                {
+                  "name": "net.fabricmc:fabric-loader:0.19.3",
+                  "url": "https://maven.fabricmc.net/"
+                },
+                {
+                  "name": "org.ow2.asm:asm:9.10.1"
+                },
+                {
+                  "name": "com.google.guava:guava:31.1-jre"
+                },
+                {
+                  "name": "net.fabricmc:intermediary:1.21.8",
+                  "url": "https://maven.quiltmc.org/repository/release/"
+                }
+              ]
+            }
+            """;
+
+        using var document = JsonDocument.Parse(json);
+        var version = MojangJson.ParseVersion(document.RootElement);
+
+        var loader = version.Libraries[0].Downloads!.Artifact!;
+        Assert.Equal(
+            "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.19.3/" +
+            "fabric-loader-0.19.3.jar",
+            loader.Url);
+        Assert.Equal(
+            "net/fabricmc/fabric-loader/0.19.3/fabric-loader-0.19.3.jar",
+            loader.Path);
+        Assert.Null(loader.Sha1);
+        Assert.Null(loader.Size);
+
+        var asm = version.Libraries[1].Downloads!.Artifact!;
+        Assert.StartsWith(
+            "https://repo1.maven.org/maven2/org/ow2/asm/asm/9.10.1/",
+            asm.Url);
+
+        var guava = version.Libraries[2].Downloads!.Artifact!;
+        Assert.StartsWith(
+            "https://libraries.minecraft.net/com/google/guava/guava/31.1-jre/",
+            guava.Url);
+
+        var intermediary = version.Libraries[3].Downloads!.Artifact!;
+        Assert.StartsWith(
+            "https://maven.fabricmc.net/net/fabricmc/intermediary/1.21.8/",
+            intermediary.Url);
+    }
+
+    [Fact]
     public void ParseVersion_keeps_inherits_from_for_the_caller_to_reject()
     {
         const string json = """

@@ -126,9 +126,9 @@ Versions are locked by `app/pubspec.lock`. The Flutter SDK and Dart SDK are BSD-
 |---|---:|---|---|
 | Microsoft.Data.Sqlite.Core | 10.0.12 | MIT | https://www.nuget.org/packages/Microsoft.Data.Sqlite.Core |
 | SQLitePCLRaw.core | 2.1.12 | Apache-2.0 | https://www.nuget.org/packages/SQLitePCLRaw.core |
-| SQLitePCLRaw.provider.e_sqlite3 | 2.1.12 | Apache-2.0 | Windows bundled native provider |
-| SQLitePCLRaw.provider.sqlite3 | 2.1.12 | Apache-2.0 | Linux/macOS system SQLite provider |
-| SQLite (e_sqlite3) | system/bundled | Public domain | https://www.sqlite.org/copyright.html |
+| SQLitePCLRaw.provider.e_sqlite3 | 2.1.12 | Apache-2.0 | Bundled native provider (all platforms) |
+| SQLitePCLRaw.lib.e_sqlite3 | 2.1.12 | Apache-2.0 | https://www.nuget.org/packages/SQLitePCLRaw.lib.e_sqlite3 |
+| SQLite (e_sqlite3) | bundled (SQLitePCLRaw 2.1.12) | Public domain | https://www.sqlite.org/copyright.html |
 | .NET runtime and NativeAOT | 10.0.x | MIT | https://github.com/dotnet/runtime |
 
 ## 4. Rust crates (runtime closure)

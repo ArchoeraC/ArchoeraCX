@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Archoera.Application.Instances;
 using Archoera.Domain.Instances;
+using Archoera.Domain.Loaders;
 using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Instances;
@@ -71,7 +72,8 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         var cleanLoader = ValidateLoader(loader);
         var cleanLoaderVersion = string.IsNullOrWhiteSpace(loaderVersion)
             ? string.Empty
-            : ValidateVersion(loaderVersion);
+            : ValidateVersion(
+                LoaderVersionText.Normalize(cleanLoader, cleanGame, loaderVersion));
 
         var root = await ResolveRootAsync(cleanName, rootPath, cancellationToken)
             .ConfigureAwait(false);
@@ -459,13 +461,17 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         var game = String(item, "gameVersion");
         var root = String(item, "rootPath");
         if (id is null || name is null || game is null || root is null) return null;
+        var loader = String(item, "loader") ?? "vanilla";
 
         return new GameInstanceRecord(
             id,
             name,
             game,
-            String(item, "loader") ?? "vanilla",
-            String(item, "loaderVersion") ?? string.Empty,
+            loader,
+            LoaderVersionText.Normalize(
+                loader,
+                game,
+                String(item, "loaderVersion")),
             root,
             Int(item, "modCount") ?? 0,
             item.TryGetProperty("favorite", out var favorite) && favorite.ValueKind == JsonValueKind.True,

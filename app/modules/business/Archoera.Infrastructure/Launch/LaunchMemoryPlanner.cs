@@ -41,12 +41,16 @@ public sealed record LaunchMemoryPlan(
 /// Heap sizing shared by the launch path and the `launch.memory` preview.
 ///
 /// The automatic value follows what the game actually needs: the version
-/// baseline, the loader overhead, and the enabled mod count, then it is capped
-/// by the RAM the machine really has. Manual values are always honoured; they
-/// only produce a warning so the user can still force a tiny heap.
+/// baseline, the loader overhead, the enabled mod count and the mod payload,
+/// then it is capped by the RAM the machine really has. Manual values are
+/// always honoured; they only produce a warning so the user can still force a
+/// tiny heap.
 /// </summary>
 public static class LaunchMemoryPlanner
 {
+    private const int ModCountCap = 600;
+    private const long Mebibyte = 1024L * 1024L;
+
     /// <summary>Lowest heap the launcher will ever hand to the JVM.</summary>
     public const int FloorMb = 512;
 
@@ -81,12 +85,16 @@ public static class LaunchMemoryPlanner
 
         var (totalMb, availableMb) = memory ?? SystemModuleService.ReadMemory();
         var root = instanceRoot ?? instance.RootPath;
+        var hasModsDirectory = Directory.Exists(Path.Combine(root, "mods"));
         // The directory is authoritative (it reflects enable/disable), but the
         // instance index is a usable fallback when the folder is unreachable.
-        var modCount = Directory.Exists(Path.Combine(root, "mods"))
-            ? CountEnabledMods(root)
-            : instance.ModCount;
-        var recommended = Recommend(instance, modCount, totalMb);
+        var measured = hasModsDirectory
+            ? MeasureEnabledMods(root)
+            : (Count: 0, Bytes: 0L);
+        var modCount = hasModsDirectory ? measured.Count : instance.ModCount;
+        var modBytes = hasModsDirectory ? measured.Bytes : 0L;
+        var recommendation = RecommendDetailed(instance, modCount, modBytes, totalMb);
+        var recommended = recommendation.RecommendedMb;
         // An explicit per-instance heap is a manual decision: honouring it is
         // the whole point of the override, and the UI warns next to it.
         var overridden = instance.Overrides is { } instanceOverrides &&
@@ -105,7 +113,7 @@ public static class LaunchMemoryPlanner
 
         var (code, message) = manual
             ? ManualWarning(maxMb, recommended, totalMb, availableMb)
-            : AutoWarning(maxMb, totalMb);
+            : AutoWarning(maxMb, totalMb, recommendation);
 
         return new LaunchMemoryPlan(
             manual ? AppSettings.MemoryModes.Manual : AppSettings.MemoryModes.Auto,
@@ -120,47 +128,144 @@ public static class LaunchMemoryPlanner
     }
 
     /// <summary>
-    /// Heap the game would get automatically: version baseline + loader + mods,
-    /// rounded to 256 MB and capped by installed RAM.
+    /// Heap the game would get automatically: version baseline + loader +
+    /// mod count/payload, rounded to 256 MB and capped by installed RAM.
     /// </summary>
-    public static int Recommend(GameInstanceRecord instance, int modCount, long totalMb)
+    /// <param name="instance">Instance being launched.</param>
+    /// <param name="modCount">Enabled mod jars found in <c>mods/</c>.</param>
+    /// <param name="totalMb">Installed RAM, 0 when unknown.</param>
+    /// <param name="modBytes">
+    /// Total size of the enabled mod jars. Older callers may omit it; the count
+    /// tiers still keep large packs above the old 8 MB/mod estimate.
+    /// </param>
+    public static int Recommend(
+        GameInstanceRecord instance,
+        int modCount,
+        long totalMb,
+        long modBytes = 0)
+        => RecommendDetailed(instance, modCount, modBytes, totalMb).RecommendedMb;
+
+    private readonly record struct MemoryRecommendation(
+        int RecommendedMb,
+        int DesiredMb,
+        bool SystemCapped);
+
+    private static MemoryRecommendation RecommendDetailed(
+        GameInstanceRecord instance,
+        int modCount,
+        long modBytes,
+        long totalMb)
+    {
+        var desired = DesiredMb(instance, modCount, modBytes);
+        var (capped, systemCapped) = ApplySystemCap(desired, totalMb);
+        var recommended = Math.Clamp(capped, AutoFloorMb, AutoCeilingMb);
+        return new MemoryRecommendation(
+            RoundUpTo256(recommended),
+            desired,
+            systemCapped);
+    }
+
+    private static int DesiredMb(
+        GameInstanceRecord instance,
+        int modCount,
+        long modBytes)
     {
         var baseline = VersionBaselineMb(instance.GameVersion);
         var loader = LoaderOverheadMb(instance.Loader);
-        var mods = Math.Min(Math.Max(modCount, 0), 400) * 8;
-        var value = baseline + loader + mods;
+        var count = Math.Min(Math.Max(modCount, 0), ModCountCap);
+        var totalMiB = modBytes <= 0 ? 0 : (modBytes + Mebibyte - 1) / Mebibyte;
 
-        // Leave room for the OS and the launcher itself: 2 GB on normal
-        // machines, half the RAM on small ones.
-        if (totalMb > 0)
-        {
-            var cap = totalMb >= 8192 ? totalMb - 2048 : totalMb / 2;
-            if (cap < AutoFloorMb) cap = AutoFloorMb;
-            value = Math.Min(value, (int)Math.Min(cap, int.MaxValue));
-        }
-
-        value = Math.Clamp(value, AutoFloorMb, AutoCeilingMb);
-        return RoundUpTo256(value);
+        // Count covers hundreds of tiny library mods; the payload term covers
+        // content-heavy packs where a few mods ship large assets. Better MC 5
+        // (268 mods, ~345 MiB) lands on 6 GB, while a 126-mod pack stays at
+        // 4 GB instead of the old 3.5 GB.
+        var payloadMb = totalMiB >= 2048 ? 4096 : (int)(totalMiB * 2);
+        var value = baseline + loader + count * 10 + payloadMb;
+        return Math.Max(value, PackFloor(count, totalMiB));
     }
 
-    /// <summary>Counts enabled mod jars (`mods/*.jar`), ignoring disabled ones.</summary>
-    public static int CountEnabledMods(string instanceRoot)
+    /// <summary>
+    /// Safety floors for packs known to be heavy: a 250+ mod kitchen-sink pack
+    /// or a large mod payload should not get a small heap just because the
+    /// formula's linear terms happen to undershoot.
+    /// </summary>
+    private static int PackFloor(int modCount, long totalMiB)
     {
-        if (string.IsNullOrWhiteSpace(instanceRoot)) return 0;
+        var floor = modCount switch
+        {
+            >= 250 => 6144,
+            >= 150 => 5120,
+            >= 75 => 4096,
+            >= 30 => 3072,
+            _ => 0,
+        };
+
+        if (totalMiB >= 1200) return Math.Max(floor, 8192);
+        if (totalMiB >= 768) return Math.Max(floor, 6144);
+        if (totalMiB >= 512) return Math.Max(floor, 5120);
+        if (totalMiB >= 300) return Math.Max(floor, 4096);
+        return floor;
+    }
+
+    /// <summary>
+    /// Leaves room for the OS and the launcher itself: 2 GB on normal machines,
+    /// half the RAM on small ones. Returns whether the machine forced a lower
+    /// value than the pack asked for, so auto mode can warn instead of silently
+    /// handing a heavy pack a small heap.
+    /// </summary>
+    private static (int Value, bool Capped) ApplySystemCap(int value, long totalMb)
+    {
+        if (totalMb <= 0) return (value, false);
+
+        var cap = totalMb >= 8192 ? totalMb - 2048 : totalMb / 2;
+        if (cap < AutoFloorMb) cap = AutoFloorMb;
+        if (value <= cap) return (value, false);
+        return ((int)Math.Min(cap, int.MaxValue), true);
+    }
+
+    /// <summary>
+    /// Counts enabled mod jars and sums their payload. Top-level only:
+    /// <c>*.jar.disabled</c> does not match <c>*.jar</c>, and a nested directory
+    /// is not loaded by the game either.
+    /// </summary>
+    public static (int Count, long Bytes) MeasureEnabledMods(string instanceRoot)
+    {
+        if (string.IsNullOrWhiteSpace(instanceRoot)) return (0, 0);
+
+        var count = 0;
+        long bytes = 0;
         try
         {
             var mods = Path.Combine(instanceRoot, "mods");
-            if (!Directory.Exists(mods)) return 0;
-            // Top-level only: `*.jar.disabled` does not match `*.jar`, and a
-            // nested directory is not loaded by the game either.
-            return Directory.EnumerateFiles(mods, "*.jar").Count();
+            if (!Directory.Exists(mods)) return (0, 0);
+
+            foreach (var file in Directory.EnumerateFiles(mods, "*.jar"))
+            {
+                count++;
+                try
+                {
+                    bytes += new FileInfo(file).Length;
+                }
+                catch (Exception exception) when (
+                    exception is IOException or UnauthorizedAccessException)
+                {
+                    // A file that disappears mid-scan still counts as a mod;
+                    // only its payload contribution is lost.
+                }
+            }
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException)
         {
-            return 0;
+            return (0, 0);
         }
+
+        return (count, bytes);
     }
+
+    /// <summary>Counts enabled mod jars (`mods/*.jar`), ignoring disabled ones.</summary>
+    public static int CountEnabledMods(string instanceRoot)
+        => MeasureEnabledMods(instanceRoot).Count;
 
     private static int VersionBaselineMb(string gameVersion)
     {
@@ -206,7 +311,9 @@ public static class LaunchMemoryPlanner
                 $"heap {maxMb} MB is close to the {available} MB currently available");
         }
 
-        if (maxMb * 10 < recommendedMb * 6)
+        // Below 80% of the recommendation is worth a warning: a 4 GB heap for
+        // a 6 GB pack usually boots but stutters during world generation.
+        if (maxMb * 5 < recommendedMb * 4)
         {
             return (
                 WarningCodes.BelowRecommended,
@@ -216,13 +323,24 @@ public static class LaunchMemoryPlanner
         return (null, null);
     }
 
-    private static (string? Code, string? Message) AutoWarning(int maxMb, long totalMb)
+    private static (string? Code, string? Message) AutoWarning(
+        int maxMb,
+        long totalMb,
+        MemoryRecommendation recommendation)
     {
         if (totalMb > 0 && totalMb < 4096)
         {
             return (
                 WarningCodes.SystemLowMemory,
                 $"{totalMb} MB of RAM is low for modded Minecraft; heap capped at {maxMb} MB");
+        }
+
+        if (recommendation.SystemCapped)
+        {
+            return (
+                WarningCodes.SystemLowMemory,
+                $"this pack wants about {recommendation.DesiredMb} MB but a " +
+                $"{totalMb} MB machine caps the heap at {maxMb} MB");
         }
 
         return (null, null);

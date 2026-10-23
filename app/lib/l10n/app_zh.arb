@@ -831,7 +831,6 @@
   "accountNoAccountsMicrosoftOnly": "添加微软账户后即可开始使用。",
   "launchOnlineNotReady": "当前版本尚未启用在线启动。",
   "developmentBuildBadge": "开发版",
-  "developmentBuildWarning": "开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。",
   "launchOnlineSessionExpired": "Minecraft 会话已过期，请重新登录。",
   "launchMicrosoftAccountRequired": "请选择微软账户进行在线启动。",
   "launchOnlineNotConfigured": "当前构建未配置在线启动。",
@@ -951,6 +950,41 @@
       }
     }
   },
+  "gameLogForceStop": "强制终止",
+  "@gameLogForceStop": {
+    "description": "结束正在运行的游戏进程的标题栏操作。"
+  },
+  "gameLogForceStopTitle": "强制终止游戏？",
+  "@gameLogForceStopTitle": {},
+  "gameLogForceStopBody": "「{name}」正在运行。强制终止会立即结束游戏，未保存的世界进度可能丢失。",
+  "@gameLogForceStopBody": {
+    "description": "强制终止游戏的第一次警告。",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gameLogForceStopContinue": "继续",
+  "@gameLogForceStopContinue": {},
+  "gameLogForceStopAgainTitle": "仍要强制终止？",
+  "@gameLogForceStopAgainTitle": {},
+  "gameLogForceStopAgainBody": "此操作不可撤销，游戏进程会立即被结束。",
+  "@gameLogForceStopAgainBody": {},
+  "gameLogForceStopAgainBodyPid": "此操作不可撤销，进程 {pid} 会立即被结束。",
+  "@gameLogForceStopAgainBodyPid": {
+    "placeholders": {
+      "pid": {
+        "type": "int"
+      }
+    }
+  },
+  "gameLogForceStopConfirm": "强制终止",
+  "@gameLogForceStopConfirm": {},
+  "gameLogForceStopped": "已终止游戏进程。",
+  "@gameLogForceStopped": {},
+  "gameLogAlreadyStopped": "游戏已经结束。",
+  "@gameLogAlreadyStopped": {},
   "settingsClearLogs": "清理启动日志",
   "@settingsClearLogs": {},
   "settingsClearLogsDesc": "删除所有实例的旧启动日志；运行中的日志会保留。",

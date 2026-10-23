@@ -1679,9 +1679,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get developmentBuildBadge => '开发版';
 
   @override
-  String get developmentBuildWarning => '开发版：功能不完整且可能损坏数据，请勿用于正式环境或重要实例。';
-
-  @override
   String get launchOnlineSessionExpired => 'Minecraft 会话已过期，请重新登录。';
 
   @override
@@ -1923,6 +1920,40 @@ class AppLocalizationsZh extends AppLocalizations {
   String gameLogClearDone(int count, String size) {
     return '已删除 $count 个日志，释放 $size。';
   }
+
+  @override
+  String get gameLogForceStop => '强制终止';
+
+  @override
+  String get gameLogForceStopTitle => '强制终止游戏？';
+
+  @override
+  String gameLogForceStopBody(String name) {
+    return '「$name」正在运行。强制终止会立即结束游戏，未保存的世界进度可能丢失。';
+  }
+
+  @override
+  String get gameLogForceStopContinue => '继续';
+
+  @override
+  String get gameLogForceStopAgainTitle => '仍要强制终止？';
+
+  @override
+  String get gameLogForceStopAgainBody => '此操作不可撤销，游戏进程会立即被结束。';
+
+  @override
+  String gameLogForceStopAgainBodyPid(int pid) {
+    return '此操作不可撤销，进程 $pid 会立即被结束。';
+  }
+
+  @override
+  String get gameLogForceStopConfirm => '强制终止';
+
+  @override
+  String get gameLogForceStopped => '已终止游戏进程。';
+
+  @override
+  String get gameLogAlreadyStopped => '游戏已经结束。';
 
   @override
   String get settingsClearLogs => '清理启动日志';

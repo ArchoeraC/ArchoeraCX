@@ -9,6 +9,8 @@ import '../l10n/generated/app_localizations.dart';
 import '../l10n/l10n_labels.dart';
 import '../models/account.dart';
 import '../models/game_instance.dart';
+import '../render/app_shaders.dart';
+import '../render/dissolve_mask.dart';
 import '../stores/accounts.dart';
 import '../services/core/downloads/build_policy.dart';
 import '../services/core/launch/launch_action.dart';
@@ -16,14 +18,12 @@ import '../stores/appearance.dart';
 import '../stores/instances.dart';
 import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
-import '../utils/app_info.dart';
 import '../widgets/accounts/account_avatar.dart';
 import '../widgets/common/task_center_button.dart';
 import '../widgets/layout/app_background.dart';
 
 part 'shell/page_transition.dart';
 part 'shell/command_bar.dart';
-part 'shell/dev_banner.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -45,11 +45,21 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.dispose();
   }
 
-  Future<ui.Image?> _capturePage() async {
+  /// Captures the current page for the outgoing transition layer.
+  ///
+  /// Uses [RenderRepaintBoundary.toImageSync] so the snapshot is rasterized on
+  /// the raster thread and never synchronously read back to the CPU. The old
+  /// `toImage` call stalled the UI thread for a full frame on high-DPI or
+  /// software-rendered machines, which was the most visible GPU cost of every
+  /// branch switch.
+  ui.Image? _capturePage() {
     final boundary = _pageKey.currentContext?.findRenderObject();
     if (boundary is! RenderRepaintBoundary) return null;
+    // A boundary that still needs paint has no layer to snapshot yet; skipping
+    // the transition is cheaper than forcing a synchronous repaint.
+    if (boundary.debugNeedsPaint) return null;
     try {
-      return await boundary.toImage(
+      return boundary.toImageSync(
         pixelRatio: MediaQuery.devicePixelRatioOf(context),
       );
     } catch (_) {
@@ -57,7 +67,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
   }
 
-  Future<void> _selectBranch(int index) async {
+  void _selectBranch(int index) {
     final navigationShell = widget.navigationShell;
     final current = navigationShell.currentIndex;
     if (index == current) {
@@ -68,7 +78,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     // Every branch switch gets a snapshot underlay so the new page can cover
     // the old one. Returning to the home page reverses the motion: the old
     // page retracts downward instead of a new page covering it.
-    final image = await _capturePage();
+    final image = _capturePage();
     if (!mounted) {
       image?.dispose();
       return;
@@ -88,7 +98,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   void _finishCover(ui.Image image) {
     if (identical(_coverImage, image)) {
-      setState(() => _coverImage = null);
+      if (mounted) setState(() => _coverImage = null);
       // RawImage may still be in the tree for this frame.
       WidgetsBinding.instance.addPostFrameCallback((_) => image.dispose());
     } else {
@@ -159,8 +169,6 @@ class _AppShellState extends ConsumerState<AppShell> {
         body: Column(
           children: [
             _TopBar(l10n: l10n, contentMaxWidth: contentMaxWidth),
-            if (AppInfo.isDevelopmentBuild)
-              _DevelopmentBanner(l10n: l10n, contentMaxWidth: contentMaxWidth),
             Expanded(
               child: Align(
                 alignment: Alignment.topCenter,
@@ -214,6 +222,27 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
+/// One entry of the bottom command bar.
+///
+/// [branchIndex] is the `StatefulShellBranch` index, not the position in the
+/// rendered row: the download branch can be hidden by policy while the indexes
+/// of the remaining branches stay stable.
+class AppDestination {
+  const AppDestination({
+    required this.path,
+    required this.branchIndex,
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+  });
+
+  final String path;
+  final int branchIndex;
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+}
+
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.l10n, required this.contentMaxWidth});
 
@@ -227,10 +256,10 @@ class _TopBar extends StatelessWidget {
 
     return Container(
       height: AppLayout.titleBarHeight,
-      decoration: BoxDecoration(
-        color: tokens.surface1.withValues(alpha: 0.62),
-        border: Border(bottom: BorderSide(color: tokens.border)),
-      ),
+      // The title bar is part of the page canvas, not a separate chrome
+      // strip: same background as the page and no hairline under it, so the
+      // brand and the task button appear to float on the content.
+      decoration: BoxDecoration(color: tokens.bg),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: contentMaxWidth),

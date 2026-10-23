@@ -291,7 +291,7 @@ class _InstanceSettingsDialogState
     final lowMemory =
         plan != null &&
         typedMax != null &&
-        (typedMax < 1024 || typedMax * 10 < plan.recommendedMb * 6);
+        (typedMax < 1024 || typedMax * 5 < plan.recommendedMb * 4);
     final gcHint = global == null
         ? l10n.instanceSettingsFollowGlobal
         : l10n.instanceSettingsFollowGlobalWith(_gcLabel(l10n, global.gcMode));

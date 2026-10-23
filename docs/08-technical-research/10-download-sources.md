@@ -353,8 +353,8 @@ Rust archoera_dl
 |---|---|---|
 | Mojang manifest/version/client/libraries/assets/logging | SHA-1 | 官方字段只有 SHA-1；size 必填 |
 | Forge/NeoForge installer/libraries | SHA-1 | `install_profile`/version JSON 提供 |
-| Fabric/Quilt profile 库 | SHA-1 | profile JSON 本身无 hash；抓取后 C# 计算内容 hash 做缓存 |
-| Fabric/Quilt 文件 | SHA-1（若提供） | 缺 hash 的库标记 `unverified`，不作为去重键 |
+| Fabric/Quilt profile 库 | SHA-1 | profile JSON 的条目可能带顶层 `sha1`/`size`；缺失时读取 Maven `.sha1` sidecar 与 `Content-Length` 后再进入计划 |
+| Fabric/Quilt 文件 | SHA-1（若提供） | 缺 hash 的库先补 sidecar；`DownloadPlan` 仍拒绝无 hash 条目 |
 | Modrinth | **SHA-512 优先**，SHA-1 兼容 | `files[].hashes` 双哈希；去重键用 SHA-512 |
 | CurseForge | SHA-1（+ MD5 辅助） | API `hashes[]`；作者禁转时无 URL |
 | Java runtime | SHA-1 + size | 每文件 `downloads.raw/lzma` |
@@ -472,7 +472,7 @@ Rust archoera_dl
 | 6 | 403 + 签名 URL 过期 | `URL_EXPIRED`；C# 重新解析；不循环重试 |
 | 8 | CF `downloadUrl=null` / 禁转 | `DISTRIBUTION_DENIED`；无第三方镜像请求 |
 | 9 | Modrinth `hashes.sha512` 与下载字节不符 | 换源/失败；不降级为 SHA-1 蒙混 |
-| 10 | Fabric profile JSON 无 hash | 不进入 `DownloadPlan` 的不可变文件；C# 计算内容 hash 做缓存键 |
+| 10 | Fabric profile JSON 无 hash | 读取 Maven `.sha1` sidecar 与 `Content-Length` 后进入计划；计划仍要求 hash |
 | 11 | Java runtime `all.json` 选平台/组件 | 只取对应平台；`gamecore` 空数组不误判 |
 | 12 | Java runtime 文件 `executable=true` | Unix 保留执行位；Windows 不报错 |
 | 13 | 资源包 `loaders=["minecraft"]`、光影 `["iris"]` | 过滤语义正确；不拿实例 loader 硬套 |

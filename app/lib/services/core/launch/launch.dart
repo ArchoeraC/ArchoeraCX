@@ -82,6 +82,21 @@ mixin CoreClientLaunch on CoreTransport {
     );
   }
 
+  /// Force-terminates the game process started for [instanceId].
+  ///
+  /// The pid is resolved by the C# module from the launch it started, so the
+  /// UI can never target an arbitrary process. Returns `stopped: false` when
+  /// the game already exited; callers refresh the running badge either way.
+  Future<LaunchStopResult> stopLaunch(String instanceId) async {
+    const methodName = 'launch.stop';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'instanceId': instanceId}),
+    );
+    final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return LaunchStopResult.fromNative(asMap(decoded['data'], methodName));
+  }
+
   /// Heap the launcher would use for this instance, plus a warning code when
   /// the user forced a value that is too small for the game.
   ///

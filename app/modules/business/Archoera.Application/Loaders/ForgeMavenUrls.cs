@@ -36,7 +36,9 @@ public static class ForgeMavenUrls
     public static string InstallerPath(LoaderKind kind, string gameVersion, string loaderVersion)
     {
         var game = RequireVersionSegment(gameVersion, "game version");
-        var loader = RequireVersionSegment(loaderVersion, "loader version");
+        var loader = RequireVersionSegment(
+            LoaderVersionText.Normalize(kind.ToString(), game, loaderVersion),
+            "loader version");
 
         return kind switch
         {
@@ -95,7 +97,9 @@ public static class ForgeMavenUrls
         string loaderVersion)
     {
         var game = RequireVersionSegment(gameVersion, "game version");
-        var loader = RequireVersionSegment(loaderVersion, "loader version");
+        var loader = RequireVersionSegment(
+            LoaderVersionText.Normalize(kind.ToString(), game, loaderVersion),
+            "loader version");
         var token = kind switch
         {
             LoaderKind.Forge => "forge",

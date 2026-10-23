@@ -1,5 +1,6 @@
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/app/shell.dart';
+import 'package:archoera_cx/render/dissolve_mask.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,6 +61,28 @@ void main() {
     expect(tester.takeException(), isNull);
 
     await tester.pumpAndSettle();
+    expect(find.text('Java runtimes'), findsOneWidget);
+  });
+
+  testWidgets('section switch dissolves a snapshot and drops the old subtree', (
+    tester,
+  ) async {
+    await pumpSettings(tester, const Size(1440, 900));
+    // The appearance section is the default and owns this control.
+    expect(find.byKey(const ValueKey('start-page-dropdown')), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Java'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+
+    // The outgoing section must be a GPU texture, not a second live subtree:
+    // otherwise both dense panels are laid out and painted during the switch.
+    expect(find.byType(AppDissolveMask), findsOneWidget);
+    expect(find.byKey(const ValueKey('start-page-dropdown')), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpAndSettle();
+    expect(find.byType(AppDissolveMask), findsNothing);
     expect(find.text('Java runtimes'), findsOneWidget);
   });
 }

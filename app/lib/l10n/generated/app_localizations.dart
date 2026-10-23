@@ -3080,17 +3080,11 @@ abstract class AppLocalizations {
   /// **'Online launch is not enabled in this build yet.'**
   String get launchOnlineNotReady;
 
-  /// Persistent development-build badge.
+  /// Development-build badge on the about page.
   ///
   /// In en, this message translates to:
   /// **'DEV'**
   String get developmentBuildBadge;
-
-  /// Persistent development-build warning banner.
-  ///
-  /// In en, this message translates to:
-  /// **'Development build — incomplete and may corrupt data. Do not use it for production or important instances.'**
-  String get developmentBuildWarning;
 
   /// Online launch session expired.
   ///
@@ -3553,6 +3547,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deleted {count} logs, freed {size}.'**
   String gameLogClearDone(int count, String size);
+
+  /// Header action that terminates the running game.
+  ///
+  /// In en, this message translates to:
+  /// **'Force stop'**
+  String get gameLogForceStop;
+
+  /// No description provided for @gameLogForceStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force stop the game?'**
+  String get gameLogForceStopTitle;
+
+  /// First of two warnings before force-stopping a game.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" is running. Force stopping it ends the game immediately and any unsaved world progress is lost.'**
+  String gameLogForceStopBody(String name);
+
+  /// No description provided for @gameLogForceStopContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get gameLogForceStopContinue;
+
+  /// No description provided for @gameLogForceStopAgainTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminate anyway?'**
+  String get gameLogForceStopAgainTitle;
+
+  /// No description provided for @gameLogForceStopAgainBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone. The game process will be killed immediately.'**
+  String get gameLogForceStopAgainBody;
+
+  /// No description provided for @gameLogForceStopAgainBodyPid.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone. Process {pid} will be killed immediately.'**
+  String gameLogForceStopAgainBodyPid(int pid);
+
+  /// No description provided for @gameLogForceStopConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Force stop'**
+  String get gameLogForceStopConfirm;
+
+  /// No description provided for @gameLogForceStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Game process terminated.'**
+  String get gameLogForceStopped;
+
+  /// No description provided for @gameLogAlreadyStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'The game had already stopped.'**
+  String get gameLogAlreadyStopped;
 
   /// No description provided for @settingsClearLogs.
   ///

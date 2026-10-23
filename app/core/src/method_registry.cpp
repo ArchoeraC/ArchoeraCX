@@ -43,6 +43,7 @@ constexpr MethodRoute kRoutes[] = {
     {"version.plan", &handle_module_method, kCsModule},
     {"version.commit", &handle_module_method, kCsModule},
     {"launch.start", &handle_module_method, kCsModule},
+    {"launch.stop", &handle_module_method, kCsModule},
     {"launch.prepare", &handle_module_method, kCsModule},
     {"launch.memory", &handle_module_method, kCsModule},
     {"launch.logs", &handle_module_method, kCsModule},
