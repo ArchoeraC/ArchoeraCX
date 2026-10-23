@@ -25,6 +25,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Lets widget tests fake the OS file picker (see instances_pack_import_test).
+  file_selector_platform_interface: ^2.7.0
 
 flutter:
   uses-material-design: true

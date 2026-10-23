@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
-import '../../stores/instances.dart';
-import '../../stores/providers.dart';
+import '../../services/core/core_client.dart';
+import '../../stores/downloads.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/toast.dart';
@@ -76,28 +76,37 @@ class _InstanceDuplicateDialogState
       return;
     }
 
-    final client = ref.read(coreClientProvider);
-    if (client == null) {
-      _fail(l10n.commonCoreNotConnected);
-      return;
-    }
-
     setState(() {
       _saving = true;
       _error = null;
     });
 
+    // The copy runs in the background: a large instance is minutes of file
+    // work, and the dialog should not be the thing that owns it.
     try {
-      await client.duplicateInstance(id: widget.instance.id, name: name);
-      await ref.read(instancesProvider.notifier).reload();
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-      toast(l10n.instanceDuplicateDone(name), type: ToastType.success);
+      await ref
+          .read(downloadsProvider.notifier)
+          .duplicateInstance(
+            widget.instance,
+            name: name,
+            successMessage: l10n.instanceDuplicateDone(name),
+            failureMessage: l10n.instanceDuplicateFailed,
+            cancelledMessage: l10n.downloadCancelled(name),
+          );
     } catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      _fail('${l10n.instanceDuplicateFailed} $error');
+      _fail(
+        error is CoreException
+            ? '${l10n.instanceDuplicateFailed} ${error.message}'
+            : '${l10n.instanceDuplicateFailed} $error',
+      );
+      return;
     }
+
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
+    toast(l10n.downloadQueued(name), type: ToastType.success);
   }
 
   void _fail(String message) {

@@ -141,33 +141,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importPack => '导入整合包';
 
   @override
-  String get packInstallTitle => '安装整合包';
-
-  @override
-  String get packImportTitle => '导入整合包';
-
-  @override
-  String get packInstallHint =>
-      '将按整合包依赖新建实例，安装 Minecraft 与加载器，再合并包内 overrides。';
-
-  @override
-  String get packInstallRunning => '正在安装整合包…';
-
-  @override
   String get packInstallDone => '整合包安装完成。';
 
   @override
   String get packInstallFailed => '整合包安装失败。';
-
-  @override
-  String packInspectMeta(String game, String loader, String loaderVersion) {
-    return '$game · $loader $loaderVersion';
-  }
-
-  @override
-  String packInspectFiles(int count, int overrides) {
-    return '$count 个索引文件 · $overrides 个包内文件';
-  }
 
   @override
   String get packInspectFailed => '该文件不是有效的 Modrinth 整合包。';
@@ -181,18 +158,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '该整合包需要 Java 来运行加载器 processors。请先在设置中安装或选择匹配的 Java。';
 
   @override
-  String get packCancelling => '正在取消…';
-
-  @override
-  String get packCancelled => '整合包安装已取消。';
-
-  @override
   String get packTargetNewInstance => '将新建实例';
-
-  @override
-  String packResultSummary(int downloaded, int bundled) {
-    return '已下载 $downloaded 个文件 · 包内自带 $bundled 个';
-  }
 
   @override
   String get instanceCreateTitle => '创建实例';
@@ -391,13 +357,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceCheckRepairHint => '补全缺失的库/资源文件，必要时重跑加载器 processors。';
 
   @override
-  String get instanceCheckRepairing => '正在修复依赖…';
+  String get instanceCheckRepairQueued => '修复已在后台开始，可在任务中心查看进度。';
 
   @override
   String get instanceCheckRepairDone => '依赖已修复。';
 
   @override
   String get instanceCheckRepairFailed => '依赖修复失败。';
+
+  @override
+  String get instanceCheckRecheck => '重新检查';
+
+  @override
+  String get instanceCheckRechecking => '正在重新检查…';
 
   @override
   String get instanceManifestMissing => '实例中未找到加载器安装包。';
@@ -1360,10 +1332,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get loaderProcessorsDone =>
-      '已使用选定的 Java 执行 Forge/NeoForge processors。';
-
-  @override
   String instancesCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1585,6 +1553,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get taskCenterModpack => '整合包';
+
+  @override
+  String get taskCenterInstanceDuplicate => '复制实例';
 
   @override
   String get taskCenterGameFiles => '游戏文件';

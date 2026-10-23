@@ -143,33 +143,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importPack => 'Import pack';
 
   @override
-  String get packInstallTitle => 'Install modpack';
-
-  @override
-  String get packImportTitle => 'Import modpack';
-
-  @override
-  String get packInstallHint =>
-      'A new instance will be created. Minecraft and the pack loader are installed from the pack dependencies, then bundled overrides are merged.';
-
-  @override
-  String get packInstallRunning => 'Installing modpack…';
-
-  @override
   String get packInstallDone => 'Modpack installed.';
 
   @override
   String get packInstallFailed => 'Modpack installation failed.';
-
-  @override
-  String packInspectMeta(String game, String loader, String loaderVersion) {
-    return '$game · $loader $loaderVersion';
-  }
-
-  @override
-  String packInspectFiles(int count, int overrides) {
-    return '$count index files · $overrides bundled overrides';
-  }
 
   @override
   String get packInspectFailed => 'This file is not a valid Modrinth modpack.';
@@ -183,18 +160,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This pack needs a Java runtime for its loader processors. Install or select a matching Java in Settings first.';
 
   @override
-  String get packCancelling => 'Cancelling…';
-
-  @override
-  String get packCancelled => 'Modpack installation was cancelled.';
-
-  @override
   String get packTargetNewInstance => 'Creates a new instance';
-
-  @override
-  String packResultSummary(int downloaded, int bundled) {
-    return '$downloaded files downloaded · $bundled bundled';
-  }
 
   @override
   String get instanceCreateTitle => 'Create instance';
@@ -406,13 +372,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Restores missing libraries/assets and reruns loader processors when needed.';
 
   @override
-  String get instanceCheckRepairing => 'Repairing dependencies…';
+  String get instanceCheckRepairQueued =>
+      'Repair started in the background. Track it in Tasks.';
 
   @override
   String get instanceCheckRepairDone => 'Dependencies repaired.';
 
   @override
   String get instanceCheckRepairFailed => 'Dependency repair failed.';
+
+  @override
+  String get instanceCheckRecheck => 'Check again';
+
+  @override
+  String get instanceCheckRechecking => 'Checking again…';
 
   @override
   String get instanceManifestMissing =>
@@ -1430,10 +1403,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get loaderProcessorsDone =>
-      'Forge/NeoForge processors completed with the selected Java.';
-
-  @override
   String instancesCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1660,6 +1629,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskCenterModpack => 'Modpack';
+
+  @override
+  String get taskCenterInstanceDuplicate => 'Duplicate instance';
 
   @override
   String get taskCenterGameFiles => 'Game files';

@@ -382,6 +382,7 @@ class _TaskRow extends ConsumerWidget {
     'modpack.install' ||
     'modpack.installLocal' ||
     'modpack.inspect' => l10n.taskCenterModpack,
+    'instance.duplicate' => l10n.taskCenterInstanceDuplicate,
     'launch.start' || 'launch.prepare' => l10n.taskCenterLaunch,
     'java.scan' => l10n.taskCenterJavaScan,
     _ => l10n.taskCenterTask,

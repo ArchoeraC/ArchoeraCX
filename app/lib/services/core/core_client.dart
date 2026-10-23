@@ -1225,10 +1225,7 @@ final class CoreClient {
     const methodName = 'java.runtime.plan';
     final jsonText = await _runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{
-        'major': major,
-        'root': ?root,
-      }),
+      paramsJson: jsonEncode(<String, Object?>{'major': major, 'root': ?root}),
       onProgress: onProgress,
       label: label,
     );
@@ -1731,12 +1728,14 @@ final class CoreClient {
     required String id,
     required String name,
     void Function(int done, int total)? onProgress,
+    String? label,
   }) async {
     const methodName = 'instance.duplicate';
     final jsonText = await _runAsync(
       methodName,
       paramsJson: jsonEncode(<String, Object?>{'id': id, 'name': name}),
       onProgress: onProgress,
+      label: label,
     );
     return _parseInstance(jsonText, methodName);
   }
