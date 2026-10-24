@@ -43,6 +43,19 @@ void main() {
       expect(created.rootPath, root);
       expect(File('$root/.archoera/instance.json').existsSync(), isTrue);
 
+      // Per-instance launch options cross the same C++/C# route.
+      final tuned = await client.updateInstanceOverrides(
+        instanceId: created.id,
+        wrapperCommand: 'prime-run',
+        environment: <String, String>{'DRI_PRIME': '1'},
+        joinServerOnLaunch: true,
+        joinServerAddress: 'mc.example.org:25566',
+      );
+      expect(tuned.overrides?.wrapperCommand, 'prime-run');
+      expect(tuned.overrides?.environment?['DRI_PRIME'], '1');
+      expect(tuned.overrides?.joinServerOnLaunch, isTrue);
+      expect(tuned.overrides?.joinServerAddress, 'mc.example.org:25566');
+
       final listed = await client.listInstances();
       expect(listed.any((instance) => instance.id == created.id), isTrue);
 
