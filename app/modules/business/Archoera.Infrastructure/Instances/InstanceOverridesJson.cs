@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Archoera.Application.Json;
 using Archoera.Domain.Instances;
+using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Instances;
 
@@ -60,8 +62,83 @@ internal static class InstanceOverridesJson
             {
                 writer.WriteBoolean("fullscreen", fullscreen);
             }
+
+            // An explicitly empty wrapper is meaningful and must survive:
+            // it disables the global wrapper for this instance.
+            if (content.WrapperCommand is { } wrapper)
+            {
+                writer.WriteString("wrapperCommand", wrapper);
+            }
+
+            // An explicitly empty object is meaningful too: it clears the
+            // global environment.
+            if (content.Environment is not null)
+            {
+                RuntimeOptionsJson.WriteEnvironment(
+                    writer,
+                    "environment",
+                    content.Environment);
+            }
+
+            if (content.JoinServerOnLaunch is { } joinOnLaunch)
+            {
+                writer.WriteBoolean("joinServerOnLaunch", joinOnLaunch);
+            }
+
+            if (content.JoinServerAddress is { } joinAddress)
+            {
+                writer.WriteString("joinServerAddress", joinAddress);
+            }
+
+            if (content.JoinWorldName is { } joinWorld)
+            {
+                writer.WriteString("joinWorldName", joinWorld);
+            }
         }
 
         writer.WriteEndObject();
+    }
+
+    /// <summary>
+    /// Reads the <c>overrides</c> object from a sidecar record. Lenient by
+    /// design: unknown keys and mistyped values are ignored because the file
+    /// may be hand-edited or written by another launcher.
+    /// </summary>
+    public static InstanceOverrides? Read(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("overrides", out var element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var overrides = new InstanceOverrides(
+            JsonReader.TryInt32(element, "memoryMinMb"),
+            JsonReader.TryInt32(element, "memoryMaxMb"),
+            LegacyString(element, "jvmArgs"),
+            LegacyString(element, "gcMode"),
+            LegacyString(element, "gameArgs"),
+            LegacyString(element, "javaPath"),
+            JsonReader.TryInt32(element, "windowWidth"),
+            JsonReader.TryInt32(element, "windowHeight"),
+            JsonReader.TryBool(element, "fullscreen"),
+            JsonReader.TryString(element, "wrapperCommand"),
+            RuntimeOptionsJson.TryReadEnvironment(element, "environment"),
+            JsonReader.TryBool(element, "joinServerOnLaunch"),
+            JsonReader.TryString(element, "joinServerAddress"),
+            JsonReader.TryString(element, "joinWorldName"));
+        return overrides.IsEmpty ? null : overrides;
+    }
+
+    /// <summary>
+    /// Legacy fields treat whitespace as "not set", matching the original
+    /// sidecar readers. Wrapper is deliberately excluded: an empty wrapper is
+    /// meaningful and must stay distinguishable from "inherit".
+    /// </summary>
+    private static string? LegacyString(JsonElement element, string name)
+    {
+        var value = JsonReader.TryString(element, name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 }

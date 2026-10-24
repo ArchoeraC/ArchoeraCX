@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Archoera.Domain;
 using Archoera.Domain.Instances;
 using Archoera.Domain.Loaders;
+using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Instances;
 
@@ -619,6 +620,16 @@ internal static class InstanceDiscovery
             memoryMax = null;
         }
 
+        var joinOnLaunch = Bool(element, "joinServerOnLaunch");
+        var joinAddress = ImportedJoinAddress(element);
+        var joinWorld = ImportedJoinWorld(element);
+        if (joinOnLaunch == true && joinAddress is null && joinWorld is null)
+        {
+            // An enabled join without a target would fail at launch; imported
+            // metadata is untrusted, so drop the switch instead.
+            joinOnLaunch = null;
+        }
+
         var overrides = new InstanceOverrides(
             memoryMin,
             memoryMax,
@@ -628,8 +639,61 @@ internal static class InstanceDiscovery
             JavaPath(element),
             Int(element, "windowWidth"),
             Int(element, "windowHeight"),
-            Bool(element, "fullscreen"));
+            Bool(element, "fullscreen"),
+            ImportedWrapper(element),
+            RuntimeOptionsJson.TryReadEnvironment(element, "environment"),
+            joinOnLaunch,
+            joinAddress,
+            joinWorld);
         return overrides.IsEmpty ? null : overrides;
+    }
+
+    /// <summary>
+    /// Imported wrapper: an empty string is a meaningful "no wrapper", but an
+    /// invalid command is dropped so it cannot break the first launch.
+    /// </summary>
+    private static string? ImportedWrapper(JsonElement root)
+    {
+        if (!root.TryGetProperty("wrapperCommand", out var element) ||
+            element.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var value = element.GetString();
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        try
+        {
+            return RuntimeOptionsJson.NormalizeWrapper(value);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static string? ImportedJoinAddress(JsonElement element)
+    {
+        try
+        {
+            return InstanceJoinRules.NormalizeAddress(String(element, "joinServerAddress"));
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static string? ImportedJoinWorld(JsonElement element)
+    {
+        try
+        {
+            return InstanceJoinRules.NormalizeWorldName(String(element, "joinWorldName"));
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

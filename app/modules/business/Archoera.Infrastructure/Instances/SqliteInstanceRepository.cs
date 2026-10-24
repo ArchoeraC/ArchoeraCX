@@ -535,25 +535,7 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         => DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;
 
     private static InstanceOverrides? ReadOverrides(JsonElement root)
-    {
-        if (!root.TryGetProperty("overrides", out var element) ||
-            element.ValueKind != JsonValueKind.Object)
-        {
-            return null;
-        }
-
-        var overrides = new InstanceOverrides(
-            Int(element, "memoryMinMb"),
-            Int(element, "memoryMaxMb"),
-            String(element, "jvmArgs"),
-            String(element, "gcMode"),
-            String(element, "gameArgs"),
-            String(element, "javaPath"),
-            Int(element, "windowWidth"),
-            Int(element, "windowHeight"),
-            Bool(element, "fullscreen"));
-        return NormalizeOverrides(overrides);
-    }
+        => InstanceOverridesJson.Read(root);
 
     private static InstanceOverrides? NormalizeOverrides(InstanceOverrides? overrides)
         => overrides is null || overrides.IsEmpty ? null : overrides;

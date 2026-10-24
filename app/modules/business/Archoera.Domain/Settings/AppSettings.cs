@@ -35,6 +35,16 @@ namespace Archoera.Domain.Settings;
 /// Lets the launcher add JVM tuning and prefer the discrete GPU when starting
 /// the game. Off keeps the launch line minimal.
 /// </param>
+/// <param name="WrapperCommand">
+/// Optional command that wraps the JVM (for example a GPU launcher or a
+/// sandbox helper). Null or empty means no wrapper; otherwise the command is
+/// tokenized and receives the Java path and all JVM/game arguments.
+/// </param>
+/// <param name="Environment">
+/// Extra environment variables for the child JVM. Null means none. Hostile
+/// JVM option variables are rejected at the module boundary and stripped again
+/// before the process starts.
+/// </param>
 public sealed record AppSettings(
     string InstancesRoot,
     string DataRoot,
@@ -60,10 +70,12 @@ public sealed record AppSettings(
     int LogRetentionMegabytes = 32,
     bool ShareLoaderFiles = true,
     string MemoryMode = "auto",
-    bool GameOptimization = true)
+    bool GameOptimization = true,
+    string? WrapperCommand = null,
+    IReadOnlyDictionary<string, string>? Environment = null)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 12;
+    public const int CurrentSchemaVersion = 13;
 
     /// <summary>Supported heap sizing modes.</summary>
     public static class MemoryModes

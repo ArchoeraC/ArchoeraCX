@@ -107,6 +107,8 @@ public sealed class JsonAppSettingsStore
                 ? gc
                 : fallback.GcMode;
             var gameArgs = ReadString(root, "gameArgs");
+            var wrapperCommand = TryNormalizeWrapper(ReadString(root, "wrapperCommand"));
+            var environment = RuntimeOptionsJson.TryReadEnvironment(root, "environment");
             var downloadSource = ReadString(root, "downloadSource") is { } source &&
                                  source is "auto" or "official" or "mirror"
                 ? source
@@ -190,6 +192,8 @@ public sealed class JsonAppSettingsStore
                 ShareLoaderFiles = shareLoaderFiles,
                 MemoryMode = memoryMode,
                 GameOptimization = gameOptimization,
+                WrapperCommand = wrapperCommand,
+                Environment = environment,
             };
         }
         catch (Exception exception) when (
@@ -328,6 +332,12 @@ public sealed class JsonAppSettingsStore
             writer.WriteBoolean("shareLoaderFiles", settings.ShareLoaderFiles);
             writer.WriteString("memoryMode", settings.MemoryMode);
             writer.WriteBoolean("gameOptimization", settings.GameOptimization);
+            if (!string.IsNullOrWhiteSpace(settings.WrapperCommand))
+            {
+                writer.WriteString("wrapperCommand", settings.WrapperCommand);
+            }
+
+            RuntimeOptionsJson.WriteEnvironment(writer, "environment", settings.Environment);
             if (!string.IsNullOrWhiteSpace(settings.DownloadProxy))
             {
                 writer.WriteString("downloadProxy", settings.DownloadProxy);
@@ -405,6 +415,22 @@ public sealed class JsonAppSettingsStore
 
     private static bool IsGcMode(string value)
         => value is "auto" or "g1gc" or "zgc" or "parallel" or "serial" or "shenandoah" or "epsilon";
+
+    /// <summary>
+    /// A hand-edited settings file must not prevent the launcher from loading:
+    /// an invalid wrapper is dropped instead of throwing.
+    /// </summary>
+    private static string? TryNormalizeWrapper(string? value)
+    {
+        try
+        {
+            return RuntimeOptionsJson.NormalizeWrapper(value);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
 
     private static int? ReadInt(JsonElement root, string name)
         => root.TryGetProperty(name, out var element) &&
