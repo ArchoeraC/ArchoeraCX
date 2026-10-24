@@ -106,6 +106,7 @@
 | C++ | `gsettings` 经 PATH 查找 | 按绝对路径查找 `/usr/bin`、`/bin`、`/usr/local/bin`、NixOS 的 `/run/current-system/sw/bin`，不再依赖 PATH |
 | C# | 导入 `javaPath` 的链接判断 | 改用 `FileInfo.LinkTarget`，跨平台识别 symlink/junction，同时放过 OneDrive 占位文件 |
 | C# | 复用的 Forge installer 未复核 | 见 §2.7 |
+| UI | 破坏性整合包只有普通 toast | `PACK_ARCHIVE_BOMB` / `PACK_SYMLINK_ENTRY` / `PACK_PATH_ESCAPE` / `PACK_TOO_LARGE` 走阻塞式警告对话框（说明原因、来源风险），本地 inspect 与后台安装共用根导航入口；普通损坏包仍是 toast |
 
 ### 2.7 C#：复用 Forge installer 的摘要复核
 
