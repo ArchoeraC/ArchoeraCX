@@ -180,13 +180,14 @@ H1：`pool_max_idle_per_host`≥每 host 并发+1，否则频繁建连；`pool_i
 ## 7. 与现有实现对比（只读）
 | 项目 | 语言/许可证 | 并发 | Range/分片 | 断点/validator | 落盘/原子性 | 镜像/重试 | 去重 |
 |---|---|---|---|---|---|---|---|
+| **Prism Launcher**（2026-10-24 HEAD，只读行为） | C++/GPL-3.0 | `NetJob`/`ConcurrentTask`，默认 6 个并发（设置可调） | **无 Range**，每文件一个 GET 流 | `HttpMetaCache` 保存 ETag/Last-Modified；无跨进程续传 | `PSaveFile` 临时文件，校验后提交；不做逐文件 fsync | 整个 job 失败后最多重试 3 次，404 不重试；记录失败 URL 并弹出手动重试 | 无内容库去重 |
 | **CmlLib.Core** | C#/MIT | TPL Dataflow：checker 1–4，downloader ≥8（`Math.Max(8, cores)`），队列 2048 | **无 Range**，整文件流 | 无；启动时按文件 SHA-1 全量校验 | 直接 `File.Create(dest)`；取消留下半文件；无 temp/fsync | 单 URL（未见 mirror fallback） | 无 |
 | **ProjBobcat** | C#/MIT | 共享连接 gate；每文件自适应 parts（最小 1 MB，最多 16） | `Range:0-0` 探测；分段 `RandomAccess.Write` | **无跨进程续传**；无 ETag/If-Range | `.<name>.<guid>.download` 在目标目录；校验后 `File.Move(...,true)`；无 fsync；失败删 temp | 多源按权重；重试 200ms×2^n 上限 3s+jitter；8s header/12s stall；100ms 聚合 | 无 |
 | **HMCL** | Java/GPL-3.0 | 全局 `Semaphore`，默认 `min(cores*4,64)` | **单流**，无并行分片 | **有**：强 ETag/Last-Modified+`If-Range`；416/200 回退 | `Files.createTempFile`（系统 temp）→校验→`Files.move(REPLACE_EXISTING)`；跨卷有风险；无显式 fsync | 候选 URL 顺序；默认 5 次、200ms 固定；connect/read timeout；ETag 缓存 | 内容缓存仓库（按 hash 查已有文件），非硬链接 |
 | **XMCL** | TS/MIT | undici `ConcurrencyDispatcher` 全局 active 限制 | 阈值 5 MiB、4 并发；首请求 `0-(threshold-1)`，再拆子 range | 单流可 Range 续传；无持久 bitmap/ETag | 直接打开 dest fd；失败 truncate/unlink；无 temp/fsync/原子 rename | 多 URL fallback；undici retry；BMCLAPI 自适应 controller：TTFB/stall/slow 重掷、熔断、host 信誉 | 无（未见通用内容去重） |
 | **Modrinth App** | Rust/GPL-3.0 | `FetchSemaphore(max_concurrent_downloads)`+独立 `IoSemaphore` | **无 Range**；`bytes_stream` 顺序读 | 无；每次重下；hash 不符重试 2 次 | `tempfile::NamedTempFile::new_in(staging)`；SHA-512 后 `sync_all`；TempPath drop 清理；内容库发布有锁 | 多镜像顺序；connect 15s/read 30s/keepalive 10s；429 API 限流、熔断 | **有**：SHA-512 内容库+SQLite 元数据+`fs4` 进程锁；硬链接/reflink 代码在该 commit 被注释掉 |
 
-结论：CmlLib 最简单但缺 Range/续传/原子落盘；ProjBobcat 分片与重试最接近本设计，但无跨进程续传、validator、fsync、去重（“temp 在目标目录”值得借鉴）；HMCL 的 validator 最严谨但单流吃不满高速链路、系统 temp 跨卷有隐患；XMCL 的慢镜像重掷/熔断最实用但直写 dest、无原子提交；Modrinth 的 temp+内容库+进程锁最工程化但完全无 Range/断点且 GPL 不可复制。本设计取各家之长，用 Rust 重写。
+结论：CmlLib 最简单但缺 Range/续传/原子落盘；ProjBobcat 分片与重试最接近本设计，但无跨进程续传、validator、fsync、去重（“temp 在目标目录”值得借鉴）；HMCL 的 validator 最严谨但单流吃不满高速链路、系统 temp 跨卷有隐患；XMCL 的慢镜像重掷/熔断最实用但直写 dest、无原子提交；Modrinth 的 temp+内容库+进程锁最工程化但完全无 Range/断点且 GPL 不可复制；Prism Launcher 刻意不做 Range，每文件一个 GET、默认 6 路并发，靠整任务重试与 HttpMetaCache 保证完成。本设计保留大文件分片，但把默认阈值提高到 8 MiB、分片 4 MiB，并让每 host 默认回到 8 路，避免 5k 级资源安装时的请求/TLS 握手风暴。
 
 ## 8. 模块、结构体、伪代码
 ```

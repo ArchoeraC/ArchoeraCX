@@ -201,6 +201,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('dashboard shortcuts use the shell transition', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // "View all" must animate like the command bar instead of swapping the
+    // indexed stack instantly.
+    await tester.tap(find.text('View all').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      tester
+          .widgetList<RawImage>(find.byType(RawImage))
+          .where((image) => image.fit == BoxFit.fitWidth),
+      isNotEmpty,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Refresh'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-/')));
+    await tester.pumpAndSettle();
+
+    // The Modrinth shortcut follows the same animated path.
+    await tester.tap(find.text('Browse content'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      tester
+          .widgetList<RawImage>(find.byType(RawImage))
+          .where((image) => image.fit == BoxFit.fitWidth),
+      isNotEmpty,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Game versions'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('download content tab fits a narrow window', (tester) async {
     tester.view.physicalSize = const Size(800, 700);
     tester.view.devicePixelRatio = 1;

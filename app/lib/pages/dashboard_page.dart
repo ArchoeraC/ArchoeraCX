@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../app/shell.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../l10n/l10n_labels.dart';
 import '../models/game_instance.dart';
@@ -42,15 +42,29 @@ class DashboardPage extends ConsumerWidget {
               ref.read(selectedInstanceIdProvider.notifier).select(selected.id);
               launchInstance(context, ref, selected);
             },
-            onBrowse: () => context.go('/instances'),
+            onBrowse: () => openAppBranch(
+              context,
+              AppBranch.instances,
+              fallbackPath: '/instances',
+            ),
             onCreate: () => showCreateInstanceDialog(context),
           ),
           const SizedBox(height: AppSpacing.sm),
           _ShortcutStrip(
             l10n: l10n,
             instanceCount: instances.length,
-            onInstances: () => context.go('/instances'),
-            onDownload: downloadsEnabled ? () => context.go('/download') : null,
+            onInstances: () => openAppBranch(
+              context,
+              AppBranch.instances,
+              fallbackPath: '/instances',
+            ),
+            onDownload: downloadsEnabled
+                ? () => openAppBranch(
+                    context,
+                    AppBranch.download,
+                    fallbackPath: '/download',
+                  )
+                : null,
           ),
           const SizedBox(height: AppSpacing.lg),
           _RecentInstancesSection(
@@ -58,7 +72,11 @@ class DashboardPage extends ConsumerWidget {
             instances: instances,
             selectedId: selected?.id,
             loading: instancesAsync.isLoading && instances.isEmpty,
-            onBrowse: () => context.go('/instances'),
+            onBrowse: () => openAppBranch(
+              context,
+              AppBranch.instances,
+              fallbackPath: '/instances',
+            ),
             onSelect: (instance) {
               ref.read(selectedInstanceIdProvider.notifier).select(instance.id);
             },

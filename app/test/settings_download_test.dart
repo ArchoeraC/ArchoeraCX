@@ -55,7 +55,9 @@ void main() {
     final settings = container.read(appSettingsProvider).value;
     expect(settings?.downloadSource, 'auto');
     expect(settings?.downloadConcurrency, 16);
-    expect(settings?.downloadPerHost, 16);
+    expect(settings?.downloadPerHost, 8);
+    expect(settings?.downloadChunkSizeKb, 4096);
+    expect(settings?.downloadRangeThresholdKb, 8192);
     expect(tester.takeException(), isNull);
   });
 

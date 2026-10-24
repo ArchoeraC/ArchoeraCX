@@ -34,6 +34,62 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
+/// Signature of the shell's animated branch switch.
+typedef OpenAppBranch = void Function(int index);
+
+/// Branch order as declared in the router's `StatefulShellRoute`.
+///
+/// Pages pass these values to [openAppBranch] (and the shell keeps its
+/// destinations in sync) so adding a branch only moves its siblings here.
+abstract final class AppBranch {
+  static const int dashboard = 0;
+  static const int instances = 1;
+  static const int download = 2;
+  static const int accounts = 3;
+  static const int wiki = 4;
+  static const int settings = 5;
+}
+
+/// Exposes the shell's animated branch switch to descendant pages.
+///
+/// Pages live under the branch navigator, so they can reach this scope with
+/// [maybeOf]. Calling [open] runs the same snapshot transition as the command
+/// bar; a plain `context.go` would swap the indexed stack instantly.
+class AppBranchScope extends InheritedWidget {
+  const AppBranchScope({
+    super.key,
+    required this.index,
+    required this.open,
+    required super.child,
+  });
+
+  /// Currently active [StatefulShellBranch] index.
+  final int index;
+
+  /// Requests a branch switch; the shell captures the outgoing page first.
+  final OpenAppBranch open;
+
+  static AppBranchScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AppBranchScope>();
+
+  @override
+  bool updateShouldNotify(AppBranchScope oldWidget) =>
+      index != oldWidget.index || open != oldWidget.open;
+}
+
+/// Switches to [index] through the shell transition when one is available.
+///
+/// [fallbackPath] keeps standalone pages (tests, previews) working when the
+/// widget tree has no [AppShell] ancestor.
+void openAppBranch(BuildContext context, int index, {String? fallbackPath}) {
+  final scope = AppBranchScope.maybeOf(context);
+  if (scope != null) {
+    scope.open(index);
+    return;
+  }
+  if (fallbackPath != null) context.go(fallbackPath);
+}
+
 class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey _pageKey = GlobalKey();
   ui.Image? _coverImage;
@@ -83,9 +139,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       image?.dispose();
       return;
     }
-    final mode = current == 0
+    final mode = current == AppBranch.dashboard
         ? _PageTransitionMode.cover
-        : index == 0
+        : index == AppBranch.dashboard
         ? _PageTransitionMode.retract
         : _PageTransitionMode.lift;
     setState(() {
@@ -112,14 +168,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     final destinations = <AppDestination>[
       AppDestination(
         path: '/',
-        branchIndex: 0,
+        branchIndex: AppBranch.dashboard,
         label: l10n.navDashboard,
         icon: AppIcons.dashboard,
         selectedIcon: AppIcons.dashboard,
       ),
       AppDestination(
         path: '/instances',
-        branchIndex: 1,
+        branchIndex: AppBranch.instances,
         label: l10n.navInstances,
         icon: AppIcons.instances,
         selectedIcon: AppIcons.instances,
@@ -127,28 +183,28 @@ class _AppShellState extends ConsumerState<AppShell> {
       if (ref.watch(downloadEnabledProvider))
         AppDestination(
           path: '/download',
-          branchIndex: 2,
+          branchIndex: AppBranch.download,
           label: l10n.navDownload,
           icon: AppIcons.download,
           selectedIcon: AppIcons.download,
         ),
       AppDestination(
         path: '/accounts',
-        branchIndex: 3,
+        branchIndex: AppBranch.accounts,
         label: l10n.navAccounts,
         icon: AppIcons.accounts,
         selectedIcon: AppIcons.accounts,
       ),
       AppDestination(
         path: '/wiki',
-        branchIndex: 4,
+        branchIndex: AppBranch.wiki,
         label: l10n.navWiki,
         icon: AppIcons.wiki,
         selectedIcon: AppIcons.wiki,
       ),
       AppDestination(
         path: '/settings',
-        branchIndex: 5,
+        branchIndex: AppBranch.settings,
         label: l10n.navSettings,
         icon: AppIcons.settings,
         selectedIcon: AppIcons.settings,
@@ -188,7 +244,11 @@ class _AppShellState extends ConsumerState<AppShell> {
                         coverImage: _coverImage,
                         mode: _mode,
                         onCoverFinished: _finishCover,
-                        child: navigationShell,
+                        child: AppBranchScope(
+                          index: index,
+                          open: _selectBranch,
+                          child: navigationShell,
+                        ),
                       ),
                     ),
                   ),
@@ -202,11 +262,11 @@ class _AppShellState extends ConsumerState<AppShell> {
               account: account,
               selectedInstance: selectedInstance,
               onSelected: _selectBranch,
-              onAccount: () => _selectBranch(3),
-              onChooseInstance: () => _selectBranch(1),
+              onAccount: () => _selectBranch(AppBranch.accounts),
+              onChooseInstance: () => _selectBranch(AppBranch.instances),
               onLaunch: () {
                 if (selectedInstance == null) {
-                  _selectBranch(1);
+                  _selectBranch(AppBranch.instances);
                   return;
                 }
                 ref

@@ -6,6 +6,7 @@ import '../../models/account.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/app_panel.dart';
+import '../common/context_menu.dart';
 import 'account_avatar.dart';
 
 /// Full-width account list: one header rule, flat rows, no nested cards.
@@ -157,119 +158,155 @@ class AccountRow extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final active = account.active;
     final meta = account.kind.labelFor(l10n);
+    final menu = _AccountMenu(
+      l10n: l10n,
+      onRefresh: onRefresh,
+      onRemove: onRemove,
+    );
 
-    return Material(
-      color: active ? tokens.accentSoft : Colors.transparent,
-      child: InkWell(
-        onTap: onSelect,
-        hoverColor: tokens.surface2,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: active ? tokens.accent : Colors.transparent,
-                width: 2,
+    return GestureDetector(
+      // Right-clicking a row is the desktop shortcut for the same actions as
+      // the "more" button.
+      onSecondaryTapDown: (details) {
+        onSelect();
+        menu.showAt(context, details.globalPosition);
+      },
+      child: Material(
+        color: active ? tokens.accentSoft : Colors.transparent,
+        child: InkWell(
+          onTap: onSelect,
+          hoverColor: tokens.surface2,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: active ? tokens.accent : Colors.transparent,
+                  width: 2,
+                ),
               ),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.sm,
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final showActiveLabel = constraints.maxWidth >= 560;
-              return Row(
-                children: [
-                  AccountAvatar(account: account, size: 40),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final showActiveLabel = constraints.maxWidth >= 560;
+                return Row(
+                  children: [
+                    AccountAvatar(account: account, size: 40),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            account.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: tokens.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (active) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      if (showActiveLabel)
                         Text(
-                          account.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: tokens.textTertiary,
+                          l10n.currentAccount,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: tokens.accent,
+                            letterSpacing: 0,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  if (active) ...[
-                    const SizedBox(width: AppSpacing.xs),
-                    if (showActiveLabel)
-                      Text(
-                        l10n.currentAccount,
-                        style: textTheme.labelSmall?.copyWith(
-                          color: tokens.accent,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    const SizedBox(width: AppSpacing.xxs),
-                    Icon(
-                      AppIcons.completed,
-                      size: 17,
-                      color: tokens.accent,
-                    ),
-                  ],
-                  PopupMenuButton<String>(
-                    tooltip: l10n.accountsTitle,
-                    icon: Icon(
-                      AppIcons.more,
-                      color: tokens.textSecondary,
-                    ),
-                    onSelected: (value) {
-                      if (value == 'refresh') onRefresh?.call();
-                      if (value == 'remove') onRemove();
-                    },
-                    itemBuilder: (context) => [
-                      if (onRefresh != null)
-                        PopupMenuItem(
-                          value: 'refresh',
-                          child: Row(
-                            children: [
-                              const Icon(AppIcons.refresh, size: 20),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(l10n.accountRefresh),
-                            ],
-                          ),
-                        ),
-                      PopupMenuItem(
-                        value: 'remove',
-                        child: Row(
-                          children: [
-                            Icon(
-                              AppIcons.delete,
-                              size: 20,
-                              color: tokens.danger,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(
-                              l10n.accountRemove,
-                              style: TextStyle(color: tokens.danger),
-                            ),
-                          ],
-                        ),
-                      ),
+                      const SizedBox(width: AppSpacing.xxs),
+                      Icon(AppIcons.completed, size: 17, color: tokens.accent),
                     ],
-                  ),
-                ],
-              );
-            },
+                    menu,
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Overflow menu shared by the account row's "more" button and its secondary
+/// click. Keeping one item list and one dispatcher prevents the two entry
+/// points from drifting apart.
+class _AccountMenu extends StatelessWidget {
+  const _AccountMenu({
+    required this.l10n,
+    required this.onRefresh,
+    required this.onRemove,
+  });
+
+  final AppLocalizations l10n;
+  final VoidCallback? onRefresh;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return PopupMenuButton<String>(
+      tooltip: l10n.accountsTitle,
+      icon: Icon(AppIcons.more, color: tokens.textSecondary),
+      onSelected: _dispatch,
+      itemBuilder: _items,
+    );
+  }
+
+  Future<void> showAt(BuildContext context, Offset globalPosition) async {
+    final value = await showContextMenuAt<String>(
+      context,
+      globalPosition: globalPosition,
+      items: _items(context),
+    );
+    if (value != null) _dispatch(value);
+  }
+
+  List<PopupMenuEntry<String>> _items(BuildContext context) {
+    final tokens = context.tokens;
+    return [
+      if (onRefresh != null)
+        PopupMenuItem(
+          value: 'refresh',
+          child: Row(
+            children: [
+              const Icon(AppIcons.refresh, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.accountRefresh),
+            ],
+          ),
+        ),
+      PopupMenuItem(
+        value: 'remove',
+        child: Row(
+          children: [
+            Icon(AppIcons.delete, size: 20, color: tokens.danger),
+            const SizedBox(width: AppSpacing.xs),
+            Text(l10n.accountRemove, style: TextStyle(color: tokens.danger)),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  void _dispatch(String value) {
+    if (value == 'refresh') onRefresh?.call();
+    if (value == 'remove') onRemove();
   }
 }

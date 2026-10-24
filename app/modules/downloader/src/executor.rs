@@ -27,7 +27,7 @@ use crate::result::{DownloadResult, FailedFile, Status};
 use crate::resume::{ChunkOutcome, remove_resume};
 use crate::single_stream::{Existing, download_from_source, existing_destination, prepare_parent};
 
-pub(crate) const MAX_ATTEMPTS_PER_SOURCE: u32 = 2;
+pub(crate) const MAX_ATTEMPTS_PER_SOURCE: u32 = 3;
 const MAX_TOTAL_ATTEMPTS: u32 = 12;
 const JOIN_GRACE: Duration = Duration::from_secs(2);
 
@@ -180,7 +180,7 @@ pub async fn execute(
                         code: code.as_str().to_owned(),
                         source: outcome.source,
                         attempts: outcome.attempts,
-                        retryable: code.retryable(),
+                        retryable: error.retryable(),
                         message: error.to_string(),
                     },
                 ));
@@ -377,7 +377,7 @@ async fn download_file(
                 }
                 Err(failure) => {
                     transferred = transferred.saturating_add(failure.transferred);
-                    let retry_same_source = failure.error.code().retryable()
+                    let retry_same_source = failure.error.retryable()
                         && !matches!(failure.error, DownloadError::HashMismatch { .. })
                         && attempt + 1 < MAX_ATTEMPTS_PER_SOURCE
                         && attempts < MAX_TOTAL_ATTEMPTS;
@@ -398,7 +398,7 @@ async fn download_file(
 
     let error =
         last_error.unwrap_or_else(|| DownloadError::Internal("no source attempted".into()));
-    let resumable = use_ranges && transferred > 0 && error.code().retryable();
+    let resumable = use_ranges && transferred > 0 && error.retryable();
     let mut outcome = FileOutcome::failed(
         file.index,
         file.dest.clone(),

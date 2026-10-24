@@ -36,78 +36,86 @@ class _InstanceRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    return Material(
-      color: selected ? tokens.accentSoft : Colors.transparent,
-      child: InkWell(
-        onTap: onSelect,
-        hoverColor: tokens.surface2,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: selected ? tokens.accent : Colors.transparent,
-                width: 2,
+    final menu = _InstanceMenu(
+      l10n: l10n,
+      downloadsEnabled: downloadsEnabled,
+      onCheck: onCheck,
+      onManageLoader: onManageLoader,
+      onSettings: () => showInstanceSettingsDialog(context, instance),
+      onInstallGame: onInstallGame,
+      onManageMods: onManageMods,
+      onDuplicate: onDuplicate,
+      onViewLogs: onViewLogs,
+      onOpenFolder: onOpenFolder,
+      onDelete: onDelete,
+    );
+    return GestureDetector(
+      // Desktop users expect the same actions from a secondary click; the
+      // "more" button stays as the discoverable path for everyone else.
+      onSecondaryTapDown: (details) {
+        onSelect();
+        menu.showAt(context, details.globalPosition);
+      },
+      child: Material(
+        color: selected ? tokens.accentSoft : Colors.transparent,
+        child: InkWell(
+          onTap: onSelect,
+          hoverColor: tokens.surface2,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: selected ? tokens.accent : Colors.transparent,
+                  width: 2,
+                ),
               ),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.sm,
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 720;
-              return Row(
-                children: [
-                  LoaderMark(loader: instance.loader, size: 24),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          instance.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 2),
-                        _MetaLine(instance: instance),
-                      ],
-                    ),
-                  ),
-                  if (wide) ...[
-                    const SizedBox(width: AppSpacing.md),
-                    Text(
-                      lastPlayedLabel(context, l10n, instance.lastPlayed),
-                      style: textTheme.bodySmall?.copyWith(
-                        color: tokens.textTertiary,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.sm,
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 720;
+                return Row(
+                  children: [
+                    LoaderMark(loader: instance.loader, size: 24),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            instance.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 2),
+                          _MetaLine(instance: instance),
+                        ],
                       ),
                     ),
+                    if (wide) ...[
+                      const SizedBox(width: AppSpacing.md),
+                      Text(
+                        lastPlayedLabel(context, l10n, instance.lastPlayed),
+                        style: textTheme.bodySmall?.copyWith(
+                          color: tokens.textTertiary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: AppSpacing.xs),
+                    TextButton.icon(
+                      onPressed: instance.missing ? null : onLaunch,
+                      icon: const Icon(AppIcons.play, size: 18),
+                      label: Text(l10n.launch),
+                    ),
+                    menu,
                   ],
-                  const SizedBox(width: AppSpacing.xs),
-                  TextButton.icon(
-                    onPressed: instance.missing ? null : onLaunch,
-                    icon: const Icon(AppIcons.play, size: 18),
-                    label: Text(l10n.launch),
-                  ),
-                  _InstanceMenu(
-                    l10n: l10n,
-                    downloadsEnabled: downloadsEnabled,
-                    onCheck: onCheck,
-                    onManageLoader: onManageLoader,
-                    onSettings: () =>
-                        showInstanceSettingsDialog(context, instance),
-                    onInstallGame: onInstallGame,
-                    onManageMods: onManageMods,
-                    onDuplicate: onDuplicate,
-                    onViewLogs: onViewLogs,
-                    onOpenFolder: onOpenFolder,
-                    onDelete: onDelete,
-                  ),
-                ],
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -153,77 +161,84 @@ class _InstanceCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
+    final menu = _InstanceMenu(
+      l10n: l10n,
+      downloadsEnabled: downloadsEnabled,
+      onCheck: onCheck,
+      onManageLoader: onManageLoader,
+      onSettings: () => showInstanceSettingsDialog(context, instance),
+      onInstallGame: onInstallGame,
+      onManageMods: onManageMods,
+      onDuplicate: onDuplicate,
+      onViewLogs: onViewLogs,
+      onOpenFolder: onOpenFolder,
+      onDelete: onDelete,
+    );
 
-    return AppPanel(
-      accent: selected,
-      onTap: onSelect,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.sm,
-        AppSpacing.sm,
-        AppSpacing.xxs,
-        AppSpacing.xxs,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              LoaderMark(loader: instance.loader, size: 26),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      instance.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 2),
-                    _MetaLine(instance: instance),
-                  ],
-                ),
-              ),
-              _InstanceMenu(
-                l10n: l10n,
-                downloadsEnabled: downloadsEnabled,
-                onCheck: onCheck,
-                onManageLoader: onManageLoader,
-                onSettings: () => showInstanceSettingsDialog(context, instance),
-                onInstallGame: onInstallGame,
-                onManageMods: onManageMods,
-                onDuplicate: onDuplicate,
-                onViewLogs: onViewLogs,
-                onOpenFolder: onOpenFolder,
-                onDelete: onDelete,
-              ),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Icon(AppIcons.time, size: 14, color: tokens.textTertiary),
-              const SizedBox(width: AppSpacing.xxs),
-              Expanded(
-                child: Text(
-                  lastPlayedLabel(context, l10n, instance.lastPlayed),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: tokens.textTertiary,
-                    letterSpacing: 0,
+    return GestureDetector(
+      onSecondaryTapDown: (details) {
+        onSelect();
+        menu.showAt(context, details.globalPosition);
+      },
+      child: AppPanel(
+        accent: selected,
+        onTap: onSelect,
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.sm,
+          AppSpacing.sm,
+          AppSpacing.xxs,
+          AppSpacing.xxs,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                LoaderMark(loader: instance.loader, size: 26),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        instance.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      _MetaLine(instance: instance),
+                    ],
                   ),
                 ),
-              ),
-              TextButton.icon(
-                onPressed: instance.missing ? null : onLaunch,
-                icon: const Icon(AppIcons.play, size: 18),
-                label: Text(l10n.launch),
-              ),
-            ],
-          ),
-        ],
+                menu,
+              ],
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Icon(AppIcons.time, size: 14, color: tokens.textTertiary),
+                const SizedBox(width: AppSpacing.xxs),
+                Expanded(
+                  child: Text(
+                    lastPlayedLabel(context, l10n, instance.lastPlayed),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: tokens.textTertiary,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: instance.missing ? null : onLaunch,
+                  icon: const Icon(AppIcons.play, size: 18),
+                  label: Text(l10n.launch),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

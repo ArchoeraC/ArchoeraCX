@@ -200,7 +200,7 @@ pub(crate) async fn download_chunked(
                     Ok(FetchOutcome::Done { bytes, .. }) => return Ok((index as u32, bytes)),
                     Ok(FetchOutcome::Unsupported) => return Err(ChunkTaskError::Unsupported),
                     Err(failure) => {
-                        let retryable = failure.error.code().retryable();
+                        let retryable = failure.error.retryable();
                         last_error = Some(failure);
                         if !retryable || attempt + 1 >= MAX_ATTEMPTS_PER_SOURCE {
                             break;

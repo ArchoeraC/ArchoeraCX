@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../app/shell.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../l10n/l10n_labels.dart';
 import '../models/game_instance.dart';
@@ -21,6 +21,7 @@ import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../utils/last_played.dart';
 import '../widgets/common/app_page_header.dart';
+import '../widgets/common/context_menu.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/common/loader_mark.dart';
 import '../widgets/instances/game_log_dialog.dart';
@@ -30,7 +31,6 @@ import '../widgets/instances/instance_settings_dialog.dart';
 import '../widgets/instances/loader_install_dialog.dart';
 import '../widgets/common/app_panel.dart';
 import '../widgets/common/app_section.dart';
-import '../widgets/instances/create_instance_dialog.dart';
 
 part 'instances/panels.dart';
 part 'instances/dependency_check_dialog.dart';
@@ -185,7 +185,13 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                     label: Text(l10n.importPack),
                   ),
                   FilledButton.icon(
-                    onPressed: () => showCreateInstanceDialog(context),
+                    // Instance creation starts from the download catalogue:
+                    // the version entry owns the create-and-download flow.
+                    onPressed: () => openAppBranch(
+                      context,
+                      AppBranch.download,
+                      fallbackPath: '/download',
+                    ),
                     icon: const Icon(AppIcons.add, size: 18),
                     label: Text(l10n.createInstance),
                   ),
@@ -228,7 +234,11 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                       .watch(appSettingsProvider)
                       .value
                       ?.instancesRoot,
-                  onOpenSettings: () => context.go('/settings'),
+                  onOpenSettings: () => openAppBranch(
+                    context,
+                    AppBranch.settings,
+                    fallbackPath: '/settings',
+                  ),
                 ),
               ],
             ),

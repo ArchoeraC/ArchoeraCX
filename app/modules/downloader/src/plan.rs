@@ -24,9 +24,18 @@ pub const MAX_FILE_BYTES: u64 = 1 << 40; // 1 TiB
 pub const DEFAULT_CONCURRENCY: u32 = 16;
 pub const MIN_CONCURRENCY: u32 = 1;
 pub const MAX_CONCURRENCY: u32 = 64;
-/// Default per-host stream cap (docs/10 §9.4: CDN 6 / origin 4).
-pub const DEFAULT_PER_HOST_CONCURRENCY: u32 = 16;
+/// Default per-host stream cap. Prism/MultiMC and the design note settle on a
+/// single-digit budget; a hot CDN answers more reliably to 8 independent
+/// connections than to a 16-way handshake storm.
+pub const DEFAULT_PER_HOST_CONCURRENCY: u32 = 8;
 pub const MAX_PER_HOST_CONCURRENCY: u32 = 64;
+/// Only genuinely large files use ranged chunks. Minecraft's assets are mostly
+/// a few KiB and libraries mostly single-digit MiB; chunking them multiplies
+/// requests and TLS handshakes without raising throughput.
+pub const DEFAULT_RANGE_THRESHOLD: u64 = 8 * 1024 * 1024;
+/// One ranged request. 4 MiB keeps the request count near a single stream while
+/// still letting a large file borrow several connections.
+pub const DEFAULT_CHUNK_SIZE: u64 = 4 * 1024 * 1024;
 const MAX_DEST_BYTES: usize = 4_096;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -648,11 +657,11 @@ const fn default_concurrency() -> u32 {
 }
 
 const fn default_range_threshold() -> u64 {
-    1024 * 1024
+    DEFAULT_RANGE_THRESHOLD
 }
 
 const fn default_chunk_size() -> u64 {
-    512 * 1024
+    DEFAULT_CHUNK_SIZE
 }
 
 const fn default_per_host_concurrency() -> u32 {
@@ -713,6 +722,16 @@ mod tests {
             files: Vec::new(),
             post: Vec::new(),
         }
+    }
+
+    #[test]
+    fn defaults_stay_file_level_for_normal_assets() {
+        let options = PlanOptions::default();
+        assert_eq!(options.per_host_concurrency, 8);
+        assert_eq!(options.range_threshold, DEFAULT_RANGE_THRESHOLD);
+        assert_eq!(options.chunk_size, DEFAULT_CHUNK_SIZE);
+        assert_eq!(DEFAULT_RANGE_THRESHOLD, 8 * 1024 * 1024);
+        assert_eq!(DEFAULT_CHUNK_SIZE, 4 * 1024 * 1024);
     }
 
     #[test]

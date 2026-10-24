@@ -103,7 +103,11 @@ class _EmptyInstancesPanel extends StatelessWidget {
           runSpacing: AppSpacing.xs,
           children: [
             FilledButton.icon(
-              onPressed: () => showCreateInstanceDialog(context),
+              onPressed: () => openAppBranch(
+                context,
+                AppBranch.download,
+                fallbackPath: '/download',
+              ),
               icon: const Icon(AppIcons.add, size: 18),
               label: Text(l10n.createInstance),
             ),

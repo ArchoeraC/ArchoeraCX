@@ -4022,6 +4022,42 @@ abstract class AppLocalizations {
   /// **'Absolute path to the java binary; leave blank to follow the global selection.'**
   String get instanceSettingsJavaHint;
 
+  /// Tooltip on the dropdown that lists scanned Java runtimes.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a scanned Java runtime'**
+  String get instanceSettingsJavaPick;
+
+  /// Menu entry that clears the per-instance Java path.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the global Java selection'**
+  String get instanceSettingsJavaFollowGlobal;
+
+  /// Shown inside the Java picker while the scanner is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for Java runtimes…'**
+  String get instanceSettingsJavaScanning;
+
+  /// Shown inside the Java picker when the scan reported an error.
+  ///
+  /// In en, this message translates to:
+  /// **'Java scan failed; retry'**
+  String get instanceSettingsJavaScanFailed;
+
+  /// Shown inside the Java picker when the scan found nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No Java runtime scanned yet'**
+  String get instanceSettingsJavaNone;
+
+  /// Menu entry that reruns the Java scan from the picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan Java runtimes'**
+  String get instanceSettingsJavaRescan;
+
   /// Per-instance window mode override.
   ///
   /// In en, this message translates to:

@@ -49,13 +49,13 @@ public sealed record AppSettings(
     string? GameArgs = null,
     string DownloadSource = "auto",
     int DownloadConcurrency = 16,
-    int DownloadPerHost = 16,
+    int DownloadPerHost = 8,
     string? DownloadProxy = null,
     int WindowWidth = 854,
     int WindowHeight = 480,
     bool Fullscreen = false,
-    int DownloadChunkSizeKb = 512,
-    int DownloadRangeThresholdKb = 1024,
+    int DownloadChunkSizeKb = 4096,
+    int DownloadRangeThresholdKb = 8192,
     int LogRetentionFiles = 10,
     int LogRetentionMegabytes = 32,
     bool ShareLoaderFiles = true,
@@ -63,7 +63,7 @@ public sealed record AppSettings(
     bool GameOptimization = true)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 11;
+    public const int CurrentSchemaVersion = 12;
 
     /// <summary>Supported heap sizing modes.</summary>
     public static class MemoryModes

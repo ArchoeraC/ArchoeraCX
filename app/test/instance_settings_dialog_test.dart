@@ -1,11 +1,15 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/models/game_instance.dart';
+import 'package:archoera_cx/services/core/java/java_scan.dart';
+import 'package:archoera_cx/stores/java.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
+import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:archoera_cx/widgets/common/toast.dart';
 import 'package:archoera_cx/widgets/instances/instance_settings_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 GameInstance _instance({InstanceOverrides? overrides}) => GameInstance(
@@ -18,10 +22,30 @@ GameInstance _instance({InstanceOverrides? overrides}) => GameInstance(
   overrides: overrides,
 );
 
-Future<void> _open(WidgetTester tester, GameInstance instance) async {
+/// Fixed scan result so the picker test never needs the native core.
+class _FakeJavaRuntimes extends JavaRuntimesNotifier {
+  _FakeJavaRuntimes(this.items);
+
+  final List<JavaRuntime> items;
+
+  @override
+  Future<List<JavaRuntime>> build() async => items;
+
+  @override
+  Future<List<JavaRuntime>> rescan() async {
+    state = AsyncData(items);
+    return items;
+  }
+}
+
+Future<void> _open(
+  WidgetTester tester,
+  GameInstance instance, {
+  List<Override> overrides = const <Override>[],
+}) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [coreClientProvider.overrideWithValue(null)],
+      overrides: [coreClientProvider.overrideWithValue(null), ...overrides],
       child: MaterialApp(
         theme: AppTheme.light,
         locale: const Locale('en'),
@@ -100,6 +124,41 @@ void main() {
     expect(find.text('1600'), findsOneWidget);
     expect(find.text('900'), findsOneWidget);
     expect(find.text('Fullscreen'), findsOneWidget);
+  });
+
+  testWidgets('picks a scanned Java runtime from the dropdown', (tester) async {
+    await _open(
+      tester,
+      _instance(),
+      overrides: [
+        javaRuntimesProvider.overrideWith(
+          () => _FakeJavaRuntimes(const <JavaRuntime>[
+            JavaRuntime(
+              path: '/opt/jdk-21/bin/java',
+              version: '21.0.4',
+              major: 21,
+              vendor: 'Eclipse Adoptium',
+              home: '/opt/jdk-21',
+            ),
+          ]),
+        ),
+      ],
+    );
+
+    await tester.ensureVisible(find.byIcon(AppIcons.chevronDown));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(AppIcons.chevronDown));
+    await tester.pumpAndSettle();
+
+    expect(find.text('21.0.4'), findsOneWidget);
+    await tester.tap(find.text('/opt/jdk-21/bin/java'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(
+      find.widgetWithText(TextField, 'Java executable'),
+    );
+    expect(field.controller?.text, '/opt/jdk-21/bin/java');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('rejects out-of-range memory without closing', (tester) async {
