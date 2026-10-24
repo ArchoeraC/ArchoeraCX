@@ -95,17 +95,36 @@
 | Dart | slug 允许 `.`/`..` | 纯点号 slug 归一为 `instance`，新增单测 |
 | 供应链 | 无自动依赖更新 | 新增 `.github/dependabot.yml`（cargo ×2 / nuget / pub / actions） |
 
+### 2.6 跟进加固（2026-10-25）
+
+| 领域 | 问题 | 修复 |
+|---|---|---|
+| Rust | 侧车检查与 open 之间的 TOCTOU | 新增 `open_sidecar`：Unix `O_NOFOLLOW`，Windows `FILE_FLAG_OPEN_REPARSE_POINT`；`ELOOP` 在 Linux/macOS 映射为 `PATH_ESCAPE`；单测覆盖“绕过预检直接 open”的路径 |
+| Rust | 公网源 302 到私网/云元数据地址 | 重定向策略拒绝“公网 origin → 私网 https IP 字面量”；IPv4/IPv6（含 `::ffff:`）与 `.local` 均覆盖；LAN 镜像自身的重定向仍允许 |
+| Rust | Windows 把 OneDrive 占位文件当链接 | `is_link_like` 改用 `FileTypeExt::is_symlink/is_symlink_dir`，只拒绝符号链接/junction，不再误伤云占位文件 |
+| Dart | 图片 URL 可指向内网 | `isSafeImageUrl` 限定 http(s)、拒绝 userinfo 与私网/loopback/IPv4-mapped 地址；`Image.network`/`NetworkImage` 全部走该检查并单测 |
+| C++ | `gsettings` 经 PATH 查找 | 按绝对路径查找 `/usr/bin`、`/bin`、`/usr/local/bin`、NixOS 的 `/run/current-system/sw/bin`，不再依赖 PATH |
+| C# | 导入 `javaPath` 的链接判断 | 改用 `FileInfo.LinkTarget`，跨平台识别 symlink/junction，同时放过 OneDrive 占位文件 |
+| C# | 复用的 Forge installer 未复核 | 见 §2.7 |
+
+### 2.7 C#：复用 Forge installer 的摘要复核
+
+- 位置：`PackForgeInstallerBootstrap.cs`、`PackInstallService.Repair.cs`。
+- 修复：下载完成时把已校验的 SHA-1 写入 `<installer>.sha1`；复用前比对 sidecar，失配则删除/拒绝；离线修复在没有 sidecar 的旧文件上保持兼容，但 sidecar 存在且不匹配时不再执行。
+- 覆盖：`LocalForgeInstallerTests` 的匹配/失配用例（详见本轮 `dotnet test` 结果）。
+
+---
+
 ## 3. 剩余风险（已接受 / 需产品决策）
 
 以下不是“没发现”，而是本轮明确不按可利用提权/远程漏洞处理，或需要产品取舍：
 
-- **同用户本地篡改（Rust/C#）**：`.part` 侧车检查与 `downloads` 保留根挡的是“远程服务器 / 恶意 pack”；同用户本地进程仍可在检查与 open 的窗口内替换文件（TOCTOU），也可直接改 `downloads` 里已下载的 installer。这等价于该用户已能执行本机代码，不属于提权边界。彻底修侧车需要 `O_NOFOLLOW`/`openat`。
-- **直接计划指向私网 https（Rust）**：计划由 C# 生成；若 C# 被攻破，执行器不是最后边界。当前只堵住“公网服务器 302 到 loopback”，没有在 `validate_url` 拒绝所有私网地址（会破坏局域网镜像，需显式开关）。
-- **JVM argv 中的 access token（C#）**：同机其他用户可经 `/proc` 读取；Minecraft 生态惯例，改参数传递方式会破坏兼容性。
-- **图片 URL 例外（Dart）**：AGENTS 允许图片加载绕过 CoreClient；`Image.network` 仍可被元数据指向内网（SSRF-lite，无凭据、无回显）。如需收紧，应加图片域名允许列表。
-- **`popen` 继承 PATH（C++）**：命令串是常量、无注入；仅桌面环境 PATH 被劫持时可替换 `gsettings`，属本地同用户风险。
+- **同用户竞态（Rust/C#）**：侧车写入已用 `O_NOFOLLOW`/reparse 标志封死“跟随链接”；但“哈希 `.part` → `rename`”之间仍可被同用户换文件，installer 的 sidecar 也可能被同用户同时改写。这等价于该用户已能执行本机代码，不属于提权边界。
+- **直接计划指向私网 https（Rust）**：计划由 C# 生成；若 C# 被攻破，执行器不是最后边界。当前堵住了“公网服务器 302 到私网 IP 字面量”和 loopback HTTP，但 DNS 解析到私网（rebinding）以及计划本身就写私网 https 仍被允许（会破坏局域网镜像，需显式开关）。
+- **JVM argv 中的 access token（C#）**：Linux `/proc/<pid>/cmdline` 默认仅同用户可读，Windows 需要同用户/管理员权限；这仍在同用户边界内，且改参数传递方式会破坏 Minecraft 兼容性。
 - **无磁盘空间预检、`dedup`/`executable` 无行为、单流无续传**：功能缺口，已在 README/05 记录，不是安全边界。
 - **内嵌 SQLite / Flutter engine / 系统库**：OSV 不覆盖，需人工跟踪；见 §1 盲区。
+- **macOS 沙箱 entitlements**：仅含 app-sandbox，联网/文件选择需要额外的 entitlement；这是尚未真正出包的桌面平台问题，不是漏洞。
 
 ---
 
@@ -129,7 +148,7 @@ cargo clippy --all-targets -D warnings   # 干净
 
 # C#
 dotnet test app/modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
-# 589 passed, 0 failed
+# 593 passed, 0 failed
 dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
 dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
 
@@ -138,22 +157,23 @@ dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test
 ./build/native/abi_smoke && ./build/native/async_smoke \
   && ./build/native/module_smoke && ./build/native/event_queue_smoke
 dart analyze                    # No issues found
-flutter test                    # 150 passed, 12 skipped
+flutter test                    # 151 passed, 12 skipped
 ARCHOERACX_INSTANCE_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-instance-audit \
   flutter test test/instance_integration_test.dart   # 3/3
 
 # 其他门禁
 ./tool/build-vault.sh && python3 tool/check_icons.py
+./tool/build-cs.sh
 flutter build linux --release     # ✓ build/linux/x64/release/bundle/archoera_cx
 ```
 
-未运行：ASan/TSan/valgrind、fuzz、真实恶意 `.mrpack` 复现、Windows/macOS 实机路径语义、网络/账户/wiki 等需要外部服务的集成测试。仓库没有 `app/android`、`app/ios`，移动端 intent/FileProvider 不在范围内。
+未运行：ASan/TSan/valgrind、fuzz、真实恶意 `.mrpack` 复现、Windows/macOS 实机路径语义、网络/账户/wiki 等需要外部服务的集成测试。尝试过 `cargo check --target x86_64-pc-windows-msvc` / `x86_64-apple-darwin`，但本机只装了 target manifest、没有对应 std，无法完成跨目标编译；Windows/macOS 分支只做了代码审阅（`FileTypeExt`、`O_NOFOLLOW`/reparse 标志、`FileInfo.LinkTarget`、`InternetAddress`）。仓库没有 `app/android`、`app/ios`，移动端 intent/FileProvider 不在范围内。
 
 ---
 
 ## 6. 建议的下一步
 
-1. **已完成（本次）**：tokio CVE；Rust 计划边界、侧车链接、单流落盘校验、重定向/凭据、errno、取消清扫；C# `downloads` 保留、CWD、代理凭据、zip 炸弹、`providerBase`、导入 `javaPath`、删除根约束；C++ 事件上限、非终态 release/TTL、锁外唤醒、worker 回收、env 策略、poll 恢复；Dart slug/release/env；Dependabot。
+1. **已完成（本次）**：tokio CVE；Rust 计划边界、侧车 `O_NOFOLLOW`、单流落盘校验、重定向/凭据、errno、取消清扫；C# `downloads` 保留、CWD、代理凭据、zip 炸弹、`providerBase`、导入 `javaPath`、删除根约束、installer sidecar 复核；C++ 事件上限、非终态 release/TTL、锁外唤醒、worker 回收、env 策略、poll 恢复、gsettings 绝对路径；Dart slug/release/env、图片私网过滤；Dependabot。
 2. **P1（预防）**：CI 增加 OSV-Scanner/cargo-deny 与 `dotnet list package --vulnerable`；为内嵌 SQLite 3.53.3 建人工 CVE 跟踪。
-3. **P2（加固）**：Rust 侧车 `O_NOFOLLOW`/`openat`；私网地址策略（显式开关）；磁盘空间预检；图片域名允许列表；C++ JSON 重复键拒绝。
+3. **P2（加固）**：DNS rebinding / 计划直连私网地址的显式开关；磁盘空间预检；C++ JSON 重复键拒绝；macOS 沙箱 entitlements 与实机验证。
 4. **P3（验证）**：在 Windows/macOS 跑完整路径/权限矩阵；补 ASan/TSan/fuzz 与恶意 mrpack 回归夹具。
