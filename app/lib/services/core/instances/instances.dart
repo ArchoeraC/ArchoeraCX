@@ -140,6 +140,9 @@ mixin CoreClientInstances on CoreTransport {
   /// Every key is always sent: `null` clears the override (the instance then
   /// follows the global setting) while a value sets it. The C# owner treats
   /// this as a merge patch, so omitted keys would stay untouched.
+  ///
+  /// [wrapperCommand] keeps an empty string as "explicitly no wrapper", and
+  /// [environment] keeps an empty map as "explicitly clear the global map".
   Future<GameInstance> updateInstanceOverrides({
     required String instanceId,
     int? memoryMinMb,
@@ -147,6 +150,11 @@ mixin CoreClientInstances on CoreTransport {
     String? jvmArgs,
     String? gcMode,
     String? gameArgs,
+    String? wrapperCommand,
+    Map<String, String>? environment,
+    bool? joinServerOnLaunch,
+    String? joinServerAddress,
+    String? joinWorldName,
     String? javaPath,
     int? windowWidth,
     int? windowHeight,
@@ -163,6 +171,11 @@ mixin CoreClientInstances on CoreTransport {
           'jvmArgs': jvmArgs,
           'gcMode': gcMode,
           'gameArgs': gameArgs,
+          'wrapperCommand': wrapperCommand,
+          'environment': environment,
+          'joinServerOnLaunch': joinServerOnLaunch,
+          'joinServerAddress': joinServerAddress,
+          'joinWorldName': joinWorldName,
           'javaPath': javaPath,
           'windowWidth': windowWidth,
           'windowHeight': windowHeight,
@@ -267,7 +280,10 @@ GameInstance _parseInstance(
   String jsonText,
   String methodName,
 ) {
-  final decoded = transport.decodeEnvelope(jsonText, fallbackMethod: methodName);
+  final decoded = transport.decodeEnvelope(
+    jsonText,
+    fallbackMethod: methodName,
+  );
   final data = transport.asMap(decoded['data'], methodName);
   final instance = GameInstance.fromNative(data['instance'] ?? data);
   if (instance == null) {

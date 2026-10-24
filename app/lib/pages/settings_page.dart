@@ -11,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../l10n/l10n_labels.dart';
+import '../models/launch_options.dart';
 import '../render/app_shaders.dart';
 import '../render/dissolve_mask.dart';
 import '../services/core/settings/app_settings.dart';

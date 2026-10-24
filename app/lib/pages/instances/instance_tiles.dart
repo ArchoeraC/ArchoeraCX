@@ -310,6 +310,9 @@ class _OverridesBadge extends StatelessWidget {
       if (overrides.gcMode != null) l10n.instanceOverridesGc,
       if (overrides.jvmArgs != null) l10n.instanceOverridesJvm,
       if (overrides.gameArgs != null) l10n.instanceOverridesGameArgs,
+      if (overrides.wrapperCommand != null) l10n.instanceOverridesWrapper,
+      if (overrides.environment != null) l10n.instanceOverridesEnvironment,
+      if (overrides.joinServerOnLaunch == true) l10n.instanceOverridesAutoJoin,
       if (overrides.javaPath != null) l10n.instanceOverridesJava,
       if (overrides.windowWidth != null ||
           overrides.windowHeight != null ||

@@ -84,12 +84,19 @@ mixin CoreClientSettings on CoreTransport {
   }
 
   /// Persist memory and JVM options.
+  ///
+  /// [wrapperCommand] and [environment] use the merge-patch style also used by
+  /// [setDownloadSettings]: leave them at [noChange] to keep the stored value,
+  /// pass null to clear it, or pass a value to replace it. An empty wrapper
+  /// string also means "no wrapper"; an empty environment map clears it.
   Future<AppSettings> setRuntimeOptions({
     int? memoryMinMb,
     int? memoryMaxMb,
     String? jvmArgs,
     String? gcMode,
     String? gameArgs,
+    Object? wrapperCommand = noChange,
+    Object? environment = noChange,
     int? windowWidth,
     int? windowHeight,
     bool? fullscreen,
@@ -109,6 +116,10 @@ mixin CoreClientSettings on CoreTransport {
         'jvmArgs': ?jvmArgs,
         'gcMode': ?gcMode,
         'gameArgs': ?gameArgs,
+        if (wrapperCommand != noChange)
+          'wrapperCommand': wrapperCommand as String?,
+        if (environment != noChange)
+          'environment': _environmentPayload(environment),
         'windowWidth': ?windowWidth,
         'windowHeight': ?windowHeight,
         'fullscreen': ?fullscreen,
@@ -124,12 +135,23 @@ mixin CoreClientSettings on CoreTransport {
   }
 }
 
+/// Accepts the typed map callers pass in production as well as an untyped or
+/// empty literal from a caller, copying it into the wire shape.
+Map<String, String>? _environmentPayload(Object? value) {
+  if (value == null) return null;
+  if (value is Map<String, String>) return value;
+  return Map<String, String>.from(value as Map);
+}
+
 AppSettings _parseSettings(
   CoreTransport transport,
   String jsonText,
   String methodName,
 ) {
-  final decoded = transport.decodeEnvelope(jsonText, fallbackMethod: methodName);
+  final decoded = transport.decodeEnvelope(
+    jsonText,
+    fallbackMethod: methodName,
+  );
   final data = transport.asMap(decoded['data'], methodName);
   final settings = AppSettings.tryParse(data['settings']);
   if (settings == null) {

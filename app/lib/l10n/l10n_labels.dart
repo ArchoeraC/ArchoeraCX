@@ -1,5 +1,6 @@
 import '../models/account.dart';
 import '../models/game_instance.dart';
+import '../models/launch_options.dart';
 import 'generated/app_localizations.dart';
 
 /// Standard UI labels for enum values. Models stay locale-free; widgets turn
@@ -19,6 +20,28 @@ extension GameInstanceL10n on GameInstance {
       loader == GameLoader.vanilla || loaderVersion.isEmpty
       ? loader.labelFor(l10n)
       : l10n.loaderVersionValue(loader.labelFor(l10n), loaderVersion);
+}
+
+extension LaunchEnvironmentIssueL10n on LaunchEnvironmentIssue {
+  String labelFor(AppLocalizations l10n) {
+    final line = this.line ?? 0;
+    return switch (kind) {
+      LaunchEnvironmentIssueKind.missingSeparator =>
+        l10n.launchEnvironmentMissingSeparator(line),
+      LaunchEnvironmentIssueKind.invalidKey => l10n.launchEnvironmentInvalidKey(
+        line,
+        key ?? '',
+      ),
+      LaunchEnvironmentIssueKind.duplicateKey =>
+        l10n.launchEnvironmentDuplicateKey(line, key ?? ''),
+      LaunchEnvironmentIssueKind.reservedKey =>
+        l10n.launchEnvironmentReservedKey(line, key ?? ''),
+      LaunchEnvironmentIssueKind.tooManyEntries =>
+        l10n.launchEnvironmentTooMany(launchEnvironmentMaxEntries),
+      LaunchEnvironmentIssueKind.invalidValue =>
+        l10n.launchEnvironmentInvalidValue(line),
+    };
+  }
 }
 
 extension AccountKindL10n on AccountKind {

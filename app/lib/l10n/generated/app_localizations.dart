@@ -1370,6 +1370,96 @@ abstract class AppLocalizations {
   /// **'Appended after the vanilla arguments and split on spaces; leave empty for none.'**
   String get settingsGameArgsNote;
 
+  /// Global launch-process options: wrapper command and child environment.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrapper & environment'**
+  String get settingsSectionProcess;
+
+  /// Safety note under the global wrapper/environment section.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied to the game process only. Wrapper commands run as your user; environment values are stored locally and never logged.'**
+  String get settingsProcessNote;
+
+  /// Label for the global process wrapper command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrapper command'**
+  String get settingsWrapperCommand;
+
+  /// Example wrapper commands shown inside the global wrapper field.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. gamemoderun, mangohud, prime-run'**
+  String get settingsWrapperCommandHint;
+
+  /// Helper text under the global wrapper command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepended to the Java command; leave empty for none.'**
+  String get settingsWrapperCommandHelp;
+
+  /// Label for the global child environment field.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment variables'**
+  String get settingsEnvironment;
+
+  /// Format hint for the multiline environment field.
+  ///
+  /// In en, this message translates to:
+  /// **'KEY=VALUE'**
+  String get settingsEnvironmentHint;
+
+  /// Helper text under the global environment field.
+  ///
+  /// In en, this message translates to:
+  /// **'One KEY=VALUE per line. Blank lines are ignored.'**
+  String get settingsEnvironmentHelp;
+
+  /// Validation error when a wrapper command exceeds the contract limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrapper commands may be at most 4096 characters.'**
+  String get launchWrapperCommandTooLong;
+
+  /// Environment block line without an equals sign.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: enter KEY=VALUE.'**
+  String launchEnvironmentMissingSeparator(int line);
+
+  /// Environment key does not match the identifier pattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: \"{key}\" is not a valid variable name.'**
+  String launchEnvironmentInvalidKey(int line, String key);
+
+  /// Environment block repeats a key.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: \"{key}\" is already defined.'**
+  String launchEnvironmentDuplicateKey(int line, String key);
+
+  /// Environment key is owned by the JVM/launcher and cannot be overridden.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: \"{key}\" cannot be set here.'**
+  String launchEnvironmentReservedKey(int line, String key);
+
+  /// Environment block exceeds the entry limit.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {count} environment variables are allowed.'**
+  String launchEnvironmentTooMany(int count);
+
+  /// Environment value exceeds the length limit or contains a NUL.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: values must be at most 4096 characters and cannot contain NUL.'**
+  String launchEnvironmentInvalidValue(int line);
+
   /// No description provided for @settingsSectionTasks.
   ///
   /// In en, this message translates to:
@@ -4028,6 +4118,114 @@ abstract class AppLocalizations {
   /// **'Game arguments'**
   String get instanceSettingsGameArgs;
 
+  /// Switch that enables a per-instance wrapper command override.
+  ///
+  /// In en, this message translates to:
+  /// **'Override wrapper command'**
+  String get instanceSettingsWrapperOverride;
+
+  /// Per-instance wrapper command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrapper command'**
+  String get instanceSettingsWrapperCommand;
+
+  /// Hint explaining that an enabled empty wrapper override disables the global wrapper.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to run the game without a wrapper.'**
+  String get instanceSettingsWrapperCommandHint;
+
+  /// Switch that enables a per-instance child environment override.
+  ///
+  /// In en, this message translates to:
+  /// **'Override environment variables'**
+  String get instanceSettingsEnvironmentOverride;
+
+  /// Per-instance multiline environment field.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment variables'**
+  String get instanceSettingsEnvironment;
+
+  /// Format hint for the per-instance environment field.
+  ///
+  /// In en, this message translates to:
+  /// **'KEY=VALUE'**
+  String get instanceSettingsEnvironmentHint;
+
+  /// Helper text under the per-instance environment field.
+  ///
+  /// In en, this message translates to:
+  /// **'An empty list clears the global variables for this instance.'**
+  String get instanceSettingsEnvironmentHelp;
+
+  /// Switch that enables joining a server or loading a world on launch.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-join'**
+  String get instanceSettingsAutoJoin;
+
+  /// Subtitle under the auto-join switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a server or load a singleplayer world after the game starts.'**
+  String get instanceSettingsAutoJoinDesc;
+
+  /// Per-instance auto-join server address field.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get instanceSettingsJoinServer;
+
+  /// Accepted server address shapes.
+  ///
+  /// In en, this message translates to:
+  /// **'host, host:port, [IPv6], or [IPv6]:port'**
+  String get instanceSettingsJoinServerHint;
+
+  /// Per-instance auto-join singleplayer world field.
+  ///
+  /// In en, this message translates to:
+  /// **'Singleplayer world'**
+  String get instanceSettingsJoinWorld;
+
+  /// Hint for the singleplayer world folder name.
+  ///
+  /// In en, this message translates to:
+  /// **'World folder name'**
+  String get instanceSettingsJoinWorldHint;
+
+  /// Validation error when auto-join is enabled without a target.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a server address or a singleplayer world.'**
+  String get instanceSettingsAutoJoinNeedsTarget;
+
+  /// No description provided for @instanceSettingsAutoJoinConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose either a server address or a singleplayer world, not both.'**
+  String get instanceSettingsAutoJoinConflict;
+
+  /// Per-instance wrapper validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrapper commands may be at most 4096 characters.'**
+  String get instanceSettingsInvalidWrapper;
+
+  /// Per-instance server address validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter host, host:port, [IPv6], or [IPv6]:port.'**
+  String get instanceSettingsInvalidServerAddress;
+
+  /// Per-instance singleplayer world name validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'World names must be 1–128 characters without /, \\ or ...'**
+  String get instanceSettingsInvalidWorldName;
+
   /// Per-instance Java runtime override.
   ///
   /// In en, this message translates to:
@@ -4189,6 +4387,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'game args'**
   String get instanceOverridesGameArgs;
+
+  /// Override badge label for a per-instance wrapper command.
+  ///
+  /// In en, this message translates to:
+  /// **'wrapper'**
+  String get instanceOverridesWrapper;
+
+  /// Override badge label for a per-instance environment map.
+  ///
+  /// In en, this message translates to:
+  /// **'environment'**
+  String get instanceOverridesEnvironment;
+
+  /// Override badge label for per-instance auto-join.
+  ///
+  /// In en, this message translates to:
+  /// **'auto-join'**
+  String get instanceOverridesAutoJoin;
 
   /// No description provided for @instanceOverridesJava.
   ///

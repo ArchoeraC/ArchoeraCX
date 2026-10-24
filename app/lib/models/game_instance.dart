@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'launch_options.dart';
+
 /// Loader families currently represented by the UI shell.
 ///
 /// Fabric/Quilt/Forge/NeoForge are display values only for now; installation
@@ -29,6 +31,11 @@ class InstanceOverrides {
     this.jvmArgs,
     this.gcMode,
     this.gameArgs,
+    this.wrapperCommand,
+    this.environment,
+    this.joinServerOnLaunch,
+    this.joinServerAddress,
+    this.joinWorldName,
     this.javaPath,
     this.windowWidth,
     this.windowHeight,
@@ -52,6 +59,23 @@ class InstanceOverrides {
   final String? gcMode;
   final String? gameArgs;
 
+  /// Wrapper prepended to the Java command. Null inherits the global wrapper;
+  /// an empty string explicitly starts the game without one.
+  final String? wrapperCommand;
+
+  /// Extra child environment. Null inherits the global map; an empty map
+  /// explicitly clears it.
+  final Map<String, String>? environment;
+
+  /// Whether launch should join [joinServerAddress] or load [joinWorldName].
+  final bool? joinServerOnLaunch;
+
+  /// Server target as `host`, `host:port`, `[v6]` or `[v6]:port`.
+  final String? joinServerAddress;
+
+  /// Singleplayer world folder name.
+  final String? joinWorldName;
+
   /// Absolute path to a `java` executable.
   final String? javaPath;
   final int? windowWidth;
@@ -64,6 +88,11 @@ class InstanceOverrides {
       jvmArgs == null &&
       gcMode == null &&
       gameArgs == null &&
+      wrapperCommand == null &&
+      environment == null &&
+      joinServerOnLaunch == null &&
+      joinServerAddress == null &&
+      joinWorldName == null &&
       javaPath == null &&
       windowWidth == null &&
       windowHeight == null &&
@@ -78,13 +107,31 @@ class InstanceOverrides {
       return value == null || value.isEmpty ? null : value;
     }
 
+    // An empty wrapper is meaningful ("no wrapper"), so unlike the other
+    // strings it must survive parsing instead of collapsing to null.
+    String? wrapper(Object? raw) {
+      if (raw is! String) return null;
+      return raw.trim();
+    }
+
     final gcMode = text(value['gcMode']);
+    final rawEnvironment = value['environment'];
+    final environment = rawEnvironment == null
+        ? null
+        : parseLaunchEnvironmentWire(rawEnvironment);
     final overrides = InstanceOverrides(
       memoryMinMb: GameInstance._int(value['memoryMinMb']),
       memoryMaxMb: GameInstance._int(value['memoryMaxMb']),
       jvmArgs: text(value['jvmArgs']),
       gcMode: gcMode != null && gcModes.contains(gcMode) ? gcMode : null,
       gameArgs: text(value['gameArgs']),
+      wrapperCommand: wrapper(value['wrapperCommand']),
+      environment: environment,
+      joinServerOnLaunch: value['joinServerOnLaunch'] is bool
+          ? value['joinServerOnLaunch'] as bool
+          : null,
+      joinServerAddress: text(value['joinServerAddress']),
+      joinWorldName: text(value['joinWorldName']),
       javaPath: text(value['javaPath']),
       windowWidth: GameInstance._int(value['windowWidth']),
       windowHeight: GameInstance._int(value['windowHeight']),
@@ -101,6 +148,11 @@ class InstanceOverrides {
     String? jvmArgs,
     String? gcMode,
     String? gameArgs,
+    String? wrapperCommand,
+    Map<String, String>? environment,
+    bool? joinServerOnLaunch,
+    String? joinServerAddress,
+    String? joinWorldName,
     String? javaPath,
     int? windowWidth,
     int? windowHeight,
@@ -112,6 +164,11 @@ class InstanceOverrides {
       jvmArgs: jvmArgs ?? this.jvmArgs,
       gcMode: gcMode ?? this.gcMode,
       gameArgs: gameArgs ?? this.gameArgs,
+      wrapperCommand: wrapperCommand ?? this.wrapperCommand,
+      environment: environment ?? this.environment,
+      joinServerOnLaunch: joinServerOnLaunch ?? this.joinServerOnLaunch,
+      joinServerAddress: joinServerAddress ?? this.joinServerAddress,
+      joinWorldName: joinWorldName ?? this.joinWorldName,
       javaPath: javaPath ?? this.javaPath,
       windowWidth: windowWidth ?? this.windowWidth,
       windowHeight: windowHeight ?? this.windowHeight,

@@ -1,5 +1,6 @@
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/stores/providers.dart';
+import 'package:archoera_cx/stores/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,7 +83,7 @@ void main() {
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
-    // Launch: window size, fullscreen and the game argument field.
+    // Launch: window size, fullscreen, game arguments and process options.
     await tester.tap(find.text('Launch').first);
     await tester.pumpAndSettle();
     expect(find.text('Game window'), findsOneWidget);
@@ -90,6 +91,9 @@ void main() {
     expect(find.text('Window size'), findsOneWidget);
     expect(find.text('854 × 480'), findsOneWidget);
     expect(find.text('Additional game arguments'), findsOneWidget);
+    expect(find.text('Wrapper & environment'), findsOneWidget);
+    expect(find.text('Wrapper command'), findsOneWidget);
+    expect(find.text('Environment variables'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     // Tasks & logs: both limits are segmented controls.
@@ -106,6 +110,60 @@ void main() {
     expect(find.text('Desktop notifications'), findsOneWidget);
     expect(find.text('Download notifications'), findsOneWidget);
     expect(find.byType(Switch), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('launch wrapper and environment save and validate', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Launch').first);
+    await tester.pumpAndSettle();
+
+    final wrapper = find.byKey(const ValueKey('settings-wrapper-command'));
+    final environment = find.byKey(const ValueKey('settings-environment'));
+    await tester.ensureVisible(wrapper);
+    await tester.pumpAndSettle();
+    await tester.enterText(wrapper, 'mangohud');
+    await tester.ensureVisible(environment);
+    await tester.pumpAndSettle();
+    await tester.enterText(environment, 'DRI_PRIME=1');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ArchoeraApp)),
+    );
+    expect(
+      container.read(appSettingsProvider).value?.wrapperCommand,
+      'mangohud',
+    );
+    expect(
+      container.read(appSettingsProvider).value?.environment,
+      const <String, String>{'DRI_PRIME': '1'},
+    );
+
+    // An invalid line stays local and never reaches the settings store.
+    await tester.enterText(environment, 'BAD KEY=1');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('not a valid variable name'), findsOneWidget);
+    expect(
+      container.read(appSettingsProvider).value?.environment,
+      const <String, String>{'DRI_PRIME': '1'},
+    );
     expect(tester.takeException(), isNull);
   });
 }
