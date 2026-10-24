@@ -193,6 +193,9 @@ public sealed partial class PackInstallService
     /// <summary>
     /// Finds a Forge/NeoForge installer left by this or another launcher in the
     /// instance, the shared Maven cache, or a sibling instance's download folder.
+    /// An installer with a <c>.sha1</c> sidecar must match it; a sidecar that
+    /// does not match rejects the candidate so processors never run on tampered
+    /// bytes. Legacy installers without a sidecar keep the old behavior.
     /// </summary>
     internal static string? FindLocalForgeInstaller(
         GameInstanceRecord instance,
@@ -278,7 +281,7 @@ public sealed partial class PackInstallService
 
         return candidates
             .Distinct(StringComparer.Ordinal)
-            .FirstOrDefault(PackForgeInstallerBootstrap.IsZip);
+            .FirstOrDefault(PackForgeInstallerBootstrap.IsTrustedLocalInstaller);
     }
 
     /// <summary>
