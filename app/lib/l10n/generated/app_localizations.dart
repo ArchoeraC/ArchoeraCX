@@ -656,6 +656,12 @@ abstract class AppLocalizations {
   /// **'Instance deleted, but the local files could not be removed. Clean them up manually.'**
   String get instanceDeleteFilesKeptFailed;
 
+  /// No description provided for @instanceDeleteFilesKeptOutsideRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance deleted, but the folder is outside the managed instances directory, so it was kept.'**
+  String get instanceDeleteFilesKeptOutsideRoot;
+
   /// No description provided for @instanceCheckQuick.
   ///
   /// In en, this message translates to:

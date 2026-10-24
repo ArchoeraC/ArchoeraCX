@@ -137,6 +137,28 @@ foreach(config IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
   )
 endforeach()
 
+# Queue-cap policy test. It only uses the header-inline enqueue helpers, so it
+# does not link the shared library (whose internals are hidden).
+add_executable(event_queue_smoke tests/event_queue_smoke.cpp)
+target_compile_features(event_queue_smoke PRIVATE cxx_std_20)
+target_include_directories(event_queue_smoke PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/src"
+  "${CMAKE_CURRENT_LIST_DIR}/../contracts/abi"
+  "${CMAKE_CURRENT_LIST_DIR}/../contracts/module"
+)
+set_target_properties(event_queue_smoke PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+  RUNTIME_OUTPUT_DIRECTORY "${ARCHOERA_OUTPUT_DIR}"
+)
+foreach(config IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
+  string(TOUPPER "${config}" config_upper)
+  set_target_properties(event_queue_smoke PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY_${config_upper} "${ARCHOERA_OUTPUT_DIR}"
+  )
+endforeach()
+
 # Fake native module used as the test oracle for the module host. It is never
 # linked into the core: it is loaded through the same dlopen path as a real
 # module.

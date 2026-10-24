@@ -19,15 +19,18 @@
 #include "module_registry.h"
 #include "platform_appearance.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -124,6 +127,18 @@ struct TaskRecord {
   bool module_backed = false;
   std::string module;
   bool cancel_requested = false;
+  // Set when the task reaches a terminal state. The result stays readable for
+  // kTaskResultTtl after this point; afterwards the record is purged so a
+  // forgotten archoera_release cannot grow the map for the process lifetime.
+  std::chrono::steady_clock::time_point settled_at;
+};
+
+// One core-owned worker thread. `done` is set by the trampoline after the
+// entry point has returned, so the submitting thread can join finished
+// workers without waiting for shutdown.
+struct WorkerSlot {
+  std::thread thread;
+  std::atomic<bool> done{false};
 };
 
 // Kept alive by archoera_core::module_calls until the module's done callback
@@ -166,10 +181,13 @@ struct archoera_core {
   uint64_t next_event_seq = 1;
   std::string config_json;
 
-  // Worker lifecycle. Threads are joined by archoera_shutdown before the core
-  // is deleted; they are never detached. shutting_down is set under mutex and
+  // Worker lifecycle. Finished workers are reaped when the next async task is
+  // submitted; archoera_shutdown joins every remaining thread before the core
+  // is deleted. They are never detached. shutting_down is set under mutex and
   // is the last gate a worker checks before touching the task/event state.
-  std::vector<std::thread> workers;
+  // Slots are heap-allocated so the vector can grow without moving the
+  // non-movable atomics/threads.
+  std::vector<std::unique_ptr<archoera::WorkerSlot>> workers;
   std::condition_variable worker_cv;
   std::atomic<bool> shutting_down{false};
 
@@ -231,10 +249,72 @@ inline bool is_terminal(archoera_task_state state) {
          state == ARCHOERA_TASK_CANCELLED;
 }
 
+// Hard limit for the pending event queue. Producers must never block, so a
+// full queue sheds progress/domain events instead. Terminal state events are
+// never dropped: there is at most one per task, and dropping one would leave
+// a Dart waiter hanging forever. If only terminal events remain, the queue is
+// allowed to grow past this limit by the number of unread terminals; the
+// 10-minute task TTL and release keep that count bounded.
+inline constexpr std::size_t kMaxPendingEvents = 4096;
+
+// How long a terminal task result stays readable without archoera_release.
+// Mirrors docs/10-architecture-design.md §5.6.
+inline constexpr std::chrono::minutes kTaskResultTtl{10};
+
+// True when `event` may be discarded to make room for a newer event. Task
+// state events are droppable only while the task is still running.
+inline bool is_droppable_event(const EventRecord& event) {
+  if (event.type == ARCHOERA_EV_TASK_STATE) {
+    return !is_terminal(static_cast<archoera_task_state>(event.state));
+  }
+  return event.type == ARCHOERA_EV_TASK_PROGRESS ||
+         event.type == ARCHOERA_EV_DOMAIN;
+}
+
+// Drops the oldest droppable event, or does nothing when every queued event is
+// terminal. Kept separate from the queue so the cap policy is testable without
+// constructing a core handle.
+inline void drop_oldest_droppable_event(std::deque<EventRecord>& events) {
+  const auto victim =
+      std::find_if(events.begin(), events.end(), is_droppable_event);
+  if (victim != events.end()) {
+    events.erase(victim);
+  }
+}
+
+// Appends `event` with a fresh, monotonic sequence number and enforces the
+// queue cap. Requires the caller to hold core.mutex.
+inline void enqueue_event(std::deque<EventRecord>& events,
+                          uint64_t& next_seq,
+                          EventRecord event) {
+  event.seq = next_seq++;
+  if (events.size() >= kMaxPendingEvents) {
+    drop_oldest_droppable_event(events);
+  }
+  events.push_back(std::move(event));
+}
+
 // Requires core.mutex to be held.
 inline void enqueue_event_locked(archoera_core& core, EventRecord event) {
-  event.seq = core.next_event_seq++;
-  core.events.push_back(std::move(event));
+  enqueue_event(core.events, core.next_event_seq, std::move(event));
+}
+
+// Requires core.mutex. Purges terminal results whose TTL elapsed. Non-terminal
+// tasks are never purged: cancel must keep reaching a live task even when its
+// result was never read.
+inline void purge_expired_tasks_locked(archoera_core& core) {
+  const auto now = std::chrono::steady_clock::now();
+  for (auto it = core.tasks.begin(); it != core.tasks.end();) {
+    const TaskRecord& task = it->second;
+    const bool settled =
+        task.settled_at.time_since_epoch().count() != 0;
+    if (is_terminal(task.state) && settled &&
+        now - task.settled_at >= kTaskResultTtl) {
+      it = core.tasks.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 inline WakeTarget wake_target_locked(const archoera_core& core) {

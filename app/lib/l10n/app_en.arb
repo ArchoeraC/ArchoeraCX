@@ -147,6 +147,7 @@
   "instanceDeleteFilesKeptShared": "Instance deleted, but the folder is shared with another instance or instance root, so it was kept.",
   "instanceDeleteFilesKeptUnsafe": "Instance deleted, but the folder path is unsafe, so it was kept.",
   "instanceDeleteFilesKeptFailed": "Instance deleted, but the local files could not be removed. Clean them up manually.",
+  "instanceDeleteFilesKeptOutsideRoot": "Instance deleted, but the folder is outside the managed instances directory, so it was kept.",
   "instanceCheckQuick": "Quick check",
   "instanceCheckFull": "Full check",
   "instanceCheckTitle": "Dependency check",

@@ -16,10 +16,13 @@
 #include <atomic>
 #include <cstdint>
 #include <cstring>
+#include <deque>
+#include <iterator>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -102,7 +105,7 @@ ARCHOERA_API void archoera_shutdown(archoera_core* core) {
     // core.mutex (the same lock a worker takes before publishing anything),
     // then the condition variable wakes workers that are pacing. Threads are
     // joined, never detached, so the core outlives every worker access.
-    std::vector<std::thread> workers;
+    std::vector<std::unique_ptr<archoera::WorkerSlot>> workers;
     std::vector<std::pair<std::string, uint64_t>> module_tasks;
     {
       std::lock_guard<std::mutex> lock(core->mutex);
@@ -128,9 +131,9 @@ ARCHOERA_API void archoera_shutdown(archoera_core* core) {
       }
     }
 
-    for (std::thread& worker : workers) {
-      if (worker.joinable()) {
-        worker.join();
+    for (auto& slot : workers) {
+      if (slot != nullptr && slot->thread.joinable()) {
+        slot->thread.join();
       }
     }
 
@@ -183,39 +186,83 @@ ARCHOERA_API int32_t archoera_poll(archoera_core* core,
     return -1;
   }
 
+  // Events taken out of the shared queue for this poll. If building the
+  // payload storage fails, the undelivered events go back at the front of the
+  // queue in their original order.
+  std::deque<archoera::EventRecord> batch;
+  std::deque<std::string> payloads;
+
   try {
-    std::lock_guard<std::mutex> lock(core->mutex);
-
-    // Any pointers returned by the previous poll become invalid here.
-    core->poll_payloads.clear();
-
-    const int32_t limit = std::min<int32_t>(max, kMaxPollBatch);
     int32_t count = 0;
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      archoera::purge_expired_tasks_locked(*core);
 
-    while (count < limit && !core->events.empty()) {
-      archoera::EventRecord event = std::move(core->events.front());
-      core->events.pop_front();
+      // Any pointers returned by the previous poll become invalid here.
+      core->poll_payloads.clear();
 
-      core->poll_payloads.push_back(std::move(event.json));
-      const std::string& payload = core->poll_payloads.back();
+      const int32_t limit = std::min<int32_t>(max, kMaxPollBatch);
+      while (count < limit && !core->events.empty()) {
+        batch.push_back(std::move(core->events.front()));
+        core->events.pop_front();
+        ++count;
+      }
+    }
 
-      archoera_event& dst = out[count];
-      dst.type = event.type;
-      dst.state = event.state;
-      dst.code = event.code;
-      dst.flags = event.flags;
-      dst.seq = event.seq;
-      dst.task_id = event.task_id;
-      dst.done = event.done;
-      dst.total = event.total;
-      dst.bytes_per_sec = event.bytes_per_sec;
-      dst.json = payload.empty() ? nullptr : payload.c_str();
+    // Moving the JSON into the payload deque is the only allocating step left;
+    // do it without the lock so a slow allocator cannot stall producers.
+    for (archoera::EventRecord& event : batch) {
+      payloads.push_back(std::move(event.json));
+    }
 
-      ++count;
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      core->poll_payloads.swap(payloads);
+      // `payloads` now owns the previous poll's strings; it is destroyed after
+      // the lock is released.
+
+      for (int32_t index = 0; index < count; ++index) {
+        const archoera::EventRecord& event = batch[static_cast<size_t>(index)];
+        const std::string& payload =
+            core->poll_payloads[static_cast<size_t>(index)];
+
+        archoera_event& dst = out[index];
+        dst.type = event.type;
+        dst.state = event.state;
+        dst.code = event.code;
+        dst.flags = event.flags;
+        dst.seq = event.seq;
+        dst.task_id = event.task_id;
+        dst.done = event.done;
+        dst.total = event.total;
+        dst.bytes_per_sec = event.bytes_per_sec;
+        dst.json = payload.empty() ? nullptr : payload.c_str();
+      }
     }
 
     return count;
   } catch (...) {
+    // Put the payloads we already moved back into their events, then restore
+    // the batch at the front of the queue. Sequence numbers are assigned at
+    // enqueue time, so a failed poll never consumes one.
+    std::size_t index = 0;
+    for (std::string& payload : payloads) {
+      if (index < batch.size()) {
+        batch[index].json = std::move(payload);
+      }
+      ++index;
+    }
+
+    try {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      core->events.insert(core->events.begin(),
+                          std::make_move_iterator(batch.begin()),
+                          std::make_move_iterator(batch.end()));
+    } catch (...) {
+      // Restoring allocates too and can fail under the same memory pressure.
+      // There is no safe recovery left; drop the batch rather than leave the
+      // queue partially reordered.
+    }
     return -1;
   }
 }
@@ -246,6 +293,13 @@ ARCHOERA_API archoera_status archoera_call(archoera_core* core,
   const char* raw_params = params_json != nullptr ? params_json : "{}";
 
   try {
+    // Opportunistic TTL sweep: a caller that never releases a terminal task
+    // must not grow the task map for the process lifetime.
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      archoera::purge_expired_tasks_locked(*core);
+    }
+
     const std::string method_name(method);
     const archoera::MethodRoute* route =
         archoera::find_method_route(method_name);
@@ -417,7 +471,21 @@ ARCHOERA_API void archoera_release(archoera_core* core,
 
   try {
     std::lock_guard<std::mutex> lock(core->mutex);
-    core->tasks.erase(task_id);
+    archoera::purge_expired_tasks_locked(*core);
+
+    const auto it = core->tasks.find(task_id);
+    if (it == core->tasks.end()) {
+      return;
+    }
+
+    // Only terminal tasks may be dropped. Releasing a running task would
+    // detach it from cancel and from its module done callback; the core keeps
+    // it alive and the TTL sweep reclaims it once it settles.
+    if (!archoera::is_terminal(it->second.state)) {
+      return;
+    }
+
+    core->tasks.erase(it);
   } catch (...) {
     // Never let C++ exceptions escape the ABI.
   }

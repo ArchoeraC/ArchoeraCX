@@ -75,23 +75,20 @@ void main() {
   );
 
   test(
-    'instance.delete with deleteFiles removes the instance directory',
+    'instance.delete with deleteFiles removes a managed instance directory',
     () async {
-      final directory = await Directory.systemTemp.createTemp(
-        'archoera-instance-files-',
-      );
-      addTearDown(() => directory.delete(recursive: true));
       final client = CoreClient.openDefault();
       addTearDown(client.close);
 
-      final root = '${directory.path}/files instance';
+      // No explicit rootPath: the instance lands under the configured
+      // instances root, which is the only place recursive deletion is allowed.
       final created = await client.createInstance(
-        name: 'Files Instance',
+        name: 'Files Instance ${DateTime.now().microsecondsSinceEpoch}',
         gameVersion: '1.21.4',
         loader: 'vanilla',
         loaderVersion: '',
-        rootPath: root,
       );
+      final root = created.rootPath;
       File('$root/options.txt').writeAsStringSync('fov:70');
       expect(Directory(root).existsSync(), isTrue);
 
@@ -103,6 +100,41 @@ void main() {
       expect(deletion.filesDeleted, isTrue);
       expect(deletion.filesSkippedReason, isNull);
       expect(Directory(root).existsSync(), isFalse);
+    },
+    skip: enabled && core.existsSync() && module.existsSync()
+        ? false
+        : 'Set ARCHOERACX_INSTANCE_TESTS=1 and build core/module to run.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
+
+  test(
+    'instance.delete keeps files for a custom root outside the managed root',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'archoera-instance-outside-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+
+      final root = '${directory.path}/outside instance';
+      final created = await client.createInstance(
+        name: 'Outside Instance',
+        gameVersion: '1.21.4',
+        loader: 'vanilla',
+        loaderVersion: '',
+        rootPath: root,
+      );
+      File('$root/options.txt').writeAsStringSync('fov:70');
+
+      final deletion = await client.deleteInstance(
+        created.id,
+        deleteFiles: true,
+      );
+      expect(deletion.deleted, isTrue);
+      expect(deletion.filesDeleted, isFalse);
+      expect(deletion.filesSkippedReason, 'outside_root');
+      expect(Directory(root).existsSync(), isTrue);
     },
     skip: enabled && core.existsSync() && module.existsSync()
         ? false

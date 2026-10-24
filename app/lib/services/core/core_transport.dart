@@ -4,6 +4,7 @@ import 'dart:ffi' as ffi;
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 import 'core_event.dart';
 import 'event_pump.dart';
@@ -198,9 +199,7 @@ class CoreTransport {
     _releaseFn = library.lookupFunction<_ReleaseNative, _ReleaseDart>(
       'archoera_release',
     );
-    _pollFn = library.lookupFunction<CorePollNative, CorePoll>(
-      'archoera_poll',
-    );
+    _pollFn = library.lookupFunction<CorePollNative, CorePoll>('archoera_poll');
     _setWakeupFn = library.lookupFunction<CoreSetWakeupNative, CoreSetWakeup>(
       'archoera_set_wakeup',
     );
@@ -239,9 +238,14 @@ class CoreTransport {
   /// `CoreClient.openDefault()` iterates over.
   static List<String> defaultLibraryCandidates() {
     final candidates = <String>[];
-    final configured = Platform.environment['ARCHOERACX_CORE_LIB'];
-    if (configured != null && configured.trim().isNotEmpty) {
-      candidates.add(configured.trim());
+    // The environment is not a trusted code source in release builds; a
+    // packaged app must resolve the core next to its executable. Debug builds
+    // keep the override so tests and local runs can target build/native.
+    if (kDebugMode) {
+      final configured = Platform.environment['ARCHOERACX_CORE_LIB'];
+      if (configured != null && configured.trim().isNotEmpty) {
+        candidates.add(configured.trim());
+      }
     }
 
     final name = _libraryFileName();
@@ -431,6 +435,10 @@ class CoreTransport {
     }
 
     var taskId = 0;
+    // Releasing is only safe once a terminal state is known. Releasing a
+    // running task would detach it from cancel and from its module callback;
+    // the core keeps it alive and reclaims it after the result TTL instead.
+    var terminalKnown = false;
     try {
       taskId = _startTask(core, methodName, paramsJson: paramsJson);
       onTaskStarted?.call(taskId);
@@ -469,6 +477,7 @@ class CoreTransport {
             }
           },
         );
+        terminalKnown = true;
       } on CoreEventPumpClosed catch (error) {
         _emitTask(
           TaskUpdate(
@@ -534,7 +543,9 @@ class CoreTransport {
       if (taskId != 0) {
         pump.forgetTask(taskId);
         // `close()` may have shut the core down while this future was pending.
-        if (identical(_core, core)) {
+        // A non-terminal task (pump closed, callback threw) is left to the
+        // core so cancel still works and the TTL sweep reclaims it later.
+        if (terminalKnown && identical(_core, core)) {
           try {
             _releaseFn(core, taskId);
           } catch (_) {

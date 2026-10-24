@@ -83,6 +83,40 @@ using TaskWorkerEntry = void (*)(archoera_core* core,
                                  uint64_t task_id,
                                  Payload* payload);
 
+// std::thread entry. Marks the slot done only after the real entry point has
+// returned, so the slot is safe to join from the submitting thread.
+template <typename Payload>
+void run_task_worker(archoera_core* core,
+                     uint64_t task_id,
+                     Payload* payload,
+                     TaskWorkerEntry<Payload> entry,
+                     std::atomic<bool>* done) noexcept {
+  try {
+    entry(core, task_id, payload);
+  } catch (...) {
+    // A worker entry point must never unwind out of the thread.
+  }
+  done->store(true, std::memory_order_release);
+}
+
+// Requires core.mutex. Joins finished workers (except the caller) so threads
+// do not accumulate for the whole process lifetime. `done` is stored after the
+// entry point returned, so the worker no longer touches core state here.
+inline void reap_finished_workers_locked(archoera_core& core) {
+  const std::thread::id self = std::this_thread::get_id();
+  auto it = core.workers.begin();
+  while (it != core.workers.end()) {
+    WorkerSlot& slot = **it;
+    if (slot.done.load(std::memory_order_acquire) &&
+        slot.thread.joinable() && slot.thread.get_id() != self) {
+      slot.thread.join();
+      it = core.workers.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 /*
  * The single async start engine. Registers `record` (the id/state/async
  * flags are filled in here), spawns `thread_entry` with the payload moved to
@@ -110,6 +144,8 @@ archoera_status spawn_async_task(
         return ARCHOERA_E_INVALID;
       }
 
+      reap_finished_workers_locked(*core);
+
       task_id = core->next_task_id++;
       record.id = task_id;
       record.state = ARCHOERA_TASK_RUNNING;
@@ -117,9 +153,22 @@ archoera_status spawn_async_task(
 
       auto inserted = core->tasks.emplace(task_id, std::move(record));
       try {
-        core->workers.emplace_back(thread_entry, core, task_id, heap_payload);
+        // Allocate the slot before starting the thread: a failing push_back
+        // must never leave an untracked thread behind.
+        core->workers.push_back(std::make_unique<WorkerSlot>());
       } catch (...) {
         core->tasks.erase(inserted.first);
+        delete heap_payload;
+        throw;
+      }
+
+      WorkerSlot& slot = *core->workers.back();
+      try {
+        slot.thread = std::thread(&run_task_worker<Payload>, core, task_id,
+                                  heap_payload, thread_entry, &slot.done);
+      } catch (...) {
+        core->tasks.erase(inserted.first);
+        core->workers.pop_back();
         delete heap_payload;
         throw;
       }

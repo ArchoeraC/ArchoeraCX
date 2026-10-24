@@ -452,6 +452,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   String _filesKeptMessage(AppLocalizations l10n, String? reason) =>
       switch (reason) {
         'missing' => l10n.instanceDeleteFilesKeptMissing,
+        'outside_root' => l10n.instanceDeleteFilesKeptOutsideRoot,
         'shared_root' ||
         'nested_instance' ||
         'not_managed' => l10n.instanceDeleteFilesKeptShared,

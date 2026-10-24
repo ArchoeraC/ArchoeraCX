@@ -66,5 +66,8 @@ String slugForInstance(String name) {
       .replaceAll(RegExp(r'[^a-z0-9._-]+'), '-')
       .replaceAll(RegExp(r'-+'), '-')
       .replaceAll(RegExp(r'^-|-$'), '');
-  return slug.isEmpty ? 'instance' : slug;
+  // Reject separators: "."/".."/"..." would otherwise make the instance root
+  // resolve to the instances directory or its parent.
+  if (slug.isEmpty || RegExp(r'^\.+$').hasMatch(slug)) return 'instance';
+  return slug;
 }
