@@ -91,6 +91,10 @@ void main() {
     expect(find.text('Window size'), findsOneWidget);
     expect(find.text('854 × 480'), findsOneWidget);
     expect(find.text('Additional game arguments'), findsOneWidget);
+    expect(find.text('Commands'), findsOneWidget);
+    expect(find.text('Pre-load command'), findsOneWidget);
+    expect(find.text('Pre-launch command'), findsOneWidget);
+    expect(find.text('Post-exit command'), findsOneWidget);
     expect(find.text('Wrapper & environment'), findsOneWidget);
     expect(find.text('Wrapper command'), findsOneWidget);
     expect(find.text('Environment variables'), findsOneWidget);
@@ -163,6 +167,54 @@ void main() {
     expect(
       container.read(appSettingsProvider).value?.environment,
       const <String, String>{'DRI_PRIME': '1'},
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('launch lifecycle commands save and validate', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Launch').first);
+    await tester.pumpAndSettle();
+
+    final preLoad = find.byKey(const ValueKey('settings-pre-load-command'));
+    final preLaunch = find.byKey(const ValueKey('settings-pre-launch-command'));
+    final postExit = find.byKey(const ValueKey('settings-post-exit-command'));
+    await tester.ensureVisible(preLaunch);
+    await tester.pumpAndSettle();
+    await tester.enterText(preLoad, 'echo prepare');
+    await tester.enterText(preLaunch, 'echo start');
+    await tester.enterText(postExit, 'echo done');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ArchoeraApp)),
+    );
+    final saved = container.read(appSettingsProvider).value;
+    expect(saved?.preLoadCommand, 'echo prepare');
+    expect(saved?.preLaunchCommand, 'echo start');
+    expect(saved?.postExitCommand, 'echo done');
+
+    // An unclosed quote stays local and never reaches the settings store.
+    await tester.enterText(preLaunch, 'echo "unclosed');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    expect(find.text('Unclosed " quote.'), findsOneWidget);
+    expect(
+      container.read(appSettingsProvider).value?.preLaunchCommand,
+      'echo start',
     );
     expect(tester.takeException(), isNull);
   });

@@ -14,6 +14,7 @@ import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/confirm.dart';
 import '../common/toast.dart';
+import 'instance_command_overrides.dart';
 import 'instance_java_runtime_picker.dart';
 import 'instance_override_switch.dart';
 
@@ -63,6 +64,7 @@ class _InstanceSettingsDialogState
   final _gameArgsController = TextEditingController();
   final _wrapperController = TextEditingController();
   final _environmentController = TextEditingController();
+  late final InstanceCommandOverridesController _commands;
   final _joinServerController = TextEditingController();
   final _joinWorldController = TextEditingController();
   final _javaController = TextEditingController();
@@ -85,6 +87,9 @@ class _InstanceSettingsDialogState
   @override
   void initState() {
     super.initState();
+    _commands = InstanceCommandOverridesController(
+      overrides: widget.instance.overrides,
+    );
     final overrides = widget.instance.overrides;
     if (overrides != null) {
       _minController.text = overrides.memoryMinMb?.toString() ?? '';
@@ -134,6 +139,7 @@ class _InstanceSettingsDialogState
     _gameArgsController.dispose();
     _wrapperController.dispose();
     _environmentController.dispose();
+    _commands.dispose();
     _joinServerController.dispose();
     _joinWorldController.dispose();
     _javaController.dispose();
@@ -182,6 +188,9 @@ class _InstanceSettingsDialogState
         wrapperCommand: _wrapperOverride
             ? _wrapperController.text.trim()
             : null,
+        preLoadCommand: _commands.preLoadCommand,
+        preLaunchCommand: _commands.preLaunchCommand,
+        postExitCommand: _commands.postExitCommand,
         environment: _environmentOverride
             ? parseLaunchEnvironment(_environmentController.text).values
             : null,
@@ -304,6 +313,8 @@ class _InstanceSettingsDialogState
       }
     }
 
+    error ??= _commands.validate(l10n);
+
     if (_autoJoin) {
       final serverInput = _joinServerController.text;
       final worldInput = _joinWorldController.text;
@@ -344,16 +355,6 @@ class _InstanceSettingsDialogState
     setState(() => _error = message);
     toast(message, type: ToastType.error);
   }
-
-  List<(String, String)> _gcOptions(AppLocalizations l10n) => [
-    ('auto', l10n.settingsGcAuto),
-    ('g1gc', l10n.settingsGcG1),
-    ('zgc', l10n.settingsGcZgc),
-    ('parallel', l10n.settingsGcParallel),
-    ('serial', l10n.settingsGcSerial),
-    ('shenandoah', l10n.settingsGcShenandoah),
-    ('epsilon', l10n.settingsGcEpsilon),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -496,16 +497,17 @@ class _InstanceSettingsDialogState
                     DropdownButtonFormField<String>(
                       key: const ValueKey('instance-gc-mode'),
                       initialValue: _gcMode ?? '',
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: l10n.instanceSettingsGc,
                         prefixIcon: const Icon(AppIcons.settings, size: 18),
                       ),
                       items: [
                         DropdownMenuItem(value: '', child: Text(gcHint)),
-                        for (final option in _gcOptions(l10n))
+                        for (final mode in InstanceOverrides.gcModes)
                           DropdownMenuItem(
-                            value: option.$1,
-                            child: Text(option.$2),
+                            value: mode,
+                            child: Text(_gcLabel(l10n, mode)),
                           ),
                       ],
                       onChanged: _saving
@@ -539,6 +541,11 @@ class _InstanceSettingsDialogState
                         hintText: l10n.instanceSettingsFollowGlobal,
                         alignLabelWithHint: true,
                       ),
+                    ),
+                    InstanceCommandOverrides(
+                      controller: _commands,
+                      enabled: !_saving,
+                      onChanged: () => setState(() {}),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     InstanceOverrideSwitch(
@@ -673,6 +680,7 @@ class _InstanceSettingsDialogState
                     DropdownButtonFormField<String>(
                       key: const ValueKey('instance-window-mode'),
                       initialValue: _windowMode,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: l10n.instanceSettingsWindow,
                         prefixIcon: const Icon(AppIcons.window, size: 18),

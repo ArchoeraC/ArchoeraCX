@@ -719,6 +719,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsGameArgsNote => '追加到原版参数之后，按空格拆分；留空表示不加。';
 
   @override
+  String get settingsSectionCommands => '启动命令';
+
+  @override
+  String get settingsCommandsNote => '每次启动各执行一次，实例可单独覆盖；留空表示不执行。';
+
+  @override
+  String get settingsPreLoadCommand => '加载前命令';
+
+  @override
+  String get settingsPreLoadCommandDesc => '在准备实例之前运行。';
+
+  @override
+  String get settingsPreLaunchCommand => '启动前命令';
+
+  @override
+  String get settingsPreLaunchCommandDesc => '准备完成后、Java 启动前运行；失败会中止启动。';
+
+  @override
+  String get settingsPostExitCommand => '退出后命令';
+
+  @override
+  String get settingsPostExitCommandDesc => '游戏退出后运行；失败只写入日志。';
+
+  @override
+  String get settingsCommandEmptyHint => '留空表示不执行。';
+
+  @override
+  String get settingsCommandsHelp =>
+      '命令以当前用户身份、不经过 shell、在实例目录中运行。环境变量中可使用 \$INST_NAME、\$INST_ID、\$INST_DIR、\$INST_MC_DIR、\$INST_JAVA 和 \$INST_JAVA_ARGS（账户令牌已脱敏）。请勿在命令中填写账户令牌。';
+
+  @override
   String get settingsSectionProcess => '包装命令与环境变量';
 
   @override
@@ -744,6 +775,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get launchWrapperCommandTooLong => '包装命令最多 4096 个字符。';
+
+  @override
+  String get launchCommandTooLong => '命令最多 4096 个字符。';
+
+  @override
+  String get launchCommandInvalidCharacter => '命令不能包含 NUL 或换行。';
+
+  @override
+  String launchCommandUnclosedQuote(String quote) {
+    return '引号 $quote 未闭合。';
+  }
 
   @override
   String launchEnvironmentMissingSeparator(int line) {
@@ -2277,6 +2319,31 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceSettingsEnvironmentHelp => '空列表会清除该实例继承的全局环境变量。';
+
+  @override
+  String get instanceSettingsPreLoadOverride => '覆盖加载前命令';
+
+  @override
+  String get instanceSettingsPreLaunchOverride => '覆盖启动前命令';
+
+  @override
+  String get instanceSettingsPostExitOverride => '覆盖退出后命令';
+
+  @override
+  String get instanceSettingsPreLoadCommand => '加载前命令';
+
+  @override
+  String get instanceSettingsPreLaunchCommand => '启动前命令';
+
+  @override
+  String get instanceSettingsPostExitCommand => '退出后命令';
+
+  @override
+  String get instanceSettingsCommandEmptyHint => '留空表示不执行该命令。';
+
+  @override
+  String get instanceSettingsCommandsHelp =>
+      '命令以当前用户身份、不经过 shell、在实例目录中运行；可使用 \$INST_* 环境变量。启动前命令失败会中止启动，退出后命令失败只写入日志。请勿在命令中填写账户令牌。';
 
   @override
   String get instanceSettingsAutoJoin => '自动加入';

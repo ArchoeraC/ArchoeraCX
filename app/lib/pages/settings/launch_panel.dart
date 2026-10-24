@@ -27,14 +27,23 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
   final _game = TextEditingController();
   final _wrapper = TextEditingController();
   final _environment = TextEditingController();
+  final _preLoad = TextEditingController();
+  final _preLaunch = TextEditingController();
+  final _postExit = TextEditingController();
   final _gameFocus = FocusNode();
   final _wrapperFocus = FocusNode();
   final _environmentFocus = FocusNode();
+  final _preLoadFocus = FocusNode();
+  final _preLaunchFocus = FocusNode();
+  final _postExitFocus = FocusNode();
   Timer? _debounce;
   bool _saving = false;
   String? _error;
   String? _wrapperError;
   String? _environmentError;
+  String? _preLoadError;
+  String? _preLaunchError;
+  String? _postExitError;
 
   @override
   void initState() {
@@ -49,6 +58,11 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     _environmentFocus.addListener(() {
       if (!_environmentFocus.hasFocus) _saveNow();
     });
+    for (final focus in [_preLoadFocus, _preLaunchFocus, _postExitFocus]) {
+      focus.addListener(() {
+        if (!focus.hasFocus) _saveNow();
+      });
+    }
   }
 
   @override
@@ -67,6 +81,15 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
         widget.settings?.environment ?? const <String, String>{},
       );
     }
+    if (!_preLoadFocus.hasFocus) {
+      _preLoad.text = widget.settings?.preLoadCommand ?? '';
+    }
+    if (!_preLaunchFocus.hasFocus) {
+      _preLaunch.text = widget.settings?.preLaunchCommand ?? '';
+    }
+    if (!_postExitFocus.hasFocus) {
+      _postExit.text = widget.settings?.postExitCommand ?? '';
+    }
   }
 
   @override
@@ -75,9 +98,15 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     _game.dispose();
     _wrapper.dispose();
     _environment.dispose();
+    _preLoad.dispose();
+    _preLaunch.dispose();
+    _postExit.dispose();
     _gameFocus.dispose();
     _wrapperFocus.dispose();
     _environmentFocus.dispose();
+    _preLoadFocus.dispose();
+    _preLaunchFocus.dispose();
+    _postExitFocus.dispose();
     super.dispose();
   }
 
@@ -97,15 +126,29 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
         : l10n.launchWrapperCommandTooLong;
     final environment = parseLaunchEnvironment(_environment.text);
     final environmentError = environment.issue?.labelFor(l10n);
+    final preLoad = _preLoad.text.trim();
+    final preLaunch = _preLaunch.text.trim();
+    final postExit = _postExit.text.trim();
+    final preLoadError = validateLaunchCommand(preLoad).issue?.labelFor(l10n);
+    final preLaunchError = validateLaunchCommand(preLaunch).issue
+        ?.labelFor(l10n);
+    final postExitError = validateLaunchCommand(postExit).issue?.labelFor(l10n);
 
     setState(() {
       _saving = true;
       _error = null;
       _wrapperError = wrapperError;
       _environmentError = environmentError;
+      _preLoadError = preLoadError;
+      _preLaunchError = preLaunchError;
+      _postExitError = postExitError;
     });
 
-    if (wrapperError != null || environmentError != null) {
+    if (wrapperError != null ||
+        environmentError != null ||
+        preLoadError != null ||
+        preLaunchError != null ||
+        postExitError != null) {
       setState(() => _saving = false);
       return;
     }
@@ -116,6 +159,9 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
           .setRuntimeOptions(
             gameArgs: _game.text.trim(),
             wrapperCommand: wrapper.isEmpty ? null : wrapper,
+            preLoadCommand: preLoad.isEmpty ? null : preLoad,
+            preLaunchCommand: preLaunch.isEmpty ? null : preLaunch,
+            postExitCommand: postExit.isEmpty ? null : postExit,
             environment: environment.values,
           );
     } catch (error) {
@@ -298,6 +344,61 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
       ],
     );
 
+    final commandsGroup = _SettingsGroup(
+      title: l10n.settingsSectionCommands,
+      note: l10n.settingsCommandsNote,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.sm,
+            AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _commandField(
+                key: const ValueKey('settings-pre-load-command'),
+                controller: _preLoad,
+                focusNode: _preLoadFocus,
+                label: l10n.settingsPreLoadCommand,
+                hint: l10n.settingsCommandEmptyHint,
+                helper: l10n.settingsPreLoadCommandDesc,
+                error: _preLoadError,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _commandField(
+                key: const ValueKey('settings-pre-launch-command'),
+                controller: _preLaunch,
+                focusNode: _preLaunchFocus,
+                label: l10n.settingsPreLaunchCommand,
+                hint: l10n.settingsCommandEmptyHint,
+                helper: l10n.settingsPreLaunchCommandDesc,
+                error: _preLaunchError,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _commandField(
+                key: const ValueKey('settings-post-exit-command'),
+                controller: _postExit,
+                focusNode: _postExitFocus,
+                label: l10n.settingsPostExitCommand,
+                hint: l10n.settingsCommandEmptyHint,
+                helper: l10n.settingsPostExitCommandDesc,
+                error: _postExitError,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                l10n.settingsCommandsHelp,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
     final processGroup = _SettingsGroup(
       title: l10n.settingsSectionProcess,
       note: l10n.settingsProcessNote,
@@ -359,8 +460,36 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
         const SizedBox(height: AppSpacing.lg),
         argsGroup,
         const SizedBox(height: AppSpacing.lg),
+        commandsGroup,
+        const SizedBox(height: AppSpacing.lg),
         processGroup,
       ],
+    );
+  }
+
+  Widget _commandField({
+    required Key key,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required String hint,
+    required String helper,
+    required String? error,
+  }) {
+    return TextField(
+      key: key,
+      controller: controller,
+      focusNode: focusNode,
+      onChanged: (_) => _scheduleSave(),
+      onSubmitted: (_) => _saveNow(),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        helperText: helper,
+        helperMaxLines: 2,
+        errorText: error,
+        errorMaxLines: 2,
+      ),
     );
   }
 }

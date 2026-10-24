@@ -462,6 +462,46 @@
   "@settingsShareLoaderFilesDesc": {},
   "settingsSectionGameArgs": "Extra game arguments",
   "settingsGameArgsNote": "Appended after the vanilla arguments and split on spaces; leave empty for none.",
+  "settingsSectionCommands": "Commands",
+  "@settingsSectionCommands": {
+    "description": "Global lifecycle command section title in the Launch settings."
+  },
+  "settingsCommandsNote": "Run once per launch unless an instance overrides them; empty fields run nothing.",
+  "@settingsCommandsNote": {
+    "description": "Note under the global lifecycle command section."
+  },
+  "settingsPreLoadCommand": "Pre-load command",
+  "@settingsPreLoadCommand": {
+    "description": "Label for the global command that runs before the instance is prepared."
+  },
+  "settingsPreLoadCommandDesc": "Runs before the instance is prepared.",
+  "@settingsPreLoadCommandDesc": {
+    "description": "Helper text under the global pre-load command field."
+  },
+  "settingsPreLaunchCommand": "Pre-launch command",
+  "@settingsPreLaunchCommand": {
+    "description": "Label for the global command that runs immediately before Java starts."
+  },
+  "settingsPreLaunchCommandDesc": "Runs after preparation, immediately before Java starts. A failure aborts the launch.",
+  "@settingsPreLaunchCommandDesc": {
+    "description": "Helper text under the global pre-launch command field."
+  },
+  "settingsPostExitCommand": "Post-exit command",
+  "@settingsPostExitCommand": {
+    "description": "Label for the global command that runs after the game exits."
+  },
+  "settingsPostExitCommandDesc": "Runs after the game exits. A failure is only logged.",
+  "@settingsPostExitCommandDesc": {
+    "description": "Helper text under the global post-exit command field."
+  },
+  "settingsCommandEmptyHint": "Leave empty to run nothing.",
+  "@settingsCommandEmptyHint": {
+    "description": "Hint shown inside an empty lifecycle command field."
+  },
+  "settingsCommandsHelp": "Commands run as your user, without a shell, in the instance folder. $INST_NAME, $INST_ID, $INST_DIR, $INST_MC_DIR, $INST_JAVA and $INST_JAVA_ARGS (account secrets redacted) are available as environment variables. Do not put account tokens in commands.",
+  "@settingsCommandsHelp": {
+    "description": "Safety and environment help under the global lifecycle command fields."
+  },
   "settingsSectionProcess": "Wrapper & environment",
   "@settingsSectionProcess": {
     "description": "Global launch-process options: wrapper command and child environment."
@@ -497,6 +537,23 @@
   "launchWrapperCommandTooLong": "Wrapper commands may be at most 4096 characters.",
   "@launchWrapperCommandTooLong": {
     "description": "Validation error when a wrapper command exceeds the contract limit."
+  },
+  "launchCommandTooLong": "Commands may be at most 4096 characters.",
+  "@launchCommandTooLong": {
+    "description": "Validation error when a lifecycle command exceeds the contract limit."
+  },
+  "launchCommandInvalidCharacter": "Commands cannot contain NUL or line breaks.",
+  "@launchCommandInvalidCharacter": {
+    "description": "Validation error for NUL or CR/LF inside a lifecycle command."
+  },
+  "launchCommandUnclosedQuote": "Unclosed {quote} quote.",
+  "@launchCommandUnclosedQuote": {
+    "description": "Validation error for a lifecycle command with an unclosed quote.",
+    "placeholders": {
+      "quote": {
+        "type": "String"
+      }
+    }
   },
   "launchEnvironmentMissingSeparator": "Line {line}: enter KEY=VALUE.",
   "@launchEnvironmentMissingSeparator": {
@@ -2032,6 +2089,38 @@
   "instanceSettingsEnvironmentHelp": "An empty list clears the global variables for this instance.",
   "@instanceSettingsEnvironmentHelp": {
     "description": "Helper text under the per-instance environment field."
+  },
+  "instanceSettingsPreLoadOverride": "Override pre-load command",
+  "@instanceSettingsPreLoadOverride": {
+    "description": "Switch that enables a per-instance pre-load command override."
+  },
+  "instanceSettingsPreLaunchOverride": "Override pre-launch command",
+  "@instanceSettingsPreLaunchOverride": {
+    "description": "Switch that enables a per-instance pre-launch command override."
+  },
+  "instanceSettingsPostExitOverride": "Override post-exit command",
+  "@instanceSettingsPostExitOverride": {
+    "description": "Switch that enables a per-instance post-exit command override."
+  },
+  "instanceSettingsPreLoadCommand": "Pre-load command",
+  "@instanceSettingsPreLoadCommand": {
+    "description": "Per-instance pre-load command field."
+  },
+  "instanceSettingsPreLaunchCommand": "Pre-launch command",
+  "@instanceSettingsPreLaunchCommand": {
+    "description": "Per-instance pre-launch command field."
+  },
+  "instanceSettingsPostExitCommand": "Post-exit command",
+  "@instanceSettingsPostExitCommand": {
+    "description": "Per-instance post-exit command field."
+  },
+  "instanceSettingsCommandEmptyHint": "Empty disables the command.",
+  "@instanceSettingsCommandEmptyHint": {
+    "description": "Hint explaining that an enabled empty command override runs nothing."
+  },
+  "instanceSettingsCommandsHelp": "Runs as your user without a shell in the instance folder; $INST_* variables are available. A failed pre-launch command aborts the launch; a failed post-exit command is only logged. Do not put account tokens in commands.",
+  "@instanceSettingsCommandsHelp": {
+    "description": "Safety and environment help under the per-instance command overrides."
   },
   "instanceSettingsAutoJoin": "Auto-join",
   "@instanceSettingsAutoJoin": {

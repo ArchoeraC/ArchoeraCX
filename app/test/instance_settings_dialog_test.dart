@@ -6,6 +6,7 @@ import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
 import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:archoera_cx/widgets/common/toast.dart';
+import 'package:archoera_cx/widgets/instances/instance_command_overrides.dart';
 import 'package:archoera_cx/widgets/instances/instance_settings_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -96,6 +97,30 @@ Future<void> _enterVisible(
 }
 
 void main() {
+  test('command overrides map switches to inherit or explicit none', () {
+    final commands = InstanceCommandOverridesController(
+      overrides: const InstanceOverrides(preLoadCommand: 'echo prepare'),
+    );
+    addTearDown(commands.dispose);
+
+    // Stored values enable their switch; missing ones inherit (null).
+    expect(commands.preLoadEnabled, isTrue);
+    expect(commands.preLoadCommand, 'echo prepare');
+    expect(commands.preLaunchEnabled, isFalse);
+    expect(commands.preLaunchCommand, isNull);
+    expect(commands.postExitCommand, isNull);
+
+    // An enabled empty field is an explicit "run nothing", not inheritance.
+    commands.preLaunchEnabled = true;
+    commands.postExitEnabled = true;
+    expect(commands.preLaunchCommand, '');
+    expect(commands.postExitCommand, '');
+
+    // Turning a switch off goes back to inheritance.
+    commands.preLoadEnabled = false;
+    expect(commands.preLoadCommand, isNull);
+  });
+
   testWidgets('renders every override field and starts empty', (tester) async {
     await _open(tester, _instance());
 
@@ -111,11 +136,17 @@ void main() {
     expect(find.text('Window height'), findsOneWidget);
     expect(find.text('Override wrapper command'), findsOneWidget);
     expect(find.text('Override environment variables'), findsOneWidget);
+    expect(find.text('Override pre-load command'), findsOneWidget);
+    expect(find.text('Override pre-launch command'), findsOneWidget);
+    expect(find.text('Override post-exit command'), findsOneWidget);
     expect(find.text('Auto-join'), findsOneWidget);
 
     // Overrides start off, so their fields are hidden.
     expect(find.text('Wrapper command'), findsNothing);
     expect(find.text('Environment variables'), findsNothing);
+    expect(find.text('Pre-load command'), findsNothing);
+    expect(find.text('Pre-launch command'), findsNothing);
+    expect(find.text('Post-exit command'), findsNothing);
     expect(find.text('Server address'), findsNothing);
 
     // Nothing is overridden, so the GC and window dropdowns inherit.
@@ -134,6 +165,9 @@ void main() {
           jvmArgs: '-XX:+UseStringDeduplication',
           gameArgs: '--demo',
           wrapperCommand: 'mangohud',
+          preLoadCommand: 'echo prepare',
+          preLaunchCommand: 'echo start',
+          postExitCommand: 'echo done',
           environment: <String, String>{'DRI_PRIME': '1'},
           joinServerOnLaunch: true,
           joinServerAddress: 'example.com:25565',
@@ -152,6 +186,9 @@ void main() {
     expect(find.text('-XX:+UseStringDeduplication'), findsOneWidget);
     expect(find.text('--demo'), findsOneWidget);
     expect(find.text('mangohud'), findsOneWidget);
+    expect(find.text('echo prepare'), findsOneWidget);
+    expect(find.text('echo start'), findsOneWidget);
+    expect(find.text('echo done'), findsOneWidget);
     expect(find.text('DRI_PRIME=1'), findsOneWidget);
     expect(find.text('example.com:25565'), findsOneWidget);
     expect(find.text('New World'), findsOneWidget);
@@ -302,6 +339,63 @@ void main() {
       findsWidgets,
     );
     expect(find.text('Instance settings'), findsOneWidget);
+
+    await _drainToasts(tester);
+  });
+
+  testWidgets('toggles and validates lifecycle command overrides inline', (
+    tester,
+  ) async {
+    await _open(tester, _instance());
+
+    // Off means inherit, so no command field is rendered.
+    expect(
+      find.byKey(const ValueKey('instance-pre-launch-command')),
+      findsNothing,
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('instance-pre-launch-command-override')),
+    );
+    expect(
+      find.byKey(const ValueKey('instance-pre-launch-command')),
+      findsOneWidget,
+    );
+
+    await _enterVisible(
+      tester,
+      find.byKey(const ValueKey('instance-pre-launch-command')),
+      'echo "unclosed',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unclosed " quote.'), findsWidgets);
+    expect(find.text('Instance settings'), findsOneWidget);
+
+    await _drainToasts(tester);
+  });
+
+  testWidgets('command overrides stay usable in a narrow dialog', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _open(tester, _instance());
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('instance-post-exit-command-override')),
+    );
+
+    expect(
+      find.byKey(const ValueKey('instance-post-exit-command')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
 
     await _drainToasts(tester);
   });

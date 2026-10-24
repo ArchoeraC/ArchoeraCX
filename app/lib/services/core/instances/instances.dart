@@ -141,8 +141,9 @@ mixin CoreClientInstances on CoreTransport {
   /// follows the global setting) while a value sets it. The C# owner treats
   /// this as a merge patch, so omitted keys would stay untouched.
   ///
-  /// [wrapperCommand] keeps an empty string as "explicitly no wrapper", and
-  /// [environment] keeps an empty map as "explicitly clear the global map".
+  /// [wrapperCommand] and the lifecycle commands keep an empty string as
+  /// "explicitly none", and [environment] keeps an empty map as "explicitly
+  /// clear the global map".
   Future<GameInstance> updateInstanceOverrides({
     required String instanceId,
     int? memoryMinMb,
@@ -151,6 +152,9 @@ mixin CoreClientInstances on CoreTransport {
     String? gcMode,
     String? gameArgs,
     String? wrapperCommand,
+    String? preLoadCommand,
+    String? preLaunchCommand,
+    String? postExitCommand,
     Map<String, String>? environment,
     bool? joinServerOnLaunch,
     String? joinServerAddress,
@@ -172,6 +176,9 @@ mixin CoreClientInstances on CoreTransport {
           'gcMode': gcMode,
           'gameArgs': gameArgs,
           'wrapperCommand': wrapperCommand,
+          'preLoadCommand': preLoadCommand,
+          'preLaunchCommand': preLaunchCommand,
+          'postExitCommand': postExitCommand,
           'environment': environment,
           'joinServerOnLaunch': joinServerOnLaunch,
           'joinServerAddress': joinServerAddress,

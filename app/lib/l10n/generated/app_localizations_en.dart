@@ -750,6 +750,41 @@ class AppLocalizationsEn extends AppLocalizations {
       'Appended after the vanilla arguments and split on spaces; leave empty for none.';
 
   @override
+  String get settingsSectionCommands => 'Commands';
+
+  @override
+  String get settingsCommandsNote =>
+      'Run once per launch unless an instance overrides them; empty fields run nothing.';
+
+  @override
+  String get settingsPreLoadCommand => 'Pre-load command';
+
+  @override
+  String get settingsPreLoadCommandDesc =>
+      'Runs before the instance is prepared.';
+
+  @override
+  String get settingsPreLaunchCommand => 'Pre-launch command';
+
+  @override
+  String get settingsPreLaunchCommandDesc =>
+      'Runs after preparation, immediately before Java starts. A failure aborts the launch.';
+
+  @override
+  String get settingsPostExitCommand => 'Post-exit command';
+
+  @override
+  String get settingsPostExitCommandDesc =>
+      'Runs after the game exits. A failure is only logged.';
+
+  @override
+  String get settingsCommandEmptyHint => 'Leave empty to run nothing.';
+
+  @override
+  String get settingsCommandsHelp =>
+      'Commands run as your user, without a shell, in the instance folder. \$INST_NAME, \$INST_ID, \$INST_DIR, \$INST_MC_DIR, \$INST_JAVA and \$INST_JAVA_ARGS (account secrets redacted) are available as environment variables. Do not put account tokens in commands.';
+
+  @override
   String get settingsSectionProcess => 'Wrapper & environment';
 
   @override
@@ -780,6 +815,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get launchWrapperCommandTooLong =>
       'Wrapper commands may be at most 4096 characters.';
+
+  @override
+  String get launchCommandTooLong => 'Commands may be at most 4096 characters.';
+
+  @override
+  String get launchCommandInvalidCharacter =>
+      'Commands cannot contain NUL or line breaks.';
+
+  @override
+  String launchCommandUnclosedQuote(String quote) {
+    return 'Unclosed $quote quote.';
+  }
 
   @override
   String launchEnvironmentMissingSeparator(int line) {
@@ -2397,6 +2444,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get instanceSettingsEnvironmentHelp =>
       'An empty list clears the global variables for this instance.';
+
+  @override
+  String get instanceSettingsPreLoadOverride => 'Override pre-load command';
+
+  @override
+  String get instanceSettingsPreLaunchOverride => 'Override pre-launch command';
+
+  @override
+  String get instanceSettingsPostExitOverride => 'Override post-exit command';
+
+  @override
+  String get instanceSettingsPreLoadCommand => 'Pre-load command';
+
+  @override
+  String get instanceSettingsPreLaunchCommand => 'Pre-launch command';
+
+  @override
+  String get instanceSettingsPostExitCommand => 'Post-exit command';
+
+  @override
+  String get instanceSettingsCommandEmptyHint => 'Empty disables the command.';
+
+  @override
+  String get instanceSettingsCommandsHelp =>
+      'Runs as your user without a shell in the instance folder; \$INST_* variables are available. A failed pre-launch command aborts the launch; a failed post-exit command is only logged. Do not put account tokens in commands.';
 
   @override
   String get instanceSettingsAutoJoin => 'Auto-join';
