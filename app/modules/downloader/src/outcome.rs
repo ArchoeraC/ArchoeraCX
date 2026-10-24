@@ -91,6 +91,9 @@ impl FileOutcome {
 pub(crate) struct SourceFailure {
     pub(crate) error: DownloadError,
     pub(crate) transferred: u64,
+    /// The failure belongs to the HTTP version layer, so one retry on the
+    /// other client may succeed (see `protocol.rs`).
+    pub(crate) protocol: bool,
 }
 
 impl SourceFailure {
@@ -99,6 +102,7 @@ impl SourceFailure {
         Self {
             error: error.into(),
             transferred: 0,
+            protocol: false,
         }
     }
 
@@ -107,6 +111,16 @@ impl SourceFailure {
         Self {
             error: error.into(),
             transferred,
+            protocol: false,
+        }
+    }
+
+    /// A failure tagged with whether it came from the HTTP version layer.
+    pub(crate) fn classified(error: impl Into<DownloadError>, protocol: bool) -> Self {
+        Self {
+            error: error.into(),
+            transferred: 0,
+            protocol,
         }
     }
 }

@@ -11,7 +11,7 @@ use std::thread;
 use std::time::Duration;
 
 use archoera_dl::{
-    CancellationToken, DownloadPlan, FileMode, FileSpec, HashSpec, PlanOptions, Progress,
+    CancellationToken, DownloadPlan, FileMode, FileSpec, HashSpec, PlanOptions, Progress, Status,
     VerifyExisting, execute_plan, validate_plan,
 };
 use sha1::{Digest, Sha1};
@@ -32,6 +32,8 @@ struct Route {
     slow: Option<Duration>,
     /// Honour `Range: bytes=a-b` with a 206 response.
     ranges: bool,
+    /// Fail the first N requests with this status, then serve normally.
+    fail_first: Option<(Arc<Mutex<usize>>, u16)>,
 }
 
 impl Route {
@@ -42,6 +44,7 @@ impl Route {
             omit_length: false,
             slow: None,
             ranges: false,
+            fail_first: None,
         }
     }
 
@@ -59,6 +62,14 @@ impl Route {
             omit_length: false,
             slow: None,
             ranges: false,
+            fail_first: None,
+        }
+    }
+
+    fn fail_once(status: u16, body: impl Into<Vec<u8>>) -> Self {
+        Self {
+            fail_first: Some((Arc::new(Mutex::new(1)), status)),
+            ..Self::ok(body)
         }
     }
 
@@ -69,6 +80,7 @@ impl Route {
             omit_length: true,
             slow: None,
             ranges: false,
+            fail_first: None,
         }
     }
 
@@ -79,6 +91,7 @@ impl Route {
             omit_length: false,
             slow: Some(delay),
             ranges: false,
+            fail_first: None,
         }
     }
 }
@@ -171,15 +184,31 @@ fn serve_connection(
         .lock()
         .expect("requests lock")
         .push(format!("{path} {}", range_header.clone().unwrap_or_default()));
-    let route = routes
+    let mut route = routes
         .get(path)
         .cloned()
         .unwrap_or_else(|| Route::status(404));
+    if let Some((remaining, status)) = route.fail_first.clone() {
+        let fail = {
+            let mut left = remaining.lock().expect("fail counter lock");
+            let fail = *left > 0;
+            if fail {
+                *left -= 1;
+            }
+            fail
+        };
+        if fail {
+            route.status = status;
+            route.body.clear();
+        }
+    }
     let reason = match route.status {
         200 => "OK",
         404 => "Not Found",
+        421 => "Misdirected Request",
         429 => "Too Many Requests",
         500 => "Internal Server Error",
+        505 => "HTTP Version Not Supported",
         _ => "Status",
     };
 
@@ -499,6 +528,35 @@ async fn rejects_parent_escape_before_writing() {
     );
 }
 
+#[cfg(unix)]
+#[tokio::test]
+async fn refuses_to_write_through_a_symlinked_part() {
+    use std::os::unix::fs::symlink;
+
+    let temp = TempDir::new().expect("tempdir");
+    let body = b"payload".to_vec();
+    let mut routes = HashMap::new();
+    routes.insert("/f".into(), Route::ok(body.clone()));
+    let server = TestServer::start(routes);
+
+    let victim = temp.path().join("victim.txt");
+    std::fs::write(&victim, b"keep me").expect("write victim");
+    symlink(&victim, temp.path().join("f.bin.part")).expect("symlink part");
+
+    let result = execute_plan(
+        plan(temp.path(), vec![file(server.url("/f"), &body, "f.bin")]),
+        CancellationToken::new(),
+        None,
+    )
+    .await
+    .expect("execute");
+
+    assert_eq!(result.status.as_str(), "failed");
+    assert_eq!(result.failed[0].code, "PATH_ESCAPE");
+    assert_eq!(std::fs::read(&victim).expect("read victim"), b"keep me");
+    assert!(!temp.path().join("f.bin").exists());
+}
+
 #[tokio::test]
 async fn rejects_duplicate_destinations() {
     let temp = TempDir::new().expect("tempdir");
@@ -599,6 +657,32 @@ async fn http_404_is_reported() {
     assert_eq!(result.failed[0].code, "HTTP_4XX");
     assert_eq!(result.failed[0].attempts, 1);
     assert!(!temp.path().join("missing.bin").exists());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn http_421_falls_back_to_http1_and_completes() {
+    let temp = TempDir::new().expect("tempdir");
+    let body = b"fallback body".to_vec();
+    let mut routes = HashMap::new();
+    routes.insert("/f.bin".into(), Route::fail_once(421, body.clone()));
+    let server = TestServer::start(routes);
+
+    let result = execute_plan(
+        plan(
+            temp.path(),
+            vec![file(server.url("/f.bin"), &body, "f.bin")],
+        ),
+        CancellationToken::new(),
+        None,
+    )
+    .await
+    .expect("execute");
+
+    // 421 is not retryable on its own, so completion proves the protocol
+    // fallback ran: first request rejected, second one on the HTTP/1.1 client.
+    assert_eq!(result.status, Status::Completed, "{:?}", result.failed);
+    assert_eq!(read(&temp.path().join("f.bin")), body);
+    assert_eq!(server.requests().len(), 2, "{:?}", server.requests());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -761,8 +845,8 @@ async fn resumes_only_the_missing_chunks() {
     // Pretend two of four chunks finished before the process was interrupted.
     let part = temp.path().join("resume.bin.part");
     let mut partial = body.clone();
-    for index in (2 * chunk as usize)..partial.len() {
-        partial[index] = 0;
+    for byte in &mut partial[(2 * chunk as usize)..] {
+        *byte = 0;
     }
     std::fs::write(&part, &partial).expect("write part");
     let meta = format!(

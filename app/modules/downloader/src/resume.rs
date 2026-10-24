@@ -34,6 +34,9 @@ pub(crate) struct ResumeMeta {
 }
 
 pub(crate) const RESUME_SCHEMA: u32 = 1;
+/// A sidecar with more than this is corrupt or hostile; ignore it and restart
+/// instead of reading an unbounded file into memory.
+const MAX_RESUME_META_BYTES: u64 = 64 * 1024;
 
 pub(crate) async fn load_resume(
     part: &Path,
@@ -41,6 +44,10 @@ pub(crate) async fn load_resume(
     chunk_size: u64,
 ) -> Option<ResumeMeta> {
     let path = meta_path(part);
+    let metadata = tokio::fs::symlink_metadata(&path).await.ok()?;
+    if !metadata.is_file() || metadata.len() > MAX_RESUME_META_BYTES {
+        return None;
+    }
     let bytes = tokio::fs::read(&path).await.ok()?;
     let meta: ResumeMeta = serde_json::from_slice(&bytes).ok()?;
     if meta.schema_version != RESUME_SCHEMA
@@ -62,6 +69,9 @@ pub(crate) async fn load_resume(
 pub(crate) async fn save_resume(part: &Path, meta: &ResumeMeta) {
     let path = meta_path(part);
     let temporary = path.with_extension("meta.tmp");
+    if crate::parts::reject_link_like(&temporary).await.is_err() {
+        return;
+    }
     let Ok(bytes) = serde_json::to_vec(meta) else {
         return;
     };

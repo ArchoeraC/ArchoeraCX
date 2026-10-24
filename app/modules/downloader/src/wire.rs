@@ -11,11 +11,11 @@ use url::Url;
 use crate::client::READ_IDLE_TIMEOUT;
 use crate::error::DownloadError;
 use crate::executor::{ConnectionGuard, Engine};
-use crate::hash::Hasher;
 use crate::limiter::BandwidthLimiter;
 use crate::outcome::SourceFailure;
 use crate::plan::ValidatedFile;
 use crate::progress::FileMeter;
+use crate::protocol::{HttpVersion, is_protocol_failure};
 
 /// Deadline for the response headers.
 const HEADER_TIMEOUT: Duration = Duration::from_secs(20);
@@ -36,10 +36,11 @@ pub(crate) async fn open_response(
     range: Option<(u64, u64)>,
     if_range: Option<&str>,
     header_label: &str,
+    version: HttpVersion,
 ) -> Result<(reqwest::Response, ConnectionGuard), SourceFailure> {
     let guard = engine.acquire_or_cancel(source).await?;
     let mut request = engine
-        .client
+        .client(version)
         .get(source.clone())
         .header(ACCEPT_ENCODING, "identity");
     if let Some((start, end)) = range {
@@ -48,19 +49,37 @@ pub(crate) async fn open_response(
             request = request.header(IF_RANGE, validator);
         }
     }
-    for (name, value) in &file.headers {
-        request = request.header(name.clone(), value.clone());
+    // Authorization/Cookie belong to the primary URL's origin. Sending them to
+    // a mirror would hand the credential to whatever host the plan lists.
+    if source.host_str() == file.url.host_str() {
+        for (name, value) in &file.headers {
+            request = request.header(name.clone(), value.clone());
+        }
     }
 
     let send = tokio::time::timeout(HEADER_TIMEOUT, request.send()).await;
     match send {
         Ok(Ok(response)) => Ok((response, guard)),
-        Ok(Err(err)) => Err(SourceFailure::instant(err)),
+        Ok(Err(err)) => {
+            let error = DownloadError::from(err);
+            let protocol = is_protocol_failure(&error);
+            Err(SourceFailure::classified(error, protocol))
+        }
         Err(_) => Err(SourceFailure::instant(DownloadError::Timeout(format!(
             "{header_label} timed out after {}s",
             HEADER_TIMEOUT.as_secs()
         )))),
     }
+}
+
+/// Whether this status means "the negotiated HTTP version is unusable" for
+/// the origin. `421` can only come from connection coalescing, which is an
+/// HTTP/2 behaviour; `505` from an HTTP/1.1 response means the server does
+/// not speak HTTP/1.1 at all, so retrying with it would just repeat the answer.
+pub(crate) fn protocol_status(status: reqwest::StatusCode, version: reqwest::Version) -> bool {
+    status == reqwest::StatusCode::MISDIRECTED_REQUEST
+        || (status == reqwest::StatusCode::HTTP_VERSION_NOT_SUPPORTED
+            && version == reqwest::Version::HTTP_2)
 }
 
 /// The status→failure mapping shared by both download modes: statuses that
@@ -116,16 +135,15 @@ pub(crate) fn length_rejection(
 
 /// Stream the response body into `target` (already positioned), enforcing the
 /// `expected` byte budget for this stream, the bandwidth limiter and the
-/// per-file meter. `hasher` is updated per chunk when
-/// the caller wants a stream-computed digest. Errors always report the plan
-/// level `file.size` in a `SIZE_MISMATCH`, even when `expected` is a chunk
-/// budget. Returns the written byte count.
+/// per-file meter. Errors always report the plan level `file.size` in a
+/// `SIZE_MISMATCH`, even when `expected` is a chunk budget. Returns the written
+/// byte count. The digest is computed from the finished `.part` afterwards so
+/// the verified bytes are the ones that actually reached the disk.
 pub(crate) async fn stream_body(
     mut response: reqwest::Response,
     file: &ValidatedFile,
     expected: u64,
     target: &mut tokio::fs::File,
-    mut hasher: Option<&mut Hasher>,
     limiter: Option<&BandwidthLimiter>,
     meter: &FileMeter,
 ) -> Result<u64, SourceFailure> {
@@ -165,9 +183,6 @@ pub(crate) async fn stream_body(
         if let Err(err) = target.write_all(&chunk).await {
             return Err(SourceFailure::after(err, written));
         }
-        if let Some(hasher) = hasher.as_mut() {
-            hasher.update(&chunk);
-        }
         written = next_written;
         meter.add(length);
     }
@@ -181,4 +196,37 @@ pub(crate) async fn stream_body(
         ));
     }
     Ok(written)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::protocol_status;
+    use reqwest::{StatusCode, Version};
+
+    #[test]
+    fn version_rejections_only_degrade_when_they_come_from_h2() {
+        // 421 exists because h2 coalesced connections; retry with h1.
+        assert!(protocol_status(
+            StatusCode::MISDIRECTED_REQUEST,
+            Version::HTTP_11
+        ));
+        assert!(protocol_status(
+            StatusCode::MISDIRECTED_REQUEST,
+            Version::HTTP_2
+        ));
+        // 505 on an h1 response means the origin does not speak h1 at all.
+        assert!(protocol_status(
+            StatusCode::HTTP_VERSION_NOT_SUPPORTED,
+            Version::HTTP_2
+        ));
+        assert!(!protocol_status(
+            StatusCode::HTTP_VERSION_NOT_SUPPORTED,
+            Version::HTTP_11
+        ));
+        assert!(!protocol_status(StatusCode::NOT_FOUND, Version::HTTP_2));
+        assert!(!protocol_status(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Version::HTTP_11
+        ));
+    }
 }

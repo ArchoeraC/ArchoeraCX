@@ -36,6 +36,15 @@ pub const DEFAULT_RANGE_THRESHOLD: u64 = 8 * 1024 * 1024;
 /// One ranged request. 4 MiB keeps the request count near a single stream while
 /// still letting a large file borrow several connections.
 pub const DEFAULT_CHUNK_SIZE: u64 = 4 * 1024 * 1024;
+/// No sensible plan wants smaller chunks: the request count (and the task
+/// count) grows inversely with the chunk size. The downloader's own tests use
+/// 64 KiB, which is accepted.
+pub const MIN_CHUNK_SIZE: u64 = 64 * 1024;
+/// A single range response should stay small enough to buffer/retry cheaply.
+pub const MAX_CHUNK_SIZE: u64 = 64 * 1024 * 1024;
+/// Hard cap on ranges per file. A larger file grows its chunk instead of its
+/// task count: a 1 TiB file gets ~1 GiB chunks, not 262k requests.
+pub const MAX_CHUNKS_PER_FILE: u64 = 1024;
 const MAX_DEST_BYTES: usize = 4_096;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -248,6 +257,14 @@ pub(crate) fn validate_plan_inner(plan: DownloadPlan) -> Result<ValidatedPlan, D
         return Err(DownloadError::InvalidPlan(format!(
             "options.perHostConcurrency {} exceeds {MAX_PER_HOST_CONCURRENCY}",
             plan.options.per_host_concurrency
+        )));
+    }
+    if plan.options.chunk_size != 0
+        && !(MIN_CHUNK_SIZE..=MAX_CHUNK_SIZE).contains(&plan.options.chunk_size)
+    {
+        return Err(DownloadError::InvalidPlan(format!(
+            "options.chunkSize {} is outside {MIN_CHUNK_SIZE}..={MAX_CHUNK_SIZE} (0 disables ranges)",
+            plan.options.chunk_size
         )));
     }
     if let Some(proxy) = &plan.options.proxy {
@@ -492,6 +509,7 @@ fn normalize_dest(dest: &str) -> Result<String, DownloadError> {
     let lower_name = file_name.to_ascii_lowercase();
     if lower_name.ends_with(".part")
         || lower_name.ends_with(".part.meta")
+        || lower_name.ends_with(".part.meta.tmp")
         || lower_name.ends_with(".part.lock")
         || lower_name == ".part"
     {
@@ -664,6 +682,14 @@ const fn default_chunk_size() -> u64 {
     DEFAULT_CHUNK_SIZE
 }
 
+/// Ranges per file are capped by growing the chunk, not by spawning more
+/// tasks. A 1 TiB file with the default 4 MiB chunk becomes ~1 GiB chunks
+/// rather than 262k requests (and 262k tasks).
+pub(crate) fn effective_chunk_size(configured: u64, size: u64) -> u64 {
+    let by_cap = size.div_ceil(MAX_CHUNKS_PER_FILE).max(1);
+    configured.max(1).max(by_cap)
+}
+
 const fn default_per_host_concurrency() -> u32 {
     DEFAULT_PER_HOST_CONCURRENCY
 }
@@ -696,6 +722,7 @@ mod tests {
     fn rejects_sidecar_dest() {
         assert!(normalize_dest("a/b.jar.part").is_err());
         assert!(normalize_dest("a/b.jar.part.meta").is_err());
+        assert!(normalize_dest("a/b.jar.part.meta.tmp").is_err());
     }
 
     #[test]
@@ -732,6 +759,33 @@ mod tests {
         assert_eq!(options.chunk_size, DEFAULT_CHUNK_SIZE);
         assert_eq!(DEFAULT_RANGE_THRESHOLD, 8 * 1024 * 1024);
         assert_eq!(DEFAULT_CHUNK_SIZE, 4 * 1024 * 1024);
+    }
+
+    #[test]
+    fn chunk_size_bounds_are_enforced() {
+        for value in [1, MIN_CHUNK_SIZE - 1, MAX_CHUNK_SIZE + 1] {
+            let mut plan = minimal_plan();
+            plan.options.chunk_size = value;
+            let error = validate_plan(&plan).expect_err("must reject");
+            assert_eq!(error.code().as_str(), "INVALID_PLAN", "{value}");
+        }
+        for value in [0, MIN_CHUNK_SIZE, MAX_CHUNK_SIZE] {
+            let mut plan = minimal_plan();
+            plan.options.chunk_size = value;
+            assert!(validate_plan(&plan).is_ok(), "{value}");
+        }
+    }
+
+    #[test]
+    fn chunk_growth_keeps_ranges_bounded() {
+        assert_eq!(
+            effective_chunk_size(DEFAULT_CHUNK_SIZE, 8 * 1024 * 1024),
+            DEFAULT_CHUNK_SIZE
+        );
+        let huge = 1_u64 << 40; // 1 TiB
+        let chunk = effective_chunk_size(DEFAULT_CHUNK_SIZE, huge);
+        assert!(chunk >= huge.div_ceil(MAX_CHUNKS_PER_FILE));
+        assert!(huge.div_ceil(chunk) <= MAX_CHUNKS_PER_FILE);
     }
 
     #[test]

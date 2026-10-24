@@ -10,9 +10,10 @@ use crate::error::DownloadError;
 use crate::executor::Engine;
 use crate::hash;
 use crate::outcome::SourceFailure;
-use crate::parts::rename_with_retry;
+use crate::parts::{reject_link_like, rename_with_retry};
 use crate::plan::{Durability, FileMode, ValidatedFile, VerifyExisting, is_link_like};
 use crate::progress::FileMeter;
+use crate::protocol::HttpVersion;
 use crate::wire;
 
 /// Decision taken from the already-present destination file.
@@ -98,6 +99,7 @@ pub(crate) async fn download_from_source(
     source: &Url,
     part: &Path,
     meter: &FileMeter,
+    version: HttpVersion,
 ) -> Result<u64, SourceFailure> {
     let (response, permit) = wire::open_response(
         engine,
@@ -106,10 +108,13 @@ pub(crate) async fn download_from_source(
         None,
         None,
         "response headers",
+        version,
     )
     .await?;
-    if let Some(error) = wire::status_failure(response.status()) {
-        return Err(SourceFailure::instant(error));
+    let status = response.status();
+    if let Some(error) = wire::status_failure(status) {
+        let protocol = wire::protocol_status(status, response.version());
+        return Err(SourceFailure::classified(error, protocol));
     }
     if let Some(error) = wire::encoding_rejection(&response) {
         return Err(SourceFailure::instant(error));
@@ -118,16 +123,17 @@ pub(crate) async fn download_from_source(
         return Err(SourceFailure::instant(error));
     }
 
+    reject_link_like(part)
+        .await
+        .map_err(SourceFailure::instant)?;
     let mut target = tokio::fs::File::create(part)
         .await
-        .map_err(|err| SourceFailure::instant(err))?;
-    let mut hasher = file.algorithm.hasher();
+        .map_err(SourceFailure::instant)?;
     let transferred = wire::stream_body(
         response,
         file,
         file.size,
         &mut target,
-        Some(&mut hasher),
         engine.limiter.as_deref(),
         meter,
     )
@@ -135,7 +141,13 @@ pub(crate) async fn download_from_source(
     drop(target);
     drop(permit);
 
-    let actual = hasher.finalize_hex();
+    // Verify what is on disk, not just the bytes that came off the socket: a
+    // concurrent writer (or a pre-planted sidecar) must not be able to make a
+    // corrupted file look verified. Ranged downloads already hash the `.part`
+    // after the last chunk.
+    let actual = hash::hash_file(part, file.algorithm)
+        .await
+        .map_err(SourceFailure::instant)?;
     commit_part(engine, file, part, &actual, transferred).await?;
 
     Ok(transferred)

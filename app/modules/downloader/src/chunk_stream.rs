@@ -12,9 +12,10 @@ use crate::error::DownloadError;
 use crate::executor::{Engine, MAX_ATTEMPTS_PER_SOURCE};
 use crate::hash;
 use crate::outcome::SourceFailure;
-use crate::parts::{backoff, cleanup_part_with_meta};
-use crate::plan::ValidatedFile;
+use crate::parts::{backoff, cleanup_part_with_meta, reject_link_like};
+use crate::plan::{ValidatedFile, effective_chunk_size};
 use crate::progress::FileMeter;
+use crate::protocol::HttpVersion;
 use crate::resume::{
     ChunkOutcome, ResumeMeta, RESUME_SCHEMA, content_range_matches, if_range_value, load_resume,
     remove_resume, save_resume,
@@ -50,7 +51,7 @@ pub(crate) async fn download_chunked(
     part: &Path,
     meter: Arc<FileMeter>,
 ) -> Result<ChunkOutcome, SourceFailure> {
-    let chunk = engine.options.chunk_size.max(1);
+    let chunk = effective_chunk_size(engine.options.chunk_size, file.size);
     let mut ranges: Vec<(u64, u64)> = Vec::new();
     let mut start = 0_u64;
     while start < file.size {
@@ -87,6 +88,9 @@ pub(crate) async fn download_chunked(
 
     if resumed.is_none() {
         // Fresh download: truncate any stale data and reserve the final size.
+        reject_link_like(part)
+            .await
+            .map_err(SourceFailure::instant)?;
         let target = match tokio::fs::OpenOptions::new()
             .create(true)
             .write(true)
@@ -128,7 +132,7 @@ pub(crate) async fn download_chunked(
         // Everything is already on disk; verify and commit.
         let actual = hash::hash_file(part, file.algorithm)
             .await
-            .map_err(|error| SourceFailure::instant(error))?;
+            .map_err(SourceFailure::instant)?;
         commit_part(engine.as_ref(), file, part, &actual, 0).await?;
         remove_resume(part).await;
         return Ok(ChunkOutcome::Done(0));
@@ -245,7 +249,7 @@ pub(crate) async fn download_chunked(
 
     let actual = hash::hash_file(part, file.algorithm)
         .await
-        .map_err(|error| SourceFailure::instant(error))?;
+        .map_err(SourceFailure::instant)?;
     commit_part(engine.as_ref(), file, part, &actual, transferred).await?;
     remove_resume(part).await;
     Ok(ChunkOutcome::Done(transferred))
@@ -270,6 +274,8 @@ async fn fetch_range(
         Some((start, end)),
         if_range,
         "range headers",
+        // One chunk owns one connection; ranged requests never negotiate h2.
+        HttpVersion::Http1,
     )
     .await?;
 
@@ -280,7 +286,8 @@ async fn fetch_range(
         return Ok(FetchOutcome::Unsupported);
     }
     if let Some(error) = wire::status_failure(status) {
-        return Err(SourceFailure::instant(error));
+        let protocol = wire::protocol_status(status, response.version());
+        return Err(SourceFailure::classified(error, protocol));
     }
     if status != reqwest::StatusCode::PARTIAL_CONTENT {
         return Err(SourceFailure::instant(DownloadError::Http4xx {
@@ -310,6 +317,9 @@ async fn fetch_range(
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_owned());
 
+    reject_link_like(part)
+        .await
+        .map_err(SourceFailure::instant)?;
     let mut target = match tokio::fs::OpenOptions::new().write(true).open(part).await {
         Ok(target) => target,
         Err(err) => return Err(SourceFailure::instant(err)),
@@ -328,7 +338,6 @@ async fn fetch_range(
         file,
         expected_length,
         &mut target,
-        None,
         engine.limiter.as_deref(),
         meter,
     )
