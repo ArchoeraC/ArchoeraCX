@@ -94,6 +94,9 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     String? gcMode,
     String? gameArgs,
     Object? wrapperCommand = noChange,
+    Object? preLoadCommand = noChange,
+    Object? preLaunchCommand = noChange,
+    Object? postExitCommand = noChange,
     Object? environment = noChange,
     int? windowWidth,
     int? windowHeight,
@@ -123,6 +126,15 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           wrapperCommand: wrapperCommand == noChange
               ? current.wrapperCommand
               : wrapperCommand as String?,
+          preLoadCommand: preLoadCommand == noChange
+              ? current.preLoadCommand
+              : preLoadCommand as String?,
+          preLaunchCommand: preLaunchCommand == noChange
+              ? current.preLaunchCommand
+              : preLaunchCommand as String?,
+          postExitCommand: postExitCommand == noChange
+              ? current.postExitCommand
+              : postExitCommand as String?,
           environment: environment == noChange
               ? current.environment
               : environment == null
@@ -150,6 +162,9 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         gcMode: gcMode,
         gameArgs: gameArgs,
         wrapperCommand: wrapperCommand,
+        preLoadCommand: preLoadCommand,
+        preLaunchCommand: preLaunchCommand,
+        postExitCommand: postExitCommand,
         environment: environment,
         windowWidth: windowWidth,
         windowHeight: windowHeight,

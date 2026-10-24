@@ -32,6 +32,9 @@ class InstanceOverrides {
     this.gcMode,
     this.gameArgs,
     this.wrapperCommand,
+    this.preLoadCommand,
+    this.preLaunchCommand,
+    this.postExitCommand,
     this.environment,
     this.joinServerOnLaunch,
     this.joinServerAddress,
@@ -63,6 +66,18 @@ class InstanceOverrides {
   /// an empty string explicitly starts the game without one.
   final String? wrapperCommand;
 
+  /// Command run before the instance is prepared. Null inherits the global
+  /// command; an empty string explicitly runs nothing.
+  final String? preLoadCommand;
+
+  /// Command run immediately before Java starts. Null inherits the global
+  /// command; an empty string explicitly runs nothing.
+  final String? preLaunchCommand;
+
+  /// Command run after the game exits. Null inherits the global command; an
+  /// empty string explicitly runs nothing.
+  final String? postExitCommand;
+
   /// Extra child environment. Null inherits the global map; an empty map
   /// explicitly clears it.
   final Map<String, String>? environment;
@@ -89,6 +104,9 @@ class InstanceOverrides {
       gcMode == null &&
       gameArgs == null &&
       wrapperCommand == null &&
+      preLoadCommand == null &&
+      preLaunchCommand == null &&
+      postExitCommand == null &&
       environment == null &&
       joinServerOnLaunch == null &&
       joinServerAddress == null &&
@@ -107,9 +125,10 @@ class InstanceOverrides {
       return value == null || value.isEmpty ? null : value;
     }
 
-    // An empty wrapper is meaningful ("no wrapper"), so unlike the other
-    // strings it must survive parsing instead of collapsing to null.
-    String? wrapper(Object? raw) {
+    // An empty wrapper or lifecycle command is meaningful ("no wrapper",
+    // "run nothing"), so unlike the other strings it must survive parsing
+    // instead of collapsing to null.
+    String? explicitText(Object? raw) {
       if (raw is! String) return null;
       return raw.trim();
     }
@@ -125,7 +144,10 @@ class InstanceOverrides {
       jvmArgs: text(value['jvmArgs']),
       gcMode: gcMode != null && gcModes.contains(gcMode) ? gcMode : null,
       gameArgs: text(value['gameArgs']),
-      wrapperCommand: wrapper(value['wrapperCommand']),
+      wrapperCommand: explicitText(value['wrapperCommand']),
+      preLoadCommand: explicitText(value['preLoadCommand']),
+      preLaunchCommand: explicitText(value['preLaunchCommand']),
+      postExitCommand: explicitText(value['postExitCommand']),
       environment: environment,
       joinServerOnLaunch: value['joinServerOnLaunch'] is bool
           ? value['joinServerOnLaunch'] as bool
@@ -149,6 +171,9 @@ class InstanceOverrides {
     String? gcMode,
     String? gameArgs,
     String? wrapperCommand,
+    String? preLoadCommand,
+    String? preLaunchCommand,
+    String? postExitCommand,
     Map<String, String>? environment,
     bool? joinServerOnLaunch,
     String? joinServerAddress,
@@ -165,6 +190,9 @@ class InstanceOverrides {
       gcMode: gcMode ?? this.gcMode,
       gameArgs: gameArgs ?? this.gameArgs,
       wrapperCommand: wrapperCommand ?? this.wrapperCommand,
+      preLoadCommand: preLoadCommand ?? this.preLoadCommand,
+      preLaunchCommand: preLaunchCommand ?? this.preLaunchCommand,
+      postExitCommand: postExitCommand ?? this.postExitCommand,
       environment: environment ?? this.environment,
       joinServerOnLaunch: joinServerOnLaunch ?? this.joinServerOnLaunch,
       joinServerAddress: joinServerAddress ?? this.joinServerAddress,

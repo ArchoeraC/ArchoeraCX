@@ -57,6 +57,35 @@ void main() {
 
       expect(settings.environment, isEmpty);
     });
+
+    test('parses lifecycle commands and collapses blanks', () {
+      final settings = _settings(<String, Object?>{
+        'preLoadCommand': '  echo prepare  ',
+        'preLaunchCommand': 'echo start',
+        'postExitCommand': '   ',
+      });
+
+      expect(settings.preLoadCommand, 'echo prepare');
+      expect(settings.preLaunchCommand, 'echo start');
+      expect(settings.postExitCommand, isNull);
+
+      final defaults = _settings(const <String, Object?>{});
+      expect(defaults.preLoadCommand, isNull);
+      expect(defaults.preLaunchCommand, isNull);
+      expect(defaults.postExitCommand, isNull);
+    });
+
+    test('ignores malformed lifecycle command values', () {
+      final settings = _settings(<String, Object?>{
+        'preLoadCommand': 42,
+        'preLaunchCommand': <String>['echo start'],
+        'postExitCommand': null,
+      });
+
+      expect(settings.preLoadCommand, isNull);
+      expect(settings.preLaunchCommand, isNull);
+      expect(settings.postExitCommand, isNull);
+    });
   });
 
   group('InstanceOverrides launch process fields', () {
@@ -110,6 +139,9 @@ void main() {
       const original = InstanceOverrides();
       final copy = original.copyWith(
         wrapperCommand: '',
+        preLoadCommand: 'echo prepare',
+        preLaunchCommand: '',
+        postExitCommand: 'echo done',
         environment: const <String, String>{'A': 'b'},
         joinServerOnLaunch: true,
         joinServerAddress: 'localhost',
@@ -117,11 +149,39 @@ void main() {
       );
 
       expect(copy.wrapperCommand, '');
+      expect(copy.preLoadCommand, 'echo prepare');
+      expect(copy.preLaunchCommand, '');
+      expect(copy.postExitCommand, 'echo done');
       expect(copy.environment, const <String, String>{'A': 'b'});
       expect(copy.joinServerOnLaunch, isTrue);
       expect(copy.joinServerAddress, 'localhost');
       expect(copy.joinWorldName, 'world');
       expect(copy.isEmpty, isFalse);
+    });
+
+    test('lifecycle commands inherit when absent and clear when empty', () {
+      final absent = _overrides(<String, Object?>{'memoryMaxMb': 4096});
+      expect(absent.preLoadCommand, isNull);
+      expect(absent.preLaunchCommand, isNull);
+      expect(absent.postExitCommand, isNull);
+
+      final cleared = _overrides(<String, Object?>{
+        'preLoadCommand': '',
+        'preLaunchCommand': '   ',
+        'postExitCommand': 42,
+      });
+      expect(cleared.preLoadCommand, '');
+      expect(cleared.preLaunchCommand, '');
+      expect(cleared.postExitCommand, isNull);
+      expect(cleared.isEmpty, isFalse);
+
+      final set = _overrides(<String, Object?>{
+        'preLoadCommand': '  echo prepare  ',
+        'preLaunchCommand': 'echo start',
+      });
+      expect(set.preLoadCommand, 'echo prepare');
+      expect(set.preLaunchCommand, 'echo start');
+      expect(set.isEmpty, isFalse);
     });
   });
 
@@ -203,6 +263,37 @@ void main() {
     expect(settings?.environment, isEmpty);
   });
 
+  test(
+    'the fallback settings store merge-patches lifecycle commands',
+    () async {
+      final container = ProviderContainer(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+      );
+      addTearDown(container.dispose);
+      await container.read(appSettingsProvider.future);
+
+      final notifier = container.read(appSettingsProvider.notifier);
+      await notifier.setRuntimeOptions(
+        preLoadCommand: 'echo prepare',
+        preLaunchCommand: 'echo start',
+      );
+      // An untouched key keeps its stored value.
+      await notifier.setRuntimeOptions(postExitCommand: 'echo done');
+
+      var settings = container.read(appSettingsProvider).value;
+      expect(settings?.preLoadCommand, 'echo prepare');
+      expect(settings?.preLaunchCommand, 'echo start');
+      expect(settings?.postExitCommand, 'echo done');
+
+      // An explicit null clears one command only.
+      await notifier.setRuntimeOptions(preLaunchCommand: null);
+      settings = container.read(appSettingsProvider).value;
+      expect(settings?.preLoadCommand, 'echo prepare');
+      expect(settings?.preLaunchCommand, isNull);
+      expect(settings?.postExitCommand, 'echo done');
+    },
+  );
+
   group('launch value validation', () {
     test('wrapper commands respect the length and NUL limits', () {
       expect(isValidLaunchWrapperCommand(''), isTrue);
@@ -252,6 +343,59 @@ void main() {
       ]) {
         expect(isValidJoinServerAddress(address), isFalse, reason: address);
       }
+    });
+
+    test('accepts empty, plain and quoted lifecycle commands', () {
+      for (final command in <String>[
+        '',
+        'game-hook',
+        '/usr/bin/game "arg with space"',
+        "sh -c 'echo hi'",
+        r'C:\tools\hook.exe "C:\path\file"',
+        r'echo "say \"hi\""',
+        r'echo \"literal quote',
+        r"echo \'quoted\'",
+        r'echo "path\q"',
+      ]) {
+        expect(validateLaunchCommand(command).isValid, isTrue, reason: command);
+      }
+    });
+
+    test(
+      'lifecycle commands respect the length, NUL and line-break limits',
+      () {
+        expect(
+          validateLaunchCommand('x' * launchCommandMaxLength).isValid,
+          isTrue,
+        );
+        expect(
+          validateLaunchCommand('x' * (launchCommandMaxLength + 1)).issue?.kind,
+          LaunchCommandIssueKind.tooLong,
+        );
+        expect(
+          validateLaunchCommand('run\u0000game').issue?.kind,
+          LaunchCommandIssueKind.forbiddenCharacter,
+        );
+        expect(
+          validateLaunchCommand('run\nhook').issue?.kind,
+          LaunchCommandIssueKind.forbiddenCharacter,
+        );
+        expect(
+          validateLaunchCommand('run\rhook').issue?.kind,
+          LaunchCommandIssueKind.forbiddenCharacter,
+        );
+      },
+    );
+
+    test('reports the unclosed quote that broke the command', () {
+      final single = validateLaunchCommand("echo 'start");
+      expect(single.isValid, isFalse);
+      expect(single.issue?.kind, LaunchCommandIssueKind.unclosedQuote);
+      expect(single.issue?.quote, "'");
+
+      final double = validateLaunchCommand('echo "start');
+      expect(double.issue?.kind, LaunchCommandIssueKind.unclosedQuote);
+      expect(double.issue?.quote, '"');
     });
 
     test('validates singleplayer world names', () {

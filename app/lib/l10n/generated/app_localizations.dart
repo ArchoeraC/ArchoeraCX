@@ -1370,6 +1370,66 @@ abstract class AppLocalizations {
   /// **'Appended after the vanilla arguments and split on spaces; leave empty for none.'**
   String get settingsGameArgsNote;
 
+  /// Global lifecycle command section title in the Launch settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get settingsSectionCommands;
+
+  /// Note under the global lifecycle command section.
+  ///
+  /// In en, this message translates to:
+  /// **'Run once per launch unless an instance overrides them; empty fields run nothing.'**
+  String get settingsCommandsNote;
+
+  /// Label for the global command that runs before the instance is prepared.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-load command'**
+  String get settingsPreLoadCommand;
+
+  /// Helper text under the global pre-load command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs before the instance is prepared.'**
+  String get settingsPreLoadCommandDesc;
+
+  /// Label for the global command that runs immediately before Java starts.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-launch command'**
+  String get settingsPreLaunchCommand;
+
+  /// Helper text under the global pre-launch command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs after preparation, immediately before Java starts. A failure aborts the launch.'**
+  String get settingsPreLaunchCommandDesc;
+
+  /// Label for the global command that runs after the game exits.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-exit command'**
+  String get settingsPostExitCommand;
+
+  /// Helper text under the global post-exit command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs after the game exits. A failure is only logged.'**
+  String get settingsPostExitCommandDesc;
+
+  /// Hint shown inside an empty lifecycle command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to run nothing.'**
+  String get settingsCommandEmptyHint;
+
+  /// Safety and environment help under the global lifecycle command fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands run as your user, without a shell, in the instance folder. \$INST_NAME, \$INST_ID, \$INST_DIR, \$INST_MC_DIR, \$INST_JAVA and \$INST_JAVA_ARGS (account secrets redacted) are available as environment variables. Do not put account tokens in commands.'**
+  String get settingsCommandsHelp;
+
   /// Global launch-process options: wrapper command and child environment.
   ///
   /// In en, this message translates to:
@@ -1423,6 +1483,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wrapper commands may be at most 4096 characters.'**
   String get launchWrapperCommandTooLong;
+
+  /// Validation error when a lifecycle command exceeds the contract limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands may be at most 4096 characters.'**
+  String get launchCommandTooLong;
+
+  /// Validation error for NUL or CR/LF inside a lifecycle command.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands cannot contain NUL or line breaks.'**
+  String get launchCommandInvalidCharacter;
+
+  /// Validation error for a lifecycle command with an unclosed quote.
+  ///
+  /// In en, this message translates to:
+  /// **'Unclosed {quote} quote.'**
+  String launchCommandUnclosedQuote(String quote);
 
   /// Environment block line without an equals sign.
   ///
@@ -4159,6 +4237,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An empty list clears the global variables for this instance.'**
   String get instanceSettingsEnvironmentHelp;
+
+  /// Switch that enables a per-instance pre-load command override.
+  ///
+  /// In en, this message translates to:
+  /// **'Override pre-load command'**
+  String get instanceSettingsPreLoadOverride;
+
+  /// Switch that enables a per-instance pre-launch command override.
+  ///
+  /// In en, this message translates to:
+  /// **'Override pre-launch command'**
+  String get instanceSettingsPreLaunchOverride;
+
+  /// Switch that enables a per-instance post-exit command override.
+  ///
+  /// In en, this message translates to:
+  /// **'Override post-exit command'**
+  String get instanceSettingsPostExitOverride;
+
+  /// Per-instance pre-load command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-load command'**
+  String get instanceSettingsPreLoadCommand;
+
+  /// Per-instance pre-launch command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-launch command'**
+  String get instanceSettingsPreLaunchCommand;
+
+  /// Per-instance post-exit command field.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-exit command'**
+  String get instanceSettingsPostExitCommand;
+
+  /// Hint explaining that an enabled empty command override runs nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty disables the command.'**
+  String get instanceSettingsCommandEmptyHint;
+
+  /// Safety and environment help under the per-instance command overrides.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs as your user without a shell in the instance folder; \$INST_* variables are available. A failed pre-launch command aborts the launch; a failed post-exit command is only logged. Do not put account tokens in commands.'**
+  String get instanceSettingsCommandsHelp;
 
   /// Switch that enables joining a server or loading a world on launch.
   ///

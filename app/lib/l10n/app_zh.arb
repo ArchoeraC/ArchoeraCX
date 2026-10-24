@@ -397,6 +397,46 @@
   "@settingsShareLoaderFilesDesc": {},
   "settingsSectionGameArgs": "附加游戏参数",
   "settingsGameArgsNote": "追加到原版参数之后，按空格拆分；留空表示不加。",
+  "settingsSectionCommands": "启动命令",
+  "@settingsSectionCommands": {
+    "description": "启动设置中的全局生命周期命令分区标题。"
+  },
+  "settingsCommandsNote": "每次启动各执行一次，实例可单独覆盖；留空表示不执行。",
+  "@settingsCommandsNote": {
+    "description": "全局生命周期命令分区下方的说明。"
+  },
+  "settingsPreLoadCommand": "加载前命令",
+  "@settingsPreLoadCommand": {
+    "description": "准备实例之前运行的全局命令。"
+  },
+  "settingsPreLoadCommandDesc": "在准备实例之前运行。",
+  "@settingsPreLoadCommandDesc": {
+    "description": "加载前命令字段下方的说明。"
+  },
+  "settingsPreLaunchCommand": "启动前命令",
+  "@settingsPreLaunchCommand": {
+    "description": "Java 启动前立即运行的全局命令。"
+  },
+  "settingsPreLaunchCommandDesc": "准备完成后、Java 启动前运行；失败会中止启动。",
+  "@settingsPreLaunchCommandDesc": {
+    "description": "启动前命令字段下方的说明。"
+  },
+  "settingsPostExitCommand": "退出后命令",
+  "@settingsPostExitCommand": {
+    "description": "游戏退出后运行的全局命令。"
+  },
+  "settingsPostExitCommandDesc": "游戏退出后运行；失败只写入日志。",
+  "@settingsPostExitCommandDesc": {
+    "description": "退出后命令字段下方的说明。"
+  },
+  "settingsCommandEmptyHint": "留空表示不执行。",
+  "@settingsCommandEmptyHint": {
+    "description": "生命周期命令输入框为空时的提示。"
+  },
+  "settingsCommandsHelp": "命令以当前用户身份、不经过 shell、在实例目录中运行。环境变量中可使用 $INST_NAME、$INST_ID、$INST_DIR、$INST_MC_DIR、$INST_JAVA 和 $INST_JAVA_ARGS（账户令牌已脱敏）。请勿在命令中填写账户令牌。",
+  "@settingsCommandsHelp": {
+    "description": "全局生命周期命令字段下方的安全与环境变量说明。"
+  },
   "settingsSectionProcess": "包装命令与环境变量",
   "settingsProcessNote": "仅作用于游戏进程。包装命令以当前用户身份运行；环境变量保存在本地，不会写入日志。",
   "settingsWrapperCommand": "包装命令",
@@ -406,6 +446,23 @@
   "settingsEnvironmentHint": "KEY=VALUE",
   "settingsEnvironmentHelp": "每行一个 KEY=VALUE；空行会被忽略。",
   "launchWrapperCommandTooLong": "包装命令最多 4096 个字符。",
+  "launchCommandTooLong": "命令最多 4096 个字符。",
+  "@launchCommandTooLong": {
+    "description": "生命周期命令超出契约长度上限时的校验错误。"
+  },
+  "launchCommandInvalidCharacter": "命令不能包含 NUL 或换行。",
+  "@launchCommandInvalidCharacter": {
+    "description": "生命周期命令包含 NUL 或 CR/LF 时的校验错误。"
+  },
+  "launchCommandUnclosedQuote": "引号 {quote} 未闭合。",
+  "@launchCommandUnclosedQuote": {
+    "description": "生命周期命令的引号未闭合时的校验错误。",
+    "placeholders": {
+      "quote": {
+        "type": "String"
+      }
+    }
+  },
   "launchEnvironmentMissingSeparator": "第 {line} 行：请填写 KEY=VALUE。",
   "launchEnvironmentInvalidKey": "第 {line} 行：“{key}”不是有效的变量名。",
   "launchEnvironmentDuplicateKey": "第 {line} 行：“{key}”已定义。",
@@ -1080,6 +1137,38 @@
   "instanceSettingsEnvironment": "环境变量",
   "instanceSettingsEnvironmentHint": "KEY=VALUE",
   "instanceSettingsEnvironmentHelp": "空列表会清除该实例继承的全局环境变量。",
+  "instanceSettingsPreLoadOverride": "覆盖加载前命令",
+  "@instanceSettingsPreLoadOverride": {
+    "description": "启用实例级加载前命令覆盖的开关。"
+  },
+  "instanceSettingsPreLaunchOverride": "覆盖启动前命令",
+  "@instanceSettingsPreLaunchOverride": {
+    "description": "启用实例级启动前命令覆盖的开关。"
+  },
+  "instanceSettingsPostExitOverride": "覆盖退出后命令",
+  "@instanceSettingsPostExitOverride": {
+    "description": "启用实例级退出后命令覆盖的开关。"
+  },
+  "instanceSettingsPreLoadCommand": "加载前命令",
+  "@instanceSettingsPreLoadCommand": {
+    "description": "实例级加载前命令输入框。"
+  },
+  "instanceSettingsPreLaunchCommand": "启动前命令",
+  "@instanceSettingsPreLaunchCommand": {
+    "description": "实例级启动前命令输入框。"
+  },
+  "instanceSettingsPostExitCommand": "退出后命令",
+  "@instanceSettingsPostExitCommand": {
+    "description": "实例级退出后命令输入框。"
+  },
+  "instanceSettingsCommandEmptyHint": "留空表示不执行该命令。",
+  "@instanceSettingsCommandEmptyHint": {
+    "description": "实例命令覆盖已启用但输入为空时的提示。"
+  },
+  "instanceSettingsCommandsHelp": "命令以当前用户身份、不经过 shell、在实例目录中运行；可使用 $INST_* 环境变量。启动前命令失败会中止启动，退出后命令失败只写入日志。请勿在命令中填写账户令牌。",
+  "@instanceSettingsCommandsHelp": {
+    "description": "实例命令覆盖字段下方的安全与环境变量说明。"
+  },
   "instanceSettingsAutoJoin": "自动加入",
   "instanceSettingsAutoJoinDesc": "游戏启动后自动进入服务器或加载单人世界。",
   "instanceSettingsJoinServer": "服务器地址",

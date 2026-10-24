@@ -85,10 +85,11 @@ mixin CoreClientSettings on CoreTransport {
 
   /// Persist memory and JVM options.
   ///
-  /// [wrapperCommand] and [environment] use the merge-patch style also used by
-  /// [setDownloadSettings]: leave them at [noChange] to keep the stored value,
-  /// pass null to clear it, or pass a value to replace it. An empty wrapper
-  /// string also means "no wrapper"; an empty environment map clears it.
+  /// [wrapperCommand], [environment] and the three lifecycle commands use the
+  /// merge-patch style also used by [setDownloadSettings]: leave them at
+  /// [noChange] to keep the stored value, pass null to clear it, or pass a
+  /// value to replace it. An empty wrapper or command string also means "none";
+  /// an empty environment map clears it.
   Future<AppSettings> setRuntimeOptions({
     int? memoryMinMb,
     int? memoryMaxMb,
@@ -96,6 +97,9 @@ mixin CoreClientSettings on CoreTransport {
     String? gcMode,
     String? gameArgs,
     Object? wrapperCommand = noChange,
+    Object? preLoadCommand = noChange,
+    Object? preLaunchCommand = noChange,
+    Object? postExitCommand = noChange,
     Object? environment = noChange,
     int? windowWidth,
     int? windowHeight,
@@ -118,6 +122,12 @@ mixin CoreClientSettings on CoreTransport {
         'gameArgs': ?gameArgs,
         if (wrapperCommand != noChange)
           'wrapperCommand': wrapperCommand as String?,
+        if (preLoadCommand != noChange)
+          'preLoadCommand': preLoadCommand as String?,
+        if (preLaunchCommand != noChange)
+          'preLaunchCommand': preLaunchCommand as String?,
+        if (postExitCommand != noChange)
+          'postExitCommand': postExitCommand as String?,
         if (environment != noChange)
           'environment': _environmentPayload(environment),
         'windowWidth': ?windowWidth,

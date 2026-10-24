@@ -9,6 +9,9 @@ library;
 /// Maximum length of a wrapper command line.
 const int launchWrapperCommandMaxLength = 4096;
 
+/// Maximum length of a lifecycle command (pre-load, pre-launch, post-exit).
+const int launchCommandMaxLength = 4096;
+
 /// Maximum number of environment entries.
 const int launchEnvironmentMaxEntries = 64;
 
@@ -166,6 +169,86 @@ bool isValidLaunchWrapperCommand(String value) {
   return !value.contains('\u0000') &&
       !value.contains('\r') &&
       !value.contains('\n');
+}
+
+/// Why a lifecycle command was rejected before it reached the process starter.
+enum LaunchCommandIssueKind { tooLong, forbiddenCharacter, unclosedQuote }
+
+/// The first problem found while checking one lifecycle command.
+class LaunchCommandIssue {
+  const LaunchCommandIssue(this.kind, {this.quote});
+
+  final LaunchCommandIssueKind kind;
+
+  /// The opening quote that was never closed, when [kind] is
+  /// [LaunchCommandIssueKind.unclosedQuote].
+  final String? quote;
+}
+
+/// Validation result for one lifecycle command. An empty command is valid
+/// because it means "run nothing".
+class LaunchCommandValidation {
+  const LaunchCommandValidation._(this.issue);
+
+  static const valid = LaunchCommandValidation._(null);
+
+  const LaunchCommandValidation.invalid(LaunchCommandIssue issue)
+    : this._(issue);
+
+  final LaunchCommandIssue? issue;
+
+  bool get isValid => issue == null;
+}
+
+/// Validate a command line that the C# launch plan runs as the current user
+/// without a shell.
+///
+/// This mirrors the native tokenizer's quoting rules closely enough to reject
+/// what it rejects: overlong text, NUL/line breaks and an opening quote that is
+/// never closed. Outside single quotes a backslash escapes only `"` or `\`;
+/// a lone trailing backslash is literal data.
+LaunchCommandValidation validateLaunchCommand(String value) {
+  if (value.length > launchCommandMaxLength) {
+    return const LaunchCommandValidation.invalid(
+      LaunchCommandIssue(LaunchCommandIssueKind.tooLong),
+    );
+  }
+  if (value.contains('\u0000') ||
+      value.contains('\r') ||
+      value.contains('\n')) {
+    return const LaunchCommandValidation.invalid(
+      LaunchCommandIssue(LaunchCommandIssueKind.forbiddenCharacter),
+    );
+  }
+  final unclosed = _unclosedQuote(value);
+  if (unclosed != null) {
+    return LaunchCommandValidation.invalid(
+      LaunchCommandIssue(LaunchCommandIssueKind.unclosedQuote, quote: unclosed),
+    );
+  }
+  return LaunchCommandValidation.valid;
+}
+
+String? _unclosedQuote(String value) {
+  String? quote;
+  for (var index = 0; index < value.length; index++) {
+    final character = value[index];
+    if (character == '\\' && quote != "'") {
+      // Only a quote or another backslash is escaped; anything else stays
+      // literal, exactly like the native tokenizer.
+      if (index + 1 < value.length) {
+        final next = value[index + 1];
+        if (next == '"' || next == '\\') index++;
+      }
+      continue;
+    }
+    if (quote == null) {
+      if (character == '"' || character == "'") quote = character;
+    } else if (character == quote) {
+      quote = null;
+    }
+  }
+  return quote;
 }
 
 /// Validate `host`, `host:port`, `[v6]` and `[v6]:port`.

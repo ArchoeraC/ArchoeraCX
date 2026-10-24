@@ -15,6 +15,9 @@ class AppSettings {
     this.gcMode = 'auto',
     this.gameArgs,
     this.wrapperCommand,
+    this.preLoadCommand,
+    this.preLaunchCommand,
+    this.postExitCommand,
     this.environment = const <String, String>{},
     this.downloadSource = 'auto',
     this.downloadConcurrency = 16,
@@ -55,6 +58,17 @@ class AppSettings {
 
   /// Process wrapper prepended to the Java command; null means none.
   final String? wrapperCommand;
+
+  /// Command run before the instance is prepared. Runs as the current user
+  /// without a shell in the instance folder; null means none.
+  final String? preLoadCommand;
+
+  /// Command run after preparation and immediately before Java starts. A
+  /// failure aborts the launch.
+  final String? preLaunchCommand;
+
+  /// Command run after the game process exits. A failure is only logged.
+  final String? postExitCommand;
 
   /// Extra environment variables for the game process. Values are never
   /// written to logs.
@@ -151,6 +165,9 @@ class AppSettings {
       gcMode: _gcMode(value['gcMode']),
       gameArgs: _string(value['gameArgs']),
       wrapperCommand: _wrapperCommand(value['wrapperCommand']),
+      preLoadCommand: _hookCommand(value['preLoadCommand']),
+      preLaunchCommand: _hookCommand(value['preLaunchCommand']),
+      postExitCommand: _hookCommand(value['postExitCommand']),
       environment:
           parseLaunchEnvironmentWire(value['environment']) ??
           const <String, String>{},
@@ -186,6 +203,10 @@ class AppSettings {
     final text = value.trim();
     return text.isEmpty ? null : text;
   }
+
+  /// A global lifecycle command: an absent, non-string or blank value means
+  /// "no command". Per-instance overrides keep an empty string instead.
+  static String? _hookCommand(Object? value) => _wrapperCommand(value);
 
   static String _downloadSource(Object? value) {
     final source = _string(value);

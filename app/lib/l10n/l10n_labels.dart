@@ -44,6 +44,17 @@ extension LaunchEnvironmentIssueL10n on LaunchEnvironmentIssue {
   }
 }
 
+extension LaunchCommandIssueL10n on LaunchCommandIssue {
+  String labelFor(AppLocalizations l10n) => switch (kind) {
+    LaunchCommandIssueKind.tooLong => l10n.launchCommandTooLong,
+    LaunchCommandIssueKind.forbiddenCharacter =>
+      l10n.launchCommandInvalidCharacter,
+    LaunchCommandIssueKind.unclosedQuote => l10n.launchCommandUnclosedQuote(
+      quote ?? '',
+    ),
+  };
+}
+
 extension AccountKindL10n on AccountKind {
   String labelFor(AppLocalizations l10n) => switch (this) {
     AccountKind.microsoft => l10n.accountMicrosoft,
