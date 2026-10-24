@@ -1798,6 +1798,11 @@ void _drain() {
 | `gcMode` | `auto` / `g1gc` / `zgc` / `parallel` / `serial` / `shenandoah` / `epsilon` | GC 预设 |
 | `gameArgs` | string ≤ 8192 | 附加游戏参数 |
 | `javaPath` | 绝对路径 | 固定 Java；等价于该实例 `javaAuto=false` |
+| `wrapperCommand` | string ≤ 4096；`null` = 继承，`""` = 显式禁用 | 启动包装命令（gamemoderun/mangohud/prime-run 等） |
+| `environment` | object ≤ 64 项；`null` = 继承，`{}` = 清空 | 额外环境变量；非空时叠加在全局之上 |
+| `joinServerOnLaunch` | bool | 启动后自动加入服务器/世界 |
+| `joinServerAddress` | `host` / `host:port` / `[v6]` / `[v6]:port`，≤ 255 | 服务器地址；端口默认 25565 |
+| `joinWorldName` | string ≤ 128，拒绝 `/`、`\`、`..` | 单人世界名；仅版本支持 Quick Play 时生效 |
 | `windowWidth` / `windowHeight` | int，640–7680 / 480–4320 | 游戏窗口尺寸 |
 | `fullscreen` | bool | 全屏 |
 
@@ -1812,6 +1817,7 @@ void _drain() {
 ```
 
 - `instance.update` 新增可选 `overrides` 对象，语义是 **merge patch**：键缺省 = 不改变，显式 `null` = 清除，有值 = 设置；`instance.list` / `instance.create` / `instance.update` 返回的实例对象**始终**带 `overrides`（无覆盖为 `{}`）。
+- 全局 `settings.json`（schema 13）另有 `wrapperCommand`（string ≤ 4096）与 `environment`（object ≤ 64 项）。启动环境合并顺序：自动优化（dGPU）→ 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
 - 启动时 C# 用 `InstanceOverrides.ApplyTo(AppSettings)` 把实例覆盖合到全局设置，再选 Java、构建 LaunchPlan。
 - SQLite 只做索引，**不存** `overrides`；权威源仍是 `<instance root>/.archoera/instance.json`。
 
@@ -2400,6 +2406,7 @@ public interface IDownloadProvider {
 | `download.policy` | C# | 中国大陆本地下载风险门槛状态/配置路径 |
 | `settings.get` | C# | 应用设置 |
 | `settings.set` | C# | 校验 + 原子写 |
+| `settings.setRuntimeOptions` | C# | 运行时设置补丁（内存/JVM/窗口/包装/环境变量）；拒绝 instance roots |
 | `settings.reset` | C# | 恢复默认 |
 | `instance.list` | C# | 实例列表/分组/搜索 |
 | `instance.get` | C# | 详情 |

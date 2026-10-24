@@ -20,6 +20,7 @@ Microsoft / Minecraft 认证已单独整理到 [`../authentication.md`](../authe
 | [12-download-scheduling-principles.md](12-download-scheduling-principles.md) | FDM/aria2 的分段与调度原理（只读） |
 | [13-transport-protocol-fallback.md](13-transport-protocol-fallback.md) | 地址族/TLS/HTTP 版本/代理的多协议回退 |
 | [14-security-audit-2026-10.md](14-security-audit-2026-10.md) | 依赖 CVE 与代码安全审查（2026-10） |
+| [15-launch-parameter-parity.md](15-launch-parameter-parity.md) | 启动参数与 Prism 的差距（只读） |
 
 ## 使用约束
 
