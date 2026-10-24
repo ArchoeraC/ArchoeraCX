@@ -12,7 +12,7 @@ use crate::error::DownloadError;
 use crate::executor::{Engine, MAX_ATTEMPTS_PER_SOURCE};
 use crate::hash;
 use crate::outcome::SourceFailure;
-use crate::parts::{backoff, cleanup_part_with_meta, reject_link_like};
+use crate::parts::{backoff, cleanup_part_with_meta, open_sidecar};
 use crate::plan::{ValidatedFile, effective_chunk_size};
 use crate::progress::FileMeter;
 use crate::protocol::HttpVersion;
@@ -88,16 +88,7 @@ pub(crate) async fn download_chunked(
 
     if resumed.is_none() {
         // Fresh download: truncate any stale data and reserve the final size.
-        reject_link_like(part)
-            .await
-            .map_err(SourceFailure::instant)?;
-        let target = match tokio::fs::OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(part)
-            .await
-        {
+        let target = match open_sidecar(part, true, true).await {
             Ok(target) => target,
             Err(err) => return Err(SourceFailure::instant(err)),
         };
@@ -317,10 +308,7 @@ async fn fetch_range(
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_owned());
 
-    reject_link_like(part)
-        .await
-        .map_err(SourceFailure::instant)?;
-    let mut target = match tokio::fs::OpenOptions::new().write(true).open(part).await {
+    let mut target = match open_sidecar(part, false, false).await {
         Ok(target) => target,
         Err(err) => return Err(SourceFailure::instant(err)),
     };

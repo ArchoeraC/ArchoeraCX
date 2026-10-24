@@ -69,13 +69,17 @@ pub(crate) async fn load_resume(
 pub(crate) async fn save_resume(part: &Path, meta: &ResumeMeta) {
     let path = meta_path(part);
     let temporary = path.with_extension("meta.tmp");
-    if crate::parts::reject_link_like(&temporary).await.is_err() {
-        return;
-    }
     let Ok(bytes) = serde_json::to_vec(meta) else {
         return;
     };
-    if tokio::fs::write(&temporary, bytes).await.is_ok() {
+    let Ok(mut file) = crate::parts::open_sidecar(&temporary, true, true).await else {
+        return;
+    };
+    if tokio::io::AsyncWriteExt::write_all(&mut file, &bytes)
+        .await
+        .is_ok()
+    {
+        drop(file);
         let _ = tokio::fs::rename(&temporary, &path).await;
     }
 }

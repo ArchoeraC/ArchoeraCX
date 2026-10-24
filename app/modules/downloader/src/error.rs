@@ -279,6 +279,7 @@ impl DownloadError {
                 Some(21) => return Self::DestIsDir(message),                // EISDIR
                 Some(30) => return Self::ReadOnly(message),                 // EROFS
                 Some(36) => return Self::PathTooLong(message),              // ENAMETOOLONG
+                Some(40) => return Self::PathEscape(message),               // ELOOP (O_NOFOLLOW)
                 _ => {}
             }
         }
@@ -293,6 +294,7 @@ impl DownloadError {
                 Some(21) => return Self::DestIsDir(message),
                 Some(30) => return Self::ReadOnly(message),
                 Some(63) => return Self::PathTooLong(message), // ENAMETOOLONG
+                Some(62) => return Self::PathEscape(message),  // ELOOP (O_NOFOLLOW)
                 _ => {}
             }
         }
@@ -391,6 +393,7 @@ mod tests {
         assert_eq!(code(122), "DISK_FULL"); // EDQUOT
         assert_eq!(code(39), "INTERNAL"); // ENOTEMPTY, must not be DISK_FULL
         assert_eq!(code(36), "PATH_TOO_LONG"); // ENAMETOOLONG
+        assert_eq!(code(40), "PATH_ESCAPE"); // ELOOP from O_NOFOLLOW
         assert_eq!(code(21), "DEST_IS_DIR"); // EISDIR
         assert_eq!(code(13), "PERMISSION_DENIED"); // EACCES
     }
