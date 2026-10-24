@@ -23,6 +23,9 @@ public static class InstanceDeleteSkipReason
     /// <summary>The instance directory is a symbolic link.</summary>
     public const string Symlink = "symlink";
 
+    /// <summary>The instance directory is outside every configured instances root.</summary>
+    public const string OutsideRoot = "outside_root";
+
     /// <summary>No <c>.archoera/instance.json</c> marker, so ArchoeraCX does not own it.</summary>
     public const string NotManaged = "not_managed";
 

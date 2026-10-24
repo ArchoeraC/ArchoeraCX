@@ -130,6 +130,82 @@ public sealed class PackArchiveTests
         }
     }
 
+    [Fact]
+    public void Read_rejects_an_entry_that_expands_beyond_the_compression_ratio()
+    {
+        var directory = NewDirectory();
+        try
+        {
+            var archivePath = Path.Combine(directory, "pack.mrpack");
+            CreateArchive(archivePath, writer =>
+            {
+                WriteIndex(writer);
+                WriteZeros(writer, "overrides/mods/zeros.bin", 2 * 1024 * 1024);
+            });
+
+            var exception = Assert.Throws<PackException>(
+                () => PackArchive.Read(archivePath, clientSide: true));
+            Assert.Equal(PackErrorCode.TooLarge, exception.Code);
+            Assert.Contains("200:1", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public void Read_accepts_a_compressible_entry_below_the_ratio_threshold()
+    {
+        var directory = NewDirectory();
+        try
+        {
+            var archivePath = Path.Combine(directory, "pack.mrpack");
+            CreateArchive(archivePath, writer =>
+            {
+                WriteIndex(writer);
+                WriteZeros(writer, "overrides/config/zeros.bin", 512 * 1024);
+            });
+
+            var contents = PackArchive.Read(archivePath, clientSide: true);
+            var root = Path.Combine(directory, "instance");
+            Directory.CreateDirectory(root);
+            var extracted = PackArchive.Extract(archivePath, root, contents.Overrides);
+
+            Assert.Contains("config/zeros.bin", extracted);
+            Assert.Equal(
+                512 * 1024,
+                new FileInfo(Path.Combine(root, "config", "zeros.bin")).Length);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public void Required_free_bytes_covers_payload_overhead_and_reserve()
+    {
+        Assert.Equal(
+            PackArchive.FreeSpaceReserveBytes,
+            PackArchive.RequiredFreeBytes(0));
+        var payload = 1L << 30;
+        var required = PackArchive.RequiredFreeBytes(payload);
+        Assert.True(required >= payload + PackArchive.FreeSpaceReserveBytes);
+        Assert.True(required < payload + (payload / 5) + PackArchive.FreeSpaceReserveBytes);
+
+        Assert.True(PackArchive.ExceedsCompressionRatio(2 * 1024 * 1024, 1024));
+        Assert.False(PackArchive.ExceedsCompressionRatio(2 * 1024 * 1024, 64 * 1024));
+        Assert.False(PackArchive.ExceedsCompressionRatio(512 * 1024, 1));
+    }
+
+    private static void WriteZeros(ZipArchive archive, string name, int length)
+    {
+        var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
+        using var stream = entry.Open();
+        stream.Write(new byte[length]);
+    }
+
     private static void WriteIndex(ZipArchive archive)
     {
         var entry = archive.CreateEntry(ModpackIndexJson.IndexEntryName);

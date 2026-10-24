@@ -549,6 +549,83 @@ public sealed class InstanceOverridesTests
         }
     }
 
+    [Fact]
+    public async Task Imported_overrides_ignore_invalid_java_path_and_memory_values()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "instance");
+            Directory.CreateDirectory(Path.Combine(root, ".archoera"));
+            var instanceJson = Path.Combine(root, ".archoera", "instance.json");
+            await File.WriteAllTextAsync(
+                instanceJson,
+                """
+                {
+                  "schemaVersion": 2,
+                  "id": "inst-imported",
+                  "name": "Imported",
+                  "gameVersion": "1.21.4",
+                  "loader": "vanilla",
+                  "loaderVersion": "",
+                  "rootPath": "/stale/path",
+                  "modCount": 0,
+                  "favorite": false,
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "updatedAt": "2026-01-01T00:00:00Z",
+                  "overrides": {
+                    "javaPath": "relative/java",
+                    "memoryMinMb": 64,
+                    "memoryMaxMb": 999999
+                  }
+                }
+                """);
+
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootAsync(Path.GetDirectoryName(root)!);
+            var repository = new SqliteInstanceRepository(dataRoot, settings);
+            await repository.SyncAsync(null, dryRun: false);
+            var invalid = Assert.Single(await repository.ListAsync());
+            Assert.Null(invalid.Overrides);
+
+            var java = Path.Combine(directory, "runtime", "bin", "java");
+            Directory.CreateDirectory(Path.GetDirectoryName(java)!);
+            await File.WriteAllTextAsync(java, "#!/bin/sh\n");
+            await File.WriteAllTextAsync(
+                instanceJson,
+                $$"""
+                {
+                  "schemaVersion": 2,
+                  "id": "inst-imported",
+                  "name": "Imported",
+                  "gameVersion": "1.21.4",
+                  "loader": "vanilla",
+                  "loaderVersion": "",
+                  "rootPath": "/stale/path",
+                  "modCount": 0,
+                  "favorite": false,
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "updatedAt": "2026-01-01T00:00:00Z",
+                  "overrides": {
+                    "javaPath": "{{java.Replace("\\", "\\\\", StringComparison.Ordinal)}}",
+                    "memoryMinMb": 512,
+                    "memoryMaxMb": 4096
+                  }
+                }
+                """);
+
+            var valid = Assert.Single(await repository.ListAsync());
+            Assert.Equal(Path.GetFullPath(java), valid.Overrides!.JavaPath);
+            Assert.Equal(512, valid.Overrides.MemoryMinMb);
+            Assert.Equal(4096, valid.Overrides.MemoryMaxMb);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
     private static JsonElement Instance(JsonDocument document)
         => document.RootElement
             .GetProperty("data")

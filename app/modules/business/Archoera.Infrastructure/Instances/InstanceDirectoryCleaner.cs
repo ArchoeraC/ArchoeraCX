@@ -11,6 +11,7 @@ namespace Archoera.Infrastructure.Instances;
 /// <list type="bullet">
 ///   <item>filesystem roots and symbolic links are never followed or removed;</item>
 ///   <item>the directory must carry the <c>.archoera/instance.json</c> marker;</item>
+///   <item>the directory must live inside a configured instances root;</item>
 ///   <item>configured instance roots and any other registered instance path
 ///         (equal or nested) veto the delete.</item>
 /// </list>
@@ -23,11 +24,21 @@ public static class InstanceDirectoryCleaner
     /// Returns true when the directory is gone, otherwise false with a stable
     /// <paramref name="skipReason"/> code from <see cref="InstanceDeleteSkipReason"/>.
     /// </summary>
+    /// <param name="rootPath">Candidate instance directory.</param>
+    /// <param name="configuredRoots">Roots configured by the user; the instance
+    /// must live inside one of them.</param>
+    /// <param name="otherInstanceRoots">Every other registered instance path.</param>
+    /// <param name="skipReason">Stable reason code when the delete is skipped.</param>
+    /// <param name="allowOutsideConfiguredRoots">
+    /// Only for a directory this process just created itself (duplicate
+    /// rollback); user-driven deletes must stay inside the configured roots.
+    /// </param>
     public static bool TryDelete(
         string rootPath,
         IReadOnlyList<string> configuredRoots,
         IReadOnlyList<string> otherInstanceRoots,
-        out string? skipReason)
+        out string? skipReason,
+        bool allowOutsideConfiguredRoots = false)
     {
         skipReason = null;
         if (string.IsNullOrWhiteSpace(rootPath))
@@ -69,6 +80,17 @@ public static class InstanceDirectoryCleaner
         if (!File.Exists(Path.Combine(full, ".archoera", "instance.json")))
         {
             skipReason = InstanceDeleteSkipReason.NotManaged;
+            return false;
+        }
+
+        // Recursive deletion is only allowed for a directory that lives inside
+        // a configured instances root. A registry row alone is not proof of
+        // ownership: a stale or imported path could otherwise target any
+        // folder that happens to carry a marker file.
+        if (!allowOutsideConfiguredRoots &&
+            !IsInsideConfiguredRoot(full, configuredRoots))
+        {
+            skipReason = InstanceDeleteSkipReason.OutsideRoot;
             return false;
         }
 
@@ -117,6 +139,33 @@ public static class InstanceDirectoryCleaner
                PathSemantics.Comparer.Equals(
                    Path.TrimEndingDirectorySeparator(pathRoot),
                    fullPath);
+    }
+
+    private static bool IsInsideConfiguredRoot(
+        string candidate,
+        IReadOnlyList<string> configuredRoots)
+    {
+        foreach (var root in configuredRoots)
+        {
+            if (string.IsNullOrWhiteSpace(root)) continue;
+            try
+            {
+                var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+                if (PathSemantics.Comparer.Equals(candidate, normalized) ||
+                    IsWithin(candidate, normalized))
+                {
+                    return true;
+                }
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or
+                PathTooLongException)
+            {
+                // An unparseable root cannot authorize a delete.
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

@@ -60,6 +60,13 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(120);
 
+    /// <summary>
+    /// Plans are transient now that they can embed proxy credentials. A failed
+    /// plan is kept briefly for diagnosis; anything older is swept on the next
+    /// run.
+    /// </summary>
+    private static readonly TimeSpan PlanRetention = TimeSpan.FromDays(7);
+
     private readonly string _downloaderPath;
 
     public DownloadPlanRunner(string? downloaderPath = null)
@@ -114,11 +121,12 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         var planJson = DownloadPlanJson.Build(plan);
         var planDirectory = Path.Combine(plan.Root, ".archoera", "plans");
         Directory.CreateDirectory(planDirectory);
+        CleanupExpiredPlans(planDirectory, DateTimeOffset.UtcNow, PlanRetention);
         var planPath = Path.Combine(
             planDirectory,
             $"plan-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-" +
-            $"{SafePlanId(plan.PlanId)}.json");
-        await File.WriteAllBytesAsync(planPath, planJson, cancellationToken)
+            $"{SafePlanId(plan.PlanId)}-{Guid.NewGuid():N}.json");
+        await WritePlanFileAsync(planPath, planJson, cancellationToken)
             .ConfigureAwait(false);
 
         var startInfo = new ProcessStartInfo
@@ -238,7 +246,7 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             }
         }
 
-        return new PlanExecutionResult(
+        var executionResult = new PlanExecutionResult(
             status,
             string.Equals(status, "completed", StringComparison.OrdinalIgnoreCase),
             planPath,
@@ -246,12 +254,16 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             Tail(stderrText, 4000),
             failedCount,
             failedSummary);
+        if (executionResult.Completed)
+        {
+            // Completed plans have no diagnostic value and may carry proxy
+            // credentials. Failed plans stay (mode 0600) for inspection.
+            TryDeletePlanFile(planPath);
+        }
+
+        return executionResult;
     }
 
-    /// <summary>
-    /// Locates the Rust executor. Explicit env override wins; packaged and
-    /// development locations are probed next.
-    /// </summary>
     /// <summary>
     /// Applies the user's download tuning (concurrency, per-host cap) to a
     /// plan that was produced elsewhere. Plans stay declarative; the runner is
@@ -283,35 +295,31 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         };
     }
 
+    /// <summary>
+    /// Locates the Rust executor. Only an explicit env override and the
+    /// application directory (plus its <c>lib</c>/parent variants) are trusted
+    /// in release builds; development builds also probe the repository.
+    /// </summary>
     public static string ResolveDownloaderPath()
     {
         var configured = Environment.GetEnvironmentVariable("ARCHOERACX_DL_BIN");
-        if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured))
+        if (!string.IsNullOrWhiteSpace(configured) &&
+            TryExistingFile(configured) is { } explicitPath)
         {
-            return configured;
+            return explicitPath;
         }
 
         var names = OperatingSystem.IsWindows()
             ? new[] { "archoera-dl.exe", "archoera-dl" }
             : new[] { "archoera-dl" };
-        var bases = new List<string>
-        {
-            AppContext.BaseDirectory,
-            Path.Combine(AppContext.BaseDirectory, "lib"),
-            Path.Combine(AppContext.BaseDirectory, ".."),
-            Path.Combine(AppContext.BaseDirectory, "..", "lib"),
-        };
 
-        var processDirectory = Environment.ProcessPath is { } processPath
-            ? Path.GetDirectoryName(processPath)
-            : null;
-        if (!string.IsNullOrWhiteSpace(processDirectory))
-        {
-            bases.Add(processDirectory);
-            bases.Add(Path.Combine(processDirectory, "lib"));
-        }
-
+        // Development builds also probe the repository working directory; a
+        // packaged build must never load an executable from a location the
+        // current user or another local user can plant files in.
         string? cwd = null;
+        var includeDevelopmentProbes = false;
+#if DEBUG
+        includeDevelopmentProbes = true;
         try
         {
             cwd = Environment.CurrentDirectory;
@@ -320,16 +328,12 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         {
             // Deleted/replaced working directory; packaged paths still work.
         }
+#endif
 
-        if (!string.IsNullOrWhiteSpace(cwd))
-        {
-            bases.Add(Path.Combine(cwd, "build", "native"));
-            bases.Add(Path.Combine(cwd, "app", "build", "native"));
-            bases.Add(Path.Combine(cwd, "app", "modules", "downloader", "target", "release"));
-            bases.Add(Path.Combine(cwd, "modules", "downloader", "target", "release"));
-        }
-
-        foreach (var baseDirectory in bases)
+        foreach (var baseDirectory in BuildDownloaderDirectories(
+                     AppContext.BaseDirectory,
+                     cwd,
+                     includeDevelopmentProbes))
         {
             foreach (var name in names)
             {
@@ -339,6 +343,133 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         }
 
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Candidate directories in probe order. Pure so tests can assert that a
+    /// release build never consults the (potentially writable) working
+    /// directory.
+    /// </summary>
+    internal static IReadOnlyList<string> BuildDownloaderDirectories(
+        string baseDirectory,
+        string? currentDirectory,
+        bool includeDevelopmentProbes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseDirectory);
+        var bases = new List<string>
+        {
+            baseDirectory,
+            Path.Combine(baseDirectory, "lib"),
+            Path.Combine(baseDirectory, ".."),
+            Path.Combine(baseDirectory, "..", "lib"),
+        };
+
+        if (includeDevelopmentProbes && !string.IsNullOrWhiteSpace(currentDirectory))
+        {
+            bases.Add(Path.Combine(currentDirectory, "build", "native"));
+            bases.Add(Path.Combine(currentDirectory, "app", "build", "native"));
+            bases.Add(Path.Combine(
+                currentDirectory, "app", "modules", "downloader", "target", "release"));
+            bases.Add(Path.Combine(
+                currentDirectory, "modules", "downloader", "target", "release"));
+        }
+
+        return bases;
+    }
+
+    private static string? TryExistingFile(string path)
+    {
+        try
+        {
+            var full = Path.GetFullPath(path);
+            return File.Exists(full) ? full : null;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Writes a plan as an owner-only file on Unix. The file contains the
+    /// resolved proxy URL, which may embed credentials.
+    /// </summary>
+    internal static async Task WritePlanFileAsync(
+        string planPath,
+        byte[] json,
+        CancellationToken cancellationToken)
+    {
+        var options = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+            Options = FileOptions.Asynchronous,
+        };
+        if (!OperatingSystem.IsWindows())
+        {
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        await using var stream = new FileStream(planPath, options);
+        await stream.WriteAsync(json, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Deletes `plan-*.json` files older than <paramref name="maxAge"/> and
+    /// returns the number removed. Only launcher-owned plan files are touched.
+    /// </summary>
+    internal static int CleanupExpiredPlans(
+        string planDirectory,
+        DateTimeOffset now,
+        TimeSpan maxAge)
+    {
+        if (!Directory.Exists(planDirectory)) return 0;
+
+        var cutoff = now.UtcDateTime - maxAge;
+        var removed = 0;
+        try
+        {
+            foreach (var path in Directory.EnumerateFiles(
+                         planDirectory,
+                         "plan-*.json",
+                         SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    var info = new FileInfo(path);
+                    if (info.LastWriteTimeUtc >= cutoff) continue;
+                    info.Delete();
+                    removed++;
+                }
+                catch (Exception exception) when (
+                    exception is IOException or UnauthorizedAccessException)
+                {
+                    // Best effort; the next run retries.
+                }
+            }
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            // The instance folder may be read-only; execution will report it.
+        }
+
+        return removed;
+    }
+
+    private static void TryDeletePlanFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            // Best effort; the retention sweep removes it later.
+        }
     }
 
     private static async Task PumpLinesAsync(

@@ -53,6 +53,69 @@ public sealed class VaultCredentialStoreTests
         }
     }
 
+    [Fact]
+    public void Binary_candidates_skip_the_working_directory_in_release()
+    {
+        var cwd = Path.Combine(Path.GetTempPath(), "archoera-cwd-probe");
+        var baseDirectory = Path.Combine(Path.GetTempPath(), "archoera-app");
+
+        var candidates = VaultCredentialStore.BuildBinaryCandidates(
+            baseDirectory,
+            cwd,
+            includeDevelopmentProbes: false);
+
+        Assert.Equal(
+            Path.Combine(baseDirectory, OperatingSystem.IsWindows()
+                ? "archoera-vault.exe"
+                : "archoera-vault"),
+            candidates[0]);
+        Assert.DoesNotContain(
+            candidates,
+            candidate => candidate.StartsWith(cwd, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SelectBinary_prefers_an_existing_override_and_ignores_non_files()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var appDirectory = Path.Combine(directory, "app");
+            var overrideDirectory = Path.Combine(directory, "override");
+            Directory.CreateDirectory(appDirectory);
+            Directory.CreateDirectory(overrideDirectory);
+            var name = OperatingSystem.IsWindows()
+                ? "archoera-vault.exe"
+                : "archoera-vault";
+            var bundled = Path.Combine(appDirectory, name);
+            var overridden = Path.Combine(overrideDirectory, name);
+            File.WriteAllText(bundled, "vault");
+            File.WriteAllText(overridden, "vault");
+
+            var candidates = VaultCredentialStore.BuildBinaryCandidates(
+                appDirectory,
+                currentDirectory: null,
+                includeDevelopmentProbes: false);
+
+            Assert.Equal(
+                Path.GetFullPath(overridden),
+                VaultCredentialStore.SelectBinary(overridden, candidates));
+            Assert.Equal(
+                Path.GetFullPath(bundled),
+                VaultCredentialStore.SelectBinary(null, candidates));
+            Assert.Equal(
+                Path.GetFullPath(bundled),
+                VaultCredentialStore.SelectBinary(appDirectory, candidates));
+            Assert.Null(VaultCredentialStore.SelectBinary(
+                Path.Combine(directory, "missing"),
+                []));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
     private static string VaultBinary()
     {
         var configured = Environment.GetEnvironmentVariable("ARCHOERACX_VAULT_BIN");

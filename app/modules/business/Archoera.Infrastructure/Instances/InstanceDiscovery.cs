@@ -609,17 +609,65 @@ internal static class InstanceDiscovery
             return null;
         }
 
+        var memoryMin = MemoryInt(element, "memoryMinMb");
+        var memoryMax = MemoryInt(element, "memoryMaxMb");
+        if (memoryMin is { } minimum && memoryMax is { } maximum && minimum > maximum)
+        {
+            // Imported metadata with an impossible range must not reach the UI
+            // or the launch planner; fall back to auto sizing.
+            memoryMin = null;
+            memoryMax = null;
+        }
+
         var overrides = new InstanceOverrides(
-            Int(element, "memoryMinMb"),
-            Int(element, "memoryMaxMb"),
+            memoryMin,
+            memoryMax,
             String(element, "jvmArgs"),
             String(element, "gcMode"),
             String(element, "gameArgs"),
-            String(element, "javaPath"),
+            JavaPath(element),
             Int(element, "windowWidth"),
             Int(element, "windowHeight"),
             Bool(element, "fullscreen"));
         return overrides.IsEmpty ? null : overrides;
+    }
+
+    /// <summary>
+    /// Imported overrides are untrusted. Only an absolute, existing regular
+    /// file is accepted; a relative, missing, or linked path is ignored so
+    /// auto-detection picks a real runtime instead of launching something else.
+    /// </summary>
+    private static string? JavaPath(JsonElement root)
+    {
+        var path = String(root, "javaPath");
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var full = Path.GetFullPath(path);
+            if (!File.Exists(full)) return null;
+            if ((File.GetAttributes(full) & FileAttributes.ReparsePoint) != 0)
+            {
+                return null;
+            }
+
+            return full;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or IOException or UnauthorizedAccessException or
+            NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
+
+    private static int? MemoryInt(JsonElement root, string name)
+    {
+        var value = Int(root, name);
+        return value is >= 128 and <= 65536 ? value : null;
     }
 
     private static int? Int(JsonElement root, string name)

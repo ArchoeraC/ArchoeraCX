@@ -1,6 +1,7 @@
 using System.Net;
 using Archoera.Application.Resources;
 using Archoera.Domain.Resources;
+using Archoera.Infrastructure.Resources;
 using Archoera.Infrastructure.Resources.Modrinth;
 
 namespace Archoera.Tests;
@@ -291,6 +292,58 @@ public sealed class ModrinthClientTests
 
         Assert.Equal("INVALID_REQUEST", exception.Code);
         Assert.Empty(handler.Requests);
+    }
+
+    [Theory]
+    [InlineData("https://api.modrinth.com/v2/", true)]
+    [InlineData("https://api.modrinth.com/", true)]
+    [InlineData("https://evil.example/v2/", false)]
+    [InlineData("http://api.modrinth.com/v2/", false)]
+    [InlineData("http://127.0.0.1:8080/v2/", true)]
+    [InlineData("https://localhost/v2/", true)]
+    [InlineData("https://user:pass@api.modrinth.com/v2/", false)]
+    public void Provider_base_allow_list_enforces_the_release_policy(
+        string value,
+        bool expected)
+    {
+        var uri = new Uri(value);
+        Assert.Equal(
+            expected,
+            ResourceModuleService.IsProviderBaseAllowed(
+                uri,
+                allowDevelopmentBase: false));
+        Assert.True(ResourceModuleService.IsProviderBaseAllowed(
+            uri,
+            allowDevelopmentBase: true));
+    }
+
+    [Fact]
+    public async Task Deeply_nested_json_is_rejected_as_invalid_response()
+    {
+        var handler = new FakeHttpMessageHandler();
+        handler.EnqueueJson(new string('[', 65) + new string(']', 65));
+        var client = CreateClient(handler);
+
+        var exception = await Assert.ThrowsAsync<ResourceProviderException>(
+            () => client.GetProjectAsync("AANobbMI"));
+
+        Assert.Equal("INVALID_RESPONSE", exception.Code);
+    }
+
+    [Fact]
+    public async Task Bounded_read_stream_aborts_an_oversized_body()
+    {
+        await using var bounded = new BoundedReadStream(
+            new MemoryStream(new byte[32]),
+            maxBytes: 8);
+        var buffer = new byte[32];
+
+        await Assert.ThrowsAsync<InvalidDataException>(async () =>
+        {
+            while (await bounded.ReadAsync(buffer) > 0)
+            {
+            }
+        });
     }
 
     private static ModrinthClient CreateClient(
