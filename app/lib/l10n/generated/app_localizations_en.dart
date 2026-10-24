@@ -149,6 +149,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packInstallFailed => 'Modpack installation failed.';
 
   @override
+  String get packBlockedTitle => 'Unsafe modpack blocked';
+
+  @override
+  String get packBlockedBody =>
+      'This pack tried to write outside its folder, create a link, or expand to an unreasonable size (zip bomb). The launcher stopped before installing it. Do not install it unless you trust its source.';
+
+  @override
   String get packInspectFailed => 'This file is not a valid Modrinth modpack.';
 
   @override

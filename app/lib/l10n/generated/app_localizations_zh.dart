@@ -147,6 +147,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get packInstallFailed => '整合包安装失败。';
 
   @override
+  String get packBlockedTitle => '已阻止不安全的整合包';
+
+  @override
+  String get packBlockedBody =>
+      '该整合包试图写出实例目录、创建符号链接，或解压到不合理的大小（zip 炸弹）。启动器已在安装前停止。除非你信任来源，否则不要安装。';
+
+  @override
   String get packInspectFailed => '该文件不是有效的 Modrinth 整合包。';
 
   @override
