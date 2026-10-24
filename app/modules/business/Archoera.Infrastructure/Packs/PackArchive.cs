@@ -255,7 +255,7 @@ public static class PackArchive
             if (ExceedsCompressionRatio(length, entry.CompressedLength))
             {
                 throw new PackException(
-                    PackErrorCode.TooLarge,
+                    PackErrorCode.ArchiveBomb,
                     $"{name}: override expands more than {MaxCompressionRatio}:1");
             }
 
@@ -345,7 +345,7 @@ public static class PackArchive
         if ((mode & fileTypeMask) == symbolicLink)
         {
             throw new PackException(
-                PackErrorCode.ArchiveInvalid,
+                PackErrorCode.SymlinkEntry,
                 $"archive contains a symlink entry: {entry.FullName}");
         }
     }
@@ -453,7 +453,7 @@ public static class PackArchive
         if (ExceedsCompressionRatio(entry.Length, entry.CompressedLength))
         {
             throw new PackException(
-                PackErrorCode.TooLarge,
+                PackErrorCode.ArchiveBomb,
                 $"{relative}: override expands more than {MaxCompressionRatio}:1");
         }
 

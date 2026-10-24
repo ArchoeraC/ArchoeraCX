@@ -99,7 +99,7 @@ public sealed class PackArchiveTests
 
             var exception = Assert.Throws<PackException>(
                 () => PackArchive.Read(archivePath, clientSide: true));
-            Assert.Equal(PackErrorCode.ArchiveInvalid, exception.Code);
+            Assert.Equal(PackErrorCode.SymlinkEntry, exception.Code);
         }
         finally
         {
@@ -145,7 +145,7 @@ public sealed class PackArchiveTests
 
             var exception = Assert.Throws<PackException>(
                 () => PackArchive.Read(archivePath, clientSide: true));
-            Assert.Equal(PackErrorCode.TooLarge, exception.Code);
+            Assert.Equal(PackErrorCode.ArchiveBomb, exception.Code);
             Assert.Contains("200:1", exception.Message, StringComparison.Ordinal);
         }
         finally
