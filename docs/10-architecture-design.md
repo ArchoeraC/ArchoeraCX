@@ -1805,6 +1805,7 @@ void _drain() {
 | `joinServerOnLaunch` | bool | 启动后自动加入服务器/世界 |
 | `joinServerAddress` | `host` / `host:port` / `[v6]` / `[v6]:port`，≤ 255 | 服务器地址；端口默认 25565 |
 | `joinWorldName` | string ≤ 128，拒绝 `/`、`\`、`..` | 单人世界名；仅版本支持 Quick Play 时生效 |
+| `preLoadCommand` / `preLaunchCommand` / `postExitCommand` | string ≤ 4096；`null` = 继承，`""` = 禁用 | 启动生命周期命令；无 shell、超时、`INST_*` 环境变量 |
 | `windowWidth` / `windowHeight` | int，640–7680 / 480–4320 | 游戏窗口尺寸 |
 | `fullscreen` | bool | 全屏 |
 
@@ -1819,7 +1820,7 @@ void _drain() {
 ```
 
 - `instance.update` 新增可选 `overrides` 对象，语义是 **merge patch**：键缺省 = 不改变，显式 `null` = 清除，有值 = 设置；`instance.list` / `instance.create` / `instance.update` 返回的实例对象**始终**带 `overrides`（无覆盖为 `{}`）。
-- 全局 `settings.json`（schema 13）另有 `wrapperCommand`（string ≤ 4096）与 `environment`（object ≤ 64 项）。启动环境合并顺序：自动优化（dGPU）→ 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
+- 全局 `settings.json`（schema 14）另有 `wrapperCommand`（string ≤ 4096）、`environment`（object ≤ 64 项）与 `preLoadCommand` / `preLaunchCommand` / `postExitCommand`（string ≤ 4096）。启动环境合并顺序：自动优化（dGPU）→ 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
 - 启动时 C# 用 `InstanceOverrides.ApplyTo(AppSettings)` 把实例覆盖合到全局设置，再选 Java、构建 LaunchPlan。
 - SQLite 只做索引，**不存** `overrides`；权威源仍是 `<instance root>/.archoera/instance.json`。
 

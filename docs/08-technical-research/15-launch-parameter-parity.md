@@ -7,8 +7,8 @@
 
 > **实现状态（2026-10-25）**
 >
-> - **[已实现]** 引号感知 tokenizer（JVM/game/wrapper）；全局与每实例 `wrapperCommand`、`environment`（合并顺序：自动优化 → 全局 → 实例；实例 `{}` 清空）；每实例 `joinServerOnLaunch` / `joinServerAddress` / `joinWorldName`（版本支持时用 Quick Play，否则 `--server/--port`）；settings schema 13；`settings.setRuntimeOptions` 已登记 C++/C#。
-> - **[未实现]** pre-load/pre-launch/post-exit、最大化/控制台行为、GameMode/MangoHud 专用开关（可用 wrapper/env 覆盖）、系统 GLFW/OpenAL/SDL。
+> - **[已实现]** 引号感知 tokenizer（JVM/game/wrapper/命令）；全局与每实例 `wrapperCommand`、`environment`（合并顺序：自动优化 → 全局 → 实例；实例 `{}` 清空）；每实例 `joinServerOnLaunch` / `joinServerAddress` / `joinWorldName`（版本支持时用 Quick Play，否则 `--server/--port`）；pre-load / pre-launch / post-exit 命令（无 shell、超时、`INST_*` 环境变量、pre 失败中止、post 失败仅记日志、`INST_JAVA_ARGS` 脱敏、命令日志 0600 并纳入 `launch-*.log` 轮转）；settings schema 14；`settings.setRuntimeOptions` 已登记 C++/C#。pre-load 在自动选择 Java 之前运行，`INST_JAVA` 只有在实例显式固定 Java 时才有值。
+> - **[未实现]** 最大化/控制台行为、GameMode/MangoHud 专用开关（可用 wrapper/env 覆盖）、系统 GLFW/OpenAL/SDL。
 
 ---
 
@@ -108,8 +108,9 @@ InstanceOverrides:
 ### 4.2 安全边界
 
 - Wrapper/pre/post 是**用户显式配置的本地程序**，等价于用户自己执行；不拼接未转义的 token，不经过 `sh -c`。
-- `$INST_*` 只提供给 pre/post 命令；**不提供 access token / client id**。
-- 日志里记录命令名与退出码，不记录 Env 值（可能含密钥）。
+- pre/post 命令只拿到 `$INST_*` 环境变量；**不提供 access token / client id**。`$INST_JAVA_ARGS` 里的 `--accessToken`/`--clientId`/`--auth_xuid` 会被替换为 `<redacted>`，命令日志以 0600 写入并按启动日志轮转。
+- pre-load/pre-launch 失败中止启动；post-exit 失败只写日志，不影响已退出的游戏。
+- 日志里记录阶段与可执行文件，不记录完整命令参数；Env 值不记录（可能含密钥）。
 - 实例覆盖只影响该实例；全局修改不影响已有实例的显式覆盖。
 
 ---
