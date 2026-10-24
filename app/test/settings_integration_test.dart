@@ -63,6 +63,22 @@ void main() {
       expect(afterMemory.memoryMode, 'manual');
       expect(afterMemory.gameOptimization, isFalse);
       await client.setRuntimeOptions(memoryMode: 'auto', gameOptimization: true);
+
+      // Launch wrapper and environment round trip through settings.set/get.
+      final withLaunch = await client.setRuntimeOptions(
+        wrapperCommand: 'gamemoderun --keep "my wrapper"',
+        environment: <String, String>{
+          'DRI_PRIME': '1',
+          'MESA_LOADER_DRIVER_OVERRIDE': 'zink',
+        },
+      );
+      expect(withLaunch.wrapperCommand, 'gamemoderun --keep "my wrapper"');
+      expect(withLaunch.environment['DRI_PRIME'], '1');
+      final reloadedLaunch = await client.getSettings();
+      expect(reloadedLaunch.wrapperCommand, 'gamemoderun --keep "my wrapper"');
+      expect(reloadedLaunch.environment['MESA_LOADER_DRIVER_OVERRIDE'], 'zink');
+      // Explicit null clears; a later run starts from a clean document.
+      await client.setRuntimeOptions(wrapperCommand: null, environment: null);
     },
     skip: enabled && core.existsSync() && module.existsSync()
         ? false
