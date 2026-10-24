@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import 'safe_url.dart';
 
 /// Network image with the launcher's neutral loading/error surfaces.
 ///
@@ -27,6 +28,12 @@ class AppNetworkImage extends StatelessWidget {
     // SDK, so the placeholder uses a glyph that is already part of the subset
     // (and matches the download page's broken-image placeholder).
     final placeholderIcon = fallbackIcon ?? AppIcons.imagePlaceholder;
+    if (!isSafeImageUrl(url)) {
+      final placeholder = _Placeholder(icon: placeholderIcon);
+      return borderRadius == null
+          ? placeholder
+          : ClipRRect(borderRadius: borderRadius!, child: placeholder);
+    }
     final image = Image.network(
       url,
       fit: fit,
