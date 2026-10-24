@@ -113,6 +113,8 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
                 code: 'PACK_INVALID' ||
                     'PACK_UNSUPPORTED' ||
                     'PACK_ARCHIVE_INVALID' ||
+                    'PACK_ARCHIVE_BOMB' ||
+                    'PACK_SYMLINK_ENTRY' ||
                     'PACK_PATH_ESCAPE' ||
                     'PACK_TOO_LARGE' ||
                     'PACK_DUPLICATE_FILE',

@@ -57,6 +57,14 @@
   "@packInstallFailed": {
     "description": "Toast shown when a background pack install fails."
   },
+  "packBlockedTitle": "Unsafe modpack blocked",
+  "@packBlockedTitle": {
+    "description": "Title of the blocking dialog shown for a destructive archive."
+  },
+  "packBlockedBody": "This pack tried to write outside its folder, create a link, or expand to an unreasonable size (zip bomb). The launcher stopped before installing it. Do not install it unless you trust its source.",
+  "@packBlockedBody": {
+    "description": "Explains why a destructive modpack was rejected; no blame on the user."
+  },
   "packInspectFailed": "This file is not a valid Modrinth modpack.",
   "@packInspectFailed": {
     "description": "shown when a local .mrpack cannot be parsed."

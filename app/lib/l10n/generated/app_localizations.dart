@@ -368,6 +368,18 @@ abstract class AppLocalizations {
   /// **'Modpack installation failed.'**
   String get packInstallFailed;
 
+  /// Title of the blocking dialog shown for a destructive archive.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe modpack blocked'**
+  String get packBlockedTitle;
+
+  /// Explains why a destructive modpack was rejected; no blame on the user.
+  ///
+  /// In en, this message translates to:
+  /// **'This pack tried to write outside its folder, create a link, or expand to an unreasonable size (zip bomb). The launcher stopped before installing it. Do not install it unless you trust its source.'**
+  String get packBlockedBody;
+
   /// shown when a local .mrpack cannot be parsed.
   ///
   /// In en, this message translates to:

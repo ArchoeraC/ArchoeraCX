@@ -8,6 +8,7 @@ import '../services/core/java/java_runtime_plan.dart';
 import '../services/core/packs/pack_install_result.dart';
 import '../services/core/resources/resource_models.dart';
 import '../services/core/downloads/task_update.dart';
+import '../widgets/common/pack_safety.dart';
 import '../widgets/common/toast.dart';
 import 'instances.dart';
 import 'preferences.dart';
@@ -187,6 +188,13 @@ class DownloadsNotifier extends Notifier<void> {
     try {
       inspection = await client.inspectModpack(path, label: label);
     } catch (error) {
+      if (error is CoreException && isDestructivePackCode(error.code)) {
+        final shown = await showPackBlockedDialogFromRouter(
+          code: error.code,
+          detail: error.message,
+        );
+        if (shown) return null;
+      }
       final described = error is CoreException
           ? describeError?.call(error)
           : null;
@@ -441,6 +449,13 @@ class DownloadsNotifier extends Notifier<void> {
         if (error.code == 'E_CANCELLED') {
           toast(cancelledMessage, type: ToastType.info);
           return;
+        }
+        if (isDestructivePackCode(error.code)) {
+          final shown = await showPackBlockedDialogFromRouter(
+            code: error.code,
+            detail: error.message,
+          );
+          if (shown) return;
         }
         toast(
           describeError?.call(error) ?? '$failureMessage\n$error',

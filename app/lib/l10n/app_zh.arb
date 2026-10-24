@@ -45,6 +45,8 @@
   "importPack": "导入整合包",
   "packInstallDone": "整合包安装完成。",
   "packInstallFailed": "整合包安装失败。",
+  "packBlockedTitle": "已阻止不安全的整合包",
+  "packBlockedBody": "该整合包试图写出实例目录、创建符号链接，或解压到不合理的大小（zip 炸弹）。启动器已在安装前停止。除非你信任来源，否则不要安装。",
   "packInspectFailed": "该文件不是有效的 Modrinth 整合包。",
   "packLoaderUnsupported": "暂不支持该整合包加载器。支持原版、Fabric、Quilt、Forge 与 NeoForge。",
   "packJavaMissing": "该整合包需要 Java 来运行加载器 processors。请先在设置中安装或选择匹配的 Java。",

@@ -9,6 +9,7 @@ import '../pages/instances_page.dart';
 import '../pages/java_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/wiki_page.dart';
+import '../widgets/common/app_navigator.dart';
 import '../widgets/common/page_surface.dart';
 import 'shell.dart';
 
@@ -30,6 +31,7 @@ GoRouter buildAppRouter({String? initialLocation}) {
       : '/';
 
   return GoRouter(
+    navigatorKey: appNavigatorKey,
     initialLocation: location,
     routes: [
       StatefulShellRoute.indexedStack(
