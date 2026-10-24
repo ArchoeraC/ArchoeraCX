@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -333,11 +334,7 @@ internal static class LaunchPlanBuilder
             "epsilon" => "-XX:+UseEpsilonGC",
             _ => null,
         };
-        var customJvm = string.IsNullOrWhiteSpace(settings.JvmArgs)
-            ? []
-            : settings.JvmArgs
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToList();
+        var customJvm = SplitUserArguments(settings.JvmArgs, "jvmArgs");
         var customSelectsGc = customJvm.Any(SelectsGc) ||
                               optimization.JvmArgs.Any(SelectsGc);
         if (gcFlag is not null && !customSelectsGc)
@@ -388,9 +385,7 @@ internal static class LaunchPlanBuilder
 
         if (!string.IsNullOrWhiteSpace(settings.GameArgs))
         {
-            game.AddRange(settings.GameArgs.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            game.AddRange(SplitUserArguments(settings.GameArgs, "gameArgs"));
         }
 
         if (game.Count == 0)
@@ -409,14 +404,128 @@ internal static class LaunchPlanBuilder
             ]);
         }
 
+        AppendAutoJoin(game, instance, version, platform);
+
+        // Wrapper tokens are parsed once here so the start info can place the
+        // Java path after them without re-splitting user text.
+        var wrapper = SplitUserArguments(settings.WrapperCommand, "wrapperCommand");
+        var environment = LaunchEnvironmentRules.Merge(
+            optimization.Environment,
+            settings.Environment);
+
         jvm.Add(version.MainClass);
         jvm.AddRange(game);
         return new LaunchPlan(
             java.Path,
             paths.InstanceRoot,
             Path.Combine(paths.InstanceRoot, ".archoera", "logs"),
+            wrapper,
             jvm,
-            optimization.Environment);
+            environment);
+    }
+
+    /// <summary>
+    /// Splits a user text field with the shared tokenizer. A malformed field is
+    /// a launch error with its own code so the UI can point at the argument box
+    /// instead of reporting a generic launch failure.
+    /// </summary>
+    private static List<string> SplitUserArguments(string? value, string field)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return [];
+        try
+        {
+            return CommandLineTokenizer.Split(value).ToList();
+        }
+        catch (FormatException exception)
+        {
+            throw new LaunchException(
+                "LAUNCH_ARGS_INVALID",
+                $"{field}: {exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Appends the per-instance auto-join arguments after the version's own
+    /// game arguments. Quick Play is preferred when the version supports it;
+    /// otherwise the classic <c>--server/--port</c> pair is used. A world join
+    /// only makes sense on versions with Quick Play single-player support.
+    /// </summary>
+    private static void AppendAutoJoin(
+        List<string> game,
+        GameInstanceRecord instance,
+        MojangVersion version,
+        MojangPlatform platform)
+    {
+        if (instance.Overrides is not { JoinServerOnLaunch: true } join) return;
+
+        var addressText = join.JoinServerAddress;
+        if (!string.IsNullOrWhiteSpace(addressText))
+        {
+            if (!ServerAddress.TryParse(addressText, out var address))
+            {
+                throw new LaunchException(
+                    "LAUNCH_ARGS_INVALID",
+                    "joinServerAddress is not a valid host, host:port, [v6] or [v6]:port");
+            }
+
+            if (HasGameArgument(version, "--quickPlayMultiplayer", platform))
+            {
+                game.Add("--quickPlayMultiplayer");
+                game.Add(address.HostAndPort);
+            }
+            else
+            {
+                game.Add("--server");
+                game.Add(address.Host);
+                game.Add("--port");
+                game.Add(address.Port.ToString(CultureInfo.InvariantCulture));
+            }
+
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(join.JoinWorldName))
+        {
+            throw new LaunchException(
+                "LAUNCH_ARGS_INVALID",
+                "joinServerOnLaunch requires joinServerAddress or joinWorldName");
+        }
+
+        string world;
+        try
+        {
+            world = InstanceJoinRules.NormalizeWorldName(join.JoinWorldName)!;
+        }
+        catch (ArgumentException exception)
+        {
+            throw new LaunchException("LAUNCH_ARGS_INVALID", exception.Message);
+        }
+
+        if (HasGameArgument(version, "--quickPlaySingleplayer", platform))
+        {
+            game.Add("--quickPlaySingleplayer");
+            game.Add(world);
+        }
+    }
+
+    /// <summary>
+    /// True when the version profile actually exposes <paramref name="name"/>
+    /// as a game argument (after rule filtering). Older versions have neither
+    /// Quick Play flag, so joining must fall back or be skipped.
+    /// </summary>
+    private static bool HasGameArgument(
+        MojangVersion version,
+        string name,
+        MojangPlatform platform)
+    {
+        if (version.Arguments is null) return false;
+        foreach (var argument in version.Arguments.Game)
+        {
+            if (!MojangRuleEvaluator.IsAllowed(argument.Rules, platform)) continue;
+            if (argument.Values.Contains(name, StringComparer.Ordinal)) return true;
+        }
+
+        return false;
     }
 
     private static bool SelectsGc(string argument) =>

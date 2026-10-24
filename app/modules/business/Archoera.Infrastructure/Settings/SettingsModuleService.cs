@@ -1,16 +1,19 @@
 using System.Text.Json;
+using Archoera.Application.Json;
 using Archoera.Application.Modules;
 using Archoera.Domain.Settings;
 
 namespace Archoera.Infrastructure.Settings;
 
-/// <summary>JSON facade for settings.get / settings.set.</summary>
+/// <summary>JSON facade for settings.get / settings.set / settings.setRuntimeOptions.</summary>
 public sealed class SettingsModuleService : IModuleMethodHandler
 {
     private const string GetMethod = "settings.get";
     private const string SetMethod = "settings.set";
+    private const string SetRuntimeOptionsMethod = "settings.setRuntimeOptions";
 
-    private static readonly string[] SupportedMethods = [GetMethod, SetMethod];
+    private static readonly string[] SupportedMethods =
+        [GetMethod, SetMethod, SetRuntimeOptionsMethod];
 
     private readonly JsonAppSettingsStore _store;
     private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
@@ -22,6 +25,7 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         {
             [GetMethod] = GetAsync,
             [SetMethod] = SetAsync,
+            [SetRuntimeOptionsMethod] = SetRuntimeOptionsAsync,
         };
     }
 
@@ -63,6 +67,24 @@ public sealed class SettingsModuleService : IModuleMethodHandler
     private async Task<byte[]> SetAsync(
         string? paramsJson,
         CancellationToken cancellationToken)
+        => await SetAsync(paramsJson, cancellationToken, runtimeOnly: false)
+            .ConfigureAwait(false);
+
+    /// <summary>
+    /// Runtime-option patch endpoint used by the settings panels. It shares the
+    /// parser with <c>settings.set</c> but rejects instance-root changes so a
+    /// runtime panel cannot accidentally move every instance.
+    /// </summary>
+    private async Task<byte[]> SetRuntimeOptionsAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+        => await SetAsync(paramsJson, cancellationToken, runtimeOnly: true)
+            .ConfigureAwait(false);
+
+    private async Task<byte[]> SetAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken,
+        bool runtimeOnly)
     {
         if (string.IsNullOrWhiteSpace(paramsJson))
         {
@@ -96,6 +118,10 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         bool? shareLoaderFiles = null;
         string? memoryMode = null;
         bool? gameOptimization = null;
+        string? wrapperCommand = null;
+        var wrapperCommandPresent = false;
+        IReadOnlyDictionary<string, string>? environment = null;
+        var environmentPresent = false;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -319,6 +345,29 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                         : throw new ArgumentException("gameOptimization must be a boolean");
             }
 
+            if (root.TryGetProperty("wrapperCommand", out var wrapperElement))
+            {
+                wrapperCommandPresent = true;
+                wrapperCommand = RuntimeOptionsJson.NormalizeWrapper(
+                    JsonReader.StringValue(wrapperElement, "wrapperCommand"));
+            }
+
+            if (root.TryGetProperty("environment", out var environmentElement))
+            {
+                environmentPresent = true;
+                // JSON null clears the map; an object replaces it wholesale.
+                environment = RuntimeOptionsJson.ReadEnvironment(environmentElement);
+            }
+
+            if (runtimeOnly &&
+                (instancesRoots is { Count: > 0 } ||
+                 !string.IsNullOrWhiteSpace(legacyRoot)))
+            {
+                return Error(
+                    "E_INVALID",
+                    "settings.setRuntimeOptions does not accept instance roots");
+            }
+
             if (root.TryGetProperty("downloadProxy", out var proxyElement))
             {
                 downloadProxyPresent = true;
@@ -486,6 +535,16 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             current = current with { GameOptimization = gameOptimization.Value };
         }
 
+        if (wrapperCommandPresent)
+        {
+            current = current with { WrapperCommand = wrapperCommand };
+        }
+
+        if (environmentPresent)
+        {
+            current = current with { Environment = environment };
+        }
+
         if (instancesRoots is not { Count: > 0 } &&
             string.IsNullOrWhiteSpace(legacyRoot) &&
             !javaPathPresent &&
@@ -508,7 +567,9 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             logRetentionMb is null &&
             shareLoaderFiles is null &&
             memoryMode is null &&
-            gameOptimization is null)
+            gameOptimization is null &&
+            !wrapperCommandPresent &&
+            !environmentPresent)
         {
             return Error("E_INVALID", "settings.set requires at least one field");
         }
@@ -567,6 +628,16 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             {
                 writer.WriteString("gameArgs", settings.GameArgs);
             }
+            if (string.IsNullOrWhiteSpace(settings.WrapperCommand))
+            {
+                writer.WriteNull("wrapperCommand");
+            }
+            else
+            {
+                writer.WriteString("wrapperCommand", settings.WrapperCommand);
+            }
+
+            RuntimeOptionsJson.WriteEnvironment(writer, "environment", settings.Environment);
             writer.WriteString("downloadSource", settings.DownloadSource);
             writer.WriteNumber("downloadConcurrency", settings.DownloadConcurrency);
             writer.WriteNumber("downloadPerHost", settings.DownloadPerHost);

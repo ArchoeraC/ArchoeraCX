@@ -478,69 +478,14 @@ public sealed class JsonInstanceRepository : IInstanceRepository
             Date(item, "createdAt") ?? DateTimeOffset.UtcNow,
             Date(item, "updatedAt") ?? DateTimeOffset.UtcNow,
             Date(item, "lastPlayedAt"),
-            ReadOverrides(item));
-    }
-
-    private static InstanceOverrides? ReadOverrides(JsonElement root)
-    {
-        if (!root.TryGetProperty("overrides", out var element) ||
-            element.ValueKind != JsonValueKind.Object)
-        {
-            return null;
-        }
-
-        var overrides = new InstanceOverrides(
-            Int(element, "memoryMinMb"),
-            Int(element, "memoryMaxMb"),
-            String(element, "jvmArgs"),
-            String(element, "gcMode"),
-            String(element, "gameArgs"),
-            String(element, "javaPath"),
-            Int(element, "windowWidth"),
-            Int(element, "windowHeight"),
-            Bool(element, "fullscreen"));
-        return NormalizeOverrides(overrides);
+            InstanceOverridesJson.Read(item));
     }
 
     private static InstanceOverrides? NormalizeOverrides(InstanceOverrides? overrides)
         => overrides is null || overrides.IsEmpty ? null : overrides;
 
     private static void WriteOverrides(Utf8JsonWriter writer, InstanceOverrides? overrides)
-    {
-        if (overrides is null || overrides.IsEmpty) return;
-
-        writer.WriteStartObject("overrides");
-        if (overrides.MemoryMinMb is { } memoryMin)
-        {
-            writer.WriteNumber("memoryMinMb", memoryMin);
-        }
-
-        if (overrides.MemoryMaxMb is { } memoryMax)
-        {
-            writer.WriteNumber("memoryMaxMb", memoryMax);
-        }
-
-        if (overrides.JvmArgs is { } jvmArgs) writer.WriteString("jvmArgs", jvmArgs);
-        if (overrides.GcMode is { } gcMode) writer.WriteString("gcMode", gcMode);
-        if (overrides.GameArgs is { } gameArgs) writer.WriteString("gameArgs", gameArgs);
-        if (overrides.JavaPath is { } javaPath) writer.WriteString("javaPath", javaPath);
-        if (overrides.WindowWidth is { } windowWidth)
-        {
-            writer.WriteNumber("windowWidth", windowWidth);
-        }
-
-        if (overrides.WindowHeight is { } windowHeight)
-        {
-            writer.WriteNumber("windowHeight", windowHeight);
-        }
-
-        if (overrides.Fullscreen is { } fullscreen)
-        {
-            writer.WriteBoolean("fullscreen", fullscreen);
-        }
-
-        writer.WriteEndObject();
-    }
+        => InstanceOverridesJson.Write(writer, overrides, omitWhenEmpty: true);
 
     private static async Task WriteRecordsAsync(
         Stream stream,

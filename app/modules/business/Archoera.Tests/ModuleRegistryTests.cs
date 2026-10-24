@@ -32,6 +32,7 @@ public sealed class ModuleRegistryTests
             Assert.Contains("region.policy", registry.Methods);
             Assert.Contains("resource.project", registry.Methods);
             Assert.Contains("settings.get", registry.Methods);
+            Assert.Contains("settings.setRuntimeOptions", registry.Methods);
             Assert.Contains("instance.list", registry.Methods);
             Assert.Contains("instance.sync", registry.Methods);
             Assert.Contains("instance.mods.list", registry.Methods);

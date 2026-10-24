@@ -253,6 +253,11 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
         var windowWidth = current?.WindowWidth;
         var windowHeight = current?.WindowHeight;
         var fullscreen = current?.Fullscreen;
+        var wrapperCommand = current?.WrapperCommand;
+        IReadOnlyDictionary<string, string>? environment = current?.Environment;
+        var joinServerOnLaunch = current?.JoinServerOnLaunch;
+        var joinServerAddress = current?.JoinServerAddress;
+        var joinWorldName = current?.JoinWorldName;
 
         if (patch.TryGetProperty("memoryMinMb", out var memoryMinElement))
         {
@@ -308,9 +313,58 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
             fullscreen = ReadOverrideBool(fullscreenElement, "fullscreen");
         }
 
+        if (patch.TryGetProperty("wrapperCommand", out var wrapperElement))
+        {
+            var raw = ReadOverrideString(wrapperElement, "wrapperCommand");
+            // Null inherits, an empty string explicitly disables the wrapper.
+            wrapperCommand = raw is null
+                ? null
+                : string.IsNullOrWhiteSpace(raw)
+                    ? string.Empty
+                    : RuntimeOptionsJson.NormalizeWrapper(raw);
+        }
+
+        if (patch.TryGetProperty("environment", out var environmentElement))
+        {
+            // JSON null inherits the global map; `{}` explicitly clears it.
+            environment = RuntimeOptionsJson.ReadEnvironment(environmentElement);
+        }
+
+        if (patch.TryGetProperty("joinServerOnLaunch", out var joinElement))
+        {
+            joinServerOnLaunch = ReadOverrideBool(joinElement, "joinServerOnLaunch");
+        }
+
+        if (patch.TryGetProperty("joinServerAddress", out var addressElement))
+        {
+            joinServerAddress = InstanceJoinRules.NormalizeAddress(
+                ReadOverrideString(addressElement, "joinServerAddress"));
+        }
+
+        if (patch.TryGetProperty("joinWorldName", out var worldElement))
+        {
+            joinWorldName = InstanceJoinRules.NormalizeWorldName(
+                ReadOverrideString(worldElement, "joinWorldName"));
+        }
+
         if (memoryMin is { } minimum && memoryMax is { } maximum && minimum > maximum)
         {
             throw new ArgumentException("memoryMinMb must be <= memoryMaxMb");
+        }
+
+        InstanceJoinRules.ValidateTarget(
+            joinServerOnLaunch,
+            joinServerAddress,
+            joinWorldName);
+
+        // Join fields are meaningful only while the switch is on. An explicit
+        // false (the UI sends it to clear the switch) drops the whole group so
+        // an instance does not keep a stale auto-join badge.
+        if (joinServerOnLaunch != true)
+        {
+            joinServerOnLaunch = null;
+            joinServerAddress = null;
+            joinWorldName = null;
         }
 
         var merged = new InstanceOverrides(
@@ -322,7 +376,12 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
             javaPath,
             windowWidth,
             windowHeight,
-            fullscreen);
+            fullscreen,
+            wrapperCommand,
+            environment,
+            joinServerOnLaunch,
+            joinServerAddress,
+            joinWorldName);
         return merged.IsEmpty ? null : merged;
     }
 
@@ -459,42 +518,7 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
     }
 
     private static void WriteOverrides(Utf8JsonWriter writer, InstanceOverrides? overrides)
-    {
-        writer.WriteStartObject("overrides");
-        if (overrides is { IsEmpty: false })
-        {
-            if (overrides.MemoryMinMb is { } memoryMin)
-            {
-                writer.WriteNumber("memoryMinMb", memoryMin);
-            }
-
-            if (overrides.MemoryMaxMb is { } memoryMax)
-            {
-                writer.WriteNumber("memoryMaxMb", memoryMax);
-            }
-
-            if (overrides.JvmArgs is { } jvmArgs) writer.WriteString("jvmArgs", jvmArgs);
-            if (overrides.GcMode is { } gcMode) writer.WriteString("gcMode", gcMode);
-            if (overrides.GameArgs is { } gameArgs) writer.WriteString("gameArgs", gameArgs);
-            if (overrides.JavaPath is { } javaPath) writer.WriteString("javaPath", javaPath);
-            if (overrides.WindowWidth is { } windowWidth)
-            {
-                writer.WriteNumber("windowWidth", windowWidth);
-            }
-
-            if (overrides.WindowHeight is { } windowHeight)
-            {
-                writer.WriteNumber("windowHeight", windowHeight);
-            }
-
-            if (overrides.Fullscreen is { } fullscreen)
-            {
-                writer.WriteBoolean("fullscreen", fullscreen);
-            }
-        }
-
-        writer.WriteEndObject();
-    }
+        => InstanceOverridesJson.Write(writer, overrides, omitWhenEmpty: false);
 
     private static bool IsWithin(string path, string root)
     {

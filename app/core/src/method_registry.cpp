@@ -76,6 +76,7 @@ constexpr MethodRoute kRoutes[] = {
     {"wiki.feed", &handle_module_method, kCsModule},
     {"settings.get", &handle_module_method, kCsModule},
     {"settings.set", &handle_module_method, kCsModule},
+    {"settings.setRuntimeOptions", &handle_module_method, kCsModule},
 
     {"instance.list", &handle_module_method, kCsModule},
     {"instance.create", &handle_module_method, kCsModule},
