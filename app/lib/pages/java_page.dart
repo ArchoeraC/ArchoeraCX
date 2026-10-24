@@ -10,6 +10,7 @@ import '../services/core/core_client.dart';
 import '../services/core/java/java_scan.dart';
 import '../services/core/java/java_path_store.dart';
 import '../stores/downloads.dart';
+import '../stores/java.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
 import '../theme/icons/app_icons.dart';
@@ -186,6 +187,9 @@ class _JavaPageState extends ConsumerState<JavaPage> {
         },
       );
       if (!mounted) return;
+      // The instance Java picker reads the shared provider; refresh it here so
+      // a scan started on this page shows up there without another probe.
+      ref.invalidate(javaRuntimesProvider);
       setState(() {
         _state = _JavaState.ready;
         _result = result;

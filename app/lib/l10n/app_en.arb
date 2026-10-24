@@ -1905,6 +1905,30 @@
   "@instanceSettingsJavaHint": {
     "description": "Helper under the per-instance Java path field."
   },
+  "instanceSettingsJavaPick": "Choose a scanned Java runtime",
+  "@instanceSettingsJavaPick": {
+    "description": "Tooltip on the dropdown that lists scanned Java runtimes."
+  },
+  "instanceSettingsJavaFollowGlobal": "Use the global Java selection",
+  "@instanceSettingsJavaFollowGlobal": {
+    "description": "Menu entry that clears the per-instance Java path."
+  },
+  "instanceSettingsJavaScanning": "Scanning for Java runtimes…",
+  "@instanceSettingsJavaScanning": {
+    "description": "Shown inside the Java picker while the scanner is running."
+  },
+  "instanceSettingsJavaScanFailed": "Java scan failed; retry",
+  "@instanceSettingsJavaScanFailed": {
+    "description": "Shown inside the Java picker when the scan reported an error."
+  },
+  "instanceSettingsJavaNone": "No Java runtime scanned yet",
+  "@instanceSettingsJavaNone": {
+    "description": "Shown inside the Java picker when the scan found nothing."
+  },
+  "instanceSettingsJavaRescan": "Rescan Java runtimes",
+  "@instanceSettingsJavaRescan": {
+    "description": "Menu entry that reruns the Java scan from the picker."
+  },
   "instanceSettingsWindow": "Game window",
   "@instanceSettingsWindow": {
     "description": "Per-instance window mode override."

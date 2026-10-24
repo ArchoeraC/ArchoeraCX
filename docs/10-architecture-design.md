@@ -1371,10 +1371,10 @@ JavaLocator
     "dedup": true,
     "verifyExisting": "size",
     "durability": "normal",
-    "rangeThreshold": 1048576,
-    "chunkSize": 524288,
+    "rangeThreshold": 8388608,
+    "chunkSize": 4194304,
     "progressIntervalMs": 150,
-    "perHostConcurrency": 6,
+    "perHostConcurrency": 8,
     "proxy": { "url": "http://127.0.0.1:7890", "noProxy": ["localhost", ".lan"] }
   },
   "files": [
@@ -1398,7 +1398,7 @@ JavaLocator
 >
 > **边缘节点优选**：`cdn.modrinth.com` 由 Fastly anycast 承载，不同 anycast 地址的跨境链路差异可达两个数量级（实测同刻 30 KB/s ↔ 3 MB/s，个别地址直接不可用）。Rust 在无代理时用 128 KiB Range 探测若干 Fastly anycast 地址与 DNS 结果，按实测吞吐排序后通过 `resolve_to_addrs` 交给 HTTP 客户端（`ARCHOERACX_DL_NO_EDGE=1` 可关闭）；全部探测失败则完全退回 DNS。
 >
-> `archoera_dl` 已实现单流 GET、**大文件 Range 分片并发**（阈值 `rangeThreshold`、分片 `chunkSize`，服务端不认 Range 时退回单流）、**分片级断点续传**（`<dest>.part.meta` 记录完成分片 + ETag/Last-Modified，命中 `If-Range` 才续传，validator 变化或任一 200 则丢弃重下）、**每 host 连接上限**（`options.perHostConcurrency`，默认 16，0 表示不限）、**显式代理**（`options.proxy`，由 C# 解析后下发）、按 chunk 重试、hash/size 校验、`.part` + 原子 rename、进度/取消。全局连接预算 = `plan.concurrency`（默认 16，1–64），分片与单流共用；先取全局许可再取 host 许可，避免锁序反转。`post[]` 仍是兼容字段（不执行；natives/overrides 由 C# continuation 处理）。生成物（`PATCHED` 等）**永远不进** `files[]`。
+> `archoera_dl` 已实现单流 GET、**大文件 Range 分片并发**（阈值 `rangeThreshold`、分片 `chunkSize`，服务端不认 Range 时退回单流）、**分片级断点续传**（`<dest>.part.meta` 记录完成分片 + ETag/Last-Modified，命中 `If-Range` 才续传，validator 变化或任一 200 则丢弃重下）、**每 host 连接上限**（`options.perHostConcurrency`，默认 8，0 表示不限）、**显式代理**（`options.proxy`，由 C# 解析后下发）、按 chunk 重试、hash/size 校验、`.part` + 原子 rename、进度/取消。全局连接预算 = `plan.concurrency`（默认 16，1–64），分片与单流共用；先取全局许可再取 host 许可，避免锁序反转。`post[]` 仍是兼容字段（不执行；natives/overrides 由 C# continuation 处理）。生成物（`PATCHED` 等）**永远不进** `files[]`。
 
 | 字段 | 规则 |
 |---|---|
@@ -1441,8 +1441,8 @@ JavaLocator
 |---|---|---|
 | 全局 streams | 16（1–64，设置页可调；>32 需显式确认） | 一个 plan 内所有流共享同一信号量；`DownloadPlanRunner` 执行前按 `settings.downloadConcurrency` 覆盖 |
 | 来源优先 | 自动 / 官方 / 镜像 | `settings.downloadSource`；自动按 `region.policy` 解析（中国大陆镜像优先），设置页把解析结果显示在「自动」行内。影响原版 client/库/资源、Forge/NeoForge installer、加载器元数据、Modrinth 文件（`cdn.modrinth.com` → `mod.mcimirror.top`）；另一侧始终作为回退 |
-| 每 host streams | 16（0–64，设置页可调，`options.perHostConcurrency`） | host = 小写 hostname；先全局后 host 取许可；`DownloadPlanRunner` 按 `settings.downloadPerHost` 覆盖 |
-| 每文件 streams | 1 或 ⌈size/chunkSize⌉（受全局与 host 预算约束） | 默认 `rangeThreshold` 1 MiB、`chunkSize` 512 KiB，服务端返回 206 才分片；跨境链路常见“每流限速”，连接数比单流峰值更重要 |
+| 每 host streams | 8（0–64，设置页可调，`options.perHostConcurrency`） | host = 小写 hostname；先全局后 host 取许可；`DownloadPlanRunner` 按 `settings.downloadPerHost` 覆盖 |
+| 每文件 streams | 1 或 ⌈size/chunkSize⌉（受全局与 host 预算约束） | 默认 `rangeThreshold` 8 MiB、`chunkSize` 4 MiB，服务端返回 206 才分片；大多数资源与库保持单流，避免 5k 文件安装时的请求/TLS 握手风暴 |
 
 - 用单一 `Mutex<SchedState> + Notify` 的 permit broker，避免嵌套 Semaphore 持锁等待。
 - plan 间按 `priority` + 轮转；文件 `priority` 只在 plan 内排序。

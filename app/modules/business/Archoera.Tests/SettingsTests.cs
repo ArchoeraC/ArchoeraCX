@@ -182,7 +182,67 @@ public sealed class SettingsTests
 
             var loaded = await new JsonAppSettingsStore(dataRoot).LoadAsync();
 
-            Assert.Equal(16, loaded.DownloadPerHost);
+            Assert.Equal(8, loaded.DownloadPerHost);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Legacy_aggressive_chunk_defaults_are_migrated()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var games = Path.Combine(directory, "games");
+            Directory.CreateDirectory(dataRoot);
+            Directory.CreateDirectory(games);
+            await File.WriteAllTextAsync(
+                Path.Combine(dataRoot, "settings.json"),
+                $$"""
+                  {"schemaVersion":11,"instancesRoot":"{{games}}",
+                   "downloadPerHost":16,"downloadChunkSizeKb":512,
+                   "downloadRangeThresholdKb":1024}
+                  """);
+
+            var loaded = await new JsonAppSettingsStore(dataRoot).LoadAsync();
+
+            Assert.Equal(8, loaded.DownloadPerHost);
+            Assert.Equal(4096, loaded.DownloadChunkSizeKb);
+            Assert.Equal(8192, loaded.DownloadRangeThresholdKb);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Explicit_chunk_choice_survives_the_schema_bump()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var games = Path.Combine(directory, "games");
+            Directory.CreateDirectory(dataRoot);
+            Directory.CreateDirectory(games);
+            await File.WriteAllTextAsync(
+                Path.Combine(dataRoot, "settings.json"),
+                $$"""
+                  {"schemaVersion":11,"instancesRoot":"{{games}}",
+                   "downloadPerHost":4,"downloadChunkSizeKb":2048,
+                   "downloadRangeThresholdKb":0}
+                  """);
+
+            var loaded = await new JsonAppSettingsStore(dataRoot).LoadAsync();
+
+            Assert.Equal(4, loaded.DownloadPerHost);
+            Assert.Equal(2048, loaded.DownloadChunkSizeKb);
+            Assert.Equal(0, loaded.DownloadRangeThresholdKb);
         }
         finally
         {

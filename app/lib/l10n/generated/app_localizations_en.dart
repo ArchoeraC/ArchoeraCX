@@ -2309,6 +2309,25 @@ class AppLocalizationsEn extends AppLocalizations {
       'Absolute path to the java binary; leave blank to follow the global selection.';
 
   @override
+  String get instanceSettingsJavaPick => 'Choose a scanned Java runtime';
+
+  @override
+  String get instanceSettingsJavaFollowGlobal =>
+      'Use the global Java selection';
+
+  @override
+  String get instanceSettingsJavaScanning => 'Scanning for Java runtimes…';
+
+  @override
+  String get instanceSettingsJavaScanFailed => 'Java scan failed; retry';
+
+  @override
+  String get instanceSettingsJavaNone => 'No Java runtime scanned yet';
+
+  @override
+  String get instanceSettingsJavaRescan => 'Rescan Java runtimes';
+
+  @override
   String get instanceSettingsWindow => 'Game window';
 
   @override

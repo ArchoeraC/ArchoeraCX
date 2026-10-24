@@ -40,10 +40,15 @@ public static class DownloadPlanLimits
     public const int MaxHeaderValueLength = 8 * 1_024;
 
     /// <summary>Parallel streams per host; mirrors the Rust default.</summary>
-    public const int DefaultPerHostConcurrency = 16;
+    public const int DefaultPerHostConcurrency = 8;
     public const int MaxPerHostConcurrency = 64;
 
-    public const long DefaultRangeThreshold = 1024L * 1024;
-    public const long DefaultChunkSize = 512L * 1024;
+    /// <summary>
+    /// Only files above this size use ranged chunks. Minecraft assets are mostly
+    /// tiny and libraries mostly a few MiB, so chunking them adds request and
+    /// handshake overhead without raising throughput.
+    /// </summary>
+    public const long DefaultRangeThreshold = 8L * 1024 * 1024;
+    public const long DefaultChunkSize = 4L * 1024 * 1024;
     public const int DefaultProgressIntervalMs = 150;
 }

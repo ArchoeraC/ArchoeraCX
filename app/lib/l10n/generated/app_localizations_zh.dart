@@ -2197,6 +2197,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceSettingsJavaHint => '填写 java 可执行文件的绝对路径；留空跟随全局选择。';
 
   @override
+  String get instanceSettingsJavaPick => '从已扫描的 Java 中选择';
+
+  @override
+  String get instanceSettingsJavaFollowGlobal => '使用全局 Java 选择';
+
+  @override
+  String get instanceSettingsJavaScanning => '正在扫描 Java 运行时…';
+
+  @override
+  String get instanceSettingsJavaScanFailed => 'Java 扫描失败，点击重试';
+
+  @override
+  String get instanceSettingsJavaNone => '尚未扫描到 Java 运行时';
+
+  @override
+  String get instanceSettingsJavaRescan => '重新扫描 Java 运行时';
+
+  @override
   String get instanceSettingsWindow => '游戏窗口';
 
   @override

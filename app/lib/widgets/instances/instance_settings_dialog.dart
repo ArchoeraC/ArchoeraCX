@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
+import '../../services/core/java/java_scan.dart';
 import '../../services/core/launch/launch_memory.dart';
 import '../../stores/instances.dart';
+import '../../stores/java.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/icons/app_icons.dart';
@@ -458,12 +460,35 @@ class _InstanceSettingsDialogState
                     TextField(
                       controller: _javaController,
                       enabled: !_saving,
+                      onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         labelText: l10n.instanceSettingsJava,
                         hintText: javaHint,
                         helperText: l10n.instanceSettingsJavaHint,
                         helperMaxLines: 2,
                         prefixIcon: const Icon(AppIcons.java, size: 18),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_javaController.text.trim().isNotEmpty)
+                              IconButton(
+                                tooltip: l10n.instanceSettingsJavaFollowGlobal,
+                                onPressed: _saving
+                                    ? null
+                                    : () => setState(_javaController.clear),
+                                icon: const Icon(AppIcons.reset, size: 18),
+                              ),
+                            _JavaRuntimePicker(
+                              l10n: l10n,
+                              selectedPath: _javaController.text.trim(),
+                              enabled: !_saving,
+                              onSelected: (path) => setState(() {
+                                _javaController.text = path;
+                                _error = null;
+                              }),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -581,5 +606,119 @@ class _InstanceSettingsDialogState
       onChanged: onChanged,
       decoration: InputDecoration(labelText: label, hintText: hint),
     );
+  }
+}
+
+/// Dropdown attached to the Java path field that lists scanned runtimes.
+///
+/// The field itself stays a plain [TextField]: a runtime the scanner cannot
+/// find (a portable JRE, a wrapper script) is still saved verbatim, while the
+/// menu offers the entries the shared scanner already reported.
+class _JavaRuntimePicker extends ConsumerWidget {
+  const _JavaRuntimePicker({
+    required this.l10n,
+    required this.selectedPath,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final AppLocalizations l10n;
+  final String selectedPath;
+  final bool enabled;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final runtimes = ref.watch(javaRuntimesProvider);
+    return MenuAnchor(
+      style: const MenuStyle(
+        alignment: AlignmentDirectional.bottomEnd,
+        minimumSize: WidgetStatePropertyAll(Size(380, 0)),
+        maximumSize: WidgetStatePropertyAll(Size(520, 420)),
+      ),
+      menuChildren: _entries(context, ref, runtimes),
+      builder: (context, controller, child) => IconButton(
+        tooltip: l10n.instanceSettingsJavaPick,
+        onPressed: enabled
+            ? () => controller.isOpen ? controller.close() : controller.open()
+            : null,
+        icon: const Icon(AppIcons.chevronDown, size: 20),
+      ),
+    );
+  }
+
+  List<Widget> _entries(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<JavaRuntime>> runtimes,
+  ) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final items = runtimes.value ?? const <JavaRuntime>[];
+
+    return [
+      if (selectedPath.isNotEmpty)
+        MenuItemButton(
+          onPressed: () => onSelected(''),
+          leadingIcon: const Icon(AppIcons.reset, size: 18),
+          child: Text(l10n.instanceSettingsJavaFollowGlobal),
+        ),
+      for (final runtime in items)
+        MenuItemButton(
+          onPressed: () => onSelected(runtime.path),
+          leadingIcon: Icon(
+            runtime.path == selectedPath ? AppIcons.check : AppIcons.java,
+            size: 18,
+            color: runtime.path == selectedPath ? tokens.accent : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(runtime.displayVersion, style: textTheme.labelLarge),
+              Text(
+                runtime.path,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall?.copyWith(
+                  color: tokens.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      if (runtimes.isLoading)
+        MenuItemButton(
+          onPressed: null,
+          leadingIcon: const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          child: Text(l10n.instanceSettingsJavaScanning),
+        )
+      else if (runtimes.hasError)
+        MenuItemButton(
+          onPressed: () => ref.read(javaRuntimesProvider.notifier).rescan(),
+          leadingIcon: Icon(AppIcons.error, size: 18, color: tokens.danger),
+          child: Text(l10n.instanceSettingsJavaScanFailed),
+        )
+      else if (items.isEmpty)
+        MenuItemButton(
+          onPressed: null,
+          leadingIcon: Icon(
+            AppIcons.info,
+            size: 18,
+            color: tokens.textTertiary,
+          ),
+          child: Text(l10n.instanceSettingsJavaNone),
+        ),
+      const Divider(height: 1),
+      MenuItemButton(
+        onPressed: () => ref.read(javaRuntimesProvider.notifier).rescan(),
+        leadingIcon: const Icon(AppIcons.refresh, size: 18),
+        child: Text(l10n.instanceSettingsJavaRescan),
+      ),
+    ];
   }
 }

@@ -153,6 +153,18 @@ public sealed class JsonAppSettingsStore
                 downloadPerHost = fallback.DownloadPerHost;
             }
 
+            // Schema 11 and older used 16 per-host streams and chunked files
+            // above 1 MiB at 512 KiB. On a 5k-file install that becomes a
+            // handshake/request storm on lossy links, so migrate only untouched
+            // defaults; explicit user choices keep their values.
+            if (schemaVersion < 12)
+            {
+                if (downloadPerHost == 16) downloadPerHost = fallback.DownloadPerHost;
+                if (downloadChunkSizeKb == 512) downloadChunkSizeKb = fallback.DownloadChunkSizeKb;
+                if (downloadRangeThresholdKb == 1024)
+                    downloadRangeThresholdKb = fallback.DownloadRangeThresholdKb;
+            }
+
             return fallback with
             {
                 InstancesRoot = normalized[0],

@@ -159,6 +159,18 @@ pub(crate) async fn commit_part(
         ));
     }
 
+    // Flush once per file, after the last chunk and after verification, instead
+    // of fsyncing every ranged chunk while it still holds a network permit.
+    if engine.options.durability != Durability::Fast {
+        let flush = match tokio::fs::File::open(part).await {
+            Ok(file) => file.sync_all().await,
+            Err(err) => Err(err),
+        };
+        if let Err(err) = flush {
+            return Err(SourceFailure::after(err, transferred));
+        }
+    }
+
     if let Err(error) = rename_with_retry(part, &file.dest_path).await {
         return Err(SourceFailure::after(error, transferred));
     }

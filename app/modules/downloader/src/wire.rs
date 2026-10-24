@@ -116,7 +116,7 @@ pub(crate) fn length_rejection(
 
 /// Stream the response body into `target` (already positioned), enforcing the
 /// `expected` byte budget for this stream, the bandwidth limiter and the
-/// per-file meter, then flush it to disk. `hasher` is updated per chunk when
+/// per-file meter. `hasher` is updated per chunk when
 /// the caller wants a stream-computed digest. Errors always report the plan
 /// level `file.size` in a `SIZE_MISMATCH`, even when `expected` is a chunk
 /// budget. Returns the written byte count.
@@ -179,9 +179,6 @@ pub(crate) async fn stream_body(
             },
             written,
         ));
-    }
-    if let Err(err) = target.sync_all().await {
-        return Err(SourceFailure::after(err, written));
     }
     Ok(written)
 }

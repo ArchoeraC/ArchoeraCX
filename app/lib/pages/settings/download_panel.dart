@@ -25,10 +25,10 @@ extension _DownloadPanelX on _SettingsPageState {
     final tokens = context.tokens;
     final source = settings?.downloadSource ?? 'auto';
     final concurrency = settings?.downloadConcurrency ?? 16;
-    final perHost = settings?.downloadPerHost ?? 16;
+    final perHost = settings?.downloadPerHost ?? 8;
     final proxy = settings?.downloadProxy;
-    final chunkKb = settings?.downloadChunkSizeKb ?? 512;
-    final rangeThresholdKb = settings?.downloadRangeThresholdKb ?? 1024;
+    final chunkKb = settings?.downloadChunkSizeKb ?? 4096;
+    final rangeThresholdKb = settings?.downloadRangeThresholdKb ?? 8192;
 
     // `auto` follows the detected region; show what it actually resolves to.
     final region = ref.watch(regionPolicyProvider).value;
@@ -165,6 +165,8 @@ extension _DownloadPanelX on _SettingsPageState {
               DropdownMenuItem(value: 512, child: Text('512 KiB')),
               DropdownMenuItem(value: 1024, child: Text('1 MiB')),
               DropdownMenuItem(value: 2048, child: Text('2 MiB')),
+              DropdownMenuItem(value: 4096, child: Text('4 MiB')),
+              DropdownMenuItem(value: 8192, child: Text('8 MiB')),
             ],
             onChanged: (value) async {
               if (value == null) return;

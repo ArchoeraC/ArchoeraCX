@@ -105,6 +105,7 @@ impl ErrorCode {
             self,
             Self::Dns
                 | Self::Connect
+                | Self::Tls
                 | Self::Timeout
                 | Self::Http429
                 | Self::Http5xx
@@ -229,6 +230,18 @@ impl DownloadError {
         )
     }
 
+    /// Whether a retry against the same source can plausibly succeed.
+    ///
+    /// A TLS handshake reset or timeout is transient on cross-border links and
+    /// must be retried; a certificate/hostname verification failure is not,
+    /// because the same certificate will be presented again.
+    pub fn retryable(&self) -> bool {
+        if let Self::Tls(message) = self {
+            return !looks_like_certificate_failure(message);
+        }
+        self.code().retryable()
+    }
+
     pub fn from_reqwest(err: reqwest::Error) -> Self {
         if err.is_timeout() {
             return Self::Timeout(err.to_string());
@@ -283,6 +296,21 @@ impl From<serde_json::Error> for DownloadError {
     }
 }
 
+fn looks_like_certificate_failure(message: &str) -> bool {
+    let lower = message.to_ascii_lowercase();
+    [
+        "certificate",
+        "unknown issuer",
+        "self signed",
+        "self-signed",
+        "invalid peer",
+        "hostname mismatch",
+        "not valid for",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,7 +321,15 @@ mod tests {
         assert_eq!(ErrorCode::HashMismatch.as_str(), "HASH_MISMATCH");
         assert_eq!(ErrorCode::Cancelled.numeric(), 5001);
         assert!(ErrorCode::Http5xx.retryable());
-        assert!(!ErrorCode::Tls.retryable());
+        // A TLS handshake reset is transient and must be retried.
+        assert!(ErrorCode::Tls.retryable());
+    }
+
+    #[test]
+    fn tls_resets_retry_but_certificate_failures_do_not() {
+        assert!(DownloadError::Tls("unexpected eof while reading".into()).retryable());
+        assert!(!DownloadError::Tls("certificate verify failed".into()).retryable());
+        assert!(!DownloadError::Tls("invalid peer certificate".into()).retryable());
     }
 
     #[test]
