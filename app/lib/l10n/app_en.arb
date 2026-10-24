@@ -462,6 +462,105 @@
   "@settingsShareLoaderFilesDesc": {},
   "settingsSectionGameArgs": "Extra game arguments",
   "settingsGameArgsNote": "Appended after the vanilla arguments and split on spaces; leave empty for none.",
+  "settingsSectionProcess": "Wrapper & environment",
+  "@settingsSectionProcess": {
+    "description": "Global launch-process options: wrapper command and child environment."
+  },
+  "settingsProcessNote": "Applied to the game process only. Wrapper commands run as your user; environment values are stored locally and never logged.",
+  "@settingsProcessNote": {
+    "description": "Safety note under the global wrapper/environment section."
+  },
+  "settingsWrapperCommand": "Wrapper command",
+  "@settingsWrapperCommand": {
+    "description": "Label for the global process wrapper command field."
+  },
+  "settingsWrapperCommandHint": "e.g. gamemoderun, mangohud, prime-run",
+  "@settingsWrapperCommandHint": {
+    "description": "Example wrapper commands shown inside the global wrapper field."
+  },
+  "settingsWrapperCommandHelp": "Prepended to the Java command; leave empty for none.",
+  "@settingsWrapperCommandHelp": {
+    "description": "Helper text under the global wrapper command field."
+  },
+  "settingsEnvironment": "Environment variables",
+  "@settingsEnvironment": {
+    "description": "Label for the global child environment field."
+  },
+  "settingsEnvironmentHint": "KEY=VALUE",
+  "@settingsEnvironmentHint": {
+    "description": "Format hint for the multiline environment field."
+  },
+  "settingsEnvironmentHelp": "One KEY=VALUE per line. Blank lines are ignored.",
+  "@settingsEnvironmentHelp": {
+    "description": "Helper text under the global environment field."
+  },
+  "launchWrapperCommandTooLong": "Wrapper commands may be at most 4096 characters.",
+  "@launchWrapperCommandTooLong": {
+    "description": "Validation error when a wrapper command exceeds the contract limit."
+  },
+  "launchEnvironmentMissingSeparator": "Line {line}: enter KEY=VALUE.",
+  "@launchEnvironmentMissingSeparator": {
+    "description": "Environment block line without an equals sign.",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "launchEnvironmentInvalidKey": "Line {line}: \"{key}\" is not a valid variable name.",
+  "@launchEnvironmentInvalidKey": {
+    "description": "Environment key does not match the identifier pattern.",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "launchEnvironmentDuplicateKey": "Line {line}: \"{key}\" is already defined.",
+  "@launchEnvironmentDuplicateKey": {
+    "description": "Environment block repeats a key.",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "launchEnvironmentReservedKey": "Line {line}: \"{key}\" cannot be set here.",
+  "@launchEnvironmentReservedKey": {
+    "description": "Environment key is owned by the JVM/launcher and cannot be overridden.",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "launchEnvironmentTooMany": "At most {count} environment variables are allowed.",
+  "@launchEnvironmentTooMany": {
+    "description": "Environment block exceeds the entry limit.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "launchEnvironmentInvalidValue": "Line {line}: values must be at most 4096 characters and cannot contain NUL.",
+  "@launchEnvironmentInvalidValue": {
+    "description": "Environment value exceeds the length limit or contains a NUL.",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
   "settingsSectionTasks": "Tasks & logs",
   "settingsTasksNote": "These preferences only affect the interface and are not written to settings.json.",
   "settingsTaskHistory": "Task history",
@@ -1906,6 +2005,75 @@
   "@instanceSettingsGameArgs": {
     "description": "Per-instance extra game argument override."
   },
+  "instanceSettingsWrapperOverride": "Override wrapper command",
+  "@instanceSettingsWrapperOverride": {
+    "description": "Switch that enables a per-instance wrapper command override."
+  },
+  "instanceSettingsWrapperCommand": "Wrapper command",
+  "@instanceSettingsWrapperCommand": {
+    "description": "Per-instance wrapper command field."
+  },
+  "instanceSettingsWrapperCommandHint": "Leave empty to run the game without a wrapper.",
+  "@instanceSettingsWrapperCommandHint": {
+    "description": "Hint explaining that an enabled empty wrapper override disables the global wrapper."
+  },
+  "instanceSettingsEnvironmentOverride": "Override environment variables",
+  "@instanceSettingsEnvironmentOverride": {
+    "description": "Switch that enables a per-instance child environment override."
+  },
+  "instanceSettingsEnvironment": "Environment variables",
+  "@instanceSettingsEnvironment": {
+    "description": "Per-instance multiline environment field."
+  },
+  "instanceSettingsEnvironmentHint": "KEY=VALUE",
+  "@instanceSettingsEnvironmentHint": {
+    "description": "Format hint for the per-instance environment field."
+  },
+  "instanceSettingsEnvironmentHelp": "An empty list clears the global variables for this instance.",
+  "@instanceSettingsEnvironmentHelp": {
+    "description": "Helper text under the per-instance environment field."
+  },
+  "instanceSettingsAutoJoin": "Auto-join",
+  "@instanceSettingsAutoJoin": {
+    "description": "Switch that enables joining a server or loading a world on launch."
+  },
+  "instanceSettingsAutoJoinDesc": "Join a server or load a singleplayer world after the game starts.",
+  "@instanceSettingsAutoJoinDesc": {
+    "description": "Subtitle under the auto-join switch."
+  },
+  "instanceSettingsJoinServer": "Server address",
+  "@instanceSettingsJoinServer": {
+    "description": "Per-instance auto-join server address field."
+  },
+  "instanceSettingsJoinServerHint": "host, host:port, [IPv6], or [IPv6]:port",
+  "@instanceSettingsJoinServerHint": {
+    "description": "Accepted server address shapes."
+  },
+  "instanceSettingsJoinWorld": "Singleplayer world",
+  "@instanceSettingsJoinWorld": {
+    "description": "Per-instance auto-join singleplayer world field."
+  },
+  "instanceSettingsJoinWorldHint": "World folder name",
+  "@instanceSettingsJoinWorldHint": {
+    "description": "Hint for the singleplayer world folder name."
+  },
+  "instanceSettingsAutoJoinNeedsTarget": "Enter a server address or a singleplayer world.",
+  "instanceSettingsAutoJoinConflict": "Choose either a server address or a singleplayer world, not both.",
+  "@instanceSettingsAutoJoinNeedsTarget": {
+    "description": "Validation error when auto-join is enabled without a target."
+  },
+  "instanceSettingsInvalidWrapper": "Wrapper commands may be at most 4096 characters.",
+  "@instanceSettingsInvalidWrapper": {
+    "description": "Per-instance wrapper validation error."
+  },
+  "instanceSettingsInvalidServerAddress": "Enter host, host:port, [IPv6], or [IPv6]:port.",
+  "@instanceSettingsInvalidServerAddress": {
+    "description": "Per-instance server address validation error."
+  },
+  "instanceSettingsInvalidWorldName": "World names must be 1–128 characters without /, \\ or ...",
+  "@instanceSettingsInvalidWorldName": {
+    "description": "Per-instance singleplayer world name validation error."
+  },
   "instanceSettingsJava": "Java executable",
   "@instanceSettingsJava": {
     "description": "Per-instance Java runtime override."
@@ -2004,6 +2172,18 @@
   "instanceOverridesGc": "GC",
   "instanceOverridesJvm": "JVM args",
   "instanceOverridesGameArgs": "game args",
+  "instanceOverridesWrapper": "wrapper",
+  "@instanceOverridesWrapper": {
+    "description": "Override badge label for a per-instance wrapper command."
+  },
+  "instanceOverridesEnvironment": "environment",
+  "@instanceOverridesEnvironment": {
+    "description": "Override badge label for a per-instance environment map."
+  },
+  "instanceOverridesAutoJoin": "auto-join",
+  "@instanceOverridesAutoJoin": {
+    "description": "Override badge label for per-instance auto-join."
+  },
   "instanceOverridesJava": "Java",
   "instanceOverridesWindow": "window",
   "@instanceSettingsSaved": {

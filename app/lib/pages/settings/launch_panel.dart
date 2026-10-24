@@ -1,9 +1,11 @@
 part of '../settings_page.dart';
 
-/// Game window size, fullscreen and extra game arguments.
+/// Game window size, fullscreen, extra game arguments, wrapper command and
+/// child environment.
 ///
 /// These are C#-owned settings because the launch plan builder turns them into
-/// `--width`/`--height` substitutions and `--fullscreen`.
+/// `--width`/`--height` substitutions, `--fullscreen`, a wrapper process and
+/// the game process environment.
 class _LaunchSettingsPanel extends ConsumerStatefulWidget {
   const _LaunchSettingsPanel({this.settings});
 
@@ -23,10 +25,16 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
   ];
 
   final _game = TextEditingController();
+  final _wrapper = TextEditingController();
+  final _environment = TextEditingController();
   final _gameFocus = FocusNode();
+  final _wrapperFocus = FocusNode();
+  final _environmentFocus = FocusNode();
   Timer? _debounce;
   bool _saving = false;
   String? _error;
+  String? _wrapperError;
+  String? _environmentError;
 
   @override
   void initState() {
@@ -34,6 +42,12 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     _sync();
     _gameFocus.addListener(() {
       if (!_gameFocus.hasFocus) _saveNow();
+    });
+    _wrapperFocus.addListener(() {
+      if (!_wrapperFocus.hasFocus) _saveNow();
+    });
+    _environmentFocus.addListener(() {
+      if (!_environmentFocus.hasFocus) _saveNow();
     });
   }
 
@@ -45,13 +59,25 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
 
   void _sync() {
     if (!_gameFocus.hasFocus) _game.text = widget.settings?.gameArgs ?? '';
+    if (!_wrapperFocus.hasFocus) {
+      _wrapper.text = widget.settings?.wrapperCommand ?? '';
+    }
+    if (!_environmentFocus.hasFocus) {
+      _environment.text = formatLaunchEnvironment(
+        widget.settings?.environment ?? const <String, String>{},
+      );
+    }
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _game.dispose();
+    _wrapper.dispose();
+    _environment.dispose();
     _gameFocus.dispose();
+    _wrapperFocus.dispose();
+    _environmentFocus.dispose();
     super.dispose();
   }
 
@@ -62,14 +88,36 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
 
   Future<void> _saveNow() async {
     if (!mounted) return;
+    _debounce?.cancel();
+
+    final l10n = AppLocalizations.of(context);
+    final wrapper = _wrapper.text.trim();
+    final wrapperError = isValidLaunchWrapperCommand(wrapper)
+        ? null
+        : l10n.launchWrapperCommandTooLong;
+    final environment = parseLaunchEnvironment(_environment.text);
+    final environmentError = environment.issue?.labelFor(l10n);
+
     setState(() {
       _saving = true;
       _error = null;
+      _wrapperError = wrapperError;
+      _environmentError = environmentError;
     });
+
+    if (wrapperError != null || environmentError != null) {
+      setState(() => _saving = false);
+      return;
+    }
+
     try {
       await ref
           .read(appSettingsProvider.notifier)
-          .setRuntimeOptions(gameArgs: _game.text.trim());
+          .setRuntimeOptions(
+            gameArgs: _game.text.trim(),
+            wrapperCommand: wrapper.isEmpty ? null : wrapper,
+            environment: environment.values,
+          );
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -250,12 +298,68 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
       ],
     );
 
+    final processGroup = _SettingsGroup(
+      title: l10n.settingsSectionProcess,
+      note: l10n.settingsProcessNote,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.sm,
+            AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                key: const ValueKey('settings-wrapper-command'),
+                controller: _wrapper,
+                focusNode: _wrapperFocus,
+                onChanged: (_) => _scheduleSave(),
+                onSubmitted: (_) => _saveNow(),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsWrapperCommand,
+                  hintText: l10n.settingsWrapperCommandHint,
+                  helperText: l10n.settingsWrapperCommandHelp,
+                  helperMaxLines: 2,
+                  errorText: _wrapperError,
+                  errorMaxLines: 2,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                key: const ValueKey('settings-environment'),
+                controller: _environment,
+                focusNode: _environmentFocus,
+                keyboardType: TextInputType.multiline,
+                minLines: 4,
+                maxLines: 8,
+                onChanged: (_) => _scheduleSave(),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsEnvironment,
+                  hintText: l10n.settingsEnvironmentHint,
+                  helperText: l10n.settingsEnvironmentHelp,
+                  helperMaxLines: 2,
+                  errorText: _environmentError,
+                  errorMaxLines: 3,
+                  alignLabelWithHint: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         windowGroup,
         const SizedBox(height: AppSpacing.lg),
         argsGroup,
+        const SizedBox(height: AppSpacing.lg),
+        processGroup,
       ],
     );
   }

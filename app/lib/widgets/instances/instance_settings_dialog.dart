@@ -3,22 +3,26 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../l10n/l10n_labels.dart';
 import '../../models/game_instance.dart';
-import '../../services/core/java/java_scan.dart';
+import '../../models/launch_options.dart';
 import '../../services/core/launch/launch_memory.dart';
 import '../../stores/instances.dart';
-import '../../stores/java.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/confirm.dart';
 import '../common/toast.dart';
+import 'instance_java_runtime_picker.dart';
+import 'instance_override_switch.dart';
 
 /// Per-instance overrides of the global launch settings.
 ///
-/// Every field is optional: an empty input means "follow the global setting"
-/// and is sent as an explicit `null` in the merge patch.
+/// Plain fields treat an empty input as "follow the global setting" and send
+/// an explicit `null` in the merge patch. The wrapper, environment and
+/// auto-join sections have their own switches because an enabled empty wrapper
+/// or environment is meaningful (no wrapper, clear the environment).
 Future<void> showInstanceSettingsDialog(
   BuildContext context,
   GameInstance instance,
@@ -57,12 +61,23 @@ class _InstanceSettingsDialogState
   final _maxController = TextEditingController();
   final _jvmController = TextEditingController();
   final _gameArgsController = TextEditingController();
+  final _wrapperController = TextEditingController();
+  final _environmentController = TextEditingController();
+  final _joinServerController = TextEditingController();
+  final _joinWorldController = TextEditingController();
   final _javaController = TextEditingController();
   final _widthController = TextEditingController();
   final _heightController = TextEditingController();
 
   String? _gcMode;
   String _windowMode = _windowInherit;
+  bool _wrapperOverride = false;
+  bool _environmentOverride = false;
+  bool _autoJoin = false;
+  String? _wrapperError;
+  String? _environmentError;
+  String? _serverError;
+  String? _worldError;
   String? _error;
   bool _saving = false;
   LaunchMemoryPlan? _memoryPlan;
@@ -76,6 +91,15 @@ class _InstanceSettingsDialogState
       _maxController.text = overrides.memoryMaxMb?.toString() ?? '';
       _jvmController.text = overrides.jvmArgs ?? '';
       _gameArgsController.text = overrides.gameArgs ?? '';
+      _wrapperOverride = overrides.wrapperCommand != null;
+      _wrapperController.text = overrides.wrapperCommand ?? '';
+      _environmentOverride = overrides.environment != null;
+      _environmentController.text = formatLaunchEnvironment(
+        overrides.environment ?? const <String, String>{},
+      );
+      _autoJoin = overrides.joinServerOnLaunch == true;
+      _joinServerController.text = overrides.joinServerAddress ?? '';
+      _joinWorldController.text = overrides.joinWorldName ?? '';
       _javaController.text = overrides.javaPath ?? '';
       _widthController.text = overrides.windowWidth?.toString() ?? '';
       _heightController.text = overrides.windowHeight?.toString() ?? '';
@@ -108,6 +132,10 @@ class _InstanceSettingsDialogState
     _maxController.dispose();
     _jvmController.dispose();
     _gameArgsController.dispose();
+    _wrapperController.dispose();
+    _environmentController.dispose();
+    _joinServerController.dispose();
+    _joinWorldController.dispose();
     _javaController.dispose();
     _widthController.dispose();
     _heightController.dispose();
@@ -151,6 +179,15 @@ class _InstanceSettingsDialogState
         jvmArgs: _text(_jvmController),
         gcMode: _gcMode,
         gameArgs: _text(_gameArgsController),
+        wrapperCommand: _wrapperOverride
+            ? _wrapperController.text.trim()
+            : null,
+        environment: _environmentOverride
+            ? parseLaunchEnvironment(_environmentController.text).values
+            : null,
+        joinServerOnLaunch: _autoJoin,
+        joinServerAddress: _autoJoin ? _text(_joinServerController) : null,
+        joinWorldName: _autoJoin ? _text(_joinWorldController) : null,
         javaPath: _text(_javaController),
         windowWidth: _parseNumber(_widthController),
         windowHeight: _parseNumber(_heightController),
@@ -208,8 +245,16 @@ class _InstanceSettingsDialogState
   }
 
   /// Returns the first validation problem, or null when the form is valid.
+  ///
+  /// Field-level issues are also stored in the matching `*Error` members so
+  /// they render directly under the offending input.
   String? _validate(AppLocalizations l10n) {
     String? error;
+    _wrapperError = null;
+    _environmentError = null;
+    _serverError = null;
+    _worldError = null;
+
     int? parse(TextEditingController controller, int min, int max) {
       final raw = controller.text.trim();
       if (raw.isEmpty) return null;
@@ -244,7 +289,46 @@ class _InstanceSettingsDialogState
     if (gcMode != null && !InstanceOverrides.gcModes.contains(gcMode)) {
       return l10n.instanceSettingsInvalidGc;
     }
-    return null;
+
+    if (_wrapperOverride &&
+        !isValidLaunchWrapperCommand(_wrapperController.text.trim())) {
+      _wrapperError = l10n.instanceSettingsInvalidWrapper;
+      error ??= _wrapperError;
+    }
+
+    if (_environmentOverride) {
+      final environment = parseLaunchEnvironment(_environmentController.text);
+      if (!environment.isValid) {
+        _environmentError = environment.issue?.labelFor(l10n);
+        error ??= _environmentError;
+      }
+    }
+
+    if (_autoJoin) {
+      final serverInput = _joinServerController.text;
+      final worldInput = _joinWorldController.text;
+      final server = serverInput.trim();
+      final world = worldInput.trim();
+      if (server.isEmpty && world.isEmpty) {
+        _serverError = l10n.instanceSettingsAutoJoinNeedsTarget;
+        error ??= _serverError;
+      } else if (server.isNotEmpty && world.isNotEmpty) {
+        final conflict = l10n.instanceSettingsAutoJoinConflict;
+        _serverError = conflict;
+        _worldError = conflict;
+        error ??= conflict;
+      } else {
+        if (server.isNotEmpty && !isValidJoinServerAddress(serverInput)) {
+          _serverError = l10n.instanceSettingsInvalidServerAddress;
+          error ??= _serverError;
+        }
+        if (world.isNotEmpty && !isValidJoinWorldName(worldInput)) {
+          _worldError = l10n.instanceSettingsInvalidWorldName;
+          error ??= _worldError;
+        }
+      }
+    }
+    return error;
   }
 
   static bool _isAbsolutePath(String path) {
@@ -457,6 +541,100 @@ class _InstanceSettingsDialogState
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
+                    InstanceOverrideSwitch(
+                      key: const ValueKey('instance-wrapper-override'),
+                      title: l10n.instanceSettingsWrapperOverride,
+                      value: _wrapperOverride,
+                      onChanged: (value) => setState(() {
+                        _wrapperOverride = value;
+                        _wrapperError = null;
+                      }),
+                    ),
+                    if (_wrapperOverride) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _wrapperController,
+                        enabled: !_saving,
+                        onChanged: (_) => setState(() => _wrapperError = null),
+                        decoration: InputDecoration(
+                          labelText: l10n.instanceSettingsWrapperCommand,
+                          hintText: l10n.instanceSettingsWrapperCommandHint,
+                          hintMaxLines: 2,
+                          errorText: _wrapperError,
+                          errorMaxLines: 2,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    InstanceOverrideSwitch(
+                      key: const ValueKey('instance-environment-override'),
+                      title: l10n.instanceSettingsEnvironmentOverride,
+                      value: _environmentOverride,
+                      onChanged: (value) => setState(() {
+                        _environmentOverride = value;
+                        _environmentError = null;
+                      }),
+                    ),
+                    if (_environmentOverride) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _environmentController,
+                        enabled: !_saving,
+                        keyboardType: TextInputType.multiline,
+                        minLines: 3,
+                        maxLines: 6,
+                        onChanged: (_) =>
+                            setState(() => _environmentError = null),
+                        decoration: InputDecoration(
+                          labelText: l10n.instanceSettingsEnvironment,
+                          hintText: l10n.instanceSettingsEnvironmentHint,
+                          helperText: l10n.instanceSettingsEnvironmentHelp,
+                          helperMaxLines: 2,
+                          errorText: _environmentError,
+                          errorMaxLines: 3,
+                          alignLabelWithHint: true,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    InstanceOverrideSwitch(
+                      key: const ValueKey('instance-auto-join'),
+                      title: l10n.instanceSettingsAutoJoin,
+                      subtitle: l10n.instanceSettingsAutoJoinDesc,
+                      value: _autoJoin,
+                      onChanged: (value) => setState(() {
+                        _autoJoin = value;
+                        _serverError = null;
+                        _worldError = null;
+                      }),
+                    ),
+                    if (_autoJoin) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _joinServerController,
+                        enabled: !_saving,
+                        onChanged: (_) => setState(() => _serverError = null),
+                        decoration: InputDecoration(
+                          labelText: l10n.instanceSettingsJoinServer,
+                          hintText: l10n.instanceSettingsJoinServerHint,
+                          errorText: _serverError,
+                          errorMaxLines: 2,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _joinWorldController,
+                        enabled: !_saving,
+                        onChanged: (_) => setState(() => _worldError = null),
+                        decoration: InputDecoration(
+                          labelText: l10n.instanceSettingsJoinWorld,
+                          hintText: l10n.instanceSettingsJoinWorldHint,
+                          errorText: _worldError,
+                          errorMaxLines: 2,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: _javaController,
                       enabled: !_saving,
@@ -478,7 +656,7 @@ class _InstanceSettingsDialogState
                                     : () => setState(_javaController.clear),
                                 icon: const Icon(AppIcons.reset, size: 18),
                               ),
-                            _JavaRuntimePicker(
+                            InstanceJavaRuntimePicker(
                               l10n: l10n,
                               selectedPath: _javaController.text.trim(),
                               enabled: !_saving,
@@ -606,119 +784,5 @@ class _InstanceSettingsDialogState
       onChanged: onChanged,
       decoration: InputDecoration(labelText: label, hintText: hint),
     );
-  }
-}
-
-/// Dropdown attached to the Java path field that lists scanned runtimes.
-///
-/// The field itself stays a plain [TextField]: a runtime the scanner cannot
-/// find (a portable JRE, a wrapper script) is still saved verbatim, while the
-/// menu offers the entries the shared scanner already reported.
-class _JavaRuntimePicker extends ConsumerWidget {
-  const _JavaRuntimePicker({
-    required this.l10n,
-    required this.selectedPath,
-    required this.enabled,
-    required this.onSelected,
-  });
-
-  final AppLocalizations l10n;
-  final String selectedPath;
-  final bool enabled;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final runtimes = ref.watch(javaRuntimesProvider);
-    return MenuAnchor(
-      style: const MenuStyle(
-        alignment: AlignmentDirectional.bottomEnd,
-        minimumSize: WidgetStatePropertyAll(Size(380, 0)),
-        maximumSize: WidgetStatePropertyAll(Size(520, 420)),
-      ),
-      menuChildren: _entries(context, ref, runtimes),
-      builder: (context, controller, child) => IconButton(
-        tooltip: l10n.instanceSettingsJavaPick,
-        onPressed: enabled
-            ? () => controller.isOpen ? controller.close() : controller.open()
-            : null,
-        icon: const Icon(AppIcons.chevronDown, size: 20),
-      ),
-    );
-  }
-
-  List<Widget> _entries(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<JavaRuntime>> runtimes,
-  ) {
-    final tokens = context.tokens;
-    final textTheme = Theme.of(context).textTheme;
-    final items = runtimes.value ?? const <JavaRuntime>[];
-
-    return [
-      if (selectedPath.isNotEmpty)
-        MenuItemButton(
-          onPressed: () => onSelected(''),
-          leadingIcon: const Icon(AppIcons.reset, size: 18),
-          child: Text(l10n.instanceSettingsJavaFollowGlobal),
-        ),
-      for (final runtime in items)
-        MenuItemButton(
-          onPressed: () => onSelected(runtime.path),
-          leadingIcon: Icon(
-            runtime.path == selectedPath ? AppIcons.check : AppIcons.java,
-            size: 18,
-            color: runtime.path == selectedPath ? tokens.accent : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(runtime.displayVersion, style: textTheme.labelLarge),
-              Text(
-                runtime.path,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.bodySmall?.copyWith(
-                  color: tokens.textTertiary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      if (runtimes.isLoading)
-        MenuItemButton(
-          onPressed: null,
-          leadingIcon: const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          child: Text(l10n.instanceSettingsJavaScanning),
-        )
-      else if (runtimes.hasError)
-        MenuItemButton(
-          onPressed: () => ref.read(javaRuntimesProvider.notifier).rescan(),
-          leadingIcon: Icon(AppIcons.error, size: 18, color: tokens.danger),
-          child: Text(l10n.instanceSettingsJavaScanFailed),
-        )
-      else if (items.isEmpty)
-        MenuItemButton(
-          onPressed: null,
-          leadingIcon: Icon(
-            AppIcons.info,
-            size: 18,
-            color: tokens.textTertiary,
-          ),
-          child: Text(l10n.instanceSettingsJavaNone),
-        ),
-      const Divider(height: 1),
-      MenuItemButton(
-        onPressed: () => ref.read(javaRuntimesProvider.notifier).rescan(),
-        leadingIcon: const Icon(AppIcons.refresh, size: 18),
-        child: Text(l10n.instanceSettingsJavaRescan),
-      ),
-    ];
   }
 }

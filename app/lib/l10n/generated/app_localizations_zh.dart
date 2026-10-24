@@ -719,6 +719,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsGameArgsNote => '追加到原版参数之后，按空格拆分；留空表示不加。';
 
   @override
+  String get settingsSectionProcess => '包装命令与环境变量';
+
+  @override
+  String get settingsProcessNote => '仅作用于游戏进程。包装命令以当前用户身份运行；环境变量保存在本地，不会写入日志。';
+
+  @override
+  String get settingsWrapperCommand => '包装命令';
+
+  @override
+  String get settingsWrapperCommandHint => '例如 gamemoderun、mangohud、prime-run';
+
+  @override
+  String get settingsWrapperCommandHelp => '会添加到 Java 命令之前；留空表示不启用。';
+
+  @override
+  String get settingsEnvironment => '环境变量';
+
+  @override
+  String get settingsEnvironmentHint => 'KEY=VALUE';
+
+  @override
+  String get settingsEnvironmentHelp => '每行一个 KEY=VALUE；空行会被忽略。';
+
+  @override
+  String get launchWrapperCommandTooLong => '包装命令最多 4096 个字符。';
+
+  @override
+  String launchEnvironmentMissingSeparator(int line) {
+    return '第 $line 行：请填写 KEY=VALUE。';
+  }
+
+  @override
+  String launchEnvironmentInvalidKey(int line, String key) {
+    return '第 $line 行：“$key”不是有效的变量名。';
+  }
+
+  @override
+  String launchEnvironmentDuplicateKey(int line, String key) {
+    return '第 $line 行：“$key”已定义。';
+  }
+
+  @override
+  String launchEnvironmentReservedKey(int line, String key) {
+    return '第 $line 行：不能在此设置“$key”。';
+  }
+
+  @override
+  String launchEnvironmentTooMany(int count) {
+    return '最多只能设置 $count 个环境变量。';
+  }
+
+  @override
+  String launchEnvironmentInvalidValue(int line) {
+    return '第 $line 行：值最多 4096 个字符且不能包含 NUL。';
+  }
+
+  @override
   String get settingsSectionTasks => '任务与日志';
 
   @override
@@ -2201,6 +2258,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceSettingsGameArgs => '游戏参数';
 
   @override
+  String get instanceSettingsWrapperOverride => '覆盖包装命令';
+
+  @override
+  String get instanceSettingsWrapperCommand => '包装命令';
+
+  @override
+  String get instanceSettingsWrapperCommandHint => '留空表示不启用包装命令。';
+
+  @override
+  String get instanceSettingsEnvironmentOverride => '覆盖环境变量';
+
+  @override
+  String get instanceSettingsEnvironment => '环境变量';
+
+  @override
+  String get instanceSettingsEnvironmentHint => 'KEY=VALUE';
+
+  @override
+  String get instanceSettingsEnvironmentHelp => '空列表会清除该实例继承的全局环境变量。';
+
+  @override
+  String get instanceSettingsAutoJoin => '自动加入';
+
+  @override
+  String get instanceSettingsAutoJoinDesc => '游戏启动后自动进入服务器或加载单人世界。';
+
+  @override
+  String get instanceSettingsJoinServer => '服务器地址';
+
+  @override
+  String get instanceSettingsJoinServerHint =>
+      'host、host:port、[IPv6] 或 [IPv6]:port';
+
+  @override
+  String get instanceSettingsJoinWorld => '单人世界';
+
+  @override
+  String get instanceSettingsJoinWorldHint => '世界文件夹名';
+
+  @override
+  String get instanceSettingsAutoJoinNeedsTarget => '请填写服务器地址或单人世界。';
+
+  @override
+  String get instanceSettingsAutoJoinConflict => '服务器地址和单人世界只能填一个。';
+
+  @override
+  String get instanceSettingsInvalidWrapper => '包装命令最多 4096 个字符。';
+
+  @override
+  String get instanceSettingsInvalidServerAddress =>
+      '请填写 host、host:port、[IPv6] 或 [IPv6]:port。';
+
+  @override
+  String get instanceSettingsInvalidWorldName =>
+      '世界名长度需为 1–128，且不能包含 /、\\ 或 ..。';
+
+  @override
   String get instanceSettingsJava => 'Java 可执行文件';
 
   @override
@@ -2286,6 +2400,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceOverridesGameArgs => '游戏参数';
+
+  @override
+  String get instanceOverridesWrapper => '包装命令';
+
+  @override
+  String get instanceOverridesEnvironment => '环境变量';
+
+  @override
+  String get instanceOverridesAutoJoin => '自动加入';
 
   @override
   String get instanceOverridesJava => 'Java';

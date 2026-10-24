@@ -77,6 +77,24 @@ Future<void> _drainToasts(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _enterVisible(
+  WidgetTester tester,
+  Finder finder,
+  String text,
+) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.enterText(finder, text);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('renders every override field and starts empty', (tester) async {
     await _open(tester, _instance());
@@ -91,6 +109,14 @@ void main() {
     expect(find.text('Game window'), findsOneWidget);
     expect(find.text('Window width'), findsOneWidget);
     expect(find.text('Window height'), findsOneWidget);
+    expect(find.text('Override wrapper command'), findsOneWidget);
+    expect(find.text('Override environment variables'), findsOneWidget);
+    expect(find.text('Auto-join'), findsOneWidget);
+
+    // Overrides start off, so their fields are hidden.
+    expect(find.text('Wrapper command'), findsNothing);
+    expect(find.text('Environment variables'), findsNothing);
+    expect(find.text('Server address'), findsNothing);
 
     // Nothing is overridden, so the GC and window dropdowns inherit.
     expect(find.text('Follow global'), findsWidgets);
@@ -107,6 +133,11 @@ void main() {
           gcMode: 'g1gc',
           jvmArgs: '-XX:+UseStringDeduplication',
           gameArgs: '--demo',
+          wrapperCommand: 'mangohud',
+          environment: <String, String>{'DRI_PRIME': '1'},
+          joinServerOnLaunch: true,
+          joinServerAddress: 'example.com:25565',
+          joinWorldName: 'New World',
           javaPath: '/usr/lib/jvm/java-21/bin/java',
           windowWidth: 1600,
           windowHeight: 900,
@@ -120,6 +151,10 @@ void main() {
     expect(find.text('G1GC'), findsOneWidget);
     expect(find.text('-XX:+UseStringDeduplication'), findsOneWidget);
     expect(find.text('--demo'), findsOneWidget);
+    expect(find.text('mangohud'), findsOneWidget);
+    expect(find.text('DRI_PRIME=1'), findsOneWidget);
+    expect(find.text('example.com:25565'), findsOneWidget);
+    expect(find.text('New World'), findsOneWidget);
     expect(find.text('/usr/lib/jvm/java-21/bin/java'), findsOneWidget);
     expect(find.text('1600'), findsOneWidget);
     expect(find.text('900'), findsOneWidget);
@@ -207,6 +242,66 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('absolute path'), findsWidgets);
+
+    await _drainToasts(tester);
+  });
+
+  testWidgets('shows and validates the environment override inline', (
+    tester,
+  ) async {
+    await _open(tester, _instance());
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('instance-environment-override')),
+    );
+    await _enterVisible(
+      tester,
+      find.widgetWithText(TextField, 'Environment variables'),
+      'BAD KEY=1',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('not a valid variable name'), findsWidgets);
+    expect(find.text('Instance settings'), findsOneWidget);
+
+    await _drainToasts(tester);
+  });
+
+  testWidgets('rejects an invalid auto-join target inline', (tester) async {
+    await _open(tester, _instance());
+
+    await _tapVisible(tester, find.byKey(const ValueKey('instance-auto-join')));
+    await _enterVisible(
+      tester,
+      find.widgetWithText(TextField, 'Server address'),
+      'example.com:0',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Enter host, host:port, [IPv6], or [IPv6]:port.'),
+      findsWidgets,
+    );
+    expect(find.text('Instance settings'), findsOneWidget);
+
+    await _drainToasts(tester);
+  });
+
+  testWidgets('auto-join needs a server or a world', (tester) async {
+    await _open(tester, _instance());
+
+    await _tapVisible(tester, find.byKey(const ValueKey('instance-auto-join')));
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Enter a server address or a singleplayer world.'),
+      findsWidgets,
+    );
+    expect(find.text('Instance settings'), findsOneWidget);
 
     await _drainToasts(tester);
   });

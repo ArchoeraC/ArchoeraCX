@@ -1,3 +1,5 @@
+import '../../../models/launch_options.dart';
+
 /// Native settings document returned by `settings.get` / `settings.set`.
 class AppSettings {
   const AppSettings({
@@ -12,6 +14,8 @@ class AppSettings {
     this.jvmArgs,
     this.gcMode = 'auto',
     this.gameArgs,
+    this.wrapperCommand,
+    this.environment = const <String, String>{},
     this.downloadSource = 'auto',
     this.downloadConcurrency = 16,
     this.downloadPerHost = 8,
@@ -48,6 +52,13 @@ class AppSettings {
   final String? jvmArgs;
   final String gcMode;
   final String? gameArgs;
+
+  /// Process wrapper prepended to the Java command; null means none.
+  final String? wrapperCommand;
+
+  /// Extra environment variables for the game process. Values are never
+  /// written to logs.
+  final Map<String, String> environment;
 
   /// Download source preference: `auto`, `official` or `mirror`.
   final String downloadSource;
@@ -139,6 +150,10 @@ class AppSettings {
       jvmArgs: _string(value['jvmArgs']),
       gcMode: _gcMode(value['gcMode']),
       gameArgs: _string(value['gameArgs']),
+      wrapperCommand: _wrapperCommand(value['wrapperCommand']),
+      environment:
+          parseLaunchEnvironmentWire(value['environment']) ??
+          const <String, String>{},
       downloadSource: _downloadSource(value['downloadSource']),
       downloadConcurrency: (_int(value['downloadConcurrency']) ?? 16).clamp(
         1,
@@ -164,6 +179,12 @@ class AppSettings {
       memoryMode: value['memoryMode'] == 'manual' ? 'manual' : 'auto',
       gameOptimization: value['gameOptimization'] != false,
     );
+  }
+
+  static String? _wrapperCommand(Object? value) {
+    if (value is! String) return null;
+    final text = value.trim();
+    return text.isEmpty ? null : text;
   }
 
   static String _downloadSource(Object? value) {

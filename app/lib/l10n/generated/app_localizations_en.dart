@@ -750,6 +750,68 @@ class AppLocalizationsEn extends AppLocalizations {
       'Appended after the vanilla arguments and split on spaces; leave empty for none.';
 
   @override
+  String get settingsSectionProcess => 'Wrapper & environment';
+
+  @override
+  String get settingsProcessNote =>
+      'Applied to the game process only. Wrapper commands run as your user; environment values are stored locally and never logged.';
+
+  @override
+  String get settingsWrapperCommand => 'Wrapper command';
+
+  @override
+  String get settingsWrapperCommandHint =>
+      'e.g. gamemoderun, mangohud, prime-run';
+
+  @override
+  String get settingsWrapperCommandHelp =>
+      'Prepended to the Java command; leave empty for none.';
+
+  @override
+  String get settingsEnvironment => 'Environment variables';
+
+  @override
+  String get settingsEnvironmentHint => 'KEY=VALUE';
+
+  @override
+  String get settingsEnvironmentHelp =>
+      'One KEY=VALUE per line. Blank lines are ignored.';
+
+  @override
+  String get launchWrapperCommandTooLong =>
+      'Wrapper commands may be at most 4096 characters.';
+
+  @override
+  String launchEnvironmentMissingSeparator(int line) {
+    return 'Line $line: enter KEY=VALUE.';
+  }
+
+  @override
+  String launchEnvironmentInvalidKey(int line, String key) {
+    return 'Line $line: \"$key\" is not a valid variable name.';
+  }
+
+  @override
+  String launchEnvironmentDuplicateKey(int line, String key) {
+    return 'Line $line: \"$key\" is already defined.';
+  }
+
+  @override
+  String launchEnvironmentReservedKey(int line, String key) {
+    return 'Line $line: \"$key\" cannot be set here.';
+  }
+
+  @override
+  String launchEnvironmentTooMany(int count) {
+    return 'At most $count environment variables are allowed.';
+  }
+
+  @override
+  String launchEnvironmentInvalidValue(int line) {
+    return 'Line $line: values must be at most 4096 characters and cannot contain NUL.';
+  }
+
+  @override
   String get settingsSectionTasks => 'Tasks & logs';
 
   @override
@@ -2313,6 +2375,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instanceSettingsGameArgs => 'Game arguments';
 
   @override
+  String get instanceSettingsWrapperOverride => 'Override wrapper command';
+
+  @override
+  String get instanceSettingsWrapperCommand => 'Wrapper command';
+
+  @override
+  String get instanceSettingsWrapperCommandHint =>
+      'Leave empty to run the game without a wrapper.';
+
+  @override
+  String get instanceSettingsEnvironmentOverride =>
+      'Override environment variables';
+
+  @override
+  String get instanceSettingsEnvironment => 'Environment variables';
+
+  @override
+  String get instanceSettingsEnvironmentHint => 'KEY=VALUE';
+
+  @override
+  String get instanceSettingsEnvironmentHelp =>
+      'An empty list clears the global variables for this instance.';
+
+  @override
+  String get instanceSettingsAutoJoin => 'Auto-join';
+
+  @override
+  String get instanceSettingsAutoJoinDesc =>
+      'Join a server or load a singleplayer world after the game starts.';
+
+  @override
+  String get instanceSettingsJoinServer => 'Server address';
+
+  @override
+  String get instanceSettingsJoinServerHint =>
+      'host, host:port, [IPv6], or [IPv6]:port';
+
+  @override
+  String get instanceSettingsJoinWorld => 'Singleplayer world';
+
+  @override
+  String get instanceSettingsJoinWorldHint => 'World folder name';
+
+  @override
+  String get instanceSettingsAutoJoinNeedsTarget =>
+      'Enter a server address or a singleplayer world.';
+
+  @override
+  String get instanceSettingsAutoJoinConflict =>
+      'Choose either a server address or a singleplayer world, not both.';
+
+  @override
+  String get instanceSettingsInvalidWrapper =>
+      'Wrapper commands may be at most 4096 characters.';
+
+  @override
+  String get instanceSettingsInvalidServerAddress =>
+      'Enter host, host:port, [IPv6], or [IPv6]:port.';
+
+  @override
+  String get instanceSettingsInvalidWorldName =>
+      'World names must be 1–128 characters without /, \\ or ...';
+
+  @override
   String get instanceSettingsJava => 'Java executable';
 
   @override
@@ -2401,6 +2527,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceOverridesGameArgs => 'game args';
+
+  @override
+  String get instanceOverridesWrapper => 'wrapper';
+
+  @override
+  String get instanceOverridesEnvironment => 'environment';
+
+  @override
+  String get instanceOverridesAutoJoin => 'auto-join';
 
   @override
   String get instanceOverridesJava => 'Java';

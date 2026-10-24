@@ -93,6 +93,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     String? jvmArgs,
     String? gcMode,
     String? gameArgs,
+    Object? wrapperCommand = noChange,
+    Object? environment = noChange,
     int? windowWidth,
     int? windowHeight,
     bool? fullscreen,
@@ -118,6 +120,14 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           jvmArgs: jvmArgs ?? current.jvmArgs,
           gcMode: gcMode ?? current.gcMode,
           gameArgs: gameArgs ?? current.gameArgs,
+          wrapperCommand: wrapperCommand == noChange
+              ? current.wrapperCommand
+              : wrapperCommand as String?,
+          environment: environment == noChange
+              ? current.environment
+              : environment == null
+              ? const <String, String>{}
+              : Map<String, String>.from(environment as Map),
           windowWidth: windowWidth ?? current.windowWidth,
           windowHeight: windowHeight ?? current.windowHeight,
           fullscreen: fullscreen ?? current.fullscreen,
@@ -139,6 +149,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         jvmArgs: jvmArgs,
         gcMode: gcMode,
         gameArgs: gameArgs,
+        wrapperCommand: wrapperCommand,
+        environment: environment,
         windowWidth: windowWidth,
         windowHeight: windowHeight,
         fullscreen: fullscreen,
