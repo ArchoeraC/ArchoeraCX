@@ -10,7 +10,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use reqwest::redirect::Policy;
-use url::Url;
+use url::{Host, Url};
 
 use crate::error::DownloadError;
 use crate::plan::{PlanOptions, is_loopback};
@@ -124,15 +124,48 @@ fn is_redirect_allowed(url: &Url, origin: Option<&Url>) -> bool {
         return false;
     }
     match url.scheme() {
-        "https" => true,
+        "https" => {
+            // A public origin must not be able to redirect the executor onto a
+            // loopback/LAN/metadata address (SSRF). A plan that already starts
+            // on a private origin may stay there, which keeps LAN mirrors.
+            let origin_private = origin.is_some_and(is_private_target);
+            !is_private_target(url) || origin_private
+        }
         // Plaintext is a test-only loopback path. A public origin must not be
-        // able to redirect the executor onto a local HTTP service (SSRF).
+        // able to redirect the executor onto a local HTTP service.
         "http" => {
             is_loopback(url)
                 && origin.is_some_and(|origin| origin.scheme() == "http" && is_loopback(origin))
         }
         _ => false,
     }
+}
+
+/// IP literals that point inside the host or the local network. DNS names are
+/// not resolved here, so a rebinding hostname is outside this check.
+fn is_private_target(url: &Url) -> bool {
+    match url.host() {
+        Some(Host::Ipv4(ip)) => is_private_v4(ip),
+        Some(Host::Ipv6(ip)) => {
+            if ip.is_loopback() || ip.is_unspecified() {
+                return true;
+            }
+            if let Some(mapped) = ip.to_ipv4_mapped() {
+                return is_private_v4(mapped);
+            }
+            let first = ip.segments()[0];
+            (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80
+        }
+        Some(Host::Domain(name)) => {
+            let name = name.trim_end_matches('.').to_ascii_lowercase();
+            name == "localhost" || name.ends_with(".localhost") || name.ends_with(".local")
+        }
+        None => false,
+    }
+}
+
+fn is_private_v4(ip: std::net::Ipv4Addr) -> bool {
+    ip.is_private() || ip.is_loopback() || ip.is_link_local() || ip.is_unspecified()
 }
 
 #[cfg(test)]
@@ -153,12 +186,37 @@ mod tests {
             Some(&public)
         ));
         assert!(!is_redirect_allowed(
+            &url("https://127.0.0.1/admin"),
+            Some(&public)
+        ));
+        assert!(!is_redirect_allowed(
+            &url("https://10.0.0.5/admin"),
+            Some(&public)
+        ));
+        assert!(!is_redirect_allowed(
+            &url("https://169.254.169.254/latest/meta-data"),
+            Some(&public)
+        ));
+        assert!(!is_redirect_allowed(
+            &url("https://printer.local/admin"),
+            Some(&public)
+        ));
+        assert!(!is_redirect_allowed(
+            &url("https://[::ffff:10.0.0.1]/admin"),
+            Some(&public)
+        ));
+        assert!(!is_redirect_allowed(
             &url("http://127.0.0.1:8080/admin"),
             Some(&public)
         ));
         assert!(!is_redirect_allowed(
             &url("http://localhost:8080/admin"),
             Some(&public)
+        ));
+        // A plan that already targets a LAN mirror may follow its redirects.
+        assert!(is_redirect_allowed(
+            &url("https://10.0.0.5/file"),
+            Some(&url("https://10.0.0.4/mirror"))
         ));
     }
 
