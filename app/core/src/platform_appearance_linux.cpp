@@ -35,6 +35,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unistd.h>
 
 namespace archoera {
 namespace {
@@ -88,11 +89,23 @@ std::string trim(std::string text) {
   return text;
 }
 
-bool run_command(const char* command, std::string* output) {
-  if (output == nullptr) {
+// Resolve gsettings by absolute path so a hijacked PATH cannot substitute it.
+// The commands passed to run_command are constants; only the binary lookup
+// needs pinning.
+std::string gsettings_binary() {
+  for (const char* candidate : {"/usr/bin/gsettings", "/bin/gsettings",
+                                "/usr/local/bin/gsettings",
+                                "/run/current-system/sw/bin/gsettings"}) {
+    if (access(candidate, X_OK) == 0) return candidate;
+  }
+  return {};
+}
+
+bool run_command(const std::string& command, std::string* output) {
+  if (output == nullptr || command.empty()) {
     return false;
   }
-  FILE* pipe = popen(command, "r");
+  FILE* pipe = popen(command.c_str(), "r");
   if (pipe == nullptr) {
     return false;
   }
@@ -471,8 +484,10 @@ class LinuxAppearance final : public PlatformAppearanceWatcher {
     // 2. GNOME: named accent (16.04-era desktops simply return nothing).
     if (!accent.known && is_gnome_session()) {
       std::string output;
-      if (run_command(
-              "gsettings get org.gnome.desktop.interface accent-color",
+      const std::string gsettings = gsettings_binary();
+      if (!gsettings.empty() &&
+          run_command(
+              gsettings + " get org.gnome.desktop.interface accent-color",
               &output)) {
         std::string name = output;
         name.erase(std::remove(name.begin(), name.end(), '\''), name.end());
@@ -502,8 +517,10 @@ class LinuxAppearance final : public PlatformAppearanceWatcher {
     // GNOME theme fallback when the portal does not answer.
     if (!state_.theme_known && is_gnome_session()) {
       std::string output;
-      if (run_command(
-              "gsettings get org.gnome.desktop.interface color-scheme",
+      const std::string gsettings = gsettings_binary();
+      if (!gsettings.empty() &&
+          run_command(
+              gsettings + " get org.gnome.desktop.interface color-scheme",
               &output)) {
         if (output.find("prefer-dark") != std::string::npos) {
           state_.theme_known = true;
