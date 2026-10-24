@@ -41,7 +41,7 @@ File: Pending → Checking → Probing → Downloading → Verifying → Committ
                     │                     │→ RetryWait → Downloading
                     │→ Skipped(已存在)     └→ Failed
 ```
-**暂停**：停止派发新 chunk，在途请求可 drop；已完成 chunk 的 bitmap 落盘；`checkpoint()` 后发 `PAUSED`，任务保留，`resume` 继续。**取消**：同上但终态 `Cancelled`；`.part` 默认保留 7 天，`purge=true` 才删。**退出**：取消 token，`JoinSet` 等 2s，超时 abort，但 `.part.meta` 必须先写完；禁止 `std::process::exit`。
+**暂停**：停止派发新 chunk，在途请求可 drop；已完成 chunk 的 bitmap 落盘；`checkpoint()` 后发 `PAUSED`，任务保留，`resume` 继续。**取消**：停止派发、丢弃在途响应，并**立即删除 `.part` 与 `.part.meta`**（不保留续传数据），终态 `Cancelled`。**异常退出/崩溃**：已落盘的 `.part` 与 `.part.meta` 保留，下次按 `(dest, hash, size)` 匹配续传；启动时清理超期残留。**退出**：取消 token，`JoinSet` 等 2s，超时 abort，但 `.part.meta` 必须先写完；禁止 `std::process::exit`。
 
 ### 1.3 进度聚合（100–200ms）
 每 chunk 一次 `AtomicU64::fetch_add(Relaxed)`，不逐字节回调；`Instant::now()` 只在 chunk 边界取。单一定时器 `interval(150ms)`（`MissedTickBehavior::Skip`）读全局/文件原子量，算 1s EWMA 速度；无变化且非状态迁移则跳过。事件用固定结构体走 C ABI：
@@ -65,9 +65,9 @@ typedef struct { uint64_t task_id, done, total, bytes_per_sec;
 ### 2.1 三层配额
 | 层 | 默认 | 说明 |
 |---|---|---|
-| 全局 streams | 16（1–64） | 所有 plan 共享；plan 的 `concurrency` 只是期望值 |
-| 每 host streams | 6（CDN）/4（源站） | host = 小写 hostname，不含路径；不同 mirror 是不同 host |
-| 每文件 streams | 1 或 2–8 | 仅大文件且服务端支持 Range 时 >1 |
+| 全局 streams | 16（1–64） | 每个 plan 一份（进程内多 plan 尚未共享配额）；plan 的 `concurrency` 就是该额度 |
+| 每 host streams | 8（0 关闭） | host = 小写 hostname，不含路径；不同 mirror 是不同 host |
+| 每文件 streams | 未单独设限 | 分片与其它文件共用全局/host 配额；per-file cap 仍是待补项（12 §5） |
 
 **不要嵌套 Semaphore 后各自 await**：持有全局许可等 host 会浪费配额。用单一 `Mutex<SchedState>` + `Notify` 的 permit broker，临界区只做计数/唤醒，每 4 MiB 才进入一次：
 ```rust
@@ -85,18 +85,23 @@ loop {
 全局 `BandwidthLimiter`：rate bytes/s，容量 `max(1 MiB, rate*0.2)`；每 64 KiB 读之前 `acquire(64 KiB)`，不足则 `sleep_until`，**先拿令牌再从 socket 读**，让 TCP/H2 流控形成背压，避免内存膨胀。低速（<2 MB/s）用 16 KiB 粒度，避免“突发—停顿”；高速用 64 KiB 减少 await。可选每 plan 桶；不要直接用 `governor` 的 per-second cell 表达字节/秒（单位不匹配，除非把 cell 定义为 64 KiB）。限速时把每文件 streams 降到 2–4：并行流只增开销，不增总带宽。
 
 ### 2.3 HTTP/1.1 vs HTTP/2、Range
-**[事实]** HTTP/1.1 一条连接同时只有一个在途请求；HTTP/2 一条连接多路复用多个 stream。reqwest/hyper 默认 ALPN 协商 h2，连接池按 scheme/host/port 复用（`ClientBuilder` 文档）。
+**[事实]** HTTP/1.1 一条连接同时只有一个在途请求；HTTP/2 一条连接多路复用多个 stream。实现建两个 client（超时、连接池、代理、边缘地址等设置完全相同，只差协议协商）：`auto` 走 ALPN（`h2` 优先，服务器不支持时 `http/1.1`），`http1` 固定 HTTP/1.1；连接池按 scheme/host/port 复用（`ClientBuilder` 文档）。详见 `13-transport-protocol-fallback.md`。
 
 | 场景 | 策略 |
 |---|---|
-| 大量小文件（assets，<1 MiB） | 不用 Range；依赖 H2 多路复用 + 连接池；全局 16–32，per-host 8 |
+| 大量小文件（assets，<1 MiB） | 不用 Range；`auto` client 经 ALPN 协商（h2 优先、h1.1 兜底）+ 连接池；全局 16（可调 1–64），per-host 8 |
 | 1–8 MiB | 单流顺序；不做 Range 探测（省 1 RTT） |
-| 8–32 MiB / 32–256 MiB | 2 / 4 个 chunk，chunk 4 MiB |
-| >256 MiB | 4–8 个 chunk，chunk 8 MiB；上限 8，避免 1 GB 文件 256 个请求 |
-| 不支持 Range / size 未知 | 单流；断点只保留 contiguous 前缀 |
-| 高丢包/高 RTT | 可用 H1 多连接替代 H2（H2 仍有 TCP HOL）；**[推断]** 需 A/B，MVP 先统一 H2 |
+| 8–32 MiB | 超过 `rangeThreshold` 后按 `chunkSize`（4 MiB）切分 → 2–8 个分片 |
+| 32–256 MiB | 同样固定 4 MiB → 8–64 个分片；per-file cap 未实现，大文件会占满全局配额 |
+| >256 MiB | 分片数随文件线性增长（1 TiB ≈ 26 万片）；动态块大小/上限见 12 §5 |
+| 不支持 Range / size 未知 | 单流；当前不做续传（分片才用 `.part.meta`），重启从头覆盖 |
+| 高丢包/高 RTT | **[推断]** H1 多连接可能优于 H2（H2 仍有 TCP HOL），需 A/B；当前由 per-origin 协议降级兜底（见 13） |
 
-**探测**：`GET` + `Range: bytes=0-0`；仅当 `206` 且 `Content-Range: bytes 0-0/总长` 才认为支持。`200` 表示忽略 Range，立即 drop body。不要用 HEAD 判断 Range（CDN 的 HEAD/GET 行为可能不同）。**小文件合并**：不做 HTTP/1.1 pipelining，也不把多文件拼成一个请求；协议层没有安全的“合并”，只能靠 H2 多路复用，或由 C# 生成“一个 zip + extract”的计划（另一计划，不是下载器职责）。**Range 与压缩**：固定 `Accept-Encoding: identity`，禁用 reqwest gzip/brotli/deflate/zstd；若响应仍带 `Content-Encoding`，直接 `ENCODING_UNSUPPORTED`，否则字节范围与哈希都会错。
+**分片固定 HTTP/1.1**：所有 Range/chunk 请求都走 `http1` client（`http1_only()`），一个 chunk 独占一条 TCP 连接，避免单连接流控与 TCP HOL 压低聚合吞吐；单流文件才用 `auto`。协议类失败（421、h2 响应上的 505、连接/响应头阶段的 h2 连接级错误）会把该 origin 降级到 `http1` 600s，并对零字节的尝试立即用 h1 重试一次；`edge.rs` 的边缘探测保持 h1。
+
+**分片参数有边界**：`chunkSize` 只接受 64 KiB–64 MiB（0 关闭 Range），单文件最多 1024 片；文件更大时按 `size / 1024` 放大块大小，而不是继续增加请求与任务数。计划校验在 `plan.rs`，不要只依赖 C# 生产者的 clamp。
+
+**探测**：`GET` + `Range: bytes=0-0`；仅当 `206` 且 `Content-Range: bytes 0-0/总长` 才认为支持。`200` 表示忽略 Range，立即 drop body。不要用 HEAD 判断 Range（CDN 的 HEAD/GET 行为可能不同）。**小文件合并**：不做 HTTP/1.1 pipelining，也不把多文件拼成一个请求；协议层没有安全的“合并”，只能靠 `auto` client 协商出的 H2 多路复用，或由 C# 生成“一个 zip + extract”的计划（另一计划，不是下载器职责）。**Range 与压缩**：固定 `Accept-Encoding: identity`，禁用 reqwest gzip/brotli/deflate/zstd；若响应仍带 `Content-Encoding`，直接 `ENCODING_UNSUPPORTED`，否则字节范围与哈希都会错。
 
 ### 2.4 超时
 | 项 | 默认 | 实现 |
@@ -148,7 +153,7 @@ fs::rename(&part, &dest)?;                         // Windows: MoveFileExW/FileR
 sync_parent_dir(&dest_parent)?;                    // Unix only
 remove(part_lock);
 ```
-**checkpoint**：每 8–16 MiB 或 2s：`sync_data()` 数据 → 更新 bitmap → `meta.tmp` 写 + `sync_all` → rename。崩溃最多丢一个 checkpoint；未标记 chunk 重下。**哈希**：SHA-1 是顺序摘要，分片乱序无法并行合并；多分片/续传统一在提交前顺序读 `.part`（1 GiB 约 0.5–1s，页缓存命中），单流可选边下边算。**顺序模式**（单流/无 Range）用 `contiguous_len`，断线后 `Range: bytes=contiguous_len-`+`If-Range`；**分片模式**以 chunk 为完成单位，未完成 chunk 整块重下，避免半 chunk 边界。**fsync 取舍**：`full` 做 `sync_all`+父目录 fsync；`normal`（默认）只在提交前 `sync_all`，checkpoint 用 `sync_data`；`fast` 不 fsync（游戏文件可重下）。macOS 真正落盘需 `fcntl(F_FULLFSYNC)`，`File::sync_all` 只到 `fsync`（平台差异，需 libc）。**Windows 原子替换**：`std::fs::rename` 文档说明会替换已存在文件，底层 `MoveFileExW`（并可能用 `FileRenameInfoEx`）；`tempfile::persist` 也承诺“存在则原子替换”，但不做 sync。dest 被占用时 rename 返回共享冲突，重试 5 次（100/200/400/800/1600ms），仍失败保留 `.part` 并报 `FILE_LOCKED`。**长路径**：传统 `MAX_PATH=260`，扩展上限 32,767，需 `\\?\`（UNC 用 `\\?\UNC\`）；`\\?\` 下不能有 `/`、`.`、`..`，必须先规范化再前缀；显示/传给 Java 时去前缀（`dunce::simplified`）。Rust std 对部分长路径自动加前缀，但不要依赖。**杀软**：Defender 可能短暂持有新文件；共享冲突按上重试，不要用共享标志绕过；提示加排除项是产品选择。**跨盘**：内容库可在另一卷，但 `.part` 永远在目标卷；root 是 junction 时 canonicalize 后比较卷序列号（Windows）或 `statfs` 的 `f_fsid`（Unix），不一致禁用硬链接。
+**checkpoint**：每 8–16 MiB 或 2s：`sync_data()` 数据 → 更新 bitmap → `meta.tmp` 写 + `sync_all` → rename。崩溃最多丢一个 checkpoint；未标记 chunk 重下。**哈希**：SHA-1 是顺序摘要，分片乱序无法并行合并；多分片/续传统一在提交前顺序读 `.part`（1 GiB 约 0.5–1s，页缓存命中），单流可选边下边算。**顺序模式（未实现）**：单流/无 Range 本可用 `contiguous_len` 续传（`Range: bytes=contiguous_len-` + `If-Range`）；当前单流失败后从头覆盖 `.part`，只有分片模式有 `.part.meta` 断点。**分片模式**以 chunk 为完成单位，未完成 chunk 整块重下，避免半 chunk 边界。**fsync 取舍**：`full` 做 `sync_all`+父目录 fsync；`normal`（默认）只在提交前 `sync_all`，checkpoint 用 `sync_data`；`fast` 不 fsync（游戏文件可重下）。macOS 真正落盘需 `fcntl(F_FULLFSYNC)`，`File::sync_all` 只到 `fsync`（平台差异，需 libc）。**Windows 原子替换**：`std::fs::rename` 文档说明会替换已存在文件，底层 `MoveFileExW`（并可能用 `FileRenameInfoEx`）；`tempfile::persist` 也承诺“存在则原子替换”，但不做 sync。dest 被占用时 rename 返回共享冲突，重试 5 次（100/200/400/800/1600ms），仍失败保留 `.part` 并报 `FILE_LOCKED`。**长路径**：传统 `MAX_PATH=260`，扩展上限 32,767，需 `\\?\`（UNC 用 `\\?\UNC\`）；`\\?\` 下不能有 `/`、`.`、`..`，必须先规范化再前缀；显示/传给 Java 时去前缀（`dunce::simplified`）。Rust std 对部分长路径自动加前缀，但不要依赖。**杀软**：Defender 可能短暂持有新文件；共享冲突按上重试，不要用共享标志绕过；提示加排除项是产品选择。**跨盘**：内容库可在另一卷，但 `.part` 永远在目标卷；root 是 junction 时 canonicalize 后比较卷序列号（Windows）或 `statfs` 的 `f_fsid`（Unix），不一致禁用硬链接。
 
 ### 4.2 断点与 validator
 优先强 ETag；弱 ETag（`W/`）不能用于 `If-Range`（RFC 9110 要求强比较）；无强 ETag 用 `Last-Modified`（1s 粒度）。恢复请求 `Range: bytes=<n>-` + `If-Range: <strong-etag|last-modified>`：`206` 且 `Content-Range` 起点/终点/总长匹配→继续；`200`→服务端忽略或资源变了，截断从 0 开始；`416`→`.part` 长度等于 size 则进入校验，否则丢弃；validator 变化→丢弃，不拼接。多分片恢复：meta 保存 `chunk_size`+bitmap，每 chunk 独立 Range，响应必须 206 且 `Content-Range` 精确；任何一个 200 就退出分片，整文件重下。`.part.meta` 记录 `dest/hash/size/etag/last_modified/chunk_size/bitmap/source/updated_at`，全部匹配才复用；`planId` 变了但 `(dest,hash,size)` 相同也可复用。
@@ -162,20 +167,27 @@ remove(part_lock);
 ## 6. 性能
 ### 6.1 reqwest/tokio 配置（reqwest 0.13，MIT/Apache-2.0）
 ```rust
-let client = reqwest::Client::builder()
-  .user_agent("ArchoeraCX/<ver> (+https://...; contact)").https_only(true)
-  .connect_timeout(Duration::from_secs(10)).read_timeout(Duration::from_secs(30))
-  .tcp_keepalive(Duration::from_secs(15)).tcp_nodelay(true)
-  .pool_idle_timeout(Duration::from_secs(30)).pool_max_idle_per_host(8)
-  .http2_adaptive_window(true).http2_keep_alive_interval(Duration::from_secs(20))
+// 两个 client 共用同一份基础设置；只有协议协商不同。
+fn base() -> reqwest::ClientBuilder {
+  reqwest::Client::builder()
+    .user_agent("ArchoeraCX/<ver> (+https://...; contact)")
+    .connect_timeout(Duration::from_secs(10)).read_timeout(Duration::from_secs(30))
+    .tcp_keepalive(Duration::from_secs(15)).tcp_nodelay(true)
+    .pool_idle_timeout(Duration::from_secs(30)).pool_max_idle_per_host(8)
+    .no_gzip().no_brotli().no_deflate().no_zstd()
+    // 实际实现为自定义策略：≤5 跳，逐跳校验 scheme 白名单
+    .redirect(reqwest::redirect::Policy::limited(5))
+}
+let auto = base()                // 小文件/单流：ALPN 协商，h2 优先
+  .http2_keep_alive_interval(Duration::from_secs(20))
   .http2_keep_alive_timeout(Duration::from_secs(10)).http2_keep_alive_while_idle(true)
-  .no_gzip().no_brotli().no_deflate().no_zstd()
-  .redirect(reqwest::redirect::Policy::limited(5)).build()?;
+  .build()?;
+let http1 = base().http1_only().build()?;  // 分片/大文件：一 chunk 一连接
 ```
-TLS：Windows/macOS 用 `native-tls`（Schannel/Security.framework，跟随系统证书与企业根）；Linux 可用 `rustls-tls-native-roots` 避免 OpenSSL 打包。**[未验证]** reqwest 0.13 自动系统代理在各平台的行为（尤其 PAC/WPAD）需实测；C# 已解析的代理 URL 应显式传给 Rust，避免两套行为。DNS：默认 `getaddrinfo` 走阻塞线程池，连接池摊薄成本；可选 `hickory-dns` 异步+缓存，但**[未验证]** 是否遵循 Windows NRPT/企业 DNS，MVP 先用默认。**缓冲**：`response.chunk()` 返回 `Bytes` 直接 `write_all`，读缓冲 64–256 KiB/stream；不要 `response.bytes()`（整文件进内存）；分片用 `write_at`，不要 `seek+write`（共享句柄竞态）。**写盘线程**：`tokio::fs::File` 每次操作走 `spawn_blocking`，16 stream×64 KiB 可能产生大量 blocking 任务；先 benchmark，若 sys CPU>10% 或 p99 抖动，改“每文件一个 writer 线程+有界 `mpsc<Bytes>`”，writer 用 `std::fs::File::write_at`，队列 2–4 个 chunk 背压；`max_blocking_threads(64)` 防止默认 512 堆积。**零拷贝**：HTTPS 下 TLS 加解密决定不存在端到端零拷贝；`sendfile/splice` 只适用明文。能做的是避免用户态二次拷贝（`Bytes` 直接写）；文件复制才可能 `copy_file_range`/reflink。**进度成本**：每 64 KiB 一次 `fetch_add`+150ms 快照，10k 文件约 5–7 事件/s；不要在 chunk 里 `serde_json`、`Instant::now()`、`tracing::info!`。**内存上限**：streams×(chunk_buffer+inflight Bytes)≈16×128 KiB≈2 MiB；计划解析是主要占用（200k 文件约 40–80 MiB）；URL/dest 用 `Arc<str>` 去重，mirror 共享；峰值 RSS<256 MiB。
+TLS：reqwest 0.13.5 的 `default-tls` feature 解析为 **rustls + `rustls-platform-verifier`（系统信任库，含企业根）+ aws-lc-rs**，不再按平台切 native-tls；`Cargo.lock` 中没有 `native-tls`/`hyper-tls`。**[未验证]** reqwest 0.13 自动系统代理在各平台的行为（尤其 PAC/WPAD）需实测；C# 已解析的代理 URL 应显式传给 Rust，避免两套行为。DNS：默认 `getaddrinfo` 走阻塞线程池，连接池摊薄成本；可选 `hickory-dns` 异步+缓存，但**[未验证]** 是否遵循 Windows NRPT/企业 DNS，MVP 先用默认。**缓冲**：`response.chunk()` 返回 `Bytes` 直接 `write_all`，读缓冲 64–256 KiB/stream；不要 `response.bytes()`（整文件进内存）；分片用 `write_at`，不要 `seek+write`（共享句柄竞态）。**写盘线程**：`tokio::fs::File` 每次操作走 `spawn_blocking`，16 stream×64 KiB 可能产生大量 blocking 任务；先 benchmark，若 sys CPU>10% 或 p99 抖动，改“每文件一个 writer 线程+有界 `mpsc<Bytes>`”，writer 用 `std::fs::File::write_at`，队列 2–4 个 chunk 背压；`max_blocking_threads(64)` 防止默认 512 堆积。**零拷贝**：HTTPS 下 TLS 加解密决定不存在端到端零拷贝；`sendfile/splice` 只适用明文。能做的是避免用户态二次拷贝（`Bytes` 直接写）；文件复制才可能 `copy_file_range`/reflink。**进度成本**：每 64 KiB 一次 `fetch_add`+150ms 快照，10k 文件约 5–7 事件/s；不要在 chunk 里 `serde_json`、`Instant::now()`、`tracing::info!`。**内存上限**：streams×(chunk_buffer+inflight Bytes)≈16×128 KiB≈2 MiB；计划解析是主要占用（200k 文件约 40–80 MiB）；URL/dest 用 `Arc<str>` 去重，mirror 共享；峰值 RSS<256 MiB。
 
 ### 6.2 连接池
-H1：`pool_max_idle_per_host`≥每 host 并发+1，否则频繁建连；`pool_idle_timeout=30s` 平衡 NAT 与复用。H2：一条连接多 stream；`http2_adaptive_window` 让高 BDP 自动扩窗；`keep_alive` 防 NAT/防火墙静默断链；服务端 `SETTINGS_MAX_CONCURRENT_STREAMS` 可能 100，仍受 per-host 6–8 限制。Rust 只做文件下载，不要复用 C# 的 HttpClient。
+H1：`pool_max_idle_per_host`≥每 host 并发+1，否则频繁建连；`pool_idle_timeout=30s` 平衡 NAT 与复用。H2（仅 `auto` client）：一条连接多 stream；可选 `http2_adaptive_window` 扩高 BDP 窗口（当前未设置，等基准）；`keep_alive` 防 NAT/防火墙静默断链；服务端 `SETTINGS_MAX_CONCURRENT_STREAMS` 可能 100，仍受 per-host 8 限制。Rust 只做文件下载，不要复用 C# 的 HttpClient。
 
 ## 7. 与现有实现对比（只读）
 | 项目 | 语言/许可证 | 并发 | Range/分片 | 断点/validator | 落盘/原子性 | 镜像/重试 | 去重 |
@@ -240,7 +252,7 @@ C ABI 与 07 的 method+JSON 一致：`download.submit/pause/resume/cancel/snaps
 | `tempfile` 3.x / `fs4` 1.x | post 临时目录、文件锁/可用空间/预分配 | MIT OR Apache-2.0 |
 | `thiserror` / `tracing` / `dunce` | 错误、日志、Windows 路径 | MIT / MIT / MIT OR Apache-2.0 |
 | `zip`（可选）/ `windows-sys`（可选） | extract_natives、nlink/卷序列号/长路径 | MIT / MIT OR Apache-2.0 |
-| `rustls` / `native-tls` / `hickory-resolver`（可选） | 跨平台 TLS、系统证书、异步 DNS | Apache-2.0 OR ISC OR MIT / MIT OR Apache-2.0 / MIT OR Apache-2.0 |
+| `rustls`（经 reqwest `default-tls`）/ `hickory-resolver`（可选） | TLS、系统证书、异步 DNS | Apache-2.0 OR ISC OR MIT / MIT OR Apache-2.0 |
 
 不选 `fs2`（停止维护，`fs4` 是其分支）；不选 `governor` 做字节限速（单位不匹配，除非自定义 cell）；不选 `sled`（维护状态/体积不适合），去重索引先用文件系统路径。CI 用 `cargo deny` 锁定许可证。
 
@@ -258,7 +270,7 @@ C ABI 与 07 的 method+JSON 一致：`download.submit/pause/resume/cancel/snaps
 | 硬链接被原地修改 | 中 | 只对不可变 artifact 去重；配置/Mod 复制 |
 | SHA-1 碰撞/脏镜像 | 中 | 算法入键；SHA-256 优先；hash 失败换源记录 |
 | 分片来自不同 CDN 边缘 | 低 | 一文件一源；mirror 必须字节一致；hash 兜底 |
-| H2 在丢包链路的 TCP HOL | 中 | 基准对比 H1；保留按 host 切 client 开关 |
+| H2 在丢包链路的 TCP HOL | 中 | 基准对比 H1；已实现按 host 降级到 `http1`（13 §5） |
 | fsync 尾延迟 | 中 | 默认 `normal`；checkpoint 16 MiB；可配置 |
 | 200k 文件计划内存 | 低 | 上限+`Arc<str>`+分页 snapshot；必要时流式解析 |
 

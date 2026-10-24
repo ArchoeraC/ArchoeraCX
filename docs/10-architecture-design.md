@@ -1527,7 +1527,7 @@ JavaLocator
 
 - `shutdown`：取消 token → 等待 JoinSet 2s → 超时 abort；abort 前必须写完 `.part.meta`。
 - 不调用 `std::process::exit`；让 C++ 统一收尾。
-- 退出后保留 `.part` 7 天；`purge=true` 才删。
+- 异常退出/崩溃保留 `.part` 与 `.part.meta` 供续传；用户取消时立即删除两者。
 - 用户清理：`maintenance.cleanPartials` 扫描配置的实例根，删除超过 N 天（默认 3）未修改的 `.part` / `.part.meta` / `.part.lock`；同组 10 分钟内有 `.part.lock` 更新的视为仍在下载并跳过。
 - 恢复时 `(dest, hash, size)` 匹配即可复用，不要求同一 planId。
 
@@ -2780,7 +2780,7 @@ C# ComplianceGate.Evaluate()
 - 审计 JSONL 哈希链；记录 `noticeVersion/noticeSha256/acceptedAt/method/channel/appVersion`。
 - capability = `base64url(payload || HMAC-SHA256(进程随机 key, payload))`，payload 含 `planId/level/exp/nonce`；Rust 解析并验签；只防进程内绕过。
 - 进程 key 由 C++ 启动时生成，随模块 init 配置传给 C#/Rust；不落盘、不进日志；C++ 不参与策略判断。
-- 撤回：`gateEpoch++`；取消在途任务；保留 `.part`。
+- 撤回：`gateEpoch++`；取消在途任务并清理 `.part`/`.part.meta`。
 
 ### 15.5 构建期断言
 
