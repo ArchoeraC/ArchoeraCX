@@ -649,7 +649,10 @@ internal static class InstanceDiscovery
         {
             var full = Path.GetFullPath(path);
             if (!File.Exists(full)) return null;
-            if ((File.GetAttributes(full) & FileAttributes.ReparsePoint) != 0)
+            // LinkTarget covers symlinks and Windows junctions on every
+            // platform, while leaving OneDrive/cloud placeholder files alone
+            // (they are reparse points but still regular files).
+            if (new FileInfo(full).LinkTarget is not null)
             {
                 return null;
             }
