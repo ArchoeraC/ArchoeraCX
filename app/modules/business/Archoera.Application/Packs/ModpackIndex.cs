@@ -469,6 +469,11 @@ public static class ModpackIndexJson
     private static readonly string[] ReservedRoots =
     [
         ".archoera", "versions", "libraries", "assets", "natives", "logging",
+        // The launcher keeps verified loader installers and other download
+        // artifacts here. A pack must not be able to plant a file that the
+        // repair/launch preflight later parses and executes as a Forge
+        // installer (see PackForgeInstallerBootstrap).
+        "downloads",
     ];
 
     /// <summary>
