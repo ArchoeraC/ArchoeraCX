@@ -235,9 +235,14 @@ public sealed class PackGameInstallServiceTests
             var installerPath = Path.Combine(
                 root,
                 "downloads/loaders/forge/1.20.1-47.2.0-installer.jar");
-            await File.WriteAllBytesAsync(
-                installerPath,
-                ForgeInstallerFixture.CreateInstaller("[]", "[]"));
+            var installerBytes = ForgeInstallerFixture.CreateInstaller("[]", "[]");
+            await File.WriteAllBytesAsync(installerPath, installerBytes);
+            // A verified sidecar lets repair reuse the installer offline
+            // without resolving the published descriptor again.
+            await File.WriteAllTextAsync(
+                installerPath + ".sha1",
+                Convert.ToHexStringLower(
+                    System.Security.Cryptography.SHA1.HashData(installerBytes)) + "\n");
 
             var settings = new JsonAppSettingsStore(dataRoot);
             var repository = new SqliteInstanceRepository(dataRoot, settings);
@@ -257,13 +262,17 @@ public sealed class PackGameInstallServiceTests
                 null);
             var runner = new FakePlanRunner();
             var repairer = new FakeForgeRepair();
+            // The published descriptor is unreachable; the verified sidecar
+            // must let repair proceed offline.
+            var descriptorHandler = new FakeHttpMessageHandler();
+            descriptorHandler.EnqueueStatus(System.Net.HttpStatusCode.ServiceUnavailable);
             var service = new PackInstallService(
                 repository: repository,
                 settings: settings,
                 runner: runner,
                 gameInstall: new PackGameInstallService(
                     new FakeMojangMetadata(),
-                    new HttpClient(new FakeHttpMessageHandler()),
+                    new HttpClient(descriptorHandler),
                     new LoaderProfileEndpoints(
                         new Uri("https://meta.fabricmc.net/v2/"),
                         new Uri("https://meta.quiltmc.org/v3/"))),
