@@ -10,7 +10,7 @@ use crate::error::DownloadError;
 use crate::executor::Engine;
 use crate::hash;
 use crate::outcome::SourceFailure;
-use crate::parts::{reject_link_like, rename_with_retry};
+use crate::parts::{open_sidecar, rename_with_retry};
 use crate::plan::{Durability, FileMode, ValidatedFile, VerifyExisting, is_link_like};
 use crate::progress::FileMeter;
 use crate::protocol::HttpVersion;
@@ -123,10 +123,7 @@ pub(crate) async fn download_from_source(
         return Err(SourceFailure::instant(error));
     }
 
-    reject_link_like(part)
-        .await
-        .map_err(SourceFailure::instant)?;
-    let mut target = tokio::fs::File::create(part)
+    let mut target = open_sidecar(part, true, true)
         .await
         .map_err(SourceFailure::instant)?;
     let transferred = wire::stream_body(

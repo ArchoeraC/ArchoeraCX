@@ -580,13 +580,15 @@ fn reject_symlinked_parents(root: &Path, dest: &str) -> Result<(), DownloadError
 }
 
 /// A symlink, or on Windows any reparse point (junction/mount point).
+/// A symlink (any platform), or a Windows junction/mount point. Cloud
+/// placeholders (OneDrive et al.) are reparse points too, but they are regular
+/// files with a filter driver, so they must not be treated as links.
 pub(crate) fn is_link_like(metadata: &std::fs::Metadata) -> bool {
     #[cfg(windows)]
     {
-        use std::os::windows::fs::MetadataExt;
-        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
-            || metadata.file_type().is_symlink()
+        use std::os::windows::fs::FileTypeExt;
+        let kind = metadata.file_type();
+        kind.is_symlink() || kind.is_symlink_dir()
     }
     #[cfg(not(windows))]
     {

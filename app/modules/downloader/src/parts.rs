@@ -54,6 +54,37 @@ pub(crate) async fn reject_link_like(path: &Path) -> Result<(), DownloadError> {
     }
 }
 
+/// Open a sidecar for writing without following a symlink. The pre-check gives
+/// a clear error; `O_NOFOLLOW`/`FILE_FLAG_OPEN_REPARSE_POINT` close the window
+/// between the check and `open`.
+pub(crate) async fn open_sidecar(
+    path: &Path,
+    create: bool,
+    truncate: bool,
+) -> Result<tokio::fs::File, DownloadError> {
+    reject_link_like(path).await?;
+    let mut options = tokio::fs::OpenOptions::new();
+    options.write(true);
+    if create {
+        options.create(true);
+    }
+    if truncate {
+        options.truncate(true);
+    }
+    #[cfg(unix)]
+    {
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        // Opening the reparse point itself makes a write fail instead of
+        // following a symlink/junction planted at the sidecar path.
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    options.open(path).await.map_err(DownloadError::from_io)
+}
+
 /// URL for the result JSON and logs: path only, no query/fragment. Signed
 /// download URLs can carry their credentials in the query string.
 pub(crate) fn source_label(url: &Url) -> String {
@@ -132,6 +163,15 @@ mod tests {
         symlink(&target, &part).expect("symlink");
 
         let error = reject_link_like(&part).await.expect_err("must reject");
+        assert_eq!(error.code().as_str(), "PATH_ESCAPE");
+        assert_eq!(std::fs::read(&target).expect("read target"), b"keep");
+
+        // The open helper must also refuse even if the pre-check is raced:
+        // O_NOFOLLOW/FILE_FLAG_OPEN_REPARSE_POINT is the second gate.
+        let error = match open_sidecar(&part, true, true).await {
+            Ok(_) => panic!("must reject the symlinked sidecar"),
+            Err(error) => error,
+        };
         assert_eq!(error.code().as_str(), "PATH_ESCAPE");
         assert_eq!(std::fs::read(&target).expect("read target"), b"keep");
     }
