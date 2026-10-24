@@ -335,6 +335,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Instance deleted, but the local files could not be removed. Clean them up manually.';
 
   @override
+  String get instanceDeleteFilesKeptOutsideRoot =>
+      'Instance deleted, but the folder is outside the managed instances directory, so it was kept.';
+
+  @override
   String get instanceCheckQuick => 'Quick check';
 
   @override

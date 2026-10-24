@@ -64,6 +64,7 @@ void settle_task_locked(archoera_core& core,
   event.code = event_code;
   task.result = std::move(result);
   task.state = state;
+  task.settled_at = std::chrono::steady_clock::now();
   event.json = make_state_json(task.method, phase, note);
   enqueue_event_locked(core, std::move(event));
 }
@@ -165,6 +166,7 @@ archoera_status complete_sync_call(archoera_core* core,
       task.id = task_id;
       task.method = method;
       task.state = ARCHOERA_TASK_COMPLETED;
+      task.settled_at = std::chrono::steady_clock::now();
       task.result = std::move(result);
 
       auto inserted = core->tasks.emplace(task_id, std::move(task));
@@ -263,7 +265,11 @@ void ping_async_worker(archoera_core* core,
     }
 
     // All progress is emitted. Decide the terminal state under the same mutex
-    // so a cancel that raced the final progress still wins.
+    // so a cancel that raced the final progress still wins. The wake callback
+    // runs after the mutex is released: a C embedder may re-enter the core
+    // from it, which would self-deadlock under the lock.
+    WakeTarget wake;
+    bool notify = false;
     {
       std::lock_guard<std::mutex> lock(core->mutex);
       if (core->shutting_down.load(std::memory_order_acquire)) {
@@ -288,7 +294,11 @@ void ping_async_worker(archoera_core* core,
                            kPingAsyncResult, 0, nullptr);
       }
 
-      WakeTarget wake = wake_target_locked(*core);
+      wake = wake_target_locked(*core);
+      notify = true;
+    }
+
+    if (notify) {
       notify_wake(wake);
     }
   } catch (...) {

@@ -205,6 +205,46 @@ int run_tests() {
 
   archoera_release(core, task);
   archoera_release(core, cancel_task);
+  // Releasing an already terminal task is idempotent.
+  archoera_release(core, task);
+
+  // --- release on a running task is ignored: cancel must still reach it -----
+  uint64_t held_task = 0;
+  CHECK(archoera_call(core, "system.pingAsync", "{}", &held_task, &err) ==
+        ARCHOERA_OK);
+  CHECK(held_task != 0);
+  archoera_release(core, held_task);
+  CHECK(archoera_cancel(core, held_task) == ARCHOERA_OK);
+
+  bool saw_held_cancelled = false;
+  for (int iteration = 0; iteration < 64 && !saw_held_cancelled; ++iteration) {
+    CHECK(wait_for_next_wake(wake, consumed, kWaitTimeout));
+
+    archoera_event events[64];
+    const int32_t count = archoera_poll(core, events, 64);
+    CHECK(count >= 0);
+
+    for (int32_t i = 0; i < count; ++i) {
+      const archoera_event& event = events[i];
+      if (event.task_id != held_task) {
+        continue;
+      }
+      if (event.type == ARCHOERA_EV_TASK_STATE &&
+          event.state == ARCHOERA_TASK_CANCELLED) {
+        saw_held_cancelled = true;
+      }
+    }
+  }
+  CHECK(saw_held_cancelled);
+
+  // The terminal record is still readable after the ignored release, and a
+  // release now removes it for good.
+  len = 0;
+  CHECK(archoera_result(core, held_task, nullptr, 0, &len, &err) ==
+        ARCHOERA_OK);
+  archoera_release(core, held_task);
+  CHECK(archoera_result(core, held_task, nullptr, 0, &len, &err) ==
+        ARCHOERA_E_NOT_FOUND);
 
   // Shutdown must join a worker that is still mid-flight. The next progress
   // event is at least 25 ms away, so this exercises the cancel/join path

@@ -37,7 +37,9 @@ class ModuleHost {
    *
    * Candidate order:
    *   1. the module-specific environment variable (for example
-   *      ARCHOERACX_CS_MODULE)
+   *      ARCHOERACX_CS_MODULE). Debug builds honor any path; release builds
+   *      only honor one that points into the core library directory, so the
+   *      environment cannot inject code from an arbitrary location.
    *   2. <directory of libarchoera_core.so>/<base>.so (+ lib prefix)
    */
   bool load() noexcept;

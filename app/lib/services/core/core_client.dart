@@ -74,7 +74,8 @@ final class CoreClient extends CoreTransport
   /// configuration.
   ///
   /// Resolution order:
-  /// 1. `ARCHOERACX_CORE_LIB`.
+  /// 1. `ARCHOERACX_CORE_LIB` (debug builds only; release ignores the
+  ///    environment and resolves next to the executable).
   /// 2. `build/native/<library>` relative to the current directory.
   /// 3. `../app/build/native/<library>` (when launched from the repo root).
   /// 4. The Linux release bundle path; platform bundle paths are also probed.

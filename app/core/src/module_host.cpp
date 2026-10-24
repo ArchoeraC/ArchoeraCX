@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #if defined(_WIN32)
@@ -132,16 +133,53 @@ std::string core_library_dir() {
 #endif
 }
 
+// True when `file_path` lives directly in `dir`. Both are canonicalized so a
+// relative path or a symlinked build directory still compares equal.
+bool path_is_in_directory(const std::string& file_path,
+                          const std::string& dir) {
+  if (file_path.empty() || dir.empty()) {
+    return false;
+  }
+
+  std::error_code ec;
+  const fs::path parent = fs::path(file_path).parent_path();
+  if (parent.empty()) {
+    return false;
+  }
+  const fs::path canonical_parent = fs::weakly_canonical(parent, ec);
+  if (ec) {
+    return false;
+  }
+  const fs::path canonical_dir = fs::weakly_canonical(fs::path(dir), ec);
+  if (ec) {
+    return false;
+  }
+  return fs::equivalent(canonical_parent, canonical_dir, ec) && !ec;
+}
+
 std::vector<std::string> module_candidates(const std::string& base_name,
                                            const std::string& env_name) {
   std::vector<std::string> candidates;
 
   const std::string explicit_path = get_env(env_name.c_str());
+  const std::string dir = core_library_dir();
   if (!explicit_path.empty()) {
+#ifndef NDEBUG
+    // Debug builds may point at a module anywhere: that is how developers run
+    // the core against a scratch module build.
     candidates.push_back(explicit_path);
+#else
+    // Release builds must not turn the environment into a code-execution
+    // path. The installation directory is already trusted (the core library
+    // itself lives there), so an explicit path inside it is still accepted;
+    // this keeps the native smoke tests and local dev runs working. Any path
+    // outside it is ignored and the adjacent-module candidates below win.
+    if (path_is_in_directory(explicit_path, dir)) {
+      candidates.push_back(explicit_path);
+    }
+#endif
   }
 
-  const std::string dir = core_library_dir();
   if (!dir.empty()) {
     candidates.push_back((fs::path(dir) / module_file_name(base_name)).string());
     candidates.push_back(

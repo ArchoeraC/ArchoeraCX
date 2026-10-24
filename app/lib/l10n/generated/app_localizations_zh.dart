@@ -321,6 +321,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceDeleteFilesKeptFailed => '实例已删除，但本地文件删除失败，请手动清理。';
 
   @override
+  String get instanceDeleteFilesKeptOutsideRoot => '实例已删除，但目录不在受管理的实例根内，已保留。';
+
+  @override
   String get instanceCheckQuick => '快速检查';
 
   @override

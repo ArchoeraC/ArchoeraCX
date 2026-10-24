@@ -123,6 +123,7 @@
   "instanceDeleteFilesKeptShared": "实例已删除，但目录与其它实例或实例根共用，已保留。",
   "instanceDeleteFilesKeptUnsafe": "实例已删除，但目录路径不安全，已保留。",
   "instanceDeleteFilesKeptFailed": "实例已删除，但本地文件删除失败，请手动清理。",
+  "instanceDeleteFilesKeptOutsideRoot": "实例已删除，但目录不在受管理的实例根内，已保留。",
   "instanceCheckQuick": "快速检查",
   "instanceCheckFull": "完整检查",
   "instanceCheckTitle": "依赖检查",
