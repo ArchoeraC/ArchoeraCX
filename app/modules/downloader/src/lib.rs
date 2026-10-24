@@ -31,6 +31,7 @@ mod outcome;
 mod parts;
 mod plan;
 mod progress;
+mod protocol;
 mod resume;
 mod result;
 mod single_stream;

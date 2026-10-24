@@ -6,7 +6,7 @@
 //! and outcome plumbing that both paths share lives in sibling modules.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -16,13 +16,14 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::chunk_stream::download_chunked;
-use crate::client::build_client;
+use crate::client::{Clients, build_clients};
 use crate::error::DownloadError;
 use crate::limiter::BandwidthLimiter;
 use crate::outcome::{FileOutcome, SourceFailure};
-use crate::parts::{backoff, cleanup_part_with_meta, elapsed_ms, part_path};
+use crate::parts::{backoff, cleanup_part_with_meta, elapsed_ms, part_path, source_label};
 use crate::plan::{ValidatedFile, validate_plan_inner};
 use crate::progress::{FileMeter, ProgressCallback, ProgressTracker};
+use crate::protocol::{HttpVersion, ProtocolState};
 use crate::result::{DownloadResult, FailedFile, Status};
 use crate::resume::{ChunkOutcome, remove_resume};
 use crate::single_stream::{Existing, download_from_source, existing_destination, prepare_parent};
@@ -75,12 +76,13 @@ pub async fn execute(
         .iter()
         .map(|file| file.url.clone())
         .find(|url| url.host_str() == Some(crate::edge::EDGE_HOST));
-    let client = build_client(&validated.options, edge_sample.as_ref()).await?;
+    let client = build_clients(&validated.options, edge_sample.as_ref()).await?;
     let limiter = BandwidthLimiter::new(validated.bandwidth_limit).map(Arc::new);
     let concurrency = validated.concurrency as usize;
     let per_host = validated.options.per_host_concurrency as usize;
     let engine = Arc::new(Engine {
-        client,
+        clients: client,
+        protocol: ProtocolState::new(),
         root: validated.root,
         options: validated.options,
         limiter,
@@ -150,6 +152,12 @@ pub async fn execute(
     if cancelled {
         cancel.cancel();
         drain_after_cancel(&mut join_set, &mut outcomes).await;
+        // A task aborted after the grace period never reaches run_job's cancel
+        // branch, so sweep the plan's sidecars here too: cancellation is
+        // defined as "do not keep partial data".
+        for job in &jobs {
+            cleanup_part_with_meta(&part_path(&job.dest_path)).await;
+        }
     }
 
     tracker.finish_all();
@@ -213,7 +221,8 @@ pub async fn execute(
 }
 
 pub(crate) struct Engine {
-    pub(crate) client: reqwest::Client,
+    clients: Clients,
+    protocol: ProtocolState,
     pub(crate) root: PathBuf,
     pub(crate) options: crate::plan::PlanOptions,
     pub(crate) limiter: Option<Arc<BandwidthLimiter>>,
@@ -231,41 +240,63 @@ pub(crate) struct ConnectionGuard {
 }
 
 impl Engine {
-    /// Acquire the global stream budget first, then the host gate, so two
-    /// tasks can never hold each other's host while waiting for the global
-    /// budget (no lock-order inversion, no deadlock).
-    async fn acquire(&self, url: &Url) -> Option<ConnectionGuard> {
-        let global = Arc::clone(&self.connections).acquire_owned().await.ok()?;
-        let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
-        let gate = {
-            // Poison is tolerated on purpose: this critical section is plain
-            // synchronous map bookkeeping (no `.await`, no user code), so a
-            // poisoning panic would have to land inside these few lines.
-            // Recovering keeps the gate semaphores other tasks already share;
-            // starting a fresh map instead would hand the same host a fresh
-            // per-host budget while earlier tasks still hold their permits.
-            // Logging the recovery would cost a new dependency, which this
-            // crate deliberately avoids.
-            let mut gates = self
-                .host_gates
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            Arc::clone(
-                gates
-                    .entry(host)
-                    .or_insert_with(|| Arc::new(Semaphore::new(self.per_host.max(1)))),
-            )
-        };
-        if self.per_host == 0 {
-            return Some(ConnectionGuard {
-                _global: global,
-                _host: None,
-            });
+    /// The client for one attempt. Ranged chunks always pass `Http1`; single
+    /// streams use the per-origin `choose` result.
+    pub(crate) fn client(&self, version: HttpVersion) -> &reqwest::Client {
+        match version {
+            HttpVersion::Auto => &self.clients.auto,
+            HttpVersion::Http1 => &self.clients.http1,
         }
-        let host_permit = gate.acquire_owned().await.ok()?;
+    }
+
+    /// Version to try first for a single-stream request.
+    pub(crate) fn choose(&self, url: &Url) -> HttpVersion {
+        self.protocol.choose(url.host_str().unwrap_or_default())
+    }
+
+    /// The origin rejected the negotiated version; use HTTP/1.1 for a while.
+    pub(crate) fn demote(&self, url: &Url) {
+        if let Some(host) = url.host_str() {
+            self.protocol.demote(host);
+        }
+    }
+
+    /// Acquire the per-host gate first, then the global stream budget.
+    ///
+    /// Waiting for a host must not consume a global permit: a hot or slow host
+    /// with many queued chunks would otherwise hold every global slot while it
+    /// waits, starving downloads from every other host. There is exactly one
+    /// acquisition order, so this cannot invert against another task.
+    async fn acquire(&self, url: &Url) -> Option<ConnectionGuard> {
+        let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
+        let host_permit = if self.per_host == 0 {
+            None
+        } else {
+            let gate = {
+                // Poison is tolerated on purpose: this critical section is plain
+                // synchronous map bookkeeping (no `.await`, no user code), so a
+                // poisoning panic would have to land inside these few lines.
+                // Recovering keeps the gate semaphores other tasks already share;
+                // starting a fresh map instead would hand the same host a fresh
+                // per-host budget while earlier tasks still hold their permits.
+                // Logging the recovery would cost a new dependency, which this
+                // crate deliberately avoids.
+                let mut gates = self
+                    .host_gates
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                Arc::clone(
+                    gates
+                        .entry(host)
+                        .or_insert_with(|| Arc::new(Semaphore::new(self.per_host.max(1)))),
+                )
+            };
+            Some(gate.acquire_owned().await.ok()?)
+        };
+        let global = Arc::clone(&self.connections).acquire_owned().await.ok()?;
         Some(ConnectionGuard {
             _global: global,
-            _host: Some(host_permit),
+            _host: host_permit,
         })
     }
 
@@ -344,7 +375,7 @@ async fn download_file(
         && file.size > engine.options.chunk_size;
 
     'sources: for source in std::iter::once(&file.url).chain(file.mirrors.iter()) {
-        last_source = Some(source.as_str().to_owned());
+        last_source = Some(source_label(source));
         for attempt in 0..MAX_ATTEMPTS_PER_SOURCE {
             if attempts >= MAX_TOTAL_ATTEMPTS {
                 break 'sources;
@@ -357,12 +388,12 @@ async fn download_file(
                     Ok(ChunkOutcome::Unsupported) => {
                         // Server ignored the range: restart as one stream.
                         cleanup_part_with_meta(&part).await;
-                        download_from_source(engine.as_ref(), file, source, &part, meter.as_ref()).await
+                        download_single(engine, file, source, &part, meter).await
                     }
                     Err(failure) => Err(failure),
                 }
             } else {
-                download_from_source(engine.as_ref(), file, source, &part, meter.as_ref()).await
+                download_single(engine, file, source, &part, meter).await
             };
             match outcome {
                 Ok(downloaded) => {
@@ -409,6 +440,39 @@ async fn download_file(
     );
     outcome.keep_part = resumable;
     outcome
+}
+
+/// One single-stream attempt plus at most one protocol fallback.
+///
+/// The ALPN client is the default for small files; if it fails at the HTTP
+/// version layer before any byte moved (h2 connection error, `421`, `505` on
+/// an h2 response), the origin is demoted and the same URL is retried once on
+/// HTTP/1.1. TLS, content and local failures deliberately never fall back.
+async fn download_single(
+    engine: &Arc<Engine>,
+    file: &ValidatedFile,
+    source: &Url,
+    part: &Path,
+    meter: &Arc<FileMeter>,
+) -> Result<u64, SourceFailure> {
+    let version = engine.choose(source);
+    match download_from_source(engine.as_ref(), file, source, part, meter.as_ref(), version).await {
+        Err(failure)
+            if version == HttpVersion::Auto && failure.protocol && failure.transferred == 0 =>
+        {
+            engine.demote(source);
+            download_from_source(
+                engine.as_ref(),
+                file,
+                source,
+                part,
+                meter.as_ref(),
+                HttpVersion::Http1,
+            )
+            .await
+        }
+        outcome => outcome,
+    }
 }
 
 fn accept_join(

@@ -263,18 +263,58 @@ impl DownloadError {
         Self::Connect(text)
     }
 
+    /// Map an OS error to the error taxonomy. `raw_os_error` values are
+    /// platform-specific (Linux 39 is `ENOTEMPTY`, Windows 39 is
+    /// `ERROR_HANDLE_EOF`), so the tables must not be shared across systems.
     pub fn from_io(err: io::Error) -> Self {
         let message = err.to_string();
-        match err.raw_os_error() {
-            Some(28) | Some(112) | Some(39) | Some(122) => Self::DiskFull(message),
-            Some(1) | Some(5) | Some(13) => Self::PermissionDenied(message),
-            Some(11) | Some(16) | Some(32) | Some(33) => Self::FileLocked(message),
-            Some(18) => Self::CrossDevice(message),
-            Some(30) => Self::ReadOnly(message),
-            Some(36) | Some(206) => Self::PathTooLong(message),
-            _ if err.kind() == io::ErrorKind::PermissionDenied => Self::PermissionDenied(message),
-            _ => Self::Internal(message),
+
+        #[cfg(target_os = "linux")]
+        {
+            match err.raw_os_error() {
+                Some(28) | Some(122) => return Self::DiskFull(message), // ENOSPC, EDQUOT
+                Some(1) | Some(13) => return Self::PermissionDenied(message), // EPERM, EACCES
+                Some(16) => return Self::FileLocked(message),               // EBUSY
+                Some(18) => return Self::CrossDevice(message),              // EXDEV
+                Some(21) => return Self::DestIsDir(message),                // EISDIR
+                Some(30) => return Self::ReadOnly(message),                 // EROFS
+                Some(36) => return Self::PathTooLong(message),              // ENAMETOOLONG
+                _ => {}
+            }
         }
+
+        #[cfg(target_os = "macos")]
+        {
+            match err.raw_os_error() {
+                Some(28) | Some(69) => return Self::DiskFull(message), // ENOSPC, EDQUOT
+                Some(1) | Some(13) => return Self::PermissionDenied(message),
+                Some(16) => return Self::FileLocked(message),
+                Some(18) => return Self::CrossDevice(message),
+                Some(21) => return Self::DestIsDir(message),
+                Some(30) => return Self::ReadOnly(message),
+                Some(63) => return Self::PathTooLong(message), // ENAMETOOLONG
+                _ => {}
+            }
+        }
+
+        #[cfg(windows)]
+        {
+            match err.raw_os_error() {
+                Some(112) => return Self::DiskFull(message),       // ERROR_DISK_FULL
+                Some(5) => return Self::PermissionDenied(message), // ERROR_ACCESS_DENIED
+                Some(32) | Some(33) => return Self::FileLocked(message), // sharing/lock
+                Some(17) => return Self::CrossDevice(message),     // ERROR_NOT_SAME_DEVICE
+                Some(19) => return Self::ReadOnly(message),        // ERROR_WRITE_PROTECT
+                Some(206) => return Self::PathTooLong(message),    // ERROR_FILENAME_EXCED_RANGE
+                Some(267) => return Self::DestIsDir(message),      // ERROR_DIRECTORY
+                _ => {}
+            }
+        }
+
+        if err.kind() == io::ErrorKind::PermissionDenied {
+            return Self::PermissionDenied(message);
+        }
+        Self::Internal(message)
     }
 }
 
@@ -335,5 +375,39 @@ mod tests {
     #[test]
     fn error_code_mapping_for_local_failure() {
         assert_eq!(ErrorCode::DiskFull.as_str(), "DISK_FULL");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_errno_mapping_is_platform_specific() {
+        use std::io;
+
+        let code = |errno| {
+            DownloadError::from_io(io::Error::from_raw_os_error(errno))
+                .code()
+                .as_str()
+        };
+        assert_eq!(code(28), "DISK_FULL"); // ENOSPC
+        assert_eq!(code(122), "DISK_FULL"); // EDQUOT
+        assert_eq!(code(39), "INTERNAL"); // ENOTEMPTY, must not be DISK_FULL
+        assert_eq!(code(36), "PATH_TOO_LONG"); // ENAMETOOLONG
+        assert_eq!(code(21), "DEST_IS_DIR"); // EISDIR
+        assert_eq!(code(13), "PERMISSION_DENIED"); // EACCES
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_error_mapping_is_platform_specific() {
+        use std::io;
+
+        let code = |errno| {
+            DownloadError::from_io(io::Error::from_raw_os_error(errno))
+                .code()
+                .as_str()
+        };
+        assert_eq!(code(112), "DISK_FULL"); // ERROR_DISK_FULL
+        assert_eq!(code(32), "FILE_LOCKED"); // ERROR_SHARING_VIOLATION
+        assert_eq!(code(206), "PATH_TOO_LONG"); // ERROR_FILENAME_EXCED_RANGE
+        assert_eq!(code(5), "PERMISSION_DENIED"); // ERROR_ACCESS_DENIED
     }
 }

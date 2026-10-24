@@ -146,7 +146,7 @@ async fn probe_one(sample: Url, addr: SocketAddr) -> (SocketAddr, usize) {
 /// fallback for when the fast edge dies later in the plan.
 fn order(scored: Vec<(SocketAddr, usize)>, resolved: Vec<SocketAddr>) -> Vec<SocketAddr> {
     let mut ranked = scored;
-    ranked.sort_by(|left, right| right.1.cmp(&left.1));
+    ranked.sort_by_key(|left| std::cmp::Reverse(left.1));
 
     let mut seen = HashSet::new();
     let mut ordered = Vec::new();
