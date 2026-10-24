@@ -223,7 +223,7 @@ Dart ──compliance.state / download.plan──▶ C++ ──▶ C# Compliance
 - 唯一计划生产者在 C#（`docs/02` §3）；`download.plan` 生成前求值，失败返回 `DOWNLOAD_DISABLED` + `reason`。
 - C# HTTP 层按**用途**（`metadata`/`content`/`telemetry`）放行，默认 `content`——不按 URL 白名单，避免镜像换域名即失效。
 - capability = `base64url(payload || HMAC-SHA256(进程随机 key, payload))`，payload 含 `planId|level|exp|nonce`；Rust 验签后才落盘。Dart 绕过 C# 直接调 Rust 会失败。
-- 撤回：`gateEpoch++`，拒绝新 capability，取消在途任务（保留 `.part`，见 `05-download-engine.md`）。
+- 撤回：`gateEpoch++`，拒绝新 capability，取消在途任务并清理 `.part`（见 `05-download-engine.md`）。
 
 ### 3.8 远程 kill switch
 

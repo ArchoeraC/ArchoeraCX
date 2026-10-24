@@ -17,6 +17,9 @@ Microsoft / Minecraft 认证已单独整理到 [`../authentication.md`](../authe
 | [09-forge-generated-artifacts.md](09-forge-generated-artifacts.md) | Forge/NeoForge 生成物清单、校验、修复 |
 | [10-download-sources.md](10-download-sources.md) | 下载源矩阵、镜像、`DownloadPlan` 边界 |
 | [11-loader-install-strategy.md](11-loader-install-strategy.md) | 加载器无 Java 边界与安装策略 |
+| [12-download-scheduling-principles.md](12-download-scheduling-principles.md) | FDM/aria2 的分段与调度原理（只读） |
+| [13-transport-protocol-fallback.md](13-transport-protocol-fallback.md) | 地址族/TLS/HTTP 版本/代理的多协议回退 |
+| [14-security-audit-2026-10.md](14-security-audit-2026-10.md) | 依赖 CVE 与代码安全审查（2026-10） |
 
 ## 使用约束
 
