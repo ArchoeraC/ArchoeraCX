@@ -258,6 +258,9 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
         var joinServerOnLaunch = current?.JoinServerOnLaunch;
         var joinServerAddress = current?.JoinServerAddress;
         var joinWorldName = current?.JoinWorldName;
+        var preLoadCommand = current?.PreLoadCommand;
+        var preLaunchCommand = current?.PreLaunchCommand;
+        var postExitCommand = current?.PostExitCommand;
 
         if (patch.TryGetProperty("memoryMinMb", out var memoryMinElement))
         {
@@ -347,6 +350,21 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
                 ReadOverrideString(worldElement, "joinWorldName"));
         }
 
+        if (patch.TryGetProperty("preLoadCommand", out var preLoadElement))
+        {
+            preLoadCommand = ReadOverrideCommand(preLoadElement, "preLoadCommand");
+        }
+
+        if (patch.TryGetProperty("preLaunchCommand", out var preLaunchElement))
+        {
+            preLaunchCommand = ReadOverrideCommand(preLaunchElement, "preLaunchCommand");
+        }
+
+        if (patch.TryGetProperty("postExitCommand", out var postExitElement))
+        {
+            postExitCommand = ReadOverrideCommand(postExitElement, "postExitCommand");
+        }
+
         if (memoryMin is { } minimum && memoryMax is { } maximum && minimum > maximum)
         {
             throw new ArgumentException("memoryMinMb must be <= memoryMaxMb");
@@ -381,8 +399,25 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
             environment,
             joinServerOnLaunch,
             joinServerAddress,
-            joinWorldName);
+            joinWorldName,
+            preLoadCommand,
+            preLaunchCommand,
+            postExitCommand);
         return merged.IsEmpty ? null : merged;
+    }
+
+    /// <summary>
+    /// Per-instance command semantics: null inherits the global command, a
+    /// whitespace-only string explicitly disables it, and anything else is
+    /// validated and tokenized with the shared command-line tokenizer.
+    /// </summary>
+    private static string? ReadOverrideCommand(JsonElement element, string name)
+    {
+        var raw = ReadOverrideString(element, name);
+        if (raw is null) return null;
+        return string.IsNullOrWhiteSpace(raw)
+            ? string.Empty
+            : RuntimeOptionsJson.NormalizeCommand(raw, name);
     }
 
     private static int? ReadOverrideInt(JsonElement element, string name, int min, int max)

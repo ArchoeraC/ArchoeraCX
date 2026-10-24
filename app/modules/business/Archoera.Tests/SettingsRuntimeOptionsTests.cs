@@ -265,8 +265,8 @@ public sealed class SettingsRuntimeOptionsTests
             Assert.True(loaded.Environment is null || loaded.Environment.Count == 0);
             Assert.Equal("-XX:+UseG1GC", loaded.JvmArgs);
 
-            // Saving the migrated document writes schema 13 and an environment
-            // object so the UI never needs a missing-key branch.
+            // Saving the migrated document writes the current schema and an
+            // environment object so the UI never needs a missing-key branch.
             var saved = await new JsonAppSettingsStore(dataRoot)
                 .SaveAsync(loaded);
             using var document = JsonDocument.Parse(await File.ReadAllTextAsync(saved.SettingsPath));

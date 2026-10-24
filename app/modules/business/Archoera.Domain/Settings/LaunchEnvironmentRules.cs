@@ -16,6 +16,12 @@ public static class LaunchEnvironmentRules
     /// <summary>Maximum length of <c>wrapperCommand</c>.</summary>
     public const int MaxWrapperLength = 4096;
 
+    /// <summary>
+    /// Maximum length of a pre-load, pre-launch or post-exit command. The same
+    /// limit applies to the global settings and the per-instance overrides.
+    /// </summary>
+    public const int MaxCommandLength = 4096;
+
     /// <summary>Maximum number of environment entries (global or per instance).</summary>
     public const int MaxEntries = 64;
 
@@ -83,6 +89,35 @@ public static class LaunchEnvironmentRules
         }
 
         return wrapper;
+    }
+
+    /// <summary>
+    /// Validates a launcher-side command string (pre-load, pre-launch or
+    /// post-exit). Empty and whitespace-only values mean "no command" and are
+    /// normalized to <c>null</c>. The value is passed to the OS as a program
+    /// plus arguments, never through a shell; tokenization is validated by the
+    /// infrastructure layer because the tokenizer lives there.
+    /// </summary>
+    /// <param name="command">User-configured command text.</param>
+    /// <param name="fieldName">JSON field name used in diagnostics.</param>
+    public static string? NormalizeCommand(string? command, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(command)) return null;
+        if (command.Length > MaxCommandLength)
+        {
+            throw new ArgumentException(
+                $"{fieldName} must be at most {MaxCommandLength} characters");
+        }
+
+        if (command.Contains('\0', StringComparison.Ordinal) ||
+            command.Contains('\r', StringComparison.Ordinal) ||
+            command.Contains('\n', StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"{fieldName} must not contain NUL or line breaks");
+        }
+
+        return command;
     }
 
     /// <summary>Validates one environment variable name.</summary>

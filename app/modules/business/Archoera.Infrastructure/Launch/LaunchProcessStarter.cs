@@ -18,7 +18,8 @@ internal static class LaunchProcessStarter
         string instanceId,
         LaunchPlan plan,
         int logRetentionFiles,
-        int logRetentionMegabytes)
+        int logRetentionMegabytes,
+        Action<int>? onExited = null)
     {
         LaunchLogFiles.Prepare(
             plan.LogDirectory,
@@ -66,6 +67,20 @@ internal static class LaunchProcessStarter
 
             // The log viewer polls the registry to know when a follow can end.
             LaunchProcessRegistry.Unregister(instanceId, pid);
+
+            // Launcher-side post-exit hook. It must never block or break the
+            // JVM exit handler; the runner handles its own failures/logging.
+            if (onExited is not null)
+            {
+                try
+                {
+                    onExited(process.ExitCode);
+                }
+                catch
+                {
+                    // Best effort: a hook failure cannot unwind the exit event.
+                }
+            }
         };
         LaunchProcessRegistry.Register(instanceId, pid, logPath);
         return (process, logPath);

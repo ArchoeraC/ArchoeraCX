@@ -540,6 +540,13 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 settings,
                 instance,
                 instance.RootPath);
+
+            // Pre-load runs after the instance and effective settings are known
+            // but before any version or library lookup.
+            await LaunchCommandRunner
+                .RunPreLoadAsync(instance, settings, cancellationToken)
+                .ConfigureAwait(false);
+
             var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false)
                 ?? throw new LaunchException("ACCOUNT_REQUIRED", "add an account before launching");
             if (mode == "online" && requirePremium &&
@@ -711,11 +718,16 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 memoryPlan: memoryPlan,
                 optimizationPlan: optimizationPlan,
                 cores: Environment.ProcessorCount);
+
+            await LaunchCommandRunner
+                .RunPreLaunchAsync(instance, settings, plan, cancellationToken)
+                .ConfigureAwait(false);
             var (process, logPath) = LaunchProcessStarter.Start(
                 instance.Id,
                 plan,
                 settings.LogRetentionFiles,
-                settings.LogRetentionMegabytes);
+                settings.LogRetentionMegabytes,
+                LaunchCommandRunner.CreatePostExitCallback(instance, settings, plan));
             return ModuleJson.Envelope(writer =>
             {
                 writer.WriteNumber("pid", process.Id);
