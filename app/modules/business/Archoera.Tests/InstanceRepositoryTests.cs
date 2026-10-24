@@ -520,11 +520,13 @@ public sealed class InstanceRepositoryTests
         {
             var dataRoot = Path.Combine(directory, "data");
             var settings = new JsonAppSettingsStore(dataRoot);
+            var instancesRoot = Path.Combine(directory, "instances");
+            await settings.SaveInstancesRootAsync(instancesRoot);
             var service = new InstanceModuleService(
                 new SqliteInstanceRepository(dataRoot, settings),
                 settings);
 
-            var root = Path.Combine(directory, "isolated-instance");
+            var root = Path.Combine(instancesRoot, "isolated-instance");
             var id = await CreateAsync(service, root, "With Files");
             await File.WriteAllTextAsync(Path.Combine(root, "options.txt"), "fov:70");
             Assert.True(Directory.Exists(root));
@@ -538,6 +540,45 @@ public sealed class InstanceRepositoryTests
             Assert.True(data.GetProperty("deleted").GetBoolean());
             Assert.True(data.GetProperty("filesDeleted").GetBoolean());
             Assert.False(Directory.Exists(root));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Delete_keeps_an_instance_outside_the_configured_root()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            await settings.SaveInstancesRootAsync(Path.Combine(directory, "instances"));
+            var service = new InstanceModuleService(
+                new SqliteInstanceRepository(dataRoot, settings),
+                settings);
+
+            // A custom instance created outside the configured root still has
+            // the marker, but recursive deletion must not follow an arbitrary
+            // registry path.
+            var root = Path.Combine(directory, "custom-instance");
+            var id = await CreateAsync(service, root, "Custom Root");
+            Assert.True(File.Exists(Path.Combine(root, ".archoera", "instance.json")));
+
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.delete",
+                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    CancellationToken.None));
+            var data = document.RootElement.GetProperty("data");
+            Assert.True(data.GetProperty("deleted").GetBoolean());
+            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.Equal(
+                "outside_root",
+                data.GetProperty("filesSkippedReason").GetString());
+            Assert.True(Directory.Exists(root));
         }
         finally
         {

@@ -313,33 +313,102 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
 
     private static string ResolveBinary()
     {
-        var configured = Environment.GetEnvironmentVariable("ARCHOERACX_VAULT_BIN");
-        if (!string.IsNullOrWhiteSpace(configured))
+        string? cwd = null;
+        var includeDevelopmentProbes = false;
+#if DEBUG
+        includeDevelopmentProbes = true;
+        try
         {
-            return Path.GetFullPath(configured);
+            cwd = Directory.GetCurrentDirectory();
         }
+        catch
+        {
+            // Deleted/replaced working directory; packaged paths still work.
+        }
+#endif
 
-        var executable = OperatingSystem.IsWindows()
-            ? "archoera-vault.exe"
-            : "archoera-vault";
-        var baseDirectory = AppContext.BaseDirectory;
-        var candidates = new[]
+        var candidates = BuildBinaryCandidates(
+            AppContext.BaseDirectory,
+            cwd,
+            includeDevelopmentProbes);
+        return SelectBinary(
+                   Environment.GetEnvironmentVariable("ARCHOERACX_VAULT_BIN"),
+                   candidates)
+               ?? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, ExecutableName()));
+    }
+
+    private static string ExecutableName()
+        => OperatingSystem.IsWindows() ? "archoera-vault.exe" : "archoera-vault";
+
+    /// <summary>
+    /// Candidate locations in precedence order. Release builds never probe the
+    /// working directory: a writable CWD must not be able to supply the vault
+    /// executable. Pure so tests can lock in the order.
+    /// </summary>
+    internal static IReadOnlyList<string> BuildBinaryCandidates(
+        string baseDirectory,
+        string? currentDirectory,
+        bool includeDevelopmentProbes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseDirectory);
+        var executable = ExecutableName();
+        var candidates = new List<string>
         {
             Path.Combine(baseDirectory, executable),
             Path.Combine(baseDirectory, "lib", executable),
             Path.Combine(baseDirectory, "..", executable),
             Path.Combine(baseDirectory, "..", "..", executable),
             Path.Combine(baseDirectory, "..", "..", "..", executable),
-            Path.Combine(Directory.GetCurrentDirectory(), "build", "native", executable),
-            Path.Combine(Directory.GetCurrentDirectory(), "app", "build", "native", executable),
         };
-        foreach (var candidate in candidates)
+
+        if (includeDevelopmentProbes && !string.IsNullOrWhiteSpace(currentDirectory))
         {
-            var full = Path.GetFullPath(candidate);
-            if (File.Exists(full)) return full;
+            candidates.Add(Path.Combine(currentDirectory, "build", "native", executable));
+            candidates.Add(Path.Combine(currentDirectory, "app", "build", "native", executable));
         }
 
-        return Path.GetFullPath(Path.Combine(baseDirectory, executable));
+        return candidates;
+    }
+
+    /// <summary>
+    /// Returns the explicit override when it is an existing file, otherwise the
+    /// first existing candidate. Non-files (missing paths, directories, broken
+    /// links) are ignored.
+    /// </summary>
+    internal static string? SelectBinary(
+        string? configuredPath,
+        IEnumerable<string> candidates)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        if (TryExistingFile(configuredPath) is { } explicitPath)
+        {
+            return explicitPath;
+        }
+
+        foreach (var candidate in candidates)
+        {
+            if (TryExistingFile(candidate) is { } resolved)
+            {
+                return resolved;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? TryExistingFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        try
+        {
+            var full = Path.GetFullPath(path);
+            return File.Exists(full) ? full : null;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
     }
 
     private static void TryKill(Process process)

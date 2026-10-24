@@ -411,9 +411,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                 "only Modrinth is available before the CurseForge key is configured");
         }
 
-        var baseAddress = ReadOptionalString(root, "providerBase") is { } baseText
-            ? new Uri(baseText, UriKind.Absolute)
-            : ModrinthClientOptions.DefaultBaseAddress;
+        var baseAddress = ResolveProviderBase(ReadOptionalString(root, "providerBase"));
 
         return new ModrinthClient(
             Http,
@@ -424,6 +422,86 @@ public sealed class ResourceModuleService : IModuleMethodHandler
                     ArchoeraBuildInfo.Version,
                     "dev@archoera.local"),
             });
+    }
+
+    /// <summary>
+    /// Resolves the optional <c>providerBase</c> override. Production requests
+    /// must target the official HTTPS endpoint; loopback stays available so
+    /// tests and a local mock can run without weakening the host allow-list.
+    /// Development builds may point anywhere over HTTP(S).
+    /// </summary>
+    internal static Uri ResolveProviderBase(string? baseText)
+    {
+        if (string.IsNullOrWhiteSpace(baseText))
+        {
+            return ModrinthClientOptions.DefaultBaseAddress;
+        }
+
+        if (!Uri.TryCreate(baseText.Trim(), UriKind.Absolute, out var uri))
+        {
+            throw new ResourceProviderException(
+                ResourceErrorCode.InvalidRequest,
+                "providerBase must be an absolute URI");
+        }
+
+        if (!IsProviderBaseAllowed(uri, AllowDevelopmentProviderBase))
+        {
+            throw new ResourceProviderException(
+                ResourceErrorCode.InvalidRequest,
+                "providerBase must be https://api.modrinth.com or a loopback address");
+        }
+
+        return uri;
+    }
+
+    private static bool AllowDevelopmentProviderBase
+    {
+        get
+        {
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Pure allow-list shared by production and tests. <paramref name="allowDevelopmentBase"/>
+    /// mirrors the DEBUG-only escape so release behaviour is testable.
+    /// </summary>
+    internal static bool IsProviderBaseAllowed(Uri uri, bool allowDevelopmentBase)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        if (!uri.IsAbsoluteUri) return false;
+        if (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
+        {
+            return false;
+        }
+
+        if (IsLoopbackHost(uri.Host))
+        {
+            return true;
+        }
+
+        if (allowDevelopmentBase) return true;
+
+        return uri.Scheme == Uri.UriSchemeHttps &&
+               uri.Port == 443 &&
+               string.IsNullOrEmpty(uri.UserInfo) &&
+               string.Equals(uri.Host, "api.modrinth.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsLoopbackHost(string host)
+    {
+        if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var bare = host.TrimStart('[').TrimEnd(']');
+        return System.Net.IPAddress.TryParse(bare, out var address) &&
+               System.Net.IPAddress.IsLoopback(address);
     }
 
     private static string ReadProvider(JsonElement root)

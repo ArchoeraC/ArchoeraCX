@@ -34,6 +34,17 @@ public sealed class ModrinthClient : IResourceProvider
     /// <summary>Provider id used in DTOs and logs.</summary>
     public const string ProviderId = "modrinth";
 
+    /// <summary>Upper bound for one JSON response body.</summary>
+    internal const int MaxResponseBytes = 16 * 1024 * 1024;
+
+    /// <summary>Maximum nesting depth accepted in provider JSON.</summary>
+    internal const int MaxJsonDepth = 64;
+
+    private static readonly JsonDocumentOptions ParseOptions = new()
+    {
+        MaxDepth = MaxJsonDepth,
+    };
+
     private static readonly MediaTypeWithQualityHeaderValue AcceptJson =
         new("application/json");
 
@@ -483,14 +494,26 @@ public sealed class ModrinthClient : IResourceProvider
                         status);
                 }
 
+                if (response.Content.Headers.ContentLength is { } contentLength &&
+                    contentLength > MaxResponseBytes)
+                {
+                    throw new ResourceProviderException(
+                        ResourceErrorCode.InvalidResponse,
+                        $"Modrinth response exceeds {MaxResponseBytes} bytes",
+                        status);
+                }
+
                 try
                 {
                     var stream = await response.Content
                         .ReadAsStreamAsync(timeout.Token)
                         .ConfigureAwait(false);
+                    await using var bounded = new BoundedReadStream(
+                        stream,
+                        MaxResponseBytes);
 
                     return await JsonDocument
-                        .ParseAsync(stream, cancellationToken: timeout.Token)
+                        .ParseAsync(bounded, ParseOptions, timeout.Token)
                         .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -500,6 +523,14 @@ public sealed class ModrinthClient : IResourceProvider
                         $"Modrinth response was not read within " +
                         $"{_options.RequestTimeout.TotalSeconds:0}s",
                         status);
+                }
+                catch (InvalidDataException exception)
+                {
+                    throw new ResourceProviderException(
+                        ResourceErrorCode.InvalidResponse,
+                        $"Modrinth response exceeds {MaxResponseBytes} bytes",
+                        status,
+                        innerException: exception);
                 }
                 catch (IOException exception)
                 {

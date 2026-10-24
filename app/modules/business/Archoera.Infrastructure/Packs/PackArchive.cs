@@ -35,7 +35,18 @@ public static class PackArchive
 {
     public const int MaxOverrideEntries = 100_000;
     public const long MaxOverrideEntryBytes = 8L << 30; // 8 GiB
-    public const long MaxOverrideTotalBytes = 64L << 30; // 64 GiB
+    public const long MaxOverrideTotalBytes = 16L << 30; // 16 GiB
+
+    /// <summary>
+    /// A single large entry may not expand more than this. Highly compressible
+    /// payloads above the threshold are treated as a zip bomb even when the
+    /// declared sizes stay below the absolute limits.
+    /// </summary>
+    internal const long CompressionRatioCheckBytes = 1L << 20; // 1 MiB
+    internal const long MaxCompressionRatio = 200;
+
+    /// <summary>Free space kept after writing all overrides.</summary>
+    internal const long FreeSpaceReserveBytes = 64L << 20; // 64 MiB
 
     private const string OverridesPrefix = "overrides/";
     private const string ClientOverridesPrefix = "client-overrides/";
@@ -241,6 +252,13 @@ public static class PackArchive
                     $"{name}: override is larger than {MaxOverrideEntryBytes} bytes");
             }
 
+            if (ExceedsCompressionRatio(length, entry.CompressedLength))
+            {
+                throw new PackException(
+                    PackErrorCode.TooLarge,
+                    $"{name}: override expands more than {MaxCompressionRatio}:1");
+            }
+
             totalBytes += length;
             if (totalBytes > MaxOverrideTotalBytes)
             {
@@ -354,6 +372,11 @@ public static class PackArchive
                 $"instance root does not exist: {rootFull}");
         }
 
+        if (entries.Count > 0)
+        {
+            EnsureFreeSpace(rootFull, entries.Sum(entry => entry.Length));
+        }
+
         var written = new List<string>(entries.Count);
         ZipArchive archive;
         try
@@ -427,6 +450,13 @@ public static class PackArchive
         byte[] buffer,
         CancellationToken cancellationToken)
     {
+        if (ExceedsCompressionRatio(entry.Length, entry.CompressedLength))
+        {
+            throw new PackException(
+                PackErrorCode.TooLarge,
+                $"{relative}: override expands more than {MaxCompressionRatio}:1");
+        }
+
         var destination = ResolveDestination(rootFull, relative);
         RejectSymlinkedParents(rootFull, relative);
         var parent = Path.GetDirectoryName(destination)
@@ -506,6 +536,61 @@ public static class PackArchive
 
         ApplyPermissions(destination, entry);
         return total;
+    }
+
+    /// <summary>
+    /// True when a large entry compresses so well that extracting it would
+    /// amplify disk use disproportionately. Small entries are exempt because
+    /// their absolute cost is negligible.
+    /// </summary>
+    internal static bool ExceedsCompressionRatio(long uncompressed, long compressed)
+    {
+        if (uncompressed <= CompressionRatioCheckBytes) return false;
+        if (compressed <= 0) return true;
+        return uncompressed / (double)compressed > MaxCompressionRatio;
+    }
+
+    /// <summary>
+    /// Bytes that must be free before extracting <paramref name="totalUncompressed"/>
+    /// bytes: the payload plus 10% for filesystem overhead and a fixed reserve.
+    /// </summary>
+    internal static long RequiredFreeBytes(long totalUncompressed)
+    {
+        if (totalUncompressed < 0) return long.MaxValue;
+        if (totalUncompressed > (long.MaxValue - FreeSpaceReserveBytes) / 2)
+        {
+            return long.MaxValue;
+        }
+
+        var withOverhead = totalUncompressed + (totalUncompressed / 10);
+        if (totalUncompressed > 0) withOverhead++;
+        return withOverhead + FreeSpaceReserveBytes;
+    }
+
+    private static void EnsureFreeSpace(string rootFull, long totalUncompressed)
+    {
+        var required = RequiredFreeBytes(totalUncompressed);
+        try
+        {
+            var volumeRoot = Path.GetPathRoot(rootFull);
+            if (string.IsNullOrEmpty(volumeRoot)) return;
+
+            var drive = new DriveInfo(volumeRoot);
+            if (!drive.IsReady) return;
+            if (drive.AvailableFreeSpace >= required) return;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or IOException or UnauthorizedAccessException or
+            NotSupportedException)
+        {
+            // Unknown/virtual volumes cannot be measured; extraction still
+            // enforces the entry and total byte limits while writing.
+            return;
+        }
+
+        throw new PackException(
+            PackErrorCode.TooLarge,
+            $"not enough free space for {totalUncompressed} bytes of overrides");
     }
 
     private static string ResolveDestination(string rootFull, string relative)

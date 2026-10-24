@@ -168,7 +168,10 @@ public sealed partial class InstanceModuleService
                 .Where(item => !string.Equals(item.Id, created.Id, StringComparison.Ordinal))
                 .Select(item => item.RootPath)
                 .ToArray(),
-            out _);
+            out _,
+            // The copy was created by this call, so rollback may remove it even
+            // when the source was a custom instance outside the configured roots.
+            allowOutsideConfiguredRoots: true);
         try
         {
             await _repository.DeleteAsync(created.Id, CancellationToken.None).ConfigureAwait(false);
