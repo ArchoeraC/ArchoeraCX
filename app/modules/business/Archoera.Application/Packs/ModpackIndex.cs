@@ -14,6 +14,8 @@ public static class PackErrorCode
     public const string Invalid = "PACK_INVALID";
     public const string Unsupported = "PACK_UNSUPPORTED";
     public const string ArchiveInvalid = "PACK_ARCHIVE_INVALID";
+    public const string ArchiveBomb = "PACK_ARCHIVE_BOMB";
+    public const string SymlinkEntry = "PACK_SYMLINK_ENTRY";
     public const string PathEscape = "PACK_PATH_ESCAPE";
     public const string TooLarge = "PACK_TOO_LARGE";
     public const string DuplicateFile = "PACK_DUPLICATE_FILE";
