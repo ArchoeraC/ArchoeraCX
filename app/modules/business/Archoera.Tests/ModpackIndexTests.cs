@@ -41,13 +41,15 @@ public sealed class ModpackIndexTests
         Assert.Equal(PackErrorCode.PathEscape, exception.Code);
     }
 
-    [Fact]
-    public void Parse_rejects_launcher_managed_roots()
+    [Theory]
+    [InlineData("versions/fabric-loader/x.json")]
+    [InlineData("downloads/loaders/forge/1.21.1-47.2.0-installer.jar")]
+    [InlineData("libraries/net/example/a.jar")]
+    public void Parse_rejects_launcher_managed_roots(string path)
     {
         var exception = Assert.Throws<PackException>(
             () => ModpackIndexJson.Parse(
-                Encoding.UTF8.GetBytes(
-                    ValidIndex(path: "versions/fabric-loader/x.json"))));
+                Encoding.UTF8.GetBytes(ValidIndex(path: path))));
         Assert.Equal(PackErrorCode.PathEscape, exception.Code);
     }
 
