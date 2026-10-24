@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/account.dart';
 import '../../theme/tokens.dart';
+import '../common/safe_url.dart';
 
 /// Cropped head of a skin texture. Used by compact account rows.
 class SkinHead extends StatelessWidget {
@@ -21,7 +22,8 @@ class SkinHead extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = account.skinUrl;
-    final ImageProvider provider = url == null || url.isEmpty
+    final ImageProvider provider =
+        url == null || url.isEmpty || !isSafeImageUrl(url)
         ? const AssetImage('assets/skins/default-offline.png')
         : NetworkImage(url);
     return _SkinImage(
@@ -65,7 +67,7 @@ class SkinPreview extends StatelessWidget {
     final url = account.skinUrl;
     final provider =
         imageProvider ??
-        (url == null || url.isEmpty
+        (url == null || url.isEmpty || !isSafeImageUrl(url)
             ? const AssetImage('assets/skins/default-offline.png')
             : NetworkImage(url));
     return _SkinImage(
@@ -122,9 +124,11 @@ class _SkinImageState extends State<_SkinImage> {
 
   void _resolve() {
     try {
-      final stream = (widget.provider ?? NetworkImage(widget.url)).resolve(
-        const ImageConfiguration(),
-      );
+      final provider =
+          widget.provider ??
+          (isSafeImageUrl(widget.url) ? NetworkImage(widget.url) : null);
+      if (provider == null) return;
+      final stream = provider.resolve(const ImageConfiguration());
       final listener = ImageStreamListener((info, _) {
         if (!mounted) return;
         setState(() => _image = info.image);
