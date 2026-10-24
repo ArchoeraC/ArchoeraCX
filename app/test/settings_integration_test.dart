@@ -71,14 +71,24 @@ void main() {
           'DRI_PRIME': '1',
           'MESA_LOADER_DRIVER_OVERRIDE': 'zink',
         },
+        preLaunchCommand: 'echo before',
+        postExitCommand: 'echo after',
       );
       expect(withLaunch.wrapperCommand, 'gamemoderun --keep "my wrapper"');
       expect(withLaunch.environment['DRI_PRIME'], '1');
+      expect(withLaunch.preLaunchCommand, 'echo before');
+      expect(withLaunch.postExitCommand, 'echo after');
       final reloadedLaunch = await client.getSettings();
       expect(reloadedLaunch.wrapperCommand, 'gamemoderun --keep "my wrapper"');
       expect(reloadedLaunch.environment['MESA_LOADER_DRIVER_OVERRIDE'], 'zink');
+      expect(reloadedLaunch.preLaunchCommand, 'echo before');
       // Explicit null clears; a later run starts from a clean document.
-      await client.setRuntimeOptions(wrapperCommand: null, environment: null);
+      await client.setRuntimeOptions(
+        wrapperCommand: null,
+        environment: null,
+        preLaunchCommand: null,
+        postExitCommand: null,
+      );
     },
     skip: enabled && core.existsSync() && module.existsSync()
         ? false

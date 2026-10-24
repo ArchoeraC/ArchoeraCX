@@ -50,11 +50,17 @@ void main() {
         environment: <String, String>{'DRI_PRIME': '1'},
         joinServerOnLaunch: true,
         joinServerAddress: 'mc.example.org:25566',
+        preLoadCommand: 'echo load',
+        preLaunchCommand: 'echo launch',
+        postExitCommand: 'echo exit',
       );
       expect(tuned.overrides?.wrapperCommand, 'prime-run');
       expect(tuned.overrides?.environment?['DRI_PRIME'], '1');
       expect(tuned.overrides?.joinServerOnLaunch, isTrue);
       expect(tuned.overrides?.joinServerAddress, 'mc.example.org:25566');
+      expect(tuned.overrides?.preLoadCommand, 'echo load');
+      expect(tuned.overrides?.preLaunchCommand, 'echo launch');
+      expect(tuned.overrides?.postExitCommand, 'echo exit');
 
       final listed = await client.listInstances();
       expect(listed.any((instance) => instance.id == created.id), isTrue);
