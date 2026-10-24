@@ -45,6 +45,22 @@ namespace Archoera.Domain.Settings;
 /// JVM option variables are rejected at the module boundary and stripped again
 /// before the process starts.
 /// </param>
+/// <param name="PreLoadCommand">
+/// Explicit launcher-side command run after the instance and effective
+/// settings are known but before the version and libraries are resolved.
+/// Tokenized without a shell; the <c>INST_*</c> environment variables describe
+/// the instance. Empty or whitespace means no command.
+/// </param>
+/// <param name="PreLaunchCommand">
+/// Explicit launcher-side command run immediately before the JVM starts, after
+/// the launch plan is built. A non-zero exit, timeout or start failure aborts
+/// the launch. Empty or whitespace means no command.
+/// </param>
+/// <param name="PostExitCommand">
+/// Explicit launcher-side command run after the JVM exits. Best effort: a
+/// failure is logged and never blocks or crashes the launcher. Empty or
+/// whitespace means no command.
+/// </param>
 public sealed record AppSettings(
     string InstancesRoot,
     string DataRoot,
@@ -72,10 +88,13 @@ public sealed record AppSettings(
     string MemoryMode = "auto",
     bool GameOptimization = true,
     string? WrapperCommand = null,
-    IReadOnlyDictionary<string, string>? Environment = null)
+    IReadOnlyDictionary<string, string>? Environment = null,
+    string? PreLoadCommand = null,
+    string? PreLaunchCommand = null,
+    string? PostExitCommand = null)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 13;
+    public const int CurrentSchemaVersion = 14;
 
     /// <summary>Supported heap sizing modes.</summary>
     public static class MemoryModes

@@ -27,6 +27,18 @@ using Archoera.Domain.Settings;
 /// <param name="JoinServerOnLaunch">True to join a server or world after start.</param>
 /// <param name="JoinServerAddress">Server address (<c>host[:port]</c> or bracketed IPv6).</param>
 /// <param name="JoinWorldName">Single-player world folder to open.</param>
+/// <param name="PreLoadCommand">
+/// Pre-load command override. Null inherits the global command; an empty
+/// string explicitly disables the global command for this instance.
+/// </param>
+/// <param name="PreLaunchCommand">
+/// Pre-launch command override. Null inherits the global command; an empty
+/// string explicitly disables the global command for this instance.
+/// </param>
+/// <param name="PostExitCommand">
+/// Post-exit command override. Null inherits the global command; an empty
+/// string explicitly disables the global command for this instance.
+/// </param>
 public sealed record InstanceOverrides(
     int? MemoryMinMb = null,
     int? MemoryMaxMb = null,
@@ -41,7 +53,10 @@ public sealed record InstanceOverrides(
     IReadOnlyDictionary<string, string>? Environment = null,
     bool? JoinServerOnLaunch = null,
     string? JoinServerAddress = null,
-    string? JoinWorldName = null)
+    string? JoinWorldName = null,
+    string? PreLoadCommand = null,
+    string? PreLaunchCommand = null,
+    string? PostExitCommand = null)
 {
     /// <summary>Supported GC modes; mirrors the global settings validation.</summary>
     public static readonly string[] GcModes =
@@ -63,7 +78,10 @@ public sealed record InstanceOverrides(
         Environment is null &&
         JoinServerOnLaunch is null &&
         JoinServerAddress is null &&
-        JoinWorldName is null;
+        JoinWorldName is null &&
+        PreLoadCommand is null &&
+        PreLaunchCommand is null &&
+        PostExitCommand is null;
 
     /// <summary>
     /// Folds the overrides onto the global document. The result is what the
@@ -111,8 +129,22 @@ public sealed record InstanceOverrides(
             JavaPath = JavaPath ?? settings.JavaPath,
             WrapperCommand = WrapperCommand ?? settings.WrapperCommand,
             Environment = environment,
+            PreLoadCommand = ResolveCommand(PreLoadCommand, settings.PreLoadCommand),
+            PreLaunchCommand = ResolveCommand(PreLaunchCommand, settings.PreLaunchCommand),
+            PostExitCommand = ResolveCommand(PostExitCommand, settings.PostExitCommand),
             // A pinned instance Java is always manual; otherwise keep global.
             JavaAuto = JavaPath is null ? settings.JavaAuto : false,
         };
+    }
+
+    /// <summary>
+    /// An absent instance command inherits the global one; an explicitly empty
+    /// instance command disables it. Whitespace is treated as empty because the
+    /// settings parser stores it that way.
+    /// </summary>
+    private static string? ResolveCommand(string? instance, string? global)
+    {
+        var value = instance ?? global;
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 }

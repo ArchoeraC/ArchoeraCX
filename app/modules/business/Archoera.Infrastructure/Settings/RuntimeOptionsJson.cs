@@ -37,6 +37,32 @@ internal static class RuntimeOptionsJson
     }
 
     /// <summary>
+    /// Validates a launcher-side command (pre-load, pre-launch, post-exit) and
+    /// its tokenization. Empty input becomes <c>null</c> (no command). The same
+    /// tokenizer as JVM/game arguments is used, so quoting cannot drift.
+    /// </summary>
+    public static string? NormalizeCommand(string? value, string fieldName)
+    {
+        var command = LaunchEnvironmentRules.NormalizeCommand(value, fieldName);
+        if (command is null) return null;
+        try
+        {
+            var tokens = CommandLineTokenizer.Split(command);
+            if (tokens.Count == 0 || tokens[0].Length == 0)
+            {
+                throw new ArgumentException(
+                    $"{fieldName} must start with a non-empty executable");
+            }
+        }
+        catch (FormatException exception)
+        {
+            throw new ArgumentException($"{fieldName}: {exception.Message}");
+        }
+
+        return command;
+    }
+
+    /// <summary>
     /// Reads a strict <c>environment</c> patch: JSON null clears the map,
     /// otherwise the value must be an object of string values. Invalid names,
     /// values and hostile JVM variables fail with <see cref="ArgumentException"/>.

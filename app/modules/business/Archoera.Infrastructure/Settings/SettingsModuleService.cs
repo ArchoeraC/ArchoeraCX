@@ -122,6 +122,12 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         var wrapperCommandPresent = false;
         IReadOnlyDictionary<string, string>? environment = null;
         var environmentPresent = false;
+        string? preLoadCommand = null;
+        var preLoadCommandPresent = false;
+        string? preLaunchCommand = null;
+        var preLaunchCommandPresent = false;
+        string? postExitCommand = null;
+        var postExitCommandPresent = false;
         try
         {
             using var document = JsonDocument.Parse(paramsJson);
@@ -359,6 +365,30 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 environment = RuntimeOptionsJson.ReadEnvironment(environmentElement);
             }
 
+            if (root.TryGetProperty("preLoadCommand", out var preLoadElement))
+            {
+                preLoadCommandPresent = true;
+                preLoadCommand = RuntimeOptionsJson.NormalizeCommand(
+                    JsonReader.StringValue(preLoadElement, "preLoadCommand"),
+                    "preLoadCommand");
+            }
+
+            if (root.TryGetProperty("preLaunchCommand", out var preLaunchElement))
+            {
+                preLaunchCommandPresent = true;
+                preLaunchCommand = RuntimeOptionsJson.NormalizeCommand(
+                    JsonReader.StringValue(preLaunchElement, "preLaunchCommand"),
+                    "preLaunchCommand");
+            }
+
+            if (root.TryGetProperty("postExitCommand", out var postExitElement))
+            {
+                postExitCommandPresent = true;
+                postExitCommand = RuntimeOptionsJson.NormalizeCommand(
+                    JsonReader.StringValue(postExitElement, "postExitCommand"),
+                    "postExitCommand");
+            }
+
             if (runtimeOnly &&
                 (instancesRoots is { Count: > 0 } ||
                  !string.IsNullOrWhiteSpace(legacyRoot)))
@@ -545,6 +575,21 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             current = current with { Environment = environment };
         }
 
+        if (preLoadCommandPresent)
+        {
+            current = current with { PreLoadCommand = preLoadCommand };
+        }
+
+        if (preLaunchCommandPresent)
+        {
+            current = current with { PreLaunchCommand = preLaunchCommand };
+        }
+
+        if (postExitCommandPresent)
+        {
+            current = current with { PostExitCommand = postExitCommand };
+        }
+
         if (instancesRoots is not { Count: > 0 } &&
             string.IsNullOrWhiteSpace(legacyRoot) &&
             !javaPathPresent &&
@@ -569,7 +614,10 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             memoryMode is null &&
             gameOptimization is null &&
             !wrapperCommandPresent &&
-            !environmentPresent)
+            !environmentPresent &&
+            !preLoadCommandPresent &&
+            !preLaunchCommandPresent &&
+            !postExitCommandPresent)
         {
             return Error("E_INVALID", "settings.set requires at least one field");
         }
@@ -582,6 +630,22 @@ public sealed class SettingsModuleService : IModuleMethodHandler
 
         var saved = await _store.SaveAsync(current, cancellationToken).ConfigureAwait(false);
         return Build(saved);
+    }
+
+    /// <summary>
+    /// The launcher command fields always appear in the response: null means
+    /// "no command" so the UI never needs a missing-key branch.
+    /// </summary>
+    private static void WriteCommand(Utf8JsonWriter writer, string name, string? command)
+    {
+        if (string.IsNullOrWhiteSpace(command))
+        {
+            writer.WriteNull(name);
+        }
+        else
+        {
+            writer.WriteString(name, command);
+        }
     }
 
     private static byte[] Build(AppSettings settings)
@@ -636,6 +700,10 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             {
                 writer.WriteString("wrapperCommand", settings.WrapperCommand);
             }
+
+            WriteCommand(writer, "preLoadCommand", settings.PreLoadCommand);
+            WriteCommand(writer, "preLaunchCommand", settings.PreLaunchCommand);
+            WriteCommand(writer, "postExitCommand", settings.PostExitCommand);
 
             RuntimeOptionsJson.WriteEnvironment(writer, "environment", settings.Environment);
             writer.WriteString("downloadSource", settings.DownloadSource);

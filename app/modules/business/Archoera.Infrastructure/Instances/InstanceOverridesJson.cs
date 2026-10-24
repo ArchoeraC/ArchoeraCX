@@ -94,6 +94,23 @@ internal static class InstanceOverridesJson
             {
                 writer.WriteString("joinWorldName", joinWorld);
             }
+
+            // Command overrides keep the empty string: it disables the global
+            // command for this instance instead of inheriting it.
+            if (content.PreLoadCommand is { } preLoad)
+            {
+                writer.WriteString("preLoadCommand", preLoad);
+            }
+
+            if (content.PreLaunchCommand is { } preLaunch)
+            {
+                writer.WriteString("preLaunchCommand", preLaunch);
+            }
+
+            if (content.PostExitCommand is { } postExit)
+            {
+                writer.WriteString("postExitCommand", postExit);
+            }
         }
 
         writer.WriteEndObject();
@@ -127,14 +144,38 @@ internal static class InstanceOverridesJson
             RuntimeOptionsJson.TryReadEnvironment(element, "environment"),
             JsonReader.TryBool(element, "joinServerOnLaunch"),
             JsonReader.TryString(element, "joinServerAddress"),
-            JsonReader.TryString(element, "joinWorldName"));
+            JsonReader.TryString(element, "joinWorldName"),
+            ImportedCommand(element, "preLoadCommand"),
+            ImportedCommand(element, "preLaunchCommand"),
+            ImportedCommand(element, "postExitCommand"));
         return overrides.IsEmpty ? null : overrides;
     }
 
     /// <summary>
+    /// Imported command: an empty string is meaningful ("no command"), while an
+    /// invalid or mistyped command is dropped so it cannot break the first
+    /// launch of a hand-edited or foreign instance folder.
+    /// </summary>
+    private static string? ImportedCommand(JsonElement element, string name)
+    {
+        var value = JsonReader.TryString(element, name);
+        if (value is null) return null;
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        try
+        {
+            return RuntimeOptionsJson.NormalizeCommand(value, name);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Legacy fields treat whitespace as "not set", matching the original
-    /// sidecar readers. Wrapper is deliberately excluded: an empty wrapper is
-    /// meaningful and must stay distinguishable from "inherit".
+    /// sidecar readers. Wrapper and command hooks are deliberately excluded:
+    /// an empty value is meaningful and must stay distinguishable from
+    /// "inherit".
     /// </summary>
     private static string? LegacyString(JsonElement element, string name)
     {

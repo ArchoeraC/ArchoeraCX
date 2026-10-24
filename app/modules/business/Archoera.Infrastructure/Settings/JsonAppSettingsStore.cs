@@ -109,6 +109,15 @@ public sealed class JsonAppSettingsStore
             var gameArgs = ReadString(root, "gameArgs");
             var wrapperCommand = TryNormalizeWrapper(ReadString(root, "wrapperCommand"));
             var environment = RuntimeOptionsJson.TryReadEnvironment(root, "environment");
+            var preLoadCommand = TryNormalizeCommand(
+                ReadString(root, "preLoadCommand"),
+                "preLoadCommand");
+            var preLaunchCommand = TryNormalizeCommand(
+                ReadString(root, "preLaunchCommand"),
+                "preLaunchCommand");
+            var postExitCommand = TryNormalizeCommand(
+                ReadString(root, "postExitCommand"),
+                "postExitCommand");
             var downloadSource = ReadString(root, "downloadSource") is { } source &&
                                  source is "auto" or "official" or "mirror"
                 ? source
@@ -194,6 +203,9 @@ public sealed class JsonAppSettingsStore
                 GameOptimization = gameOptimization,
                 WrapperCommand = wrapperCommand,
                 Environment = environment,
+                PreLoadCommand = preLoadCommand,
+                PreLaunchCommand = preLaunchCommand,
+                PostExitCommand = postExitCommand,
             };
         }
         catch (Exception exception) when (
@@ -337,6 +349,10 @@ public sealed class JsonAppSettingsStore
                 writer.WriteString("wrapperCommand", settings.WrapperCommand);
             }
 
+            WriteCommand(writer, "preLoadCommand", settings.PreLoadCommand);
+            WriteCommand(writer, "preLaunchCommand", settings.PreLaunchCommand);
+            WriteCommand(writer, "postExitCommand", settings.PostExitCommand);
+
             RuntimeOptionsJson.WriteEnvironment(writer, "environment", settings.Environment);
             if (!string.IsNullOrWhiteSpace(settings.DownloadProxy))
             {
@@ -429,6 +445,30 @@ public sealed class JsonAppSettingsStore
         catch (ArgumentException)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// A hand-edited settings file must not prevent loading: an invalid
+    /// launcher command is dropped (treated as "no command").
+    /// </summary>
+    private static string? TryNormalizeCommand(string? value, string fieldName)
+    {
+        try
+        {
+            return RuntimeOptionsJson.NormalizeCommand(value, fieldName);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static void WriteCommand(Utf8JsonWriter writer, string name, string? command)
+    {
+        if (!string.IsNullOrWhiteSpace(command))
+        {
+            writer.WriteString(name, command);
         }
     }
 
