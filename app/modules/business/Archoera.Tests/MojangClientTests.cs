@@ -47,6 +47,37 @@ public sealed class MojangClientTests
     }
 
     [Fact]
+    public async Task Manifest_is_reused_between_calls()
+    {
+        var handler = new FakeHttpMessageHandler();
+        handler.EnqueueJson(ManifestJson(VersionJson()));
+
+        var client = CreateClient(handler);
+        await client.GetManifestAsync();
+        await client.GetManifestAsync();
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task Version_document_is_cached_by_its_manifest_url()
+    {
+        var versionJson = VersionJson();
+        var handler = new FakeHttpMessageHandler();
+        handler.EnqueueJson(ManifestJson(versionJson));
+        handler.EnqueueJson(versionJson);
+
+        var client = CreateClient(handler);
+        await client.GetVersionJsonAsync("1.20.1");
+        var second = await client.GetVersionJsonAsync("1.20.1");
+
+        Assert.Equal(Encoding.UTF8.GetBytes(versionJson), second);
+        // Manifest + version on the first call; both served from memory after
+        // that. A plan used to repeat them for the response envelope.
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    [Fact]
     public async Task GetVersion_resolves_the_manifest_url_and_verifies_sha1()
     {
         var versionJson = VersionJson();
@@ -70,6 +101,39 @@ public sealed class MojangClientTests
         Assert.Equal(2, handler.Requests.Count);
         Assert.Equal(new Uri(ManifestUrl), handler.Requests[0].Uri);
         Assert.Equal(new Uri(VersionUrl), handler.Requests[1].Uri);
+    }
+
+    [Fact]
+    public async Task GetAssetIndex_falls_back_to_the_mirror_on_network_failure()
+    {
+        var assetJson = AssetIndexJson();
+        var refValue = new MojangAssetIndexRef(
+            "5",
+            AssetIndexUrl,
+            Sha1Of(assetJson),
+            Encoding.UTF8.GetByteCount(assetJson),
+            TotalSize: 12);
+
+        var handler = new FakeHttpMessageHandler();
+        // Official host rate-limits: three attempts, then the mirror carries
+        // the same content-addressed bytes.
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            handler.EnqueueStatus(
+                HttpStatusCode.TooManyRequests,
+                retryAfterSeconds: 0);
+        }
+
+        handler.EnqueueJson(assetJson);
+
+        var index = await CreateClient(handler).GetAssetIndexAsync(refValue);
+
+        Assert.Equal("5", index.Id);
+        Assert.Equal(4, handler.Requests.Count);
+        Assert.Equal(new Uri(AssetIndexUrl), handler.Requests[0].Uri);
+        Assert.Equal(
+            "bmclapi2.bangbang93.com",
+            handler.Requests[^1].Uri.Host);
     }
 
     [Fact]

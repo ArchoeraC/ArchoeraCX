@@ -1826,6 +1826,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get taskCenterGameFiles => '游戏文件';
 
   @override
+  String get taskCenterPreparingGameFiles => '准备游戏文件';
+
+  @override
+  String get taskCenterReadingVersionInfo => '正在读取版本信息…';
+
+  @override
   String get taskCenterJavaScan => 'Java 扫描';
 
   @override

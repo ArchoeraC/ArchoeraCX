@@ -121,6 +121,12 @@ void main() {
                 done: 1048576,
                 total: 1048576,
               ),
+              TaskUpdate(
+                taskId: 3,
+                method: 'version.plan',
+                state: TaskUpdateState.running,
+                label: '1.21.4',
+              ),
             ]),
           ),
         ],
@@ -130,7 +136,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(AppIcons.running));
-    await tester.pumpAndSettle();
+    // The planning row has no byte total, so its progress bar is
+    // indeterminate and never settles; advance past the slide transition
+    // instead of waiting for every animation to stop.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Modpack · AutumnTown'), findsOneWidget);
     expect(find.text('2 KB / 4 KB'), findsOneWidget);
@@ -138,6 +148,9 @@ void main() {
     expect(find.text('Download · Sodium'), findsOneWidget);
     expect(find.text('1.0 MB'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
+    // Planning is metadata-only: it must not read as a frozen 0/0 transfer.
+    expect(find.text('Preparing game files · 1.21.4'), findsOneWidget);
+    expect(find.text('Reading version information…'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

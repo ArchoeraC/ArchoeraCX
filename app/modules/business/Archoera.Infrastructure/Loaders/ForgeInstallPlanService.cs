@@ -55,7 +55,8 @@ public sealed class ForgeInstallPlanService
         string installerPath,
         MojangPlatform platform,
         CancellationToken cancellationToken = default,
-        ForgeDownloadPlanOptions? options = null)
+        ForgeDownloadPlanOptions? options = null,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto)
     {
         ArgumentNullException.ThrowIfNull(platform);
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
@@ -89,8 +90,9 @@ public sealed class ForgeInstallPlanService
                 root,
                 effective,
                 platform,
-                DownloadSourceMode.Auto,
-                cancellationToken)
+                sourceMode,
+                cancellationToken,
+                clientMirrorId: gameVersion)
             .ConfigureAwait(false);
 
         var sha1 = await LoaderPaths

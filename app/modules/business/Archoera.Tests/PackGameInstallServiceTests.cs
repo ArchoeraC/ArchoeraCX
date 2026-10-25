@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Net.Http;
 using System.Text;
+using Archoera.Application.Downloads;
 using Archoera.Application.Mojang;
 using Archoera.Application.Packs;
 using Archoera.Application.Loaders;
@@ -76,6 +77,67 @@ public sealed class PackGameInstallServiceTests
                 "libraries/net/fabricmc/fabric-loader/0.19.3/fabric-loader-0.19.3.jar",
                 destinations);
             Assert.Contains(MojangTestData.AssetAPath, destinations);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch
+            {
+                // best effort
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Mirror_mode_fetches_the_fabric_profile_from_bmclapi()
+    {
+        var handler = new FakeHttpMessageHandler();
+        handler.EnqueueJson("""
+                            {
+                              "id": "fabric-loader-0.19.3-1.20.1",
+                              "inheritsFrom": "1.20.1",
+                              "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                              "libraries": []
+                            }
+                            """);
+
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-pack-fabric-mirror",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var service = new PackGameInstallService(
+                new FakeMojangMetadata(),
+                new HttpClient(handler),
+                new LoaderProfileEndpoints(
+                    new Uri("https://meta.fabricmc.net/v2/"),
+                    new Uri("https://meta.quiltmc.org/v3/")));
+
+            var result = await service.BuildAsync(
+                directory,
+                "1.20.1",
+                "fabric",
+                "0.19.3",
+                MojangPlatform.LinuxX64,
+                DownloadSourceMode.Mirror);
+
+            Assert.Equal("fabric-loader-0.19.3-1.20.1", result.VersionId);
+            Assert.Equal("bmclapi2.bangbang93.com", handler.Requests[0].Uri.Host);
+            Assert.Contains(
+                "/fabric-meta/v2/versions/loader/1.20.1/0.19.3/profile/json",
+                handler.Requests[0].Uri.PathAndQuery,
+                StringComparison.Ordinal);
+            var asset = result.Plan.Files.Single(
+                file => file.Dest == MojangTestData.AssetAPath);
+            Assert.StartsWith(
+                "https://bmclapi2.bangbang93.com/assets/",
+                asset.Url,
+                StringComparison.Ordinal);
         }
         finally
         {

@@ -119,6 +119,12 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             throw new DownloadRunnerException(DownloaderMissing.Code, DownloaderMissing.Message);
         }
 
+        // Publish the plan total before the slow pre-flight (settings, proxy
+        // detection, plan file, process start). Without it the task center
+        // shows "0 / 0" until the executor's first byte, which is
+        // indistinguishable from a hung download.
+        ModuleProgress.Report(0, plan.TotalBytes);
+
         // User tuning wins over producer defaults (docs/10 §9.4).
         DownloadProxyOptions? manualProxy = null;
         try

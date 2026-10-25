@@ -33,6 +33,13 @@ public static class VanillaDownloadPlanBuilder
     private const string LibrariesPrefix = "libraries/";
     private const string AssetsPrefix = "assets/";
 
+    /// <summary>Official metadata hosts that BMCLAPI mirrors by path.</summary>
+    private static readonly string[] OfficialMetadataBases =
+    [
+        "https://piston-meta.mojang.com/",
+        "https://launchermeta.mojang.com/",
+    ];
+
     /// <summary>
     /// Builds a vanilla plan.
     /// </summary>
@@ -57,7 +64,8 @@ public static class VanillaDownloadPlanBuilder
         MojangAssetIndex? assetIndex,
         MojangPlatform platform,
         MojangAssetIndexRef? assetIndexDownload = null,
-        DownloadSourceMode sourceMode = DownloadSourceMode.Auto)
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
+        string? clientMirrorId = null)
     {
         ArgumentNullException.ThrowIfNull(version);
         ArgumentNullException.ThrowIfNull(platform);
@@ -128,7 +136,12 @@ public static class VanillaDownloadPlanBuilder
                     $"{what}: duplicate destination '{dest}'");
             }
 
-            var (primary, mirrors) = ResolveSource(version, dest, url, sourceMode);
+            var (primary, mirrors) = ResolveSource(
+                version,
+                dest,
+                url,
+                sourceMode,
+                clientMirrorId);
             builder.AddFile(
                 primary,
                 dest,
@@ -142,9 +155,10 @@ public static class VanillaDownloadPlanBuilder
             MojangVersion version,
             string dest,
             string officialUrl,
-            DownloadSourceMode sourceMode)
+            DownloadSourceMode sourceMode,
+            string? clientMirrorId)
         {
-            var mirror = MirrorFor(version, dest, officialUrl);
+            var mirror = MirrorFor(version, dest, officialUrl, clientMirrorId);
             if (mirror is null)
             {
                 return (officialUrl, null);
@@ -163,7 +177,8 @@ public static class VanillaDownloadPlanBuilder
         static string? MirrorFor(
             MojangVersion version,
             string dest,
-            string officialUrl)
+            string officialUrl,
+            string? clientMirrorId)
         {
             if (officialUrl.StartsWith(BmclApiBase, StringComparison.OrdinalIgnoreCase))
             {
@@ -175,7 +190,13 @@ public static class VanillaDownloadPlanBuilder
                     $"versions/{version.Id}/{version.Id}.jar",
                     StringComparison.OrdinalIgnoreCase))
             {
-                return $"{BmclApiBase}version/{Uri.EscapeDataString(version.Id)}/client";
+                // Loader profiles reuse the vanilla client jar but BMCLAPI has
+                // no /version/<loader-id>/client; use the base game version
+                // when the producer knows it.
+                var mirrorId = string.IsNullOrWhiteSpace(clientMirrorId)
+                    ? version.Id
+                    : clientMirrorId;
+                return $"{BmclApiBase}version/{Uri.EscapeDataString(mirrorId)}/client";
             }
 
             if (dest.StartsWith(LibrariesPrefix, StringComparison.OrdinalIgnoreCase))
@@ -186,6 +207,20 @@ public static class VanillaDownloadPlanBuilder
             if (dest.StartsWith(AssetsPrefix + "objects/", StringComparison.OrdinalIgnoreCase))
             {
                 return $"{BmclApiBase}assets/{dest[(AssetsPrefix + "objects/").Length..]}";
+            }
+
+            if (dest.StartsWith(AssetsPrefix + "indexes/", StringComparison.OrdinalIgnoreCase))
+            {
+                // BMCLAPI mirrors the metadata path, not a friendly
+                // `/assets/indexes/<id>.json` alias. The official SHA-1 in the
+                // version JSON still verifies the mirror's bytes.
+                foreach (var baseUrl in OfficialMetadataBases)
+                {
+                    if (officialUrl.StartsWith(baseUrl, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return BmclApiBase + officialUrl[baseUrl.Length..];
+                    }
+                }
             }
 
             return null;

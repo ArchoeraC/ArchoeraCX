@@ -1925,6 +1925,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskCenterGameFiles => 'Game files';
 
   @override
+  String get taskCenterPreparingGameFiles => 'Preparing game files';
+
+  @override
+  String get taskCenterReadingVersionInfo => 'Reading version information…';
+
+  @override
   String get taskCenterJavaScan => 'Java scan';
 
   @override

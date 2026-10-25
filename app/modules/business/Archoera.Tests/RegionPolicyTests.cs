@@ -1,3 +1,4 @@
+using System.Net;
 using Archoera.Infrastructure.Modules;
 
 namespace Archoera.Tests;
@@ -21,5 +22,28 @@ public sealed class RegionPolicyTests
         var state = await policy.ReadAsync();
         Assert.Equal("GLOBAL", state.Region);
         Assert.True(state.MicrosoftOnly);
+    }
+
+    [Fact]
+    public async Task Offline_locale_fallback_always_resolves()
+    {
+        using var http = new HttpClient(new FailingHandler());
+        var policy = new RegionPolicy(http);
+
+        var state = await policy.ReadAsync();
+
+        Assert.Contains(
+            state.Region,
+            new[] { RegionPolicy.China, RegionPolicy.Global });
+        Assert.Equal("locale", state.Source);
+    }
+
+    private sealed class FailingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => Task.FromException<HttpResponseMessage>(
+                new HttpRequestException("offline"));
     }
 }

@@ -1,4 +1,5 @@
 using System.Text;
+using Archoera.Application.Downloads;
 using Archoera.Application.Loaders;
 using Archoera.Application.Mojang;
 using Archoera.Domain.Loaders;
@@ -69,6 +70,56 @@ public sealed class ForgeInstallPlanServiceTests
                                destination.Contains("forge", StringComparison.Ordinal));
             Assert.Equal(["1.20.1", "1.20.1-forge-47.2.0"], result.Version.Chain);
             Assert.Null(result.Version.Version.InheritsFrom);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch
+            {
+                // best effort on platforms with transient file handles
+            }
+        }
+    }
+
+    [Fact]
+    public async Task BuildAsync_uses_the_resolved_source_for_vanilla_artifacts()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-forge-install",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var installerBytes = ForgeInstallerFixture.CreateInstaller("[]", "[]");
+            var installerPath = Path.Combine(directory, "installer.jar");
+            await File.WriteAllBytesAsync(installerPath, installerBytes);
+            var root = Path.Combine(directory, "instance");
+            Directory.CreateDirectory(root);
+
+            var result = await new ForgeInstallPlanService(new FakeMojangMetadata())
+                .BuildAsync(
+                    root,
+                    LoaderKind.Forge,
+                    "1.20.1",
+                    "47.2.0",
+                    installerPath,
+                    MojangPlatform.LinuxX64,
+                    sourceMode: DownloadSourceMode.Mirror);
+
+            var client = result.Plan.Files.Single(
+                file => file.Dest.EndsWith(
+                    "1.20.1-forge-47.2.0.jar",
+                    StringComparison.Ordinal));
+            // The merged client jar is the first large file in a Forge
+            // install; it used to stay on official hosts even in mirror mode.
+            Assert.StartsWith(
+                "https://bmclapi2.bangbang93.com/version/",
+                client.Url,
+                StringComparison.Ordinal);
         }
         finally
         {

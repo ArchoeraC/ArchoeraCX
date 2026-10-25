@@ -3356,6 +3356,18 @@ abstract class AppLocalizations {
   /// **'Game files'**
   String get taskCenterGameFiles;
 
+  /// Task label while the version metadata is fetched before a game-file download.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing game files'**
+  String get taskCenterPreparingGameFiles;
+
+  /// Progress text for version.plan, which has no byte counters.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading version information…'**
+  String get taskCenterReadingVersionInfo;
+
   /// Java scan task label.
   ///
   /// In en, this message translates to:

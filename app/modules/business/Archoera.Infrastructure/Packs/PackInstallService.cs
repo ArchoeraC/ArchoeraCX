@@ -425,7 +425,12 @@ public sealed partial class PackInstallService
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException)
         {
-            return DownloadSourceMode.Auto;
+            // Keep `auto` region-driven even when the settings file cannot be
+            // read; returning Auto to the plan builder would silently mean
+            // "official first".
+            return await DownloadSourceResolver
+                .ResolveAsync("auto", _regionPolicy, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

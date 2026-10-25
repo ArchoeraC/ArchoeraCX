@@ -1603,6 +1603,14 @@
   "@taskCenterGameFiles": {
     "description": "Vanilla install task label."
   },
+  "taskCenterPreparingGameFiles": "Preparing game files",
+  "@taskCenterPreparingGameFiles": {
+    "description": "Task label while the version metadata is fetched before a game-file download."
+  },
+  "taskCenterReadingVersionInfo": "Reading version information…",
+  "@taskCenterReadingVersionInfo": {
+    "description": "Progress text for version.plan, which has no byte counters."
+  },
   "taskCenterJavaScan": "Java scan",
   "@taskCenterJavaScan": {
     "description": "Java scan task label."

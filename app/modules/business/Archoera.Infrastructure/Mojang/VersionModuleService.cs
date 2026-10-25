@@ -60,18 +60,23 @@ public sealed class VersionModuleService : IModuleMethodHandler
             var versionId = ReadRequired(document.RootElement, "versionId");
             var installRoot = LaunchPaths.ResolveInstallRoot(root);
             var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+            // Fetch the version document once and build from it. Asking the
+            // plan service for the parsed version and then fetching the same
+            // JSON again doubled the metadata requests (manifest + version),
+            // which is minutes of an apparently frozen "downloading" task on
+            // a slow or filtered connection.
+            var versionJson = await _client
+                .GetVersionJsonAsync(versionId, cancellationToken)
+                .ConfigureAwait(false);
             var plan = await _planService
-                .BuildForVersionAsync(
+                .BuildFromVersionJsonAsync(
                     installRoot,
-                    versionId,
+                    versionJson,
                     MojangPlatform.Current(),
                     await DownloadSourceResolver
                         .ResolveAsync(settings.DownloadSource, _regionPolicy, cancellationToken)
                         .ConfigureAwait(false),
                     cancellationToken)
-                .ConfigureAwait(false);
-            var versionJson = await _client
-                .GetVersionJsonAsync(versionId, cancellationToken)
                 .ConfigureAwait(false);
             var planJson = DownloadPlanJson.Build(plan);
             using var planDocument = JsonDocument.Parse(planJson);

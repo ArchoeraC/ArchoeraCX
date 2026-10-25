@@ -101,7 +101,11 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException)
         {
-            return DownloadSourceMode.Auto;
+            // `Auto` must stay region-driven; the plan builders treat an
+            // unresolved Auto as official-first.
+            return await DownloadSourceResolver
+                .ResolveAsync("auto", _regionPolicy, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

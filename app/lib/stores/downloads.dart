@@ -60,7 +60,13 @@ class DownloadsNotifier extends Notifier<void> {
   @override
   void build() {}
 
-  /// Vanilla client, libraries, assets and the version JSON for [instance].
+  /// Downloads the game files for [instance].
+  ///
+  /// Fabric/Quilt need a loader profile before the game is launchable, so the
+  /// profile plan and the vanilla files are installed together. Forge/NeoForge
+  /// profiles still come from the loader installer dialog; this method only
+  /// fills the vanilla files and must not overwrite their merged profile with
+  /// the plain vanilla JSON.
   Future<void> installGameFiles(
     GameInstance instance, {
     required String successMessage,
@@ -68,6 +74,18 @@ class DownloadsNotifier extends Notifier<void> {
     required String cancelledMessage,
   }) async {
     final client = _client();
+    if (instance.loader == GameLoader.fabric ||
+        instance.loader == GameLoader.quilt) {
+      await _installFabricLikeGameFiles(
+        instance,
+        client,
+        successMessage: successMessage,
+        failureMessage: failureMessage,
+        cancelledMessage: cancelledMessage,
+      );
+      return;
+    }
+
     final plan = await client.planVanillaInstall(
       root: instance.rootPath,
       versionId: instance.gameVersion,
@@ -87,8 +105,58 @@ class DownloadsNotifier extends Notifier<void> {
                 : 'Game download failed (${result.status}).',
           );
         }
-        await client.commitVanillaVersion(
-          root: instance.rootPath,
+        // A loader instance launches from its merged profile. Writing the
+        // vanilla JSON over it (the instance root can be versions/<game>) is
+        // what leaves the next launch with a mismatched loader profile.
+        if (instance.loader == GameLoader.vanilla) {
+          await client.commitVanillaVersion(
+            root: instance.rootPath,
+            versionId: plan.versionId,
+            versionJson: plan.versionJson,
+            label: instance.gameVersion,
+          );
+        }
+        await ref.read(instancesProvider.notifier).reload();
+      },
+      successMessage: successMessage,
+      failureMessage: failureMessage,
+      cancelledMessage: cancelledMessage,
+    );
+  }
+
+  /// Fabric/Quilt: fetch the loader profile, merge it with vanilla, then run
+  /// one plan for the client, libraries and assets.
+  Future<void> _installFabricLikeGameFiles(
+    GameInstance instance,
+    CoreClient client, {
+    required String successMessage,
+    required String failureMessage,
+    required String cancelledMessage,
+  }) async {
+    final shareLoaderFiles =
+        ref.read(appSettingsProvider).value?.shareLoaderFiles ?? true;
+    final label = '${instance.name} · ${instance.gameVersion}';
+    final plan = await client.planLoaderInstall(
+      root: instance.rootPath,
+      kind: instance.loader.name,
+      gameVersion: instance.gameVersion,
+      loaderVersion: instance.loaderVersion,
+      shareLoaderFiles: shareLoaderFiles,
+      label: label,
+    );
+
+    _detach(
+      () async {
+        final result = await client.executeDownload(plan.plan, label: label);
+        if (!result.ok) {
+          throw StateError(
+            result.stderr?.trim().isNotEmpty == true
+                ? result.stderr!.trim()
+                : 'Game download failed (${result.status}).',
+          );
+        }
+        await client.commitLoaderVersion(
+          root: plan.installRoot.isEmpty ? instance.rootPath : plan.installRoot,
           versionId: plan.versionId,
           versionJson: plan.versionJson,
           label: instance.gameVersion,

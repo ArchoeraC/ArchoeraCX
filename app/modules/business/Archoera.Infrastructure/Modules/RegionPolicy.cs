@@ -22,6 +22,13 @@ public sealed class RegionPolicy
     public const string China = "CN";
     public const string Global = "GLOBAL";
 
+    /// <summary>
+    /// A locale/timezone fallback is weaker than a country code: on a cold
+    /// start the trace request may fail before the network or proxy is ready.
+    /// Retry it after this window so the session can still switch to mirrors.
+    /// </summary>
+    private static readonly TimeSpan LocaleFallbackTtl = TimeSpan.FromMinutes(2);
+
     private static readonly HttpClient Http = new()
     {
         Timeout = TimeSpan.FromSeconds(4),
@@ -34,6 +41,7 @@ public sealed class RegionPolicy
     private readonly string? _override;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private volatile RegionPolicyState? _cached;
+    private long _cachedAtTicks;
 
     public RegionPolicy(HttpClient? http = null, string? regionOverride = null)
     {
@@ -43,19 +51,42 @@ public sealed class RegionPolicy
 
     public async Task<RegionPolicyState> ReadAsync(CancellationToken cancellationToken = default)
     {
-        if (_cached is not null) return _cached;
+        var cached = _cached;
+        if (cached is not null &&
+            IsFresh(cached, Volatile.Read(ref _cachedAtTicks)))
+        {
+            return cached;
+        }
 
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_cached is not null) return _cached;
-            _cached = await DetectAsync(cancellationToken).ConfigureAwait(false);
-            return _cached;
+            cached = _cached;
+            if (cached is not null &&
+                IsFresh(cached, Volatile.Read(ref _cachedAtTicks)))
+            {
+                return cached;
+            }
+
+            cached = await DetectAsync(cancellationToken).ConfigureAwait(false);
+            _cached = cached;
+            Volatile.Write(ref _cachedAtTicks, DateTimeOffset.UtcNow.Ticks);
+            return cached;
         }
         finally
         {
             _gate.Release();
         }
+    }
+
+    private static bool IsFresh(RegionPolicyState state, long cachedAtTicks)
+    {
+        // Only a locale fallback that missed China is worth retrying: it is
+        // the false-negative that silently sends a mainland install to the
+        // official hosts. A locale China result is based on the system zone,
+        // region or GeoID and stays stable for the session.
+        if (state.Source != "locale" || state.Region == China) return true;
+        return DateTimeOffset.UtcNow.Ticks - cachedAtTicks < LocaleFallbackTtl.Ticks;
     }
 
     private async Task<RegionPolicyState> DetectAsync(CancellationToken cancellationToken)
@@ -134,25 +165,34 @@ public sealed class RegionPolicy
             return China;
         }
 
-        // A UTC+8 clock is not enough by itself: Singapore, Hong Kong,
-        // Macau, Taipei and Perth share the offset. Require the system
-        // region to say mainland China, with the Windows GeoID as backup.
-        if (zone.BaseUtcOffset == TimeSpan.FromHours(8))
+        // The system region is a stronger signal than a UTC+8 offset: Hong
+        // Kong, Singapore, Macau, Taipei and Perth share the offset. Check
+        // the region first, then the Windows GeoID, and only then give up.
+        string? region = null;
+        try
         {
-            var region = RegionInfo.CurrentRegion.TwoLetterISORegionName;
-            if (string.Equals(region, China, StringComparison.OrdinalIgnoreCase)) return China;
+            region = RegionInfo.CurrentRegion.TwoLetterISORegionName;
+        }
+        catch (InvalidOperationException)
+        {
+            // Invariant globalization can leave the region unavailable.
+        }
 
-            if (OperatingSystem.IsWindows())
+        if (string.Equals(region, China, StringComparison.OrdinalIgnoreCase))
+        {
+            return China;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            try
             {
-                try
-                {
-                    if (GetUserGeoId(GeoClassNation) == 45) return China;
-                }
-                catch (Exception exception) when (
-                    exception is DllNotFoundException or EntryPointNotFoundException)
-                {
-                    // No native geo API on this system; keep the locale fallback.
-                }
+                if (GetUserGeoId(GeoClassNation) == 45) return China;
+            }
+            catch (Exception exception) when (
+                exception is DllNotFoundException or EntryPointNotFoundException)
+            {
+                // No native geo API on this system; keep the locale fallback.
             }
         }
 

@@ -62,13 +62,14 @@ mixin CoreClientLoader on CoreTransport {
     );
   }
 
-  /// Build a Forge/NeoForge install plan from a local installer.
+  /// Build a loader install plan.
   ///
-  /// The plan covers vanilla + loader libraries + the installer. Downloading
-  /// and committing do not invoke Java; processors still require a JVM.
+  /// Forge/NeoForge need a local [installerPath] because their processors run
+  /// from it. Fabric/Quilt are profile-only and install directly from the
+  /// loader metadata, so [installerPath] is optional for them.
   Future<LoaderPlanResult> planLoaderInstall({
     required String root,
-    required String installerPath,
+    String? installerPath,
     required String kind,
     required String gameVersion,
     required String loaderVersion,
@@ -77,16 +78,19 @@ mixin CoreClientLoader on CoreTransport {
     String? label,
   }) async {
     const methodName = 'loader.plan';
+    final params = <String, Object?>{
+      'root': root,
+      'kind': kind,
+      'gameVersion': gameVersion,
+      'loaderVersion': loaderVersion,
+      'shareLoaderFiles': shareLoaderFiles,
+    };
+    if (installerPath != null && installerPath.isNotEmpty) {
+      params['installerPath'] = installerPath;
+    }
     final jsonText = await runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{
-        'root': root,
-        'installerPath': installerPath,
-        'kind': kind,
-        'gameVersion': gameVersion,
-        'loaderVersion': loaderVersion,
-        'shareLoaderFiles': shareLoaderFiles,
-      }),
+      paramsJson: jsonEncode(params),
       onProgress: onProgress,
       label: label,
     );

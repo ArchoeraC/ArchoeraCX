@@ -374,7 +374,10 @@ class _TaskRow extends ConsumerWidget {
 
   String _taskLabel(AppLocalizations l10n, String method) => switch (method) {
     'download.execute' => l10n.taskCenterDownload,
-    'version.plan' || 'version.commit' => l10n.taskCenterGameFiles,
+    // Planning has no byte counters and can sit behind metadata requests;
+    // calling it "Preparing" avoids reading as a frozen transfer.
+    'version.plan' => l10n.taskCenterPreparingGameFiles,
+    'version.commit' => l10n.taskCenterGameFiles,
     'loader.plan' ||
     'loader.commit' ||
     'loader.repair' ||
@@ -394,6 +397,9 @@ class _TaskRow extends ConsumerWidget {
       return '${formatBytes(task.done)} / ${formatBytes(task.total)}';
     }
     if (task.done > 0) return formatBytes(task.done);
+    if (task.method == 'version.plan') {
+      return l10n.taskCenterReadingVersionInfo;
+    }
     return l10n.taskCenterWorking;
   }
 }

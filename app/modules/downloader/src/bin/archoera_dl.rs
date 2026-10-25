@@ -8,7 +8,7 @@ use std::env;
 use std::error::Error;
 use std::io::Write;
 use std::process::ExitCode;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use archoera_dl::{
@@ -51,11 +51,9 @@ async fn run() -> Result<ExitCode, Box<dyn Error>> {
         }
     });
 
-    let last_bytes = Arc::new(AtomicU64::new(0));
-    let last_bytes_for_cb = last_bytes.clone();
+    let emission = Emission::new();
     let progress: ProgressCallback = Arc::new(move |event: Progress| {
-        let previous = last_bytes_for_cb.swap(event.done_bytes, Ordering::Relaxed);
-        if event.done_bytes == previous && event.files_done < event.files_total {
+        if !emission.accepts(&event) {
             return;
         }
 
@@ -81,4 +79,72 @@ async fn run() -> Result<ExitCode, Box<dyn Error>> {
         Status::Cancelled => ExitCode::from(130),
         Status::Partial | Status::Failed => ExitCode::from(1),
     })
+}
+
+/// Decides whether a tracker event deserves a progress line.
+///
+/// The tracker already throttles to `progressIntervalMs`, so equal-byte events
+/// are usually redundant. The first event is the exception: it carries
+/// `totalBytes` and the first destination before any byte arrived. Dropping it
+/// left the host UI at "0 / 0" while the first request was still connecting or
+/// retrying, which looks exactly like a stuck download.
+struct Emission {
+    emitted: AtomicBool,
+    last_done: AtomicU64,
+}
+
+impl Emission {
+    fn new() -> Self {
+        Self {
+            emitted: AtomicBool::new(false),
+            last_done: AtomicU64::new(0),
+        }
+    }
+
+    fn accepts(&self, event: &Progress) -> bool {
+        if !self.emitted.swap(true, Ordering::Relaxed) {
+            self.last_done.store(event.done_bytes, Ordering::Relaxed);
+            return true;
+        }
+        // A finished file can move the file counter without moving bytes
+        // (zero-byte files, skips), and the final event must always land.
+        if event.files_total > 0 && event.files_done >= event.files_total {
+            return true;
+        }
+        event.done_bytes != self.last_done.swap(event.done_bytes, Ordering::Relaxed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn event(done: u64, files_done: u64, files_total: u64) -> Progress {
+        Progress {
+            done_bytes: done,
+            total_bytes: 1_000,
+            files_done,
+            files_total,
+            current_dest: None,
+        }
+    }
+
+    #[test]
+    fn first_event_reports_the_total_before_any_byte_arrives() {
+        let emission = Emission::new();
+
+        assert!(emission.accepts(&event(0, 0, 5)));
+        // Throttled duplicates stay quiet; the host already has the total.
+        assert!(!emission.accepts(&event(0, 0, 5)));
+        assert!(emission.accepts(&event(100, 1, 5)));
+        assert!(!emission.accepts(&event(100, 1, 5)));
+    }
+
+    #[test]
+    fn a_finished_file_is_reported_even_without_new_bytes() {
+        let emission = Emission::new();
+
+        assert!(emission.accepts(&event(0, 0, 1)));
+        assert!(emission.accepts(&event(0, 1, 1)));
+    }
 }

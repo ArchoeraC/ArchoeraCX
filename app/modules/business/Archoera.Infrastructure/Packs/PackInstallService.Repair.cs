@@ -378,25 +378,6 @@ public sealed partial class PackInstallService
     }
 
     /// <summary>
-    /// User preference: `official` keeps the official hosts first, `mirror`
-    /// prefers BMCLAPI, and `auto` keeps the mirror-first behaviour used for
-    /// installer bootstrapping on slow international links.
-    /// </summary>
-    private async Task<bool> PreferMirrorAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
-            return DownloadSourceModes.Parse(settings.DownloadSource) != DownloadSourceMode.Official;
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException)
-        {
-            return true;
-        }
-    }
-
-    /// <summary>
     /// Repairs an existing Forge/NeoForge instance in place: restores missing
     /// downloads through a fresh combined plan, reruns processors, and commits
     /// the merged launch profile. Safe to call when all files are valid.
@@ -445,6 +426,12 @@ public sealed partial class PackInstallService
         }
 
         var platform = MojangPlatform.Current();
+        // One region-aware decision for both the Forge Maven mirror and the
+        // vanilla client/libraries/assets inside the combined plan. Passing
+        // `Auto` into the plan builder used to mean "official first" no matter
+        // what the region policy said.
+        var sourceMode = await ResolveSourceModeAsync(cancellationToken)
+            .ConfigureAwait(false);
         var installerPath = await _forgeBootstrap.EnsureForgeInstallerAsync(
                 instance.RootPath,
                 kind,
@@ -461,10 +448,10 @@ public sealed partial class PackInstallService
                 loaderVersion,
                 installerPath,
                 platform,
-                preferMavenMirror: await PreferMirrorAsync(cancellationToken)
-                    .ConfigureAwait(false),
+                preferMavenMirror: sourceMode == DownloadSourceMode.Mirror,
                 cancellationToken,
-                shareLoaderFiles: shareLoaderFiles)
+                shareLoaderFiles: shareLoaderFiles,
+                sourceMode: sourceMode)
             .ConfigureAwait(false);
 
         ModuleProgress.Report(

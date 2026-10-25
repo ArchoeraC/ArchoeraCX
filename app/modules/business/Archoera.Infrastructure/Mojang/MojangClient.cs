@@ -22,8 +22,24 @@ public sealed class MojangClient : IMojangMetadataClient
 {
     private static readonly MediaTypeWithQualityHeaderValue AcceptJson = new("application/json");
 
+    /// <summary>
+    /// The manifest changes on a release cadence, so a short cache is enough
+    /// to keep the version list and the install plan from fetching it twice
+    /// while still picking up a new release.
+    /// </summary>
+    private static readonly TimeSpan ManifestTtl = TimeSpan.FromMinutes(5);
+
+    /// <summary>Version JSON documents are immutable per manifest URL.</summary>
+    private const int MaxCachedVersionJson = 8;
+
     private readonly HttpClient _httpClient;
     private readonly MojangClientOptions _options;
+    private readonly object _cacheGate = new();
+    private readonly Dictionary<string, byte[]> _versionJsonCache =
+        new(StringComparer.Ordinal);
+    private readonly Queue<string> _versionJsonOrder = new();
+    private MojangVersionManifest? _manifest;
+    private DateTimeOffset _manifestFetchedAt;
 
     /// <summary>Creates a client over an injected <see cref="HttpClient"/>.</summary>
     public MojangClient(HttpClient httpClient, MojangClientOptions options)
@@ -39,6 +55,15 @@ public sealed class MojangClient : IMojangMetadataClient
     public async Task<MojangVersionManifest> GetManifestAsync(
         CancellationToken cancellationToken = default)
     {
+        lock (_cacheGate)
+        {
+            if (_manifest is not null &&
+                DateTimeOffset.UtcNow - _manifestFetchedAt < ManifestTtl)
+            {
+                return _manifest;
+            }
+        }
+
         var uri = new Uri(_options.BaseAddress, _options.ManifestPath);
         var bytes = await SendBytesAsync(
             uri,
@@ -48,7 +73,15 @@ public sealed class MojangClient : IMojangMetadataClient
             cancellationToken).ConfigureAwait(false);
 
         using var document = ParseJson(bytes, "version manifest");
-        return MojangJson.ParseManifest(document.RootElement);
+        var manifest = MojangJson.ParseManifest(document.RootElement);
+
+        lock (_cacheGate)
+        {
+            _manifest = manifest;
+            _manifestFetchedAt = DateTimeOffset.UtcNow;
+        }
+
+        return manifest;
     }
 
     /// <inheritdoc />
@@ -104,6 +137,15 @@ public sealed class MojangClient : IMojangMetadataClient
         }
 
         var uri = ValidateUrl(summary.Url, $"version '{id}' JSON");
+        var cacheKey = uri.AbsoluteUri;
+        lock (_cacheGate)
+        {
+            if (_versionJsonCache.TryGetValue(cacheKey, out var cached))
+            {
+                return (byte[])cached.Clone();
+            }
+        }
+
         var bytes = await SendBytesAsync(
             uri,
             $"version '{id}' JSON",
@@ -118,6 +160,19 @@ public sealed class MojangClient : IMojangMetadataClient
             throw new MojangException(
                 MojangErrorCode.InvalidResponse,
                 $"version JSON id '{parsed.Id}' does not match requested '{id}'");
+        }
+
+        lock (_cacheGate)
+        {
+            if (!_versionJsonCache.ContainsKey(cacheKey))
+            {
+                _versionJsonCache[cacheKey] = bytes;
+                _versionJsonOrder.Enqueue(cacheKey);
+                while (_versionJsonOrder.Count > MaxCachedVersionJson)
+                {
+                    _versionJsonCache.Remove(_versionJsonOrder.Dequeue());
+                }
+            }
         }
 
         return bytes;
@@ -146,7 +201,7 @@ public sealed class MojangClient : IMojangMetadataClient
         }
 
         var uri = ValidateUrl(index.Url, $"asset index '{id}'");
-        var bytes = await SendBytesAsync(
+        var bytes = await SendAssetIndexBytesAsync(
             uri,
             $"asset index '{id}'",
             index.Sha1,
@@ -155,6 +210,65 @@ public sealed class MojangClient : IMojangMetadataClient
 
         using var document = ParseJson(bytes, $"asset index '{id}'");
         return MojangJson.ParseAssetIndex(document.RootElement, id);
+    }
+
+    /// <summary>
+    /// Asset indexes are content-addressed (the ref carries SHA-1/size), so a
+    /// community mirror can serve the same bytes safely. The manifest and
+    /// version JSON are not retried this way: BMCLAPI rewrites their URLs, so
+    /// they are not byte-identical and cannot be checked against Mojang's hash.
+    /// </summary>
+    private async Task<byte[]> SendAssetIndexBytesAsync(
+        Uri uri,
+        string what,
+        string? expectedSha1,
+        long? expectedSize,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendBytesAsync(
+                uri,
+                what,
+                expectedSha1,
+                expectedSize,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (MojangException exception) when (
+            exception.Code == MojangErrorCode.Network ||
+            exception.Code == MojangErrorCode.RateLimited)
+        {
+            if (!TryBmclApiUri(uri, out var mirror)) throw;
+            return await SendBytesAsync(
+                mirror,
+                what + " (mirror)",
+                expectedSha1,
+                expectedSize,
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static bool TryBmclApiUri(Uri official, out Uri mirror)
+    {
+        mirror = null!;
+        if (!official.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!official.Host.Equals("piston-meta.mojang.com", StringComparison.OrdinalIgnoreCase) &&
+            !official.Host.Equals("launchermeta.mojang.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        mirror = new UriBuilder(official)
+        {
+            Scheme = Uri.UriSchemeHttps,
+            Host = "bmclapi2.bangbang93.com",
+            Port = -1,
+        }.Uri;
+        return true;
     }
 
     private async Task<byte[]> SendBytesAsync(

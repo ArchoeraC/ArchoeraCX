@@ -1019,6 +1019,8 @@
   "taskCenterModpack": "整合包",
   "taskCenterInstanceDuplicate": "复制实例",
   "taskCenterGameFiles": "游戏文件",
+  "taskCenterPreparingGameFiles": "准备游戏文件",
+  "taskCenterReadingVersionInfo": "正在读取版本信息…",
   "taskCenterJavaScan": "Java 扫描",
   "taskCenterTask": "任务",
   "taskCenterSpeed": "{rate}/s",

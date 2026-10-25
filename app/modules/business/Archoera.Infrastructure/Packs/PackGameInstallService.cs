@@ -118,6 +118,13 @@ public sealed class PackGameInstallService
     private const string ModrinthUserAgent =
         "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)";
 
+    /// <summary>
+    /// BMCLAPI mirrors the Fabric profile document. Like the version lists, it
+    /// is a fallback for networks where meta.fabricmc.net is slow or blocked.
+    /// </summary>
+    private static readonly Uri FabricMirrorBase =
+        new("https://bmclapi2.bangbang93.com/fabric-meta/v2/");
+
     /// <summary>Builds the plan and the version JSON to commit afterwards.</summary>
     /// <param name="instanceRoot">Absolute instance directory (must exist).</param>
     /// <param name="gameVersion">Exact Minecraft version from the pack.</param>
@@ -182,6 +189,7 @@ public sealed class PackGameInstallService
             kind,
             gameVersion,
             loaderVersion,
+            sourceMode,
             cancellationToken).ConfigureAwait(false);
         var profileId = ReadProfileId(profileJson)
             ?? $"{kind}-loader-{loaderVersion}-{gameVersion}";
@@ -237,7 +245,8 @@ public sealed class PackGameInstallService
                 effective,
                 platform,
                 sourceMode,
-                cancellationToken)
+                cancellationToken,
+                clientMirrorId: gameVersion)
             .ConfigureAwait(false);
 
         return new PackGameInstallPlan(
@@ -310,7 +319,8 @@ public sealed class PackGameInstallService
         MojangPlatform platform,
         bool preferMavenMirror,
         CancellationToken cancellationToken = default,
-        bool? shareLoaderFiles = true)
+        bool? shareLoaderFiles = true,
+        DownloadSourceMode sourceMode = DownloadSourceMode.Auto)
     {
         ArgumentNullException.ThrowIfNull(platform);
         ArgumentException.ThrowIfNullOrWhiteSpace(installerPath);
@@ -331,7 +341,8 @@ public sealed class PackGameInstallService
                 installerPath,
                 platform,
                 cancellationToken,
-                options)
+                options,
+                sourceMode)
             .ConfigureAwait(false);
 
         var plan = result.Plan;
@@ -351,9 +362,70 @@ public sealed class PackGameInstallService
         string kind,
         string gameVersion,
         string loaderVersion,
+        DownloadSourceMode sourceMode,
         CancellationToken cancellationToken)
     {
-        var baseAddress = kind == "fabric" ? _endpoints.Fabric : _endpoints.Quilt;
+        var candidates = new List<Uri>();
+        if (kind == "fabric")
+        {
+            // Mirror-first only when the resolved source asks for it; in
+            // official/auto-global order the official host stays primary and
+            // the mirror is just a fallback.
+            if (sourceMode == DownloadSourceMode.Mirror)
+            {
+                candidates.Add(FabricMirrorBase);
+                candidates.Add(_endpoints.Fabric);
+            }
+            else
+            {
+                candidates.Add(_endpoints.Fabric);
+                candidates.Add(FabricMirrorBase);
+            }
+        }
+        else
+        {
+            candidates.Add(_endpoints.Quilt);
+        }
+
+        PackException? last = null;
+        foreach (var baseAddress in candidates)
+        {
+            try
+            {
+                return await FetchProfileFromAsync(
+                    baseAddress,
+                    kind,
+                    gameVersion,
+                    loaderVersion,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception) when (
+                exception is PackException or HttpRequestException or IOException
+                    or JsonException or InvalidOperationException)
+            {
+                last = exception as PackException ?? new PackException(
+                    PackErrorCode.LoaderMetadata,
+                    $"{kind} profile request failed: {exception.Message}",
+                    exception);
+            }
+        }
+
+        throw last ?? new PackException(
+            PackErrorCode.LoaderMetadata,
+            $"{kind} profile request has no endpoint");
+    }
+
+    private async Task<string> FetchProfileFromAsync(
+        Uri baseAddress,
+        string kind,
+        string gameVersion,
+        string loaderVersion,
+        CancellationToken cancellationToken)
+    {
         var endpoint = new Uri(
             baseAddress,
             $"versions/loader/{Uri.EscapeDataString(gameVersion)}/" +
@@ -401,6 +473,10 @@ public sealed class PackGameInstallService
             return Encoding.UTF8
                 .GetString(memory.ToArray())
                 .TrimStart('\uFEFF');
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (PackException)
         {

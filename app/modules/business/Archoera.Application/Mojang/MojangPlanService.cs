@@ -112,7 +112,8 @@ public sealed class MojangPlanService
         ReadOnlyMemory<byte> versionJson,
         MojangPlatform platform,
         DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? clientMirrorId = null)
     {
         ArgumentNullException.ThrowIfNull(platform);
 
@@ -162,7 +163,8 @@ public sealed class MojangPlanService
             assetIndex,
             platform,
             version.AssetIndex,
-            sourceMode);
+            sourceMode,
+            clientMirrorId);
     }
 
     /// <summary>Convenience overload for <see cref="EffectiveVersion"/>.</summary>
@@ -171,7 +173,8 @@ public sealed class MojangPlanService
         EffectiveVersion effective,
         MojangPlatform platform,
         DownloadSourceMode sourceMode = DownloadSourceMode.Auto,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? clientMirrorId = null)
     {
         ArgumentNullException.ThrowIfNull(effective);
         return BuildFromVersionJsonAsync(
@@ -179,7 +182,8 @@ public sealed class MojangPlanService
             effective.Json,
             platform,
             sourceMode,
-            cancellationToken);
+            cancellationToken,
+            clientMirrorId);
     }
 
     // NEXT STEP: build a Java runtime plan from Mojang all.json

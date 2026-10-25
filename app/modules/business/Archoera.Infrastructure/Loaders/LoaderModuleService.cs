@@ -5,11 +5,15 @@ using Archoera.Application.Downloads;
 using Archoera.Application.Loaders;
 using Archoera.Application.Mojang;
 using Archoera.Application.Modules;
+using Archoera.Application.Packs;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Loaders;
+using Archoera.Infrastructure.Downloads;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Launch;
+using Archoera.Infrastructure.Packs;
+using Archoera.Infrastructure.Settings;
 using Archoera.Domain.Mojang;
 
 namespace Archoera.Infrastructure.Loaders;
@@ -22,15 +26,21 @@ public sealed class LoaderModuleService : IModuleMethodHandler
     private readonly ILoaderArtifactVerifier _verifier;
     private readonly IForgeRepairService _repairService;
     private readonly DownloadPolicy _policy;
+    private readonly JsonAppSettingsStore _settings;
+    private readonly RegionPolicy _regionPolicy;
 
     public LoaderModuleService(
         IForgeArtifactPlanner? planner = null,
         ILoaderArtifactVerifier? verifier = null,
         IForgeRepairService? repairService = null,
         bool enableDownloads = true,
-        DownloadPolicy? policy = null)
+        DownloadPolicy? policy = null,
+        JsonAppSettingsStore? settings = null,
+        RegionPolicy? regionPolicy = null)
     {
         _policy = policy ?? new DownloadPolicy();
+        _settings = settings ?? new JsonAppSettingsStore();
+        _regionPolicy = regionPolicy ?? new RegionPolicy();
         _supportedMethods = enableDownloads
             ? ["loader.verify", "loader.repair", "loader.check", "loader.plan", "loader.commit"]
             : ["loader.verify", "loader.repair", "loader.check"];
@@ -139,15 +149,61 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 shareElement.GetBoolean();
             if (string.IsNullOrWhiteSpace(instanceRoot) ||
                 !Path.IsPathFullyQualified(instanceRoot) ||
-                string.IsNullOrWhiteSpace(installerPath) ||
-                !Path.IsPathFullyQualified(installerPath) ||
+                string.IsNullOrWhiteSpace(kindText) ||
                 string.IsNullOrWhiteSpace(gameVersion) ||
-                string.IsNullOrWhiteSpace(loaderVersion) ||
+                string.IsNullOrWhiteSpace(loaderVersion))
+            {
+                return ModuleJson.Error(
+                    "E_INVALID",
+                    "loader.plan requires root, kind, gameVersion and loaderVersion");
+            }
+
+            var loaderKind = kindText.Trim().ToLowerInvariant();
+            var sourceMode = await ResolveSourceModeAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var fullInstanceRoot = Path.GetFullPath(instanceRoot);
+            var loaderRoot = LaunchPaths.ResolveLoaderRoot(
+                fullInstanceRoot,
+                shareLoaderFiles);
+
+            // Fabric/Quilt are profile-only loaders: no installer and no
+            // processors, so they can be installed directly from the profile
+            // JSON. Forge/NeoForge still need a local installer.
+            if (loaderKind is "fabric" or "quilt")
+            {
+                var profilePlan = await new PackGameInstallService()
+                    .BuildAsync(
+                        fullInstanceRoot,
+                        gameVersion,
+                        loaderKind,
+                        loaderVersion,
+                        MojangPlatform.Current(),
+                        sourceMode,
+                        cancellationToken,
+                        shareLoaderFiles)
+                    .ConfigureAwait(false);
+                var profilePlanJson = DownloadPlanJson.Build(profilePlan.Plan);
+                using var profileDocument = JsonDocument.Parse(profilePlanJson);
+                return BuildEnvelope(writer =>
+                {
+                    writer.WritePropertyName("plan");
+                    profileDocument.RootElement.WriteTo(writer);
+                    writer.WriteString("versionId", profilePlan.VersionId);
+                    writer.WriteString("versionJson", profilePlan.VersionJson);
+                    writer.WriteBoolean("requiresJava", false);
+                    writer.WriteString("kind", profilePlan.LoaderKind);
+                    writer.WriteString("installRoot", loaderRoot);
+                    writer.WriteBoolean("shareLoaderFiles", shareLoaderFiles);
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(installerPath) ||
+                !Path.IsPathFullyQualified(installerPath) ||
                 !TryParseKind(kindText, out var kind))
             {
                 return ModuleJson.Error(
                     "E_INVALID",
-                    "loader.plan requires root, installerPath, kind, gameVersion and loaderVersion");
+                    "loader.plan requires installerPath for Forge/NeoForge");
             }
 
             using var http = new HttpClient();
@@ -167,23 +223,19 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                     mojang,
                     libraryResolver.ResolveAsync)
                 .BuildAsync(
-                    LaunchPaths.ResolveLoaderRoot(
-                        Path.GetFullPath(instanceRoot),
-                        shareLoaderFiles),
+                    loaderRoot,
                     kind,
                     gameVersion,
                     loaderVersion,
                     Path.GetFullPath(installerPath),
                     MojangPlatform.Current(),
-                    cancellationToken)
+                    cancellationToken,
+                    sourceMode: sourceMode)
                 .ConfigureAwait(false);
 
             var planJson = DownloadPlanJson.Build(plan.Plan);
             using var planDocument = JsonDocument.Parse(planJson);
             var versionJson = Encoding.UTF8.GetString(plan.Version.Json);
-            var loaderRoot = LaunchPaths.ResolveLoaderRoot(
-                Path.GetFullPath(instanceRoot),
-                shareLoaderFiles);
             // The plan writes the installer next to the libraries it installs.
             // Repair needs the absolute path, so report it instead of making
             // the caller guess the layout.
@@ -209,9 +261,36 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         }
         catch (Exception exception) when (
             exception is IOException or JsonException or ArgumentException or
-            ForgeDownloadException or MojangException or DownloadPlanException)
+            ForgeDownloadException or MojangException or DownloadPlanException or
+            PackException)
         {
             return ModuleJson.Error("LOADER_PLAN_FAILED", exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Resolve the user's source choice against the shared region policy so a
+    /// Forge/NeoForge plan uses the same host order as vanilla and resource
+    /// downloads. `Auto` must never reach the plan builder unresolved.
+    /// </summary>
+    private async Task<DownloadSourceMode> ResolveSourceModeAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var settings = await _settings
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return await DownloadSourceResolver
+                .ResolveAsync(settings.DownloadSource, _regionPolicy, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            return await DownloadSourceResolver
+                .ResolveAsync("auto", _regionPolicy, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

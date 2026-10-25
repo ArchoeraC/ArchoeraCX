@@ -62,6 +62,14 @@ public sealed class VanillaDownloadPlanBuilderTests
                 "https://bmclapi2.bangbang93.com/libraries/",
                 StringComparison.Ordinal));
 
+        var index = plan.Files.Single(file => file.Dest == MojangTestData.AssetIndexPath);
+        Assert.StartsWith("https://piston-meta.mojang.com/", index.Url, StringComparison.Ordinal);
+        Assert.Contains(
+            index.Mirrors,
+            mirror => mirror.StartsWith(
+                "https://bmclapi2.bangbang93.com/v1/packages/",
+                StringComparison.Ordinal));
+
         var logging = plan.Files.Single(file => file.Dest == MojangTestData.LoggingPath);
         Assert.Equal(42, logging.Size);
         Assert.Equal(MojangTestData.Sha1('7'), logging.Hash.Hex);
@@ -103,6 +111,40 @@ public sealed class VanillaDownloadPlanBuilderTests
         Assert.StartsWith("https://bmclapi2.bangbang93.com/assets/", mirrorAsset.Url, StringComparison.Ordinal);
         Assert.Contains(mirrorAsset.Mirrors, officialUrl =>
             officialUrl.StartsWith("https://resources.download.minecraft.net/", StringComparison.Ordinal));
+
+        var mirrorIndex = mirror.Files.Single(file => file.Dest == MojangTestData.AssetIndexPath);
+        Assert.StartsWith(
+            "https://bmclapi2.bangbang93.com/v1/packages/",
+            mirrorIndex.Url,
+            StringComparison.Ordinal);
+        Assert.Contains(mirrorIndex.Mirrors, officialUrl =>
+            officialUrl.StartsWith("https://piston-meta.mojang.com/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Loader_client_mirror_uses_the_base_game_version()
+    {
+        var version = MojangTestData.Version() with
+        {
+            Id = "fabric-loader-0.19.3-1.20.1",
+        };
+        var plan = VanillaDownloadPlanBuilder.Build(
+            MojangTestData.Root,
+            version,
+            MojangTestData.AssetIndex(),
+            MojangPlatform.LinuxX64,
+            sourceMode: DownloadSourceMode.Mirror,
+            clientMirrorId: "1.20.1");
+
+        var client = plan.Files.Single(file =>
+            file.Dest.EndsWith(
+                "fabric-loader-0.19.3-1.20.1.jar",
+                StringComparison.Ordinal));
+        // BMCLAPI has no /version/<loader-id>/client, but the vanilla client
+        // bytes are available under the game version.
+        Assert.Equal(
+            "https://bmclapi2.bangbang93.com/version/1.20.1/client",
+            client.Url);
     }
 
     [Fact]

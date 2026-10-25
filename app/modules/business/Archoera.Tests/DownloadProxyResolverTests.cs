@@ -65,4 +65,35 @@ public sealed class DownloadProxyResolverTests
             "return \"DIRECT; PROXY 10.0.0.2:3128\";");
         Assert.Equal("http://10.0.0.2:3128/", parsed);
     }
+
+    [Fact]
+    public void Helper_commands_return_their_stdout()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+
+        var output = DownloadProxyResolver.RunCommand(
+            "/bin/sh",
+            "-c \"printf hello\"",
+            TimeSpan.FromSeconds(2));
+
+        Assert.Equal("hello", output);
+    }
+
+    [Fact]
+    public void Helper_commands_are_killed_at_the_deadline()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var output = DownloadProxyResolver.RunCommand(
+            "/bin/sh",
+            "-c \"sleep 30\"",
+            TimeSpan.FromMilliseconds(200));
+        started.Stop();
+
+        Assert.Null(output);
+        Assert.True(
+            started.Elapsed < TimeSpan.FromSeconds(10),
+            $"RunCommand blocked for {started.Elapsed}");
+    }
 }

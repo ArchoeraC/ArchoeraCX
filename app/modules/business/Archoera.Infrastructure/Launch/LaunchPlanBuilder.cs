@@ -595,13 +595,22 @@ internal static class LaunchPlanBuilder
         LaunchPaths paths)
     {
         var name = Path.GetFileName(paths.InstanceRoot);
-        yield return Path.Combine(paths.InstanceRoot, $"{name}.jar");
-        yield return Path.Combine(paths.InstanceRoot, $"{version.Id}.jar");
+        // The selected profile's own jar wins. An instance folder can retain a
+        // stale <name>.jar from another game/loader build; preferring it over
+        // versions/<id>/<id>.jar pairs a Fabric/Forge profile with the wrong
+        // client jar and makes Fabric's TinyRemapper fail.
+        yield return Path.Combine(
+            paths.InstanceRoot,
+            "versions",
+            version.Id,
+            $"{version.Id}.jar");
         yield return Path.Combine(
             paths.SharedRoot,
             "versions",
             version.Id,
             $"{version.Id}.jar");
+        yield return Path.Combine(paths.InstanceRoot, $"{version.Id}.jar");
+        yield return Path.Combine(paths.InstanceRoot, $"{name}.jar");
     }
 
     private static void ExtractNatives(

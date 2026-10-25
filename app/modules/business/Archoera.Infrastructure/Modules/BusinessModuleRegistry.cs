@@ -43,7 +43,13 @@ public static class BusinessModuleRegistry
             new JavaModuleService(
                 settings: dataRoot is null ? null : new JsonAppSettingsStore(dataRoot),
                 dataRoot: dataRoot),
-            new VersionModuleService(policy: policy),
+            // Every download path shares one region policy: a second instance
+            // can detect GLOBAL on a cold start while the UI already shows
+            // "mirror", so the plan would silently use official hosts.
+            new VersionModuleService(
+                policy: policy,
+                settings: settings,
+                regionPolicy: region),
             new LaunchModuleService(
                 dataRoot: dataRoot,
                 accounts: accounts,
@@ -52,8 +58,14 @@ public static class BusinessModuleRegistry
             new LaunchLogModuleService(instances),
             new LaunchStopModuleService(),
             new LoaderVersionService(policy: policy, regionPolicy: region),
-            new LoaderModuleService(policy: policy),
-            new ResourceModuleService(policy: policy),
+            new LoaderModuleService(
+                policy: policy,
+                settings: settings,
+                regionPolicy: region),
+            new ResourceModuleService(
+                policy: policy,
+                settings: settings,
+                regionPolicy: region),
             new DownloadPolicyModuleService(policy),
             new RegionPolicyModuleService(region),
             new AccountModuleService(
@@ -73,7 +85,8 @@ public static class BusinessModuleRegistry
             new PackModuleService(
                 new PackInstallService(
                     repository: instances,
-                    settings: settings),
+                    settings: settings,
+                    regionPolicy: region),
                 policy),
         };
 

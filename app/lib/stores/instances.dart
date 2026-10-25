@@ -149,12 +149,16 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
       );
     }
 
-    await client.commitVanillaVersion(
-      root: instance.rootPath,
-      versionId: plan.versionId,
-      versionJson: plan.versionJson,
-      label: instance.gameVersion,
-    );
+    // A loader instance launches from its merged profile; do not overwrite it
+    // with the plain vanilla JSON.
+    if (instance.loader == GameLoader.vanilla) {
+      await client.commitVanillaVersion(
+        root: instance.rootPath,
+        versionId: plan.versionId,
+        versionJson: plan.versionJson,
+        label: instance.gameVersion,
+      );
+    }
     await reload();
   }
 

@@ -154,13 +154,22 @@ public static class DownloadProxyResolver
     }
 
     private static string? RunGsettings(string arguments)
+        => RunCommand("gsettings", arguments, TimeSpan.FromSeconds(2));
+
+    /// <summary>
+    /// Runs a helper command with a hard deadline. Reading stdout before
+    /// waiting used to make the 2 s timeout meaningless: a gsettings process
+    /// stuck on D-Bus/dconf kept the read blocked forever, and the first
+    /// download then stayed at 0/0 before the Rust executor even started.
+    /// </summary>
+    internal static string? RunCommand(string fileName, string arguments, TimeSpan timeout)
     {
         try
         {
             using var process = System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "gsettings",
+                    FileName = fileName,
                     Arguments = arguments,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -168,15 +177,46 @@ public static class DownloadProxyResolver
                     CreateNoWindow = true,
                 });
             if (process is null) return null;
-            var output = process.StandardOutput.ReadToEnd().Trim();
-            process.WaitForExit(2000);
+
+            // Drain both pipes concurrently: a helper that exceeds the pipe
+            // buffer must not look like a timeout.
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            var milliseconds = (int)Math.Clamp(
+                timeout.TotalMilliseconds,
+                1,
+                int.MaxValue);
+            if (!process.WaitForExit(milliseconds))
+            {
+                TryKill(process);
+                return null;
+            }
+
+            var output = stdout.GetAwaiter().GetResult().Trim();
+            _ = stderr.GetAwaiter().GetResult();
             return process.ExitCode == 0 && output.Length > 0 ? output : null;
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException
-                or System.ComponentModel.Win32Exception)
+                or System.ComponentModel.Win32Exception or AggregateException
+                or ObjectDisposedException)
         {
             return null;
+        }
+    }
+
+    private static void TryKill(System.Diagnostics.Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or System.ComponentModel.Win32Exception
+                or NotSupportedException)
+        {
+            // Best effort: the process may have exited between the wait and
+            // the kill, or the platform may not support tree termination.
         }
     }
 

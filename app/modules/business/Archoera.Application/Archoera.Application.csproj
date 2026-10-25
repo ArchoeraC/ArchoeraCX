@@ -6,4 +6,8 @@
   <ItemGroup>
     <ProjectReference Include="../Archoera.Domain/Archoera.Domain.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Archoera.Tests" />
+  </ItemGroup>
 </Project>

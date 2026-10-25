@@ -28,6 +28,10 @@ public static class DownloadSourceResolver
                 ? DownloadSourceMode.Mirror
                 : DownloadSourceMode.Official;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception exception) when (
             exception is HttpRequestException or IOException or TaskCanceledException)
         {

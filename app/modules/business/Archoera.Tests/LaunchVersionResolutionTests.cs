@@ -244,6 +244,57 @@ public sealed class LaunchVersionResolutionTests
     }
 
     [Fact]
+    public void Does_not_borrow_a_fabric_profile_for_another_game_version()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var vanilla = Path.Combine(gameRoot, "versions", "1.20.4");
+            Directory.CreateDirectory(vanilla);
+            File.WriteAllText(
+                Path.Combine(vanilla, "1.20.4.json"),
+                MinimalVersionJson("1.20.4"));
+
+            // A valid Fabric profile for another game build. Its loader version
+            // is different too, but the old fallback only looked for the
+            // "fabric-" prefix and scored it as a match.
+            var other = Path.Combine(
+                gameRoot,
+                "versions",
+                "fabric-loader-0.18.4-1.21.8");
+            Directory.CreateDirectory(other);
+            File.WriteAllText(
+                Path.Combine(other, "fabric-loader-0.18.4-1.21.8.json"),
+                MinimalVersionJson("fabric-loader-0.18.4-1.21.8"));
+
+            var instanceRoot = Path.Combine(gameRoot, "versions", "1.20.4");
+            var instance = new GameInstanceRecord(
+                "id",
+                "1.20.4 test",
+                "1.20.4",
+                "fabric",
+                "0.20.1",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var exception = Assert.Throws<LaunchException>(
+                () => LaunchModuleService.LoadVersion(
+                    instance,
+                    LaunchPaths.Resolve(instanceRoot)));
+
+            Assert.Equal("LOADER_NOT_INSTALLED", exception.Code);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Loader_profile_without_listed_libraries_is_still_a_loader_profile()
     {
         var gameRoot = CreateTempDirectory();
