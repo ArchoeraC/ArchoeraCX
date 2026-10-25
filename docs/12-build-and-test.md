@@ -136,7 +136,7 @@ macOS:   ~/Library/Application Support/ArchoeraCX
 Windows: %APPDATA%/ArchoeraCX
 ```
 
-可用 `ARCHOERACX_DATA_DIR` 覆盖。主要文件：
+可用 `ARCHOERACX_DATA_DIR` 覆盖。解析优先级：`ARCHOERACX_DATA_DIR` → 平台目录变量（Linux `XDG_DATA_HOME`、Windows `APPDATA`）→ 用户目录（macOS `Library/Application Support`、Linux `.local/share`）→ 系统临时目录（仅兜底）。相对 `XDG_DATA_HOME` 按规范忽略。主要文件：
 
 ```text
 settings.json                 实例根目录等设置
