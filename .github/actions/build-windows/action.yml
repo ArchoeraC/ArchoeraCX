@@ -62,11 +62,14 @@ runs:
         fi
 
     - name: Build native modules
-      shell: cmd
+      shell: pwsh
       working-directory: app
       env:
         ARCHOERACX_MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
-      run: call tool\build-native.bat
+      run: |
+        # < NUL makes cmd's cancellation prompt read EOF instead of hanging.
+        cmd /c "call tool\build-native.bat < NUL"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: C++ ABI smoke tests
       shell: bash
@@ -101,18 +104,25 @@ runs:
       shell: pwsh
       working-directory: app
       run: |
-        flutter pub get
-        flutter gen-l10n
+        pwsh -NoProfile -File tool/flutter.ps1 pub get
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        pwsh -NoProfile -File tool/flutter.ps1 gen-l10n
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Dart analyze
       shell: pwsh
       working-directory: app
-      run: dart analyze
+      run: |
+        $dart = Join-Path $env:FLUTTER_ROOT 'bin\cache\dart-sdk\bin\dart.exe'
+        & $dart analyze
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Flutter tests
       shell: pwsh
       working-directory: app
-      run: flutter test
+      run: |
+        pwsh -NoProfile -File tool/flutter.ps1 test
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Verify compiled Microsoft client id
       if: inputs.client_id != ''
@@ -121,12 +131,16 @@ runs:
       env:
         ARCHOERACX_CLIENT_ID_TESTS: '1'
         ARCHOERACX_REQUIRE_OFFICIAL_BUILD: ${{ inputs.require_official }}
-      run: flutter test test/client_id_integration_test.dart
+      run: |
+        pwsh -NoProfile -File tool/flutter.ps1 test test/client_id_integration_test.dart
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Build Flutter Windows bundle
       shell: pwsh
       working-directory: app
-      run: flutter build windows --release
+      run: |
+        pwsh -NoProfile -File tool/flutter.ps1 build windows --release
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Verify native slice
       shell: bash
