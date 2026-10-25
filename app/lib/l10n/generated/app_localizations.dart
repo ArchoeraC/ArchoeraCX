@@ -998,11 +998,11 @@ abstract class AppLocalizations {
   /// **'CurseForge'**
   String get sourceCurseForge;
 
-  /// No description provided for @sourceCurseForgeUnsupported.
+  /// No description provided for @sourceCurseForgePending.
   ///
   /// In en, this message translates to:
-  /// **'CurseForge is not supported; use Modrinth instead.'**
-  String get sourceCurseForgeUnsupported;
+  /// **'We are seeking CurseForge\'s approval; use Modrinth until access is granted.'**
+  String get sourceCurseForgePending;
 
   /// No description provided for @providerNotWired.
   ///

@@ -8,7 +8,7 @@ Microsoft / Minecraft 认证已单独整理到 [`../authentication.md`](../authe
 |---|---|
 | [01-version-merge.md](01-version-merge.md) | 版本 JSON 合并 / `inheritsFrom` / 库去重 |
 | [02-loader-install.md](02-loader-install.md) | Fabric/Quilt/Forge/NeoForge 安装与 processors |
-| [03-mod-search.md](03-mod-search.md) | Modrinth 搜索、兼容性、分页（CurseForge 不支持） |
+| [03-mod-search.md](03-mod-search.md) | Modrinth 搜索、兼容性、分页（CurseForge 待同意） |
 | [04-crash-analysis.md](04-crash-analysis.md) | 崩溃日志、crash-report、规则引擎 |
 | [05-download-engine.md](05-download-engine.md) | 下载并发、Range、原子落盘、去重 |
 | [06-modpack-install.md](06-modpack-install.md) | 整合包格式、overrides、Zip 安全 |

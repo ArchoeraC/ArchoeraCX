@@ -32,8 +32,8 @@ class DownloadPage extends StatefulWidget {
 
 class _DownloadPageState extends State<DownloadPage> {
   /// Kept explicit so a second provider can be enabled without reshaping
-  /// the page. CurseForge is deliberately unsupported (online and zip import
-  /// both need an API key), so the chip stays locked and says so.
+  /// the page. CurseForge access is pending approval (online and zip import
+  /// both need an API key), so the chip stays locked and explains that.
   String _source = 'modrinth';
 
   @override
@@ -230,7 +230,7 @@ class _SourceSelector extends StatelessWidget {
           _SourceChip(
             label: l10n.sourceCurseForge,
             selected: selected == 'curseforge',
-            tooltip: l10n.sourceCurseForgeUnsupported,
+            tooltip: l10n.sourceCurseForgePending,
           ),
         ],
       ),

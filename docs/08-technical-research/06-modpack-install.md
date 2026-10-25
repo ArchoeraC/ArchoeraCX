@@ -19,7 +19,7 @@
 | 7 | **Rust 只下载，C# 解压并管事务**：解压是业务/安全策略，必须与实例语义和 SQLite 单写者同侧；Rust 保持“字节→文件”可替换。 | [推断] 与 02/05 契约一致 |
 | 8 | 导入已有实例默认 **merge + managed 清单**；被移除文件进隔离区而非直接删；中断用 journal 回滚/续跑。 | [推断] 本项目设计 |
 
-> **当前状态（2026-10-25）**：**不支持 CurseForge**。本文 §1.1/§2 的 CF 格式分析只用于识别与拒绝：CF zip 的 `files[]` 只有 `(projectID, fileID)`，安装每个文件都要调 CF API（需 key），所以“本地导入”也不是免 key 路径。当前只实现 Modrinth `.mrpack`。
+> **当前状态（2026-10-25）**：CurseForge 正在尝试征得官方同意；获批前只识别并拒绝 CF zip。本文 §1.1/§2 的 CF 格式分析用于说明原因：CF zip 的 `files[]` 只有 `(projectID, fileID)`，安装每个文件都要调 CF API（需 key），所以“本地导入”也不是免 key 路径。当前只实现 Modrinth `.mrpack`。
 
 ---
 

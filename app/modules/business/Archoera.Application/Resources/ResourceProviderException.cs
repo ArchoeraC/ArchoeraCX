@@ -7,8 +7,9 @@ public static class ResourceErrorCode
     public const string ProviderAuth = "PROVIDER_AUTH";
 
     /// <summary>
-    /// The provider is known but deliberately not supported (CurseForge online
-    /// and its zip import both need an API key; a missing key is not the cause).
+    /// The provider is known but not wired yet. CurseForge online access and
+    /// its zip import both need an API key and approval; a missing key is not
+    /// the only blocker.
     /// </summary>
     public const string ProviderUnavailable = "PROVIDER_UNAVAILABLE";
 

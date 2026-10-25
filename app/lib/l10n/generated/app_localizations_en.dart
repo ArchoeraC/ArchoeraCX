@@ -532,8 +532,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sourceCurseForge => 'CurseForge';
 
   @override
-  String get sourceCurseForgeUnsupported =>
-      'CurseForge is not supported; use Modrinth instead.';
+  String get sourceCurseForgePending =>
+      'We are seeking CurseForge\'s approval; use Modrinth until access is granted.';
 
   @override
   String get providerNotWired =>
