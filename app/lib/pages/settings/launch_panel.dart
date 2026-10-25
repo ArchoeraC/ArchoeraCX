@@ -245,8 +245,38 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     final shareLoaderFiles = settings?.shareLoaderFiles ?? true;
     final gameOptimization = settings?.gameOptimization ?? true;
     final linux = ref.watch(linuxPlatformProvider);
+    final desktop = ref.watch(desktopPlatformProvider);
+    final prefs = ref.watch(preferencesProvider);
+    final prefsNotifier = ref.read(preferencesProvider.notifier);
     final current = '${width}x$height';
     final knownPreset = _presets.any((p) => '${p.$1}x${p.$2}' == current);
+
+    final behaviorGroup = _SettingsGroup(
+      title: l10n.settingsSectionBehavior,
+      note: l10n.settingsBehaviorNote,
+      children: [
+        _AppearanceTile(
+          icon: AppIcons.window,
+          title: l10n.settingsHideAfterLaunch,
+          subtitle: l10n.settingsHideAfterLaunchDesc,
+          trailing: Switch(
+            key: const ValueKey('settings-hide-after-launch'),
+            value: prefs.hideAfterLaunch,
+            onChanged: prefsNotifier.setHideAfterLaunch,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.close,
+          title: l10n.settingsQuitAfterGameExit,
+          subtitle: l10n.settingsQuitAfterGameExitDesc,
+          trailing: Switch(
+            key: const ValueKey('settings-quit-after-game-exit'),
+            value: prefs.quitAfterGameExit,
+            onChanged: prefsNotifier.setQuitAfterGameExit,
+          ),
+        ),
+      ],
+    );
 
     final windowGroup = _SettingsGroup(
       title: l10n.settingsSectionWindow,
@@ -504,6 +534,10 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (desktop) ...[
+          behaviorGroup,
+          const SizedBox(height: AppSpacing.lg),
+        ],
         windowGroup,
         const SizedBox(height: AppSpacing.lg),
         argsGroup,

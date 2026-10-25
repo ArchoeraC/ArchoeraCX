@@ -23,6 +23,13 @@ bool _setupStarted = false;
 /// True once a tray icon exists and can bring the window back.
 bool _trayReady = false;
 
+/// Whether a hidden window can be restored through the tray icon.
+///
+/// Callers that hide the window on their own (for example the "hide after
+/// launch" preference) must check this first, otherwise there would be no way
+/// back to the launcher.
+bool get isTrayAvailable => _trayReady;
+
 /// Set before tearing the window down so the close event we trigger ourselves
 /// is not intercepted again.
 bool _quitRequested = false;
@@ -140,7 +147,7 @@ tray.Menu? _createTrayMenu(AppLocalizations l10n) {
     return null;
   }
   quitItem.addListener((event) {
-    if (event is tray.MenuItemClickedEvent) unawaited(_quitApplication());
+    if (event is tray.MenuItemClickedEvent) unawaited(quitApplication());
   });
   menu.addItem(quitItem);
 
@@ -209,10 +216,15 @@ Future<void> _handleWindowClose() async {
     return;
   }
 
-  await _quitApplication();
+  await quitApplication();
 }
 
-Future<void> _quitApplication() async {
+/// Closes the launcher through the same path the tray uses.
+///
+/// Shared by the tray menu, the window close button and the
+/// "quit after the game exits" monitor so every clean exit tears the window
+/// down exactly once. Never throws; a failure leaves the launcher running.
+Future<void> quitApplication() async {
   if (_quitRequested) return;
   _quitRequested = true;
   try {

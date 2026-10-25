@@ -1316,6 +1316,42 @@ abstract class AppLocalizations {
   /// **'Window mode is written as vanilla launch arguments (--width / --height / --fullscreen) and applies to versions that accept them. Maximized is approximated with the primary display\'s usable size.'**
   String get settingsWindowNote;
 
+  /// Desktop-only section title for window behavior around a game launch.
+  ///
+  /// In en, this message translates to:
+  /// **'Launcher behavior'**
+  String get settingsSectionBehavior;
+
+  /// Desktop switch that hides the launcher window after a successful game start.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide launcher after start'**
+  String get settingsHideAfterLaunch;
+
+  /// Explains how to restore a hidden launcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Hides this window once the game has started; reopen it from the tray icon.'**
+  String get settingsHideAfterLaunchDesc;
+
+  /// Desktop switch that quits the launcher when the started game process ends.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit after the game exits'**
+  String get settingsQuitAfterGameExit;
+
+  /// Warns that quitting also stops background work.
+  ///
+  /// In en, this message translates to:
+  /// **'Closes the launcher when that game process ends; running downloads and tasks stop with it.'**
+  String get settingsQuitAfterGameExitDesc;
+
+  /// Note under the launcher behavior switches, pointing at the existing log viewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to this desktop only. Game logs stay available from the instance menu (View logs) while the game runs.'**
+  String get settingsBehaviorNote;
+
   /// Global selector for windowed, fullscreen or maximized launch.
   ///
   /// In en, this message translates to:

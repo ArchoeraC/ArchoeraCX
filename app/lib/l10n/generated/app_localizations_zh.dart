@@ -691,6 +691,24 @@ class AppLocalizationsZh extends AppLocalizations {
       '窗口模式写入原版启动参数（--width / --height / --fullscreen），对支持这些参数的版本生效。最大化会用主显示器的可用尺寸近似。';
 
   @override
+  String get settingsSectionBehavior => '启动器行为';
+
+  @override
+  String get settingsHideAfterLaunch => '启动后隐藏启动器';
+
+  @override
+  String get settingsHideAfterLaunchDesc => '游戏开始后隐藏此窗口；可从托盘图标重新打开。';
+
+  @override
+  String get settingsQuitAfterGameExit => '游戏退出后关闭启动器';
+
+  @override
+  String get settingsQuitAfterGameExitDesc => '该游戏进程结束后关闭启动器；正在进行的下载与任务也会随之停止。';
+
+  @override
+  String get settingsBehaviorNote => '仅对当前桌面生效。游戏运行期间仍可从实例菜单（查看日志）打开游戏日志。';
+
+  @override
   String get settingsWindowMode => '窗口模式';
 
   @override

@@ -719,6 +719,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'Window mode is written as vanilla launch arguments (--width / --height / --fullscreen) and applies to versions that accept them. Maximized is approximated with the primary display\'s usable size.';
 
   @override
+  String get settingsSectionBehavior => 'Launcher behavior';
+
+  @override
+  String get settingsHideAfterLaunch => 'Hide launcher after start';
+
+  @override
+  String get settingsHideAfterLaunchDesc =>
+      'Hides this window once the game has started; reopen it from the tray icon.';
+
+  @override
+  String get settingsQuitAfterGameExit => 'Quit after the game exits';
+
+  @override
+  String get settingsQuitAfterGameExitDesc =>
+      'Closes the launcher when that game process ends; running downloads and tasks stop with it.';
+
+  @override
+  String get settingsBehaviorNote =>
+      'Applies to this desktop only. Game logs stay available from the instance menu (View logs) while the game runs.';
+
+  @override
   String get settingsWindowMode => 'Window mode';
 
   @override

@@ -52,7 +52,7 @@ Future<bool> readCloseToTrayPreference() async {
 /// Launcher/instance configuration that the native modules act on lives in the
 /// C# settings document (`AppSettings`). Everything here only affects the
 /// Flutter shell: task list length, log tail size, toast timing, desktop
-/// notifications and the startup page.
+/// notifications, window behaviour around a game launch and the startup page.
 @immutable
 class UiPreferences {
   const UiPreferences({
@@ -62,6 +62,8 @@ class UiPreferences {
     this.desktopNotifications = true,
     this.downloadNotifications = true,
     this.closeToTray = false,
+    this.hideAfterLaunch = false,
+    this.quitAfterGameExit = false,
     this.startPage = '/',
   });
 
@@ -83,6 +85,12 @@ class UiPreferences {
   /// Hide the main window in the tray instead of quitting on window close.
   final bool closeToTray;
 
+  /// Hide the launcher window after a successful game start.
+  final bool hideAfterLaunch;
+
+  /// Quit the launcher when the started game process exits.
+  final bool quitAfterGameExit;
+
   /// Route opened on launch; one of [startPageOptions].
   final String startPage;
 
@@ -93,6 +101,8 @@ class UiPreferences {
     bool? desktopNotifications,
     bool? downloadNotifications,
     bool? closeToTray,
+    bool? hideAfterLaunch,
+    bool? quitAfterGameExit,
     String? startPage,
   }) {
     return UiPreferences(
@@ -103,6 +113,8 @@ class UiPreferences {
       downloadNotifications:
           downloadNotifications ?? this.downloadNotifications,
       closeToTray: closeToTray ?? this.closeToTray,
+      hideAfterLaunch: hideAfterLaunch ?? this.hideAfterLaunch,
+      quitAfterGameExit: quitAfterGameExit ?? this.quitAfterGameExit,
       startPage: startPage ?? this.startPage,
     );
   }
@@ -116,6 +128,12 @@ final preferencesProvider =
 final class PreferencesController extends Notifier<UiPreferences> {
   /// Persistence key read by [readCloseToTrayPreference] when the window closes.
   static const closeToTrayKey = 'ui.closeToTray';
+
+  /// Persistence key for hiding the launcher after a successful start.
+  static const hideAfterLaunchKey = 'ui.hideAfterLaunch';
+
+  /// Persistence key for quitting once the started game process exits.
+  static const quitAfterGameExitKey = 'ui.quitAfterGameExit';
 
   static const _taskHistoryKey = 'ui.taskHistory';
   static const _logLinesKey = 'ui.logLines';
@@ -140,6 +158,8 @@ final class PreferencesController extends Notifier<UiPreferences> {
         desktopNotifications: prefs.getBool(_desktopNotificationsKey) ?? true,
         downloadNotifications: prefs.getBool(_downloadNotificationsKey) ?? true,
         closeToTray: prefs.getBool(closeToTrayKey) ?? false,
+        hideAfterLaunch: prefs.getBool(hideAfterLaunchKey) ?? false,
+        quitAfterGameExit: prefs.getBool(quitAfterGameExitKey) ?? false,
         startPage: _sanitizeStartPage(prefs.getString(_startPageKey)),
       );
       state = restored;
@@ -184,6 +204,18 @@ final class PreferencesController extends Notifier<UiPreferences> {
   Future<void> setCloseToTray(bool enabled) async {
     state = state.copyWith(closeToTray: enabled);
     await _writeBool(closeToTrayKey, enabled);
+  }
+
+  /// Persists whether the launcher hides itself after a successful game start.
+  Future<void> setHideAfterLaunch(bool enabled) async {
+    state = state.copyWith(hideAfterLaunch: enabled);
+    await _writeBool(hideAfterLaunchKey, enabled);
+  }
+
+  /// Persists whether the launcher quits when the started game exits.
+  Future<void> setQuitAfterGameExit(bool enabled) async {
+    state = state.copyWith(quitAfterGameExit: enabled);
+    await _writeBool(quitAfterGameExitKey, enabled);
   }
 
   /// Persists the startup page; unknown routes are ignored.
