@@ -2,6 +2,7 @@ using System.Text.Json;
 using Archoera.Application.Json;
 using Archoera.Application.Modules;
 using Archoera.Domain.Settings;
+using static Archoera.Infrastructure.Settings.SettingsModuleJson;
 
 namespace Archoera.Infrastructure.Settings;
 
@@ -61,7 +62,7 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         var settings = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
-        return Build(settings);
+        return SettingsModuleJson.BuildEnvelope(settings);
     }
 
     private async Task<byte[]> SetAsync(
@@ -111,6 +112,17 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         int? windowWidth = null;
         int? windowHeight = null;
         bool? fullscreen = null;
+        bool? maximized = null;
+        bool? enableGameMode = null;
+        bool? enableMangoHud = null;
+        bool? useZink = null;
+        bool? developerMode = null;
+        string? nativeGlfwPath = null;
+        var nativeGlfwPathPresent = false;
+        string? nativeOpenAlPath = null;
+        var nativeOpenAlPathPresent = false;
+        string? nativeSdlPath = null;
+        var nativeSdlPathPresent = false;
         int? downloadChunkSizeKb = null;
         int? downloadRangeThresholdKb = null;
         int? logRetentionFiles = null;
@@ -274,6 +286,64 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                 fullscreen = fullscreenElement.ValueKind is JsonValueKind.True or JsonValueKind.False
                     ? fullscreenElement.GetBoolean()
                     : throw new ArgumentException("fullscreen must be a boolean");
+            }
+
+            if (root.TryGetProperty("maximized", out var maximizedElement))
+            {
+                maximized = maximizedElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? maximizedElement.GetBoolean()
+                    : throw new ArgumentException("maximized must be a boolean");
+            }
+
+            if (root.TryGetProperty("enableGameMode", out var gameModeElement))
+            {
+                enableGameMode = gameModeElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? gameModeElement.GetBoolean()
+                    : throw new ArgumentException("enableGameMode must be a boolean");
+            }
+
+            if (root.TryGetProperty("enableMangoHud", out var mangoHudElement))
+            {
+                enableMangoHud = mangoHudElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? mangoHudElement.GetBoolean()
+                    : throw new ArgumentException("enableMangoHud must be a boolean");
+            }
+
+            if (root.TryGetProperty("useZink", out var zinkElement))
+            {
+                useZink = zinkElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? zinkElement.GetBoolean()
+                    : throw new ArgumentException("useZink must be a boolean");
+            }
+
+            if (root.TryGetProperty("developerMode", out var developerElement))
+            {
+                developerMode = developerElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? developerElement.GetBoolean()
+                    : throw new ArgumentException("developerMode must be a boolean");
+            }
+
+            if (root.TryGetProperty("nativeGlfwPath", out var nativeGlfwElement))
+            {
+                nativeGlfwPathPresent = true;
+                // Normalize throws for a relative or malformed path, which the
+                // handler maps to E_INVALID. JSON null clears the override.
+                nativeGlfwPath = NativeLibraryPaths.Normalize(
+                    JsonReader.StringValue(nativeGlfwElement, "nativeGlfwPath"));
+            }
+
+            if (root.TryGetProperty("nativeOpenALPath", out var nativeOpenAlElement))
+            {
+                nativeOpenAlPathPresent = true;
+                nativeOpenAlPath = NativeLibraryPaths.Normalize(
+                    JsonReader.StringValue(nativeOpenAlElement, "nativeOpenALPath"));
+            }
+
+            if (root.TryGetProperty("nativeSdlPath", out var nativeSdlElement))
+            {
+                nativeSdlPathPresent = true;
+                nativeSdlPath = NativeLibraryPaths.Normalize(
+                    JsonReader.StringValue(nativeSdlElement, "nativeSdlPath"));
             }
 
             if (root.TryGetProperty("downloadChunkSizeKb", out var chunkElement))
@@ -515,14 +585,61 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             };
         }
 
-        if (windowWidth is not null || windowHeight is not null || fullscreen is not null)
+        if (windowWidth is not null || windowHeight is not null || fullscreen is not null ||
+            maximized is not null)
         {
             current = current with
             {
                 WindowWidth = windowWidth ?? current.WindowWidth,
                 WindowHeight = windowHeight ?? current.WindowHeight,
                 Fullscreen = fullscreen ?? current.Fullscreen,
+                Maximized = maximized ?? current.Maximized,
             };
+        }
+
+        // The two window modes are exclusive. Validating the merged document
+        // (not just this patch) also catches "maximized:true" while the stored
+        // document is already fullscreen.
+        if (current.Fullscreen && current.Maximized)
+        {
+            return Error(
+                "E_INVALID",
+                "fullscreen and maximized cannot both be enabled");
+        }
+
+        if (enableGameMode is not null)
+        {
+            current = current with { EnableGameMode = enableGameMode.Value };
+        }
+
+        if (enableMangoHud is not null)
+        {
+            current = current with { EnableMangoHud = enableMangoHud.Value };
+        }
+
+        if (useZink is not null)
+        {
+            current = current with { UseZink = useZink.Value };
+        }
+
+        if (developerMode is not null)
+        {
+            current = current with { DeveloperMode = developerMode.Value };
+        }
+
+        if (nativeGlfwPathPresent)
+        {
+            current = current with { NativeGlfwPath = nativeGlfwPath };
+        }
+
+        if (nativeOpenAlPathPresent)
+        {
+            current = current with { NativeOpenALPath = nativeOpenAlPath };
+        }
+
+        if (nativeSdlPathPresent)
+        {
+            current = current with { NativeSdlPath = nativeSdlPath };
         }
 
         if (downloadChunkSizeKb is not null ||
@@ -606,6 +723,14 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             windowWidth is null &&
             windowHeight is null &&
             fullscreen is null &&
+            maximized is null &&
+            enableGameMode is null &&
+            enableMangoHud is null &&
+            useZink is null &&
+            developerMode is null &&
+            !nativeGlfwPathPresent &&
+            !nativeOpenAlPathPresent &&
+            !nativeSdlPathPresent &&
             downloadChunkSizeKb is null &&
             downloadRangeThresholdKb is null &&
             logRetentionFiles is null &&
@@ -629,131 +754,6 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         }
 
         var saved = await _store.SaveAsync(current, cancellationToken).ConfigureAwait(false);
-        return Build(saved);
-    }
-
-    /// <summary>
-    /// The launcher command fields always appear in the response: null means
-    /// "no command" so the UI never needs a missing-key branch.
-    /// </summary>
-    private static void WriteCommand(Utf8JsonWriter writer, string name, string? command)
-    {
-        if (string.IsNullOrWhiteSpace(command))
-        {
-            writer.WriteNull(name);
-        }
-        else
-        {
-            writer.WriteString(name, command);
-        }
-    }
-
-    private static byte[] Build(AppSettings settings)
-    {
-        using var memory = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(memory))
-        {
-            writer.WriteStartObject();
-            writer.WriteBoolean("ok", true);
-            writer.WriteStartObject("data");
-            writer.WriteStartObject("settings");
-            writer.WriteString("instancesRoot", settings.InstancesRoot);
-            writer.WriteStartArray("instancesRoots");
-            foreach (var root in settings.Roots)
-            {
-                writer.WriteStringValue(root);
-            }
-            writer.WriteEndArray();
-            if (string.IsNullOrWhiteSpace(settings.JavaPath))
-            {
-                writer.WriteNull("javaPath");
-            }
-            else
-            {
-                writer.WriteString("javaPath", settings.JavaPath);
-            }
-            writer.WriteBoolean("javaAuto", settings.JavaAuto);
-            writer.WriteNumber("memoryMinMb", settings.MemoryMinMb);
-            writer.WriteNumber("memoryMaxMb", settings.MemoryMaxMb);
-            if (string.IsNullOrWhiteSpace(settings.JvmArgs))
-            {
-                writer.WriteNull("jvmArgs");
-            }
-            else
-            {
-                writer.WriteString("jvmArgs", settings.JvmArgs);
-            }
-            writer.WriteString("gcMode", settings.GcMode);
-            if (string.IsNullOrWhiteSpace(settings.GameArgs))
-            {
-                writer.WriteNull("gameArgs");
-            }
-            else
-            {
-                writer.WriteString("gameArgs", settings.GameArgs);
-            }
-            if (string.IsNullOrWhiteSpace(settings.WrapperCommand))
-            {
-                writer.WriteNull("wrapperCommand");
-            }
-            else
-            {
-                writer.WriteString("wrapperCommand", settings.WrapperCommand);
-            }
-
-            WriteCommand(writer, "preLoadCommand", settings.PreLoadCommand);
-            WriteCommand(writer, "preLaunchCommand", settings.PreLaunchCommand);
-            WriteCommand(writer, "postExitCommand", settings.PostExitCommand);
-
-            RuntimeOptionsJson.WriteEnvironment(writer, "environment", settings.Environment);
-            writer.WriteString("downloadSource", settings.DownloadSource);
-            writer.WriteNumber("downloadConcurrency", settings.DownloadConcurrency);
-            writer.WriteNumber("downloadPerHost", settings.DownloadPerHost);
-            writer.WriteNumber("windowWidth", settings.WindowWidth);
-            writer.WriteNumber("windowHeight", settings.WindowHeight);
-            writer.WriteBoolean("fullscreen", settings.Fullscreen);
-            writer.WriteNumber("downloadChunkSizeKb", settings.DownloadChunkSizeKb);
-            writer.WriteNumber("downloadRangeThresholdKb", settings.DownloadRangeThresholdKb);
-            writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
-            writer.WriteNumber("logRetentionMb", settings.LogRetentionMegabytes);
-            writer.WriteBoolean("shareLoaderFiles", settings.ShareLoaderFiles);
-            writer.WriteString("memoryMode", settings.MemoryMode);
-            writer.WriteBoolean("gameOptimization", settings.GameOptimization);
-            if (string.IsNullOrWhiteSpace(settings.DownloadProxy))
-            {
-                writer.WriteNull("downloadProxy");
-            }
-            else
-            {
-                writer.WriteString("downloadProxy", settings.DownloadProxy);
-            }
-            writer.WriteString("dataRoot", settings.DataRoot);
-            writer.WriteString("settingsPath", settings.SettingsPath);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-            writer.WriteStartObject("meta");
-            writer.WriteNumber("schemaVersion", AppSettings.CurrentSchemaVersion);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-        }
-
-        return memory.ToArray();
-    }
-
-    private static byte[] Error(string code, string message)
-    {
-        using var memory = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(memory))
-        {
-            writer.WriteStartObject();
-            writer.WriteBoolean("ok", false);
-            writer.WriteStartObject("error");
-            writer.WriteString("code", code);
-            writer.WriteString("message", message);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-        }
-
-        return memory.ToArray();
+        return SettingsModuleJson.BuildEnvelope(saved);
     }
 }

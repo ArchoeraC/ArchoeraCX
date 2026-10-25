@@ -63,6 +63,26 @@ internal static class InstanceOverridesJson
                 writer.WriteBoolean("fullscreen", fullscreen);
             }
 
+            if (content.Maximized is { } maximized)
+            {
+                writer.WriteBoolean("maximized", maximized);
+            }
+
+            if (content.EnableGameMode is { } gameMode)
+            {
+                writer.WriteBoolean("enableGameMode", gameMode);
+            }
+
+            if (content.EnableMangoHud is { } mangoHud)
+            {
+                writer.WriteBoolean("enableMangoHud", mangoHud);
+            }
+
+            if (content.UseZink is { } zink)
+            {
+                writer.WriteBoolean("useZink", zink);
+            }
+
             // An explicitly empty wrapper is meaningful and must survive:
             // it disables the global wrapper for this instance.
             if (content.WrapperCommand is { } wrapper)
@@ -131,23 +151,27 @@ internal static class InstanceOverridesJson
         }
 
         var overrides = new InstanceOverrides(
-            JsonReader.TryInt32(element, "memoryMinMb"),
-            JsonReader.TryInt32(element, "memoryMaxMb"),
-            LegacyString(element, "jvmArgs"),
-            LegacyString(element, "gcMode"),
-            LegacyString(element, "gameArgs"),
-            LegacyString(element, "javaPath"),
-            JsonReader.TryInt32(element, "windowWidth"),
-            JsonReader.TryInt32(element, "windowHeight"),
-            JsonReader.TryBool(element, "fullscreen"),
-            JsonReader.TryString(element, "wrapperCommand"),
-            RuntimeOptionsJson.TryReadEnvironment(element, "environment"),
-            JsonReader.TryBool(element, "joinServerOnLaunch"),
-            JsonReader.TryString(element, "joinServerAddress"),
-            JsonReader.TryString(element, "joinWorldName"),
-            ImportedCommand(element, "preLoadCommand"),
-            ImportedCommand(element, "preLaunchCommand"),
-            ImportedCommand(element, "postExitCommand"));
+            MemoryMinMb: JsonReader.TryInt32(element, "memoryMinMb"),
+            MemoryMaxMb: JsonReader.TryInt32(element, "memoryMaxMb"),
+            JvmArgs: LegacyString(element, "jvmArgs"),
+            GcMode: LegacyString(element, "gcMode"),
+            GameArgs: LegacyString(element, "gameArgs"),
+            JavaPath: LegacyString(element, "javaPath"),
+            WindowWidth: JsonReader.TryInt32(element, "windowWidth"),
+            WindowHeight: JsonReader.TryInt32(element, "windowHeight"),
+            Fullscreen: JsonReader.TryBool(element, "fullscreen"),
+            WrapperCommand: JsonReader.TryString(element, "wrapperCommand"),
+            Environment: RuntimeOptionsJson.TryReadEnvironment(element, "environment"),
+            JoinServerOnLaunch: JsonReader.TryBool(element, "joinServerOnLaunch"),
+            JoinServerAddress: JsonReader.TryString(element, "joinServerAddress"),
+            JoinWorldName: JsonReader.TryString(element, "joinWorldName"),
+            PreLoadCommand: ImportedCommand(element, "preLoadCommand"),
+            PreLaunchCommand: ImportedCommand(element, "preLaunchCommand"),
+            PostExitCommand: ImportedCommand(element, "postExitCommand"),
+            Maximized: JsonReader.TryBool(element, "maximized"),
+            EnableGameMode: JsonReader.TryBool(element, "enableGameMode"),
+            EnableMangoHud: JsonReader.TryBool(element, "enableMangoHud"),
+            UseZink: JsonReader.TryBool(element, "useZink"));
         return overrides.IsEmpty ? null : overrides;
     }
 

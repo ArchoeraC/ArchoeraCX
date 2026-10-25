@@ -133,6 +133,20 @@ public sealed class JsonAppSettingsStore
             var fullscreen = root.TryGetProperty("fullscreen", out var fullscreenElement) &&
                              fullscreenElement.ValueKind is JsonValueKind.True or JsonValueKind.False &&
                              fullscreenElement.GetBoolean();
+            // Schema 15 added the window/performance switches. Older documents
+            // simply inherit the defaults; fullscreen wins if a hand-edited
+            // file somehow contains both window modes.
+            var maximized = ReadBool(root, "maximized") && !fullscreen;
+            var enableGameMode = ReadBool(root, "enableGameMode");
+            var enableMangoHud = ReadBool(root, "enableMangoHud");
+            var useZink = ReadBool(root, "useZink");
+            var developerMode = ReadBool(root, "developerMode");
+            var nativeGlfwPath = NativeLibraryPaths.TryNormalize(
+                ReadString(root, "nativeGlfwPath"));
+            var nativeOpenAlPath = NativeLibraryPaths.TryNormalize(
+                ReadString(root, "nativeOpenALPath"));
+            var nativeSdlPath = NativeLibraryPaths.TryNormalize(
+                ReadString(root, "nativeSdlPath"));
             var downloadChunkSizeKb = ReadInt(root, "downloadChunkSizeKb") ?? fallback.DownloadChunkSizeKb;
             if (downloadChunkSizeKb is < 128 or > 8192) downloadChunkSizeKb = fallback.DownloadChunkSizeKb;
             var downloadRangeThresholdKb =
@@ -206,6 +220,14 @@ public sealed class JsonAppSettingsStore
                 PreLoadCommand = preLoadCommand,
                 PreLaunchCommand = preLaunchCommand,
                 PostExitCommand = postExitCommand,
+                Maximized = maximized,
+                EnableGameMode = enableGameMode,
+                EnableMangoHud = enableMangoHud,
+                UseZink = useZink,
+                DeveloperMode = developerMode,
+                NativeGlfwPath = nativeGlfwPath,
+                NativeOpenALPath = nativeOpenAlPath,
+                NativeSdlPath = nativeSdlPath,
             };
         }
         catch (Exception exception) when (
@@ -277,6 +299,11 @@ public sealed class JsonAppSettingsStore
     {
         ArgumentNullException.ThrowIfNull(settings);
         var normalized = NormalizeRoots(settings.Roots);
+        // Defensive: the module validates these, but a direct caller must not
+        // be able to persist a relative path that would later be ignored.
+        var nativeGlfwPath = NativeLibraryPaths.TryNormalize(settings.NativeGlfwPath);
+        var nativeOpenAlPath = NativeLibraryPaths.TryNormalize(settings.NativeOpenALPath);
+        var nativeSdlPath = NativeLibraryPaths.TryNormalize(settings.NativeSdlPath);
         foreach (var root in normalized)
         {
             try
@@ -337,6 +364,28 @@ public sealed class JsonAppSettingsStore
             writer.WriteNumber("windowWidth", settings.WindowWidth);
             writer.WriteNumber("windowHeight", settings.WindowHeight);
             writer.WriteBoolean("fullscreen", settings.Fullscreen);
+            // Fullscreen wins at the document level as well: writing both true
+            // would only make the next load drop the maximized flag anyway.
+            writer.WriteBoolean("maximized", settings.Maximized && !settings.Fullscreen);
+            writer.WriteBoolean("enableGameMode", settings.EnableGameMode);
+            writer.WriteBoolean("enableMangoHud", settings.EnableMangoHud);
+            writer.WriteBoolean("useZink", settings.UseZink);
+            writer.WriteBoolean("developerMode", settings.DeveloperMode);
+            if (nativeGlfwPath is not null)
+            {
+                writer.WriteString("nativeGlfwPath", nativeGlfwPath);
+            }
+
+            if (nativeOpenAlPath is not null)
+            {
+                writer.WriteString("nativeOpenALPath", nativeOpenAlPath);
+            }
+
+            if (nativeSdlPath is not null)
+            {
+                writer.WriteString("nativeSdlPath", nativeSdlPath);
+            }
+
             writer.WriteNumber("downloadChunkSizeKb", settings.DownloadChunkSizeKb);
             writer.WriteNumber("downloadRangeThresholdKb", settings.DownloadRangeThresholdKb);
             writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
@@ -369,6 +418,10 @@ public sealed class JsonAppSettingsStore
         {
             InstancesRoot = normalized[0],
             InstancesRoots = normalized,
+            Maximized = settings.Maximized && !settings.Fullscreen,
+            NativeGlfwPath = nativeGlfwPath,
+            NativeOpenALPath = nativeOpenAlPath,
+            NativeSdlPath = nativeSdlPath,
         };
     }
 
@@ -484,4 +537,10 @@ public sealed class JsonAppSettingsStore
            element.ValueKind == JsonValueKind.String
             ? element.GetString()
             : null;
+
+    /// <summary>Missing or mistyped booleans fall back to <c>false</c>.</summary>
+    private static bool ReadBool(JsonElement root, string name)
+        => root.TryGetProperty(name, out var element) &&
+           element.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+           element.GetBoolean();
 }

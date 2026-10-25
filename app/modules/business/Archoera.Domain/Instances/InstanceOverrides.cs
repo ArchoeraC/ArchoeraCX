@@ -5,7 +5,8 @@ using Archoera.Domain.Settings;
 /// <summary>
 /// Per-instance launch overrides. Every field is optional: <c>null</c> means
 /// "follow the global settings document", so an instance only stores what the
-/// user actually changed.
+/// user actually changed. Developer mode and the native-library override
+/// paths are intentionally global only.
 /// </summary>
 /// <param name="MemoryMinMb">Minimum heap for this instance.</param>
 /// <param name="MemoryMaxMb">Maximum heap for this instance.</param>
@@ -39,6 +40,20 @@ using Archoera.Domain.Settings;
 /// Post-exit command override. Null inherits the global command; an empty
 /// string explicitly disables the global command for this instance.
 /// </param>
+/// <param name="Maximized">
+/// Maximized-window override. Null inherits the global value. Mutually
+/// exclusive with <paramref name="Fullscreen"/>; the module rejects a patch
+/// that makes both true.
+/// </param>
+/// <param name="EnableGameMode">
+/// Linux GameMode wrapper override. Null inherits the global value.
+/// </param>
+/// <param name="EnableMangoHud">
+/// Linux MangoHud environment override. Null inherits the global value.
+/// </param>
+/// <param name="UseZink">
+/// Linux Zink environment override. Null inherits the global value.
+/// </param>
 public sealed record InstanceOverrides(
     int? MemoryMinMb = null,
     int? MemoryMaxMb = null,
@@ -56,7 +71,11 @@ public sealed record InstanceOverrides(
     string? JoinWorldName = null,
     string? PreLoadCommand = null,
     string? PreLaunchCommand = null,
-    string? PostExitCommand = null)
+    string? PostExitCommand = null,
+    bool? Maximized = null,
+    bool? EnableGameMode = null,
+    bool? EnableMangoHud = null,
+    bool? UseZink = null)
 {
     /// <summary>Supported GC modes; mirrors the global settings validation.</summary>
     public static readonly string[] GcModes =
@@ -81,7 +100,11 @@ public sealed record InstanceOverrides(
         JoinWorldName is null &&
         PreLoadCommand is null &&
         PreLaunchCommand is null &&
-        PostExitCommand is null;
+        PostExitCommand is null &&
+        Maximized is null &&
+        EnableGameMode is null &&
+        EnableMangoHud is null &&
+        UseZink is null;
 
     /// <summary>
     /// Folds the overrides onto the global document. The result is what the
@@ -132,6 +155,18 @@ public sealed record InstanceOverrides(
             PreLoadCommand = ResolveCommand(PreLoadCommand, settings.PreLoadCommand),
             PreLaunchCommand = ResolveCommand(PreLaunchCommand, settings.PreLaunchCommand),
             PostExitCommand = ResolveCommand(PostExitCommand, settings.PostExitCommand),
+            // Performance/window switches fold like every other nullable field;
+            // this is the only place both layers are combined, so the launch
+            // builder never has to look at the instance record again.
+            Maximized = Maximized ?? settings.Maximized,
+            EnableGameMode = EnableGameMode ?? settings.EnableGameMode,
+            EnableMangoHud = EnableMangoHud ?? settings.EnableMangoHud,
+            UseZink = UseZink ?? settings.UseZink,
+            // Developer mode and its native-library paths are global only.
+            DeveloperMode = settings.DeveloperMode,
+            NativeGlfwPath = settings.NativeGlfwPath,
+            NativeOpenALPath = settings.NativeOpenALPath,
+            NativeSdlPath = settings.NativeSdlPath,
             // A pinned instance Java is always manual; otherwise keep global.
             JavaAuto = JavaPath is null ? settings.JavaAuto : false,
         };

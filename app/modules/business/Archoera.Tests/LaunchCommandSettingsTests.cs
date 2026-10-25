@@ -55,7 +55,9 @@ public sealed class LaunchCommandSettingsTests
             using var document = JsonDocument.Parse(
                 await File.ReadAllTextAsync(store.SettingsPathValue));
             var root = document.RootElement;
-            Assert.Equal(14, root.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(
+                AppSettings.CurrentSchemaVersion,
+                root.GetProperty("schemaVersion").GetInt32());
             Assert.Equal(
                 "/usr/bin/hook --phase load",
                 root.GetProperty("preLoadCommand").GetString());
@@ -190,7 +192,7 @@ public sealed class LaunchCommandSettingsTests
     }
 
     [Fact]
-    public async Task Schema_13_document_loads_without_commands_and_saves_schema_14()
+    public async Task Schema_13_document_loads_without_commands_and_saves_current_schema()
     {
         var directory = TempDirectory();
         try
@@ -214,7 +216,9 @@ public sealed class LaunchCommandSettingsTests
             await store.SaveAsync(loaded);
             using var document = JsonDocument.Parse(
                 await File.ReadAllTextAsync(store.SettingsPathValue));
-            Assert.Equal(14, document.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(
+                AppSettings.CurrentSchemaVersion,
+                document.RootElement.GetProperty("schemaVersion").GetInt32());
             Assert.False(document.RootElement.TryGetProperty("preLoadCommand", out _));
         }
         finally

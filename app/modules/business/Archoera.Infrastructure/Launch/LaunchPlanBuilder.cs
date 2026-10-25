@@ -279,6 +279,9 @@ internal static class LaunchPlanBuilder
             cores: cores > 0 ? cores : Environment.ProcessorCount);
 
         var platform = MojangPlatform.Current();
+        // Injected into the preset helpers so both platform branches stay
+        // testable; the launch itself always uses the real OS.
+        var linux = OperatingSystem.IsLinux();
         var classpath = BuildClasspath(version, paths, platform);
         var clientJar = FindClientJar(version, paths);
         classpath.Add(clientJar);
@@ -343,8 +346,11 @@ internal static class LaunchPlanBuilder
         }
 
         // Optimization flags go before the user's own arguments so a custom
-        // `-XX:` line still wins.
+        // `-XX:` line still wins. Native overrides sit between the two: they
+        // need to beat the defaults but remain overridable by an explicit
+        // user `-D`.
         jvm.AddRange(optimization.JvmArgs);
+        jvm.AddRange(NativeLibraryOverrides.BuildArguments(settings, linux));
         jvm.AddRange(customJvm);
 
         if (version.Arguments is { Jvm.Count: > 0 })
@@ -407,10 +413,20 @@ internal static class LaunchPlanBuilder
         AppendAutoJoin(game, instance, version, platform);
 
         // Wrapper tokens are parsed once here so the start info can place the
-        // Java path after them without re-splitting user text.
-        var wrapper = SplitUserArguments(settings.WrapperCommand, "wrapperCommand");
+        // Java path after them without re-splitting user text. GameMode is a
+        // prefix in front of a possibly user-provided wrapper.
+        var wrapper = LaunchPerformancePresets.ComposeWrapper(
+            SplitUserArguments(settings.WrapperCommand, "wrapperCommand"),
+            settings.EnableGameMode,
+            linux);
+        // Preset variables come before the user's environment on purpose: a
+        // user-provided MANGOHUD/GALLIUM value must win.
         var environment = LaunchEnvironmentRules.Merge(
             optimization.Environment,
+            LaunchPerformancePresets.BuildEnvironment(
+                settings.EnableMangoHud,
+                settings.UseZink,
+                linux),
             settings.Environment);
 
         jvm.Add(version.MainClass);

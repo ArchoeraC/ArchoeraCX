@@ -253,6 +253,10 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
         var windowWidth = current?.WindowWidth;
         var windowHeight = current?.WindowHeight;
         var fullscreen = current?.Fullscreen;
+        var maximized = current?.Maximized;
+        var enableGameMode = current?.EnableGameMode;
+        var enableMangoHud = current?.EnableMangoHud;
+        var useZink = current?.UseZink;
         var wrapperCommand = current?.WrapperCommand;
         IReadOnlyDictionary<string, string>? environment = current?.Environment;
         var joinServerOnLaunch = current?.JoinServerOnLaunch;
@@ -316,6 +320,26 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
             fullscreen = ReadOverrideBool(fullscreenElement, "fullscreen");
         }
 
+        if (patch.TryGetProperty("maximized", out var maximizedElement))
+        {
+            maximized = ReadOverrideBool(maximizedElement, "maximized");
+        }
+
+        if (patch.TryGetProperty("enableGameMode", out var gameModeElement))
+        {
+            enableGameMode = ReadOverrideBool(gameModeElement, "enableGameMode");
+        }
+
+        if (patch.TryGetProperty("enableMangoHud", out var mangoHudElement))
+        {
+            enableMangoHud = ReadOverrideBool(mangoHudElement, "enableMangoHud");
+        }
+
+        if (patch.TryGetProperty("useZink", out var zinkElement))
+        {
+            useZink = ReadOverrideBool(zinkElement, "useZink");
+        }
+
         if (patch.TryGetProperty("wrapperCommand", out var wrapperElement))
         {
             var raw = ReadOverrideString(wrapperElement, "wrapperCommand");
@@ -370,6 +394,15 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
             throw new ArgumentException("memoryMinMb must be <= memoryMaxMb");
         }
 
+        // Fullscreen and maximized are alternative window modes. Validate the
+        // merged object so a patch that only sets one side cannot conflict with
+        // an already stored value on the other side.
+        if (fullscreen == true && maximized == true)
+        {
+            throw new ArgumentException(
+                "fullscreen and maximized cannot both be enabled");
+        }
+
         InstanceJoinRules.ValidateTarget(
             joinServerOnLaunch,
             joinServerAddress,
@@ -386,23 +419,27 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
         }
 
         var merged = new InstanceOverrides(
-            memoryMin,
-            memoryMax,
-            jvmArgs,
-            gcMode,
-            gameArgs,
-            javaPath,
-            windowWidth,
-            windowHeight,
-            fullscreen,
-            wrapperCommand,
-            environment,
-            joinServerOnLaunch,
-            joinServerAddress,
-            joinWorldName,
-            preLoadCommand,
-            preLaunchCommand,
-            postExitCommand);
+            MemoryMinMb: memoryMin,
+            MemoryMaxMb: memoryMax,
+            JvmArgs: jvmArgs,
+            GcMode: gcMode,
+            GameArgs: gameArgs,
+            JavaPath: javaPath,
+            WindowWidth: windowWidth,
+            WindowHeight: windowHeight,
+            Fullscreen: fullscreen,
+            WrapperCommand: wrapperCommand,
+            Environment: environment,
+            JoinServerOnLaunch: joinServerOnLaunch,
+            JoinServerAddress: joinServerAddress,
+            JoinWorldName: joinWorldName,
+            PreLoadCommand: preLoadCommand,
+            PreLaunchCommand: preLaunchCommand,
+            PostExitCommand: postExitCommand,
+            Maximized: maximized,
+            EnableGameMode: enableGameMode,
+            EnableMangoHud: enableMangoHud,
+            UseZink: useZink);
         return merged.IsEmpty ? null : merged;
     }
 

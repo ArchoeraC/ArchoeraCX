@@ -61,6 +61,47 @@ namespace Archoera.Domain.Settings;
 /// failure is logged and never blocks or crashes the launcher. Empty or
 /// whitespace means no command.
 /// </param>
+/// <param name="Maximized">
+/// Starts the game in a maximized desktop window. The UI stores the primary
+/// display size in <paramref name="WindowWidth"/> / <paramref name="WindowHeight"/>
+/// so the game receives real numbers. Mutually exclusive with
+/// <paramref name="Fullscreen"/>: the module rejects a document where both are
+/// true, and fullscreen wins if a hand-edited file still contains both.
+/// </param>
+/// <param name="EnableGameMode">
+/// Linux only. Prefixes the wrapper with <c>gamemoderun</c> (unless it is
+/// already the first wrapper token). Ignored entirely on other platforms.
+/// </param>
+/// <param name="EnableMangoHud">
+/// Linux only. Sets <c>MANGOHUD=1</c> in the child environment before the
+/// user's own environment, so an explicit user value still wins.
+/// </param>
+/// <param name="UseZink">
+/// Linux only. Sets <c>MESA_LOADER_DRIVER_OVERRIDE=zink</c> and
+/// <c>GALLIUM_DRIVER=zink</c> before the user's own environment.
+/// </param>
+/// <param name="DeveloperMode">
+/// Enables the advanced native-library overrides below. This is deliberately
+/// unrelated to the download/compliance "developer mode" consent switch: it
+/// only allows replacing the LWJGL GLFW/OpenAL/SDL native libraries on Linux.
+/// Off means the saved paths are ignored.
+/// </param>
+/// <param name="NativeGlfwPath">
+/// Absolute path of a GLFW native library used through
+/// <c>-Dorg.lwjgl.glfw.libname</c>. Applied only when
+/// <paramref name="DeveloperMode"/> is on, the OS is Linux and the file
+/// exists; invalid or missing paths are ignored at launch.
+/// </param>
+/// <param name="NativeOpenALPath">
+/// Absolute path of an OpenAL native library used through
+/// <c>-Dorg.lwjgl.openal.libname</c>. Same gating as
+/// <paramref name="NativeGlfwPath"/>.
+/// </param>
+/// <param name="NativeSdlPath">
+/// Absolute path of an SDL native library used through
+/// <c>-Dorg.lwjgl.sdl.libname</c>. Same gating as
+/// <paramref name="NativeGlfwPath"/>.
+/// </param>
 public sealed record AppSettings(
     string InstancesRoot,
     string DataRoot,
@@ -91,10 +132,18 @@ public sealed record AppSettings(
     IReadOnlyDictionary<string, string>? Environment = null,
     string? PreLoadCommand = null,
     string? PreLaunchCommand = null,
-    string? PostExitCommand = null)
+    string? PostExitCommand = null,
+    bool Maximized = false,
+    bool EnableGameMode = false,
+    bool EnableMangoHud = false,
+    bool UseZink = false,
+    bool DeveloperMode = false,
+    string? NativeGlfwPath = null,
+    string? NativeOpenALPath = null,
+    string? NativeSdlPath = null)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 14;
+    public const int CurrentSchemaVersion = 15;
 
     /// <summary>Supported heap sizing modes.</summary>
     public static class MemoryModes
