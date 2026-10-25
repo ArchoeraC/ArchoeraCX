@@ -185,6 +185,7 @@
 - 共享 libraries/assets + 实例级 gameDir
 - Mods/资源包/光影扫描与启停（`.disabled`）
 - Modrinth 搜索/安装/更新（API v2）
+- CurseForge（**不支持**：在线接口与 zip 导入都需 API key）
 - `.mrpack` 导入/导出（CurseForge zip 导入不支持）
 - 依赖解析与冲突提示（仅提示，不做自动解决）
 - 文件 hash 去重（可选硬链接，失败降级为复制）

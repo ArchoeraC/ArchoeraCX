@@ -12,6 +12,7 @@
 | 3 | 兼容性**必须用 version 级 `loaders/game_versions`**，不能用项目级并集；并集是历史数据，会假阳性。 | [事实] Modrinth 文档；Iris 项目含 quilt，但并非每版本都有 |
 | 4 | 更新检查：Modrinth 用 `POST /version_files/update` 批量；CF 用 Murmur2 fingerprint + `latestFilesIndexes`。两者都不保证“最新=兼容”。 | [事实] 文档+实测 |
 | 5 | 搜索工程核心是**取消 + single-flight + TTL + 离线降级**；300ms 防抖只在 Dart 做一次。 | [推断] 交互/限流约束 |
+| 6 | **不支持 CurseForge**（`PROVIDER_UNAVAILABLE`）：在线接口与 zip 导入都需要 API key。 | [事实] 本项目决定 |
 | 7 | 本地搜索：实例/文件名用内存索引；Mod 描述可选 FTS5；日志不要默认建 FTS5。 | [事实] FTS5 实测见 §6 |
 
 ## 1. Modrinth API v2
@@ -126,6 +127,7 @@ facets 语法 `{type} {op} {value}`，`:` 等价 `=`，支持 `!= >= > <= <`。�
 
 ### 2.4 当前状态
 
+CurseForge 不支持（在线接口与 zip 导入都需要 API key）。`provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起请求。**[事实]**
 
 ## 3. 统一 DTO 设计
 
@@ -216,8 +218,9 @@ accept(project, target):
 |---|---|---|---|
 | `INVALID_ARGUMENT` | 400/参数校验 | 否 | 修正筛选 |
 | `NOT_FOUND` | 404/未知 hash | 否 | 空态 |
-| `RATE_LIMITED` | 429/CF 403 配额 | 是 | 倒计时+降级 |
-| `PROVIDER_UNAVAILABLE` | 5xx/DNS/TLS/超时 | 是 | 重试 |
+| `PROVIDER_AUTH` | 401/403（鉴权失败） | 否 | 配置提示 |
+| `RATE_LIMITED` | 429/403 配额 | 是 | 倒计时+降级 |
+| `PROVIDER_UNAVAILABLE` | 源未接入（CurseForge） | 否 | 提示不支持 |
 | `PAGINATION_LIMIT` | CF >10000 | 否 | 收窄筛选 |
 | `DISTRIBUTION_DENIED` | CF 作者禁转 | 否 | 去官网 |
 | `SCHEMA_UNSUPPORTED` | 未知枚举/缺必填 | 否 | 报错+日志 |

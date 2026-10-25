@@ -3099,6 +3099,7 @@ ArchoeraCX/
 - Java 探测等子进程必须显式设置有效 `WorkingDirectory`，避免子进程继承已删除的 CWD。
 - 数据目录仍优先使用 `ARCHOERACX_DATA_DIR`，否则按 Windows `%APPDATA%`、macOS `Application Support`、Linux XDG/`~/.local/share` 解析。
 
+**当前进度（2026-10-25）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 支持离线账户与在线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；页面切换：首页切换用旧页快照覆盖，其他页面之间上浮淡入，切回首页收回；快照等比绘制避免底栏高度变化导致形变；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表、全局 Mod 搜索、项目详情画廊与排序/分页；Mod/资源包/光影结果带图标，详情通过 `resource.project` 获取 Modrinth 画廊。实例创建与 Forge/NeoForge 安装弹窗通过 `loader.versions` 列出全部加载器版本，可选择旧版。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Authorization Code + PKCE（loopback）登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组，启动分区编辑游戏参数/命令/包装环境，高级分区集中编辑窗口、性能、Java/内存/GC/JVM 与原生库默认值，并展示系统总内存、可用内存和启动后预计占用；下载任务通过模块 ABI v2 上报进度，右上角任务中心可查看/取消；实例创建支持 `versions/` 版本隔离，原版下载优先官方源、失败回退 BMCLAPI，跨类型依赖按项目类型补全；发布版必须先存在已验证的微软账户，才允许添加/选择离线账户并启动；单一发行版按运行期 IP/系统地区判断，中国大陆网络默认返回 DISABLED，需手动配置 compliance.json 后重检解锁；真实 Entra client_id 已申请，Minecraft Services 审核材料已准备；在线启动已接入凭据刷新、accessToken/clientId/xuid/userType=msa。728 个 C# 测试、232 个 Flutter 测试（另 12 个跳过）通过；Fabric/Quilt 通过整合包流程以 profile JSON 安装，正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、凭据保险库已接入（crypto/file），CurseForge 不支持（`PROVIDER_UNAVAILABLE`：在线接口与 zip 导入都需要 API key）。
 
 **P1 完成定义**
 
@@ -3155,6 +3156,7 @@ ArchoeraCX/
 | # | 问题 | 影响 | 建议 |
 |---|---|---|---|
 | D3 | Windows/Linux ARM64 | 构建矩阵 | 先 x64；有需求再加 |
+| D4 | CurseForge | 合规/体验 | 已决定不支持（在线与 zip 导入都需要 API key） |
 | D5 | 遥测/崩溃上传 | 隐私/排障 | 默认关闭；opt-in；可预览 |
 | D6 | 自动更新默认开关 | 安全/体验 | 默认提示更新，不静默 |
 | D7 | Riverpod 版本升级/代码生成策略 | UI 维护 | 锁定大版本；PoC 通过后再启用代码生成 |

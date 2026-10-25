@@ -199,6 +199,7 @@ server-overrides/     # 仅服务端
 
 | 项 | 说明 |
 |---|---|
+| API | `https://api.curseforge.com/v1`（需要 API key；本项目不接入） |
 | 当前状态 | **不支持**：在线接口与 zip 导入都需要 API key，`provider=curseforge` 一律返回 `PROVIDER_UNAVAILABLE` |
 | 关键端点 | `/mods/search`、`/mods/{id}`、`/mods/{id}/files`、`/mods/{id}/files/{fileId}/download-url` |
 | 整合包 | zip 内 `manifest.json`：`minecraft.version`、`modLoaders[{id, primary}]`、`files[{projectID, fileID, required}]`、`overrides` |

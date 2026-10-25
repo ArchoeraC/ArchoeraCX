@@ -84,6 +84,7 @@ fork 仍然可以移除下载门控——但它必须继续以 AGPL 公开源码
 | Fabric / Quilt Meta | 否 | L1 允许 | 设置可识别 UA；遵守速率 |
 | Forge / NeoForge Maven | 否 | L1 允许 | 只取 installer/库；processors 需本地 Java |
 | Modrinth | 否 | L2（需确认） | UA、速率、CDN 直链、hash 校验 |
+| CurseForge | 是 | 不支持 | 在线与 zip 导入都需要 API key；不发起请求 |
 | Java Runtime | 否 | L1 允许 | Mojang runtime / Adoptium；不打包 Oracle |
 | authlib-injector | 否 | L2 | AGPL 独立分发，附源码链接 |
 | 启动器自更新 | 否 | 官方渠道 | 只信自己的签名通道 |
@@ -224,6 +225,7 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 - 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
 - 当前新仓库暂未启用 GitHub Actions；Workflow 草稿放在 `docs/ci-drafts/`，启用前不会自动构建或发布。
 - Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
+- CurseForge 当前**不支持**：在线接口与其整合包 zip 导入都依赖 API key。`resource.*`/`modpack.install` 对 `provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。
 - Release 附件应包含源码 tag、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。
 - 不发布带有未审核 Microsoft client ID 的公共构建；若审核未完成，发布说明必须明确在线登录/在线启动的不可用状态。
 
@@ -258,6 +260,7 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 
 ### 4.1 密钥
 
+- CurseForge 不支持，不接入。
 - Microsoft client ID 只在构建期注入；账户 token 的存储见 §2.7 与凭据保险库设计。
 
 ### 4.2 镜像

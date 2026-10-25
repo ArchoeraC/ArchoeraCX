@@ -2,10 +2,12 @@
 
 > 目标：把「从哪下、下什么、什么不能下、下完怎么验」写成一张可执行的源矩阵，并明确 C#（生产者）与 Rust（执行者）的边界。
 > 范围：原版、Forge/NeoForge、Fabric/Quilt、Modrinth、CurseForge、Java runtime、镜像，以及 Mod/光影/资源包的源选择。
+> 标记：**[事实]** 官方文档/源码/实测；**[推断]** 基于协议与实现的判断；**[未验证]** 需要真实样本/实机确认。
 > 说明：表格为压缩索引，未逐格重复标记；关键结论与风险项在正文/§7 标注。表格字段若来自官方文档或本次实测，按 [事实] 处理；带「可能/需确认」的按 [推断]/[未验证]。
 > 实测日期 **2026-10-21**。配套：[05-download-engine.md](05-download-engine.md)（Rust 执行器）、[06-modpack-install.md](06-modpack-install.md)（整合包）、[03-mod-search.md](03-mod-search.md)（搜索/更新）、[09-forge-generated-artifacts.md](09-forge-generated-artifacts.md)（生成物）。
 > 发行/合规策略以 [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md) 与 [`07-compliance-gate.md`](07-compliance-gate.md) 为准；本文只谈技术源与计划字段。
 >
+> **实现状态（2026-10-25）**：Rust `DownloadPlan` 执行器 MVP、C# `DownloadPlan` 契约、Modrinth provider、Mojang 原版计划、Forge/NeoForge installer/依赖计划、Mojang Java runtime 计划均已落地；CurseForge **不支持**（`PROVIDER_UNAVAILABLE`：在线接口与 zip 导入都需要 API key）；计划尚未提交到 Rust 执行器。
 
 ---
 
@@ -50,6 +52,7 @@
 | 源 | 端点 | 鉴权 | 下载什么 | 本地生成什么 | 哈希 | 限流/镜像 |
 |---|---|---|---|---|---|---|
 | **Modrinth** | `https://api.modrinth.com/v2/`；文件在 `cdn.modrinth.com`/白名单域名 | 无 key；**必须可识别 UA** | 项目/版本元数据、文件直链 | 本地 DTO/缓存/更新状态 | `sha1` + `sha512`；优先 SHA-512 | **300 req/min/IP**（含 token）；`X-Ratelimit-*`；429 + `Retry-After`；不镜像 |
+| **CurseForge** | `https://api.curseforge.com/v1/`；文件在 `edge.forgecdn.net` 等 | 需要 API key；无匿名 | 项目/文件元数据、`downloadUrl`/`download-url` | 本地 DTO/缓存；fingerprint | `sha1` + `md5`；作者禁转时可能无 URL | 官方未公布数值；社区反馈超限可能 403；不镜像 |
 | **BMCLAPI（镜像）** | `https://bmclapi2.bangbang93.com/` | 无 key | 仅镜像官方游戏/加载器文件 | 不生成 | **必须官方 hash** | 社区维护；遵守说明；失败回退官方；不镜像 Modrinth/CF 内容 |
 | **用户自定义镜像** | 用户填根地址 | 由用户配置 | 仅官方 artifact | 不生成 | 官方 hash 白名单 | 需白名单 + hash；不得用于 CF/Modrinth 内容 |
 
@@ -167,6 +170,7 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 | 项 | 规则 |
 |---|---|
 | 当前 | **不支持**；在线接口与 zip 导入都需要 API key |
+| API | `https://api.curseforge.com/v1/`；需要 API key，无匿名 |
 | 固定 id | `gameId=432`；`classId` 用 `/categories` 或项目详情校验 |
 | 搜索 | `/mods/search`；`gameVersion` + `modLoaderType`；`index+pageSize<=10000` |
 | 文件 | `/mods/{id}/files`；`/mods/{id}/files/{fileId}/download-url`；批量 `POST /mods` / `POST /mods/files` |
@@ -268,6 +272,7 @@ accept(version, target):
 
 ### 3.5 当前状态
 
+CurseForge **不支持**：在线接口与整合包 zip 导入都依赖 API key。`provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。`official-cn` L0 不注册内容 provider；`official-global` 默认 L1，L2 需确认。**[事实]**
 
 ### 3.6 源选择伪代码
 
