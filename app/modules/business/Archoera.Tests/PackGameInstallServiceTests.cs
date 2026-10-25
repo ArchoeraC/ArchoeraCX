@@ -280,7 +280,7 @@ public sealed class PackGameInstallServiceTests
 
             var outcome = await service.RepairForgeInstanceAsync(
                 instance,
-                "/tmp/fake-java");
+                Path.Combine(Path.GetTempPath(), "fake-java"));
 
             Assert.Equal("1.20.1-forge-47.2.0", outcome.VersionId);
             Assert.Equal(1, runner.Calls);

@@ -135,8 +135,8 @@ mod tests {
 
     #[test]
     fn part_path_is_sibling() {
-        let dest = Path::new("/tmp/root/mods/a.jar");
-        assert_eq!(part_path(dest), Path::new("/tmp/root/mods/a.jar.part"));
+        let dest = Path::new("root/mods/a.jar");
+        assert_eq!(part_path(dest), Path::new("root/mods/a.jar.part"));
     }
 
     #[test]

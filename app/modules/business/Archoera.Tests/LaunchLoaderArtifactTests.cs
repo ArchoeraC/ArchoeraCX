@@ -167,7 +167,7 @@ public sealed class LaunchLoaderArtifactTests
             gameVersion,
             loader,
             loaderVersion,
-            "/tmp/instance",
+            Path.Combine(Path.GetTempPath(), "instance"),
             0,
             false,
             DateTimeOffset.UtcNow,

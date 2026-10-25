@@ -239,7 +239,8 @@ public sealed class DownloadPlanTests
     [Fact]
     public void Accepts_a_socks5_proxy()
     {
-        var plan = new DownloadPlanBuilder("/tmp/archoera-plan")
+        var plan = new DownloadPlanBuilder(
+            Path.Combine(Path.GetTempPath(), "archoera-plan"))
             .WithOptions(DownloadPlanOptions.Default with
             {
                 Proxy = new DownloadProxyOptions("socks5h://127.0.0.1:7890", []),
