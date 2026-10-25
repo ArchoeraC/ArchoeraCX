@@ -850,7 +850,7 @@ async fn resumes_only_the_missing_chunks() {
     }
     std::fs::write(&part, &partial).expect("write part");
     let meta = format!(
-        r#"{{"schemaVersion":1,"size":{size},"hashAlgo":"sha1","hashHex":"{hash}",
+        r#"{{"schemaVersion":2,"size":{size},"hashAlgo":"sha1","hashHex":"{hash}",
             "chunkSize":{chunk},"completed":[0,1]}}"#,
         size = body.len(),
         hash = sha1_hex(&body),
@@ -901,7 +901,7 @@ async fn a_changed_validator_restarts_as_one_stream() {
     std::fs::write(temp.path().join("changed.bin.part"), vec![0_u8; body.len()])
         .expect("write part");
     let meta = format!(
-        r#"{{"schemaVersion":1,"size":{size},"hashAlgo":"sha1","hashHex":"{hash}",
+        r#"{{"schemaVersion":2,"size":{size},"hashAlgo":"sha1","hashHex":"{hash}",
             "chunkSize":{chunk},"etag":"\"old\"","completed":[0]}}"#,
         size = body.len(),
         hash = sha1_hex(&body),

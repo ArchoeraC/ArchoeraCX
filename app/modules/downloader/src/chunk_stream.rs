@@ -17,7 +17,7 @@ use crate::plan::{ValidatedFile, effective_chunk_size};
 use crate::progress::FileMeter;
 use crate::protocol::HttpVersion;
 use crate::resume::{
-    ChunkOutcome, ResumeMeta, RESUME_SCHEMA, content_range_matches, if_range_value, load_resume,
+    ChunkOutcome, RESUME_SCHEMA, ResumeMeta, content_range_matches, if_range_value, load_resume,
     remove_resume, save_resume,
 };
 use crate::single_stream::commit_part;
@@ -44,6 +44,49 @@ enum FetchOutcome {
 /// large file can use several streams without exceeding either limit. Every
 /// chunk is verified by its `Content-Range`; a server that ignores Range (or a
 /// changed validator) switches the whole file back to a single GET.
+///
+/// The final range is split when it is large enough, so the last few hundred
+/// KiB still use several connections instead of dropping to one at the end.
+/// The split count is stored in the resume sidecar and reconstructed on resume.
+const TAIL_SPLIT_PARTS: u32 = 8;
+const TAIL_SPLIT_MIN_BYTES: u64 = 512 * 1024;
+
+/// Build the ranges for one file, optionally splitting the last configured
+/// range into several smaller requests. The split count is limited so a
+/// hostile/corrupt sidecar cannot create an unbounded task list.
+fn build_ranges(size: u64, chunk: u64, tail_parts: u32) -> (Vec<(u64, u64)>, u32) {
+    let mut ranges = Vec::new();
+    let mut start = 0_u64;
+    while start < size {
+        let end = start.saturating_add(chunk - 1).min(size - 1);
+        ranges.push((start, end));
+        start = end + 1;
+    }
+
+    let parts = tail_parts.min(TAIL_SPLIT_PARTS) as u64;
+    if parts < 2 || ranges.len() < 2 {
+        return (ranges, 0);
+    }
+
+    let (start, end) = *ranges.last().expect("ranges is non-empty");
+    let total = end - start + 1;
+    if total < TAIL_SPLIT_MIN_BYTES {
+        return (ranges, 0);
+    }
+
+    let piece = total.div_ceil(parts);
+    ranges.pop();
+    let first_split = ranges.len();
+    let mut next = start;
+    while next <= end {
+        let last = next.saturating_add(piece - 1).min(end);
+        ranges.push((next, last));
+        next = last + 1;
+    }
+    let split_count = (ranges.len() - first_split) as u32;
+    (ranges, split_count)
+}
+
 pub(crate) async fn download_chunked(
     engine: Arc<Engine>,
     file: &ValidatedFile,
@@ -52,18 +95,19 @@ pub(crate) async fn download_chunked(
     meter: Arc<FileMeter>,
 ) -> Result<ChunkOutcome, SourceFailure> {
     let chunk = effective_chunk_size(engine.options.chunk_size, file.size);
-    let mut ranges: Vec<(u64, u64)> = Vec::new();
-    let mut start = 0_u64;
-    while start < file.size {
-        let end = start.saturating_add(chunk - 1).min(file.size - 1);
-        ranges.push((start, end));
-        start = end + 1;
-    }
+    let resumed = load_resume(part, file, chunk).await;
+    let (ranges, tail_parts) = build_ranges(
+        file.size,
+        chunk,
+        resumed
+            .as_ref()
+            .map(|meta| meta.tail_parts)
+            .unwrap_or(TAIL_SPLIT_PARTS),
+    );
     if ranges.len() < 2 {
         return Ok(ChunkOutcome::Unsupported);
     }
 
-    let resumed = load_resume(part, file, chunk).await;
     let mut completed: BTreeSet<u32> = resumed
         .as_ref()
         .map(|meta| {
@@ -81,6 +125,7 @@ pub(crate) async fn download_chunked(
         hash_algo: file.algorithm.name().to_owned(),
         hash_hex: file.hash_hex.clone(),
         chunk_size: chunk,
+        tail_parts,
         etag: resumed.as_ref().and_then(|meta| meta.etag.clone()),
         last_modified: resumed.as_ref().and_then(|meta| meta.last_modified.clone()),
         completed: completed.iter().copied().collect(),
@@ -113,8 +158,13 @@ pub(crate) async fn download_chunked(
     // must not send it (an unquoted ETag from some CDNs would make the server
     // answer 200 and needlessly drop chunking). Recomputed after the probe:
     // a fresh download may have discovered the validator by then.
-    let compute_if_range =
-        |meta: &ResumeMeta| if resumed.is_some() { if_range_value(meta) } else { None };
+    let compute_if_range = |meta: &ResumeMeta| {
+        if resumed.is_some() {
+            if_range_value(meta)
+        } else {
+            None
+        }
+    };
 
     // Probe with the first missing chunk: starts the transfer and tells us
     // whether the server still honours Range for this validator.
@@ -312,11 +362,8 @@ async fn fetch_range(
         Ok(target) => target,
         Err(err) => return Err(SourceFailure::instant(err)),
     };
-    if let Err(err) = tokio::io::AsyncSeekExt::seek(
-        &mut target,
-        std::io::SeekFrom::Start(start),
-    )
-    .await
+    if let Err(err) =
+        tokio::io::AsyncSeekExt::seek(&mut target, std::io::SeekFrom::Start(start)).await
     {
         return Err(SourceFailure::instant(err));
     }
@@ -337,4 +384,37 @@ async fn fetch_range(
         etag,
         last_modified,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn final_range_is_split_into_parallel_tail_pieces() {
+        let size = 10 * 1024 * 1024;
+        let chunk = 4 * 1024 * 1024;
+        let (ranges, tail_parts) = build_ranges(size, chunk, TAIL_SPLIT_PARTS);
+
+        assert_eq!(tail_parts, TAIL_SPLIT_PARTS);
+        assert_eq!(ranges.len(), 10);
+        assert_eq!(ranges[0], (0, chunk - 1));
+        assert_eq!(ranges[1], (chunk, 2 * chunk - 1));
+        assert_eq!(ranges.last().copied().unwrap().1, size - 1);
+        for pair in ranges.windows(2) {
+            assert_eq!(pair[0].1 + 1, pair[1].0);
+        }
+    }
+
+    #[test]
+    fn small_or_disabled_tails_are_not_split() {
+        let chunk = 4 * 1024 * 1024;
+        let (ranges, tail_parts) = build_ranges(8 * 1024 * 1024 + 256 * 1024, chunk, 8);
+        assert_eq!(tail_parts, 0);
+        assert_eq!(ranges.len(), 3);
+
+        let (ranges, tail_parts) = build_ranges(32 * 1024 * 1024, chunk, 0);
+        assert_eq!(tail_parts, 0);
+        assert_eq!(ranges.len(), 8);
+    }
 }

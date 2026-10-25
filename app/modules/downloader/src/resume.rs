@@ -25,6 +25,10 @@ pub(crate) struct ResumeMeta {
     pub(crate) hash_algo: String,
     pub(crate) hash_hex: String,
     pub(crate) chunk_size: u64,
+    /// Number of pieces the final configured range was split into; 0 means no
+    /// split (older sidecars or files without a usable tail).
+    #[serde(default)]
+    pub(crate) tail_parts: u32,
     #[serde(default)]
     pub(crate) etag: Option<String>,
     #[serde(default)]
@@ -33,7 +37,7 @@ pub(crate) struct ResumeMeta {
     pub(crate) completed: Vec<u32>,
 }
 
-pub(crate) const RESUME_SCHEMA: u32 = 1;
+pub(crate) const RESUME_SCHEMA: u32 = 2;
 /// A sidecar with more than this is corrupt or hostile; ignore it and restart
 /// instead of reading an unbounded file into memory.
 const MAX_RESUME_META_BYTES: u64 = 64 * 1024;
@@ -53,6 +57,7 @@ pub(crate) async fn load_resume(
     if meta.schema_version != RESUME_SCHEMA
         || meta.size != file.size
         || meta.chunk_size != chunk_size
+        || meta.tail_parts > 16
         || meta.hash_algo != file.algorithm.name()
         || !meta.hash_hex.eq_ignore_ascii_case(&file.hash_hex)
     {
@@ -105,10 +110,7 @@ pub(crate) fn if_range_value(meta: &ResumeMeta) -> Option<String> {
     // fall back to Last-Modified.
     let strong = meta.etag.as_deref().filter(|etag| {
         let etag = etag.trim();
-        etag.len() >= 2
-            && etag.starts_with('"')
-            && etag.ends_with('"')
-            && !etag.starts_with("W/")
+        etag.len() >= 2 && etag.starts_with('"') && etag.ends_with('"') && !etag.starts_with("W/")
     });
     strong
         .map(|etag| etag.trim().to_owned())
