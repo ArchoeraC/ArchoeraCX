@@ -111,6 +111,7 @@
 - 移动端、Web 端、多窗口 IDE 式布局。
 - 云同步、社交、启动器内广告联盟、遥测默认开启。
 - Mac App Store（AGPL 与 DRM/附加限制冲突）。
+- 自建游戏文件镜像、绕过平台 API 的抓取。
 - 在启动器内执行任意用户脚本/宏。
 
 ### 1.5 架构原则
@@ -195,7 +196,7 @@
 | Microsoft Entra / Xbox Live / Minecraft Services | 正版登录、档案、拥有验证 | OAuth 2.0 device code + HTTPS |
 | Fabric / Quilt Meta | 加载器 profile | HTTPS |
 | Forge / NeoForge Maven | installer、库、processor 产物 | HTTPS |
-| Modrinth / CurseForge | 搜索、详情、版本、下载 | HTTPS API |
+| Modrinth | 搜索、详情、版本、下载 | HTTPS API |
 | 本地 JVM | 运行游戏、Forge/NeoForge processors | 子进程 + argv/stdout/stderr |
 | authlib-injector | 第三方认证（Yggdrasil） | `-javaagent` 注入游戏 JVM |
 | OS | 文件、注册表、凭据库、窗口、托盘、签名 | 平台 API |
@@ -1260,7 +1261,7 @@ JavaLocator
 
 ### 8.9 资源搜索与更新
 
-- `IResourceProvider`：Modrinth / CurseForge；统一 DTO，UI 不感知来源。
+- `IResourceProvider`：Modrinth；统一 DTO，UI 不感知来源。
 - 兼容性按 **version 级** `loaders/game_versions` 精确过滤；项目级字段只用于 facets/展示。
 - 缓存：搜索 60s、详情 10min、版本 5min、标签 24h；ETag/If-None-Match；single-flight。
 - 离线：最近 50 个搜索 key×首页 + 500 个详情，LRU 20MB；返回 `stale/cachedAt`。
@@ -1282,7 +1283,7 @@ JavaLocator
 - 下载：Rust；解压/后处理/事务：C#（见 `08/06-modpack-install.md`）。
 - 安全：Zip Slip、保留名、ADS、大小写冲突、symlink、zip bomb 全部显式拒绝。
 - 事务：staging → journal → 原子提交；失败回滚；删除的旧文件进 `.archoera/removed` 保留 30 天。
-- 导出：`.mrpack`/CF zip/MultiMC；默认排除日志、崩溃、缓存、账户文件。
+- 导出：`.mrpack`/MultiMC；默认排除日志、崩溃、缓存、账户文件。
 
 ### 8.12 崩溃分析
 
@@ -1314,6 +1315,7 @@ JavaLocator
 - `config.json`：应用设置（主题、语言、下载限速、代理、Java 路径、日志级别）。
 - `settings` 表：内部/可查询设置；与 `config.json` 的权威关系：用户可编辑项以 `config.json` 为准，运行态以 DB 为准。
 - 凭据：Windows Credential Manager/DPAPI、macOS Keychain、Linux libsecret；无可用后端时 Windows 用 DPAPI 加密文件、Unix 用 0600 文件，并明确警告。
+- CurseForge：**当前不支持**（`PROVIDER_UNAVAILABLE`）。
 
 ### 8.16 AOT 约束清单
 
@@ -2370,6 +2372,7 @@ public interface IDownloadProvider {
 ```
 
 - Provider 注册表由发行通道决定；`official-cn` 在 DI 阶段不注册 L2 provider。
+- CurseForge：当前不支持（`PROVIDER_UNAVAILABLE`），不进入 Provider 注册表。
 - Modrinth/CF 的字段差异在 Provider 内映射；UI 只消费统一 DTO。
 - 源矩阵、依赖解析、失败码和“官方文件 vs 内容平台 vs 本地生成物”的边界见 [08/10-download-sources.md](08-technical-research/10-download-sources.md)。
 
@@ -2658,6 +2661,7 @@ public interface IDownloadProvider {
 | Forge | `https://maven.minecraftforge.net/` | installer/库 |
 | NeoForge | `https://maven.neoforged.net/releases/` | 版本号规则不同 |
 | Modrinth | `https://api.modrinth.com/v2/` | UA + 限流 |
+| CurseForge | `https://api.curseforge.com/v1/` | 当前不支持 |
 | BMCLAPI | `https://bmclapi2.bangbang93.com/` | 白名单镜像；失败回退官方 |
 | Adoptium | `https://api.adoptium.net/v3/` | 可选 Java 源 |
 | 启动器更新（Release 检查） | `https://api.github.com/repos/BetaStudio2/ArchoeraCX/releases/latest` | `Accept: application/vnd.github+json` + UA；10s 超时；只读 |
@@ -2712,6 +2716,7 @@ public interface IDownloadProvider {
 
 ### 14.3 密钥与凭据
 
+- 微软 refresh token、第三方认证 token：`archoera-vault` 凭据保险库；DB/元数据只存引用。
 - 保险库优先使用 OS 安全存储（DPAPI / Keychain / libsecret）；无桌面钥匙串时降级到 0600 `secret.key` 的 encrypted-file 模式，不写明文。
 - 旧 `accounts.credentials.json` 首次访问时迁移到保险库并删除；不把密钥写进 `config.json` 或日志。
 - 日志脱敏顺序：Bearer/Authorization → token 字段 → 邮箱 → UUID → 路径 → IP。

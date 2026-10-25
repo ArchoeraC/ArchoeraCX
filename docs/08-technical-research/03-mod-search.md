@@ -1,12 +1,13 @@
 # 03 · 模组 / 整合包 / 资源包搜索与元数据接入
 
 > 面向 C# 统一 API 层（`resource.*`）的可执行设计，不是 API 抄本。
-> 标注：**[事实]** 官方文档或本次实测；**[推断]** 由行为/生态推导；**[未验证]** 需 key/更多样本。实测时间 2026-10-20，基址 `https://api.modrinth.com/v2`、`https://api.curseforge.com/v1`。
+> 标注：**[事实]** 官方文档或本次实测；**[推断]** 由行为/生态推导；**[未验证]** 需更多样本。实测时间 2026-10-20，基址 `https://api.modrinth.com/v2`、`https://api.curseforge.com/v1`。
 
 ## 0. 结论先行
 
 | # | 结论 | 依据 |
 |---|---|---|
+| 1 | **Modrinth 是唯一内容源，CurseForge 不支持**。前者无鉴权、文档全、支持 sha1 批量反查。 | [事实] 文档+实测；本项目决定 |
 | 2 | UI 只认统一 DTO；provider 差异在 C# 消化，Dart 不拼 facet、不解析 CF 枚举。 | [事实] 架构 02 §3.5 |
 | 3 | 兼容性**必须用 version 级 `loaders/game_versions`**，不能用项目级并集；并集是历史数据，会假阳性。 | [事实] Modrinth 文档；Iris 项目含 quilt，但并非每版本都有 |
 | 4 | 更新检查：Modrinth 用 `POST /version_files/update` 批量；CF 用 Murmur2 fingerprint + `latestFilesIndexes`。两者都不保证“最新=兼容”。 | [事实] 文档+实测 |
@@ -75,6 +76,7 @@ facets 语法 `{type} {op} {value}`，`:` 等价 `=`，支持 `!= >= > <= <`。�
 
 ### 2.1 鉴权与固定 id
 
+- 所有请求需要 API key，**无 OAuth/匿名模式**。**[事实]**
 - `gameId=432` 是 Minecraft；启动时可用 `GET /v1/games` 校验。**[事实/通行值]**
 - `classId` 官方没有枚举表，下表是社区通行值；**必须用 `GET /v1/mods/{id}` 的 `classId` 或 `/v1/categories?gameId=432&classesOnly=true` 运行时校验**：
 
@@ -122,7 +124,7 @@ facets 语法 `{type} {op} {value}`，`:` 等价 `=`，支持 `!= >= > <= <`。�
 ```
 安装规则：`minecraft.version` + `modLoaders[].id`（`<loader>-<version>`，取 `primary:true`）决定实例；`files[]` 必须按 `(projectID,fileID)` **精确**解析，禁止“找不到就装最新”；`required:false` 可跳过并提示；`overrides`（缺省 `overrides`）解压前做 Zip Slip 校验（拒绝绝对路径、`..`、symlink）；`manifestVersion` 只接受 1。`isLocked` 语义未文档化，原样保留、不据此做安全判断。**[事实/推断]**
 
-### 2.4 key 的约束与泄露风险
+### 2.4 当前状态
 
 
 ## 3. 统一 DTO 设计
@@ -314,10 +316,12 @@ public interface IResourceService
 - 取消/single-flight/缓存：连续输入 10 次仅最后一次存活，旧 task 不写缓存；同 key 并发 5 次只发 1 个 HTTP，全取消才取消底层；TTL 过期刷新、304 只更新 fetched_at、ETag 缺失正常回退、离线有/无缓存两条路径。
 - 兼容性：项目级并集但版本不兼容；`1.21` vs `1.21.1`；shader iris/optifine；resourcepack `minecraft`。
 - 更新/整合包：未知 hash、改过的 jar、无兼容构建、CF `downloadUrl=null`、beta 关闭不选 beta；文件被删、`required:false`、overrides 含 `../`/绝对路径/symlink、manifestVersion 未知。
+- 错误/AOT：429 `Retry-After`；Release 下 `JsonSerializerContext` 覆盖全部 DTO、无反射告警。
 
 ## 10. 来源与待验证
 
 - Modrinth 搜索/facets/分页：https://docs.modrinth.com/api/operations/searchprojects/ ；批量 hash：https://docs.modrinth.com/api/operations/versionsfromhashes/ ；单文件更新：https://docs.modrinth.com/api/operations/getlatestversionfromhash/ ；限流/UA：https://docs.modrinth.com/api/#ratelimits
+- CurseForge REST 与分页：https://docs.curseforge.com/rest-api/
 - CF manifest 实例：https://github.com/Fabulously-Optimized/fabulously-optimized/blob/main/CurseForge/manifest.json ；fingerprint（社区）：https://docs.rs/furse/latest/furse/fn.cf_fingerprint.html
 - SQLite FTS5/trigram：https://www.sqlite.org/fts5.html#the_trigram_tokenizer
 - **待验证**：CF classId 6945/17/5；CF 真实速率限制与 403 语义；CF `downloadUrl=null` 服务端行为；.NET 目标包 FTS5 编译选项；Modrinth 批量 hash 官方上限；`pack_format` 与游戏版本映射。

@@ -14,9 +14,12 @@
 | # | 结论 | 依据 |
 |---|---|---|
 | 1 | **源分三类：官方必需（Mojang/加载器/Java）、内容平台（Modrinth/CF）、用户提供（本地文件/JDK/账户）**。三类的默认等级、鉴权、镜像策略完全不同。 | [事实] 09 政策、06 生态接口 |
+| 2 | **Modrinth 是唯一内容源，CurseForge 不支持**。Modrinth 无鉴权、有 SHA-512/直链/批量 hash 反查。 | [事实] 03 §0–§2；本项目决定 |
 | 3 | **`DownloadPlan` 只描述「远端字节 → 本地文件」**。生成物（Forge `-client.jar`、`client-extra`、mappings）绝不进入下载计划；它们属于 loader 安装事务。 | [推断] 05 §1、09 §3 |
 | 4 | **每个文件必须带 hash 和 size**；镜像只提供字节，不提供信任。镜像 hash 不匹配直接丢弃并回退官方。 | [事实] 05 §3、09 政策 §4.2 |
 | 5 | **协议 JSON 没有 hash 的（Fabric/Quilt profile）不能当不可变文件**；按 TTL/ETag 缓存，合并结果由 C# 记录来源与抓取时间。 | [事实] 02 §1、06 §4；[推断] 缓存策略 |
+| 6 | **失败要分类**：403 可能是鉴权、配额、签名 URL 过期或作者禁转；429 才是明确限流；`DISTRIBUTION_DENIED` 不可重试、不可换第三方镜像。 | [事实] 03 §2.4 |
+| 7 | **CurseForge 不支持**（`PROVIDER_UNAVAILABLE`）；`official-cn` L0 不提供内容下载。 | [事实] 03 §2.4、09 政策 §4.1 |
 | 8 | **Java runtime 不只一个 URL**：Mojang `all.json` 按平台/组件给 manifest，再按文件下载；必须校验每文件 SHA-1/size，保留 executable 位。 | [事实] 本次实测 `all.json` + `java-runtime-delta` manifest |
 
 **一句话**：下载源不是 URL 列表，而是「来源 + 鉴权 + 哈希 + 条款 + 失败语义」的组合；Rust 只执行，C# 负责选择与解释。
@@ -61,6 +64,7 @@
 | Fabric/Quilt | profile JSON、loader 库 | 合并后的有效版本 | 无 |
 | Mod/资源包/光影 | 平台元数据 + 文件 | 本地扫描/依赖状态/更新状态 | 本地导入的文件、配置 |
 | Java | Mojang runtime 或 Adoptium | 解压/托管目录/版本探测 | 用户指定 JDK |
+| CurseForge | —（不支持） | — | — |
 
 ---
 
@@ -162,11 +166,13 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 
 | 项 | 规则 |
 |---|---|
+| 当前 | **不支持**；在线接口与 zip 导入都需要 API key |
 | 固定 id | `gameId=432`；`classId` 用 `/categories` 或项目详情校验 |
 | 搜索 | `/mods/search`；`gameVersion` + `modLoaderType`；`index+pageSize<=10000` |
 | 文件 | `/mods/{id}/files`；`/mods/{id}/files/{fileId}/download-url`；批量 `POST /mods` / `POST /mods/files` |
 | 文件字段 | `fileName/fileLength/hashes[]`（sha1/md5）/`downloadUrl/gameVersions/sortableGameVersions/dependencies/fileFingerprint/isAvailable` |
 | 分发 | `allowModDistribution=false` 时下载 URL 可能为 null；`/download-url` 也可能拿不到 |
+| 限流 | 官方未公布；社区反馈超限可能 **403**（不是 429） |
 | 镜像 | **不镜像**；不拼接第三方 URL；作者禁转就引导官网 |
 
 - `gameVersions` 把游戏版本与 loader 名混在一起；判断 loader 用 `sortableGameVersions[].gameVersionTypeId` 或已知名单。**[事实]**
@@ -194,9 +200,11 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 
 ```
 默认：Modrinth
+补充：无（CurseForge 不支持）
 不默认：第三方聚合站/网盘/论坛附件
 ```
 
+理由：Modrinth 无鉴权、直链、双哈希、批量反查/更新；CurseForge 不支持。**[事实]** 03 §0。
 
 | 维度 | Modrinth | CurseForge |
 |---|---|---|
@@ -213,8 +221,8 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 
 1. 用户在实例/项目上显式选择的 provider 优先。
 2. 用统一 DTO 搜索 Modrinth；命中且版本级兼容 → 选 Modrinth。
-4. 两边都有：按 `(sha1|sha512)` 去重；优先用户选择/下载量更高/更新更近；**不要**把两个文件都装进 `mods/`。
-5. 不允许「找不到指定版本就装最新」；必须锁定 `(provider, projectId, versionId/fileId)`。
+3. 未命中/不兼容 → `NO_COMPATIBLE_BUILD`（CurseForge 不支持）。
+4. 不允许「找不到指定版本就装最新」；必须锁定 `(provider, projectId, versionId/fileId)`。
 
 ### 3.2 版本级兼容
 
@@ -258,11 +266,8 @@ accept(version, target):
 - 更新前展示 changelog、目标 loader/gameVersion、文件 hash；更新后重新校验并更新 `managed.json`。**[推断]**
 - `DistributionDenied` 不重试、不换源；让用户去官网手动下载。**[事实/推断]**
 
+### 3.5 当前状态
 
-| 方案 | 可行性 | 风险 | 建议 |
-|---|---|---|---|
-
-- `official-cn` L0 不注册 L2 provider；`official-global` 默认 L1，L2 需确认。**[事实]** 09 政策。
 
 ### 3.6 源选择伪代码
 
@@ -270,6 +275,7 @@ accept(version, target):
 resolve(request):
   target = {gameVersion, loader, loaderVersion, side, shaderLoader}
   candidates = []
+  for provider in request.providers or [modrinth]:
       hits = search(provider, request, target)
       for h in hits:
           versions = get_versions(provider, h, target)
@@ -470,6 +476,7 @@ Rust archoera_dl
 | 4 | 镜像全部错误 | `HASH_MISMATCH`；结果含每源实际 hash；不破坏已有 dest |
 | 5 | 429 + `Retry-After` 秒/HTTP-date | 等待后重试；超过 120s 冷却换源 |
 | 6 | 403 + 签名 URL 过期 | `URL_EXPIRED`；C# 重新解析；不循环重试 |
+| 7 | `provider=curseforge`（搜索/下载/zip 导入） | `PROVIDER_UNAVAILABLE`；不发请求 |
 | 8 | CF `downloadUrl=null` / 禁转 | `DISTRIBUTION_DENIED`；无第三方镜像请求 |
 | 9 | Modrinth `hashes.sha512` 与下载字节不符 | 换源/失败；不降级为 SHA-1 蒙混 |
 | 10 | Fabric profile JSON 无 hash | 读取 Maven `.sha1` sidecar 与 `Content-Length` 后进入计划；计划仍要求 hash |
@@ -500,6 +507,7 @@ Rust archoera_dl
 
 - `DownloadPlan` 中 0 个生成物、0 个空 URL、0 个缺 hash/size 的文件。**[推断]**
 - 所有镜像命中都按官方 hash 校验；失败不写 dest。**[事实]** 05 §3。
+- `provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。**[事实]**
 - 失败码可区分 `DISTRIBUTION_DENIED`/`PROVIDER_AUTH`/`RATE_LIMITED`/`URL_EXPIRED`/`HASH_MISMATCH`。**[推断]**
 - 更新检查不自动改用户文件；先展示、后确认。**[推断]**
 
@@ -507,18 +515,18 @@ Rust archoera_dl
 
 ## 7. 未验证 / 开放问题
 
-2. **CF `/download-url` 的 URL 有效期**：签名过期时间/是否可缓存；需要实测。**[未验证]**
-3. **Modrinth 批量更新上限**：实测 1000 hash 可返回 200，但官方未写上限；工程按 500/批。**[未验证]**
-4. **Modrinth ETag**：实测 `/search`/`/project` 无 ETag；其他端点可能有；按 TTL 为主。**[事实/未验证]**
-5. **Fabric/Quilt meta 速率限制**：未见公开数值；需要压测/观察 429。**[未验证]**
-6. **Quilt 当前可用性**：本次 `meta.quiltmc.org` 请求超时；需要重试/镜像策略。**[未验证]**
-7. **Mojang runtime 组件映射**：`java-runtime-delta` 21.0.7；未来版本（25/26）组件名需以 `javaVersion.component` 与 `all.json` 为准。**[未验证]**
-8. **Adoptium 速率/条款**：`/v3/binary/latest` 的重定向、校验和、再分发条款需核对。**[未验证]**
-9. **BMCLAPI 镜像一致性**：本次样本从镜像下载；官方 Maven 超时；生产应校验官方 hash 并记录实际来源。**[未验证]**
-10. **`pack_format` 与游戏版本映射**：资源包真实可用性需读 `pack.mcmeta` 后校验；Modrinth API 不提供。**[未验证]**
-12. **`DownloadPlan` 扩展字段**：`provider/source/termsUrl/license/distribution/origin/cacheKey` 需与 05/10 契约同步；新增必须可选，`origin=generated` 拒绝。**[待契约冻结]**
-13. **镜像策略**：Fabric/Quilt 是否允许 BMCLAPI 镜像、如何记录实际来源；需要与 09 政策确认。**[未验证]**
-14. **CF 作者禁转的替代路径**：只允许官网手动下载/本地导入；是否提供「打开网页」深链需产品确认。**[未验证]**
+1. **CF `/download-url` 的 URL 有效期**：签名过期时间/是否可缓存；需要实测。**[未验证]**
+2. **Modrinth 批量更新上限**：实测 1000 hash 可返回 200，但官方未写上限；工程按 500/批。**[未验证]**
+3. **Modrinth ETag**：实测 `/search`/`/project` 无 ETag；其他端点可能有；按 TTL 为主。**[事实/未验证]**
+4. **Fabric/Quilt meta 速率限制**：未见公开数值；需要压测/观察 429。**[未验证]**
+5. **Quilt 当前可用性**：本次 `meta.quiltmc.org` 请求超时；需要重试/镜像策略。**[未验证]**
+6. **Mojang runtime 组件映射**：`java-runtime-delta` 21.0.7；未来版本（25/26）组件名需以 `javaVersion.component` 与 `all.json` 为准。**[未验证]**
+7. **Adoptium 速率/条款**：`/v3/binary/latest` 的重定向、校验和、再分发条款需核对。**[未验证]**
+8. **BMCLAPI 镜像一致性**：本次样本从镜像下载；官方 Maven 超时；生产应校验官方 hash 并记录实际来源。**[未验证]**
+9. **`pack_format` 与游戏版本映射**：资源包真实可用性需读 `pack.mcmeta` 后校验；Modrinth API 不提供。**[未验证]**
+10. **`DownloadPlan` 扩展字段**：`provider/source/termsUrl/license/distribution/origin/cacheKey` 需与 05/10 契约同步；新增必须可选，`origin=generated` 拒绝。**[待契约冻结]**
+11. **镜像策略**：Fabric/Quilt 是否允许 BMCLAPI 镜像、如何记录实际来源；需要与 09 政策确认。**[未验证]**
+12. **CF 作者禁转的替代路径**：只允许官网手动下载/本地导入；是否提供「打开网页」深链需产品确认。**[未验证]**
 
 ---
 

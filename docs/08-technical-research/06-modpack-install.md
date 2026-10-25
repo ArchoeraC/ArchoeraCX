@@ -40,6 +40,7 @@
 | 覆盖层 | `overrides:"overrides"`（可改名） | `overrides/`、`client-overrides/`、`server-overrides/` | 只接受单段相对目录名；层序见 §1.2 |
 | 其他 | `modlist.html` 可忽略 | 无 | 不参与安装；未知字段保留/忽略 |
 
+**CF 细节**：`manifestType` 严格匹配，`manifestVersion` 只认 1；`isLocked` 无语义定义，原样保存、不作安全判断。`files[].required` 缺省按 `true`，`false` 为可选、默认不装。`fileName` 来自 API，仍按不可信输入校验；`downloadUrl` 为 null 且 `/download-url` 仍拿不到 → `DISTRIBUTION_DENIED`，禁止重试或拼第三方镜像。**[事实/推断]** 批量用 `POST /v1/mods`、`POST /v1/mods/files`（各 100/批），URL 按 fileId 缓存。
 
 **MR 细节**：`hashes` 必须同时有 SHA1/SHA512；`downloads` 是非空 HTTPS 数组，官方上传白名单为 `cdn.modrinth.com`、`github.com`、`raw.githubusercontent.com`、`gitlab.com`，并要求至少 3 次重定向。`path` 不得含 `..`、不得以盘符/`/`/`\` 开头。`env` 缺省视为双侧 required；`server` 指专用服务器，server-only 文件不装客户端。`dependencies` 可能新增键，未知 loader 键必须 `UNSUPPORTED_LOADER`，不能忽略。**[事实/推断]**
 

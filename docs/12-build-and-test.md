@@ -125,6 +125,7 @@ logs/account.log              脱敏的账户诊断日志
 - 中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；
 - 其他地区默认启用下载；
 - 发布包计划只从 GitHub CI 构建；当前新仓库暂未启用 Actions，Workflow 草稿位于 [`ci-drafts/`](ci-drafts/)；
+- Microsoft client ID 仅通过 CI secrets 在编译期注入，不进入仓库；CurseForge 不支持。
 
 发行通道、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
 
