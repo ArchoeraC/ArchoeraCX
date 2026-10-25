@@ -998,11 +998,11 @@ abstract class AppLocalizations {
   /// **'CurseForge'**
   String get sourceCurseForge;
 
-  /// No description provided for @sourceCurseForgeKeyHint.
+  /// No description provided for @sourceCurseForgeUnsupported.
   ///
   /// In en, this message translates to:
-  /// **'Add a CurseForge API key in Settings to use this source.'**
-  String get sourceCurseForgeKeyHint;
+  /// **'CurseForge is not supported; use Modrinth instead.'**
+  String get sourceCurseForgeUnsupported;
 
   /// No description provided for @providerNotWired.
   ///

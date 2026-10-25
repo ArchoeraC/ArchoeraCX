@@ -185,13 +185,6 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         var kind = ReadKind(root);
         var client = CreateClient(root);
 
-        if (!string.Equals(provider, Modrinth, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ResourceProviderException(
-                ResourceErrorCode.ProviderAuth,
-                "CurseForge requires an API key and is not wired yet");
-        }
-
         if (kind == ResourceKind.Modpack)
         {
             // Packs are self-contained: do not filter by the selected
@@ -217,9 +210,11 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         var provider = ReadProvider(root);
         if (!string.Equals(provider, Modrinth, StringComparison.OrdinalIgnoreCase))
         {
+            // Reject before ReadKind/Directory.CreateDirectory: an unavailable
+            // provider must not touch the filesystem or change error precedence.
             throw new ResourceProviderException(
-                ResourceErrorCode.ProviderAuth,
-                "CurseForge requires an API key and is not wired yet");
+                ResourceErrorCode.ProviderUnavailable,
+                "CurseForge is not supported");
         }
 
         var kind = ReadKind(root);
@@ -407,8 +402,8 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         if (!string.Equals(provider, Modrinth, StringComparison.OrdinalIgnoreCase))
         {
             throw new ResourceProviderException(
-                ResourceErrorCode.ProviderAuth,
-                "only Modrinth is available before the CurseForge key is configured");
+                ResourceErrorCode.ProviderUnavailable,
+                "CurseForge is not supported");
         }
 
         var baseAddress = ResolveProviderBase(ReadOptionalString(root, "providerBase"));

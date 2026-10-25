@@ -71,6 +71,8 @@ facets 语法 `{type} {op} {value}`，`:` 等价 `=`，支持 `!= >= > <= <`。�
 
 ## 2. CurseForge API v1
 
+> **当前状态（2026-10-25）**：**不支持 CurseForge**，`provider=curseforge` 直接返回 `PROVIDER_UNAVAILABLE`。本章只记录“如果将来改变决定”必须遵守的 API 事实，不代表已实现，也不代表已排期。
+
 ### 2.1 鉴权与固定 id
 
 - `gameId=432` 是 Minecraft；启动时可用 `GET /v1/games` 校验。**[事实/通行值]**

@@ -510,7 +510,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sourceCurseForge => 'CurseForge';
 
   @override
-  String get sourceCurseForgeKeyHint => '请在设置中配置 CurseForge API Key 后再使用该源。';
+  String get sourceCurseForgeUnsupported => '当前不支持 CurseForge，请使用 Modrinth。';
 
   @override
   String get providerNotWired => '下载源接线是下一步；当前为 UI 结构。';

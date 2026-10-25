@@ -19,6 +19,7 @@ ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，�
 - Rust `DownloadPlan` 执行器：hash 校验、原子落盘、分片续传、进度与取消
 - AppShell + 明暗主题、系统主题色、中英文 i18n，安装与下载统一走后台任务
 
+
 > 代码以 **AGPL-3.0-only** 开源，不提供闭源商业授权；细则见 [docs/04-licensing.md](docs/04-licensing.md)。
 
 ## 快速开始

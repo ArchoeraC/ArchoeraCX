@@ -147,8 +147,8 @@ public sealed class PackModuleService : IModuleMethodHandler
         if (!string.Equals(provider, ModrinthProvider, StringComparison.OrdinalIgnoreCase))
         {
             throw new ResourceProviderException(
-                ResourceErrorCode.ProviderAuth,
-                "only Modrinth modpacks are available before the CurseForge key is configured");
+                ResourceErrorCode.ProviderUnavailable,
+                "CurseForge is not supported");
         }
 
         var projectId = RequireString(root, "projectId");

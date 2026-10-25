@@ -14,7 +14,7 @@
 | P2 | 部分完成 | Flutter AppShell、实例/设置/下载页、CoreClient |
 | P3 | 部分完成 | Microsoft Device Code、XBL/XSTS/Minecraft、离线账户；凭据保险库已接入（crypto/file），待 Minecraft client_id 审核 |
 | P4 | 部分完成 | Forge/NeoForge 计划、生成物校验/修复、实例内安装 UI |
-| P5 | 部分完成 | 实例 SQLite、Modrinth；CurseForge/整合包未完成 |
+| P5 | 部分完成 | 实例 SQLite、Modrinth；整合包未完成；CurseForge 不支持 |
 | P6 | 进行中 | 设计令牌、主题、i18n、账户/实例 UI |
 | P7 | 未开始 | 更新器、签名、安装包、正式发布 |
 
@@ -185,7 +185,7 @@
 - 共享 libraries/assets + 实例级 gameDir
 - Mods/资源包/光影扫描与启停（`.disabled`）
 - Modrinth 搜索/安装/更新（API v2）
-- `.mrpack` 导入/导出；CurseForge zip 导入
+- `.mrpack` 导入/导出（CurseForge zip 导入不支持）
 - 依赖解析与冲突提示（仅提示，不做自动解决）
 - 文件 hash 去重（可选硬链接，失败降级为复制）
 

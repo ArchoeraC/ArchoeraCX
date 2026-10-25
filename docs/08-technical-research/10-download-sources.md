@@ -6,7 +6,6 @@
 > 实测日期 **2026-10-21**。配套：[05-download-engine.md](05-download-engine.md)（Rust 执行器）、[06-modpack-install.md](06-modpack-install.md)（整合包）、[03-mod-search.md](03-mod-search.md)（搜索/更新）、[09-forge-generated-artifacts.md](09-forge-generated-artifacts.md)（生成物）。
 > 发行/合规策略以 [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md) 与 [`07-compliance-gate.md`](07-compliance-gate.md) 为准；本文只谈技术源与计划字段。
 >
-> **实现状态（2026-10-21）**：Rust `DownloadPlan` 执行器 MVP、C# `DownloadPlan` 契约、Modrinth provider、Mojang 原版计划、Forge/NeoForge installer/依赖计划、Mojang Java runtime 计划均已落地；CurseForge 因鉴权后置暂缓；计划尚未提交到 Rust 执行器。
 
 ---
 
@@ -438,6 +437,7 @@ Rust archoera_dl
 | 场景 | 典型来源 | 识别 | 重试/动作 | 用户提示 |
 |---|---|---|---|---|
 | **作者禁转** | CurseForge | `allowModDistribution=false`；`downloadUrl=null`；`/download-url` 无可用 URL | **不重试、不换镜像**；`DISTRIBUTION_DENIED` | 「作者未授权第三方下载，请到官网手动下载」 |
+| **不支持** | CurseForge | `provider=curseforge`（在线或 zip 导入） | 不发请求；`PROVIDER_UNAVAILABLE` | 「不支持 CurseForge」 |
 | **限流** | Modrinth/CF | 429 + `Retry-After`；Modrinth `Remaining` 低 | 退避/等待；`RATE_LIMITED` | 「请求过多，N 秒后重试」 |
 | **签名 URL 过期** | CF/CDN/自定义镜像 | 403/410/`URL_EXPIRED` | 同 URL 不重试；C# 重新解析 URL 后重提 | 「下载链接已过期，正在重新获取」 |
 | **镜像 hash 不一致** | BMCLAPI/自定义 | actual != expected | 删除 `.part`，拉黑 `(hash,host)`，换源；单源 `MIRROR_MISMATCH`，全失败 `HASH_MISMATCH` | 「镜像文件校验失败，已切换官方源」 |
@@ -492,6 +492,7 @@ Rust archoera_dl
 - Forge/NeoForge：installer 下载 + `loader.install`（见 09）；不在 CI 里跑完整 6 个 processor 除非有缓存。
 - Fabric/Quilt：profile JSON 解析 + 库下载；Quilt 当前网络在本次实测超时，需重试/镜像。
 - Modrinth：搜索/版本/下载一个公开 mod；记录 UA/限流头；不要高频。
+- CurseForge：**不支持**；只测拒绝路径（`PROVIDER_UNAVAILABLE`），不发任何 CF 请求。
 - Java runtime：`all.json` + 一个平台 manifest 的元数据；不下载完整 JRE。
 - 镜像：BMCLAPI 下载一个 installer/库，校验官方 hash。
 

@@ -6,6 +6,12 @@ public static class ResourceErrorCode
     /// <summary>401/407: provider credentials missing or rejected.</summary>
     public const string ProviderAuth = "PROVIDER_AUTH";
 
+    /// <summary>
+    /// The provider is known but deliberately not supported (CurseForge online
+    /// and its zip import both need an API key; a missing key is not the cause).
+    /// </summary>
+    public const string ProviderUnavailable = "PROVIDER_UNAVAILABLE";
+
     /// <summary>404: project/version/file no longer exists.</summary>
     public const string NotFound = "NOT_FOUND";
 
