@@ -176,8 +176,12 @@ public static class LaunchOptimizationPlanner
                 }
             }
             else if (string.Equals(hardware.Platform, "windows", StringComparison.Ordinal) &&
-                     hardware.Find("nvidia") is not null)
+                     hardware.Hybrid &&
+                     hardware.Gpus.Any(gpu => gpu.Discrete && gpu.DriverLoaded))
             {
+                // Windows stores one preference per executable, not a vendor
+                // environment. Any usable discrete adapter qualifies: AMD,
+                // Intel Arc and NVIDIA all honour the same registry value.
                 notes.Add("windows-gpu-preference");
             }
         }

@@ -163,6 +163,29 @@ public sealed class LaunchOptimizationPlannerTests
     }
 
     [Fact]
+    public void Windows_also_prefers_a_non_nvidia_discrete_adapter()
+    {
+        var windows = new HardwareProfile(
+            "windows",
+            [
+                new GpuInfo("amd", "AMD Radeon RX 7600M XT", true, true),
+                new GpuInfo("intel", "Intel UHD Graphics", false, true),
+            ],
+            "intel",
+            true);
+
+        var plan = LaunchOptimizationPlanner.Build(
+            Settings(),
+            Memory(4096, 32768),
+            windows,
+            cores: 8);
+
+        Assert.Equal(
+            ["windows-gpu-preference"],
+            plan.Notes.Where(note => note == "windows-gpu-preference"));
+    }
+
+    [Fact]
     public void The_hardware_payload_is_parsed_from_the_core_shape()
     {
         using var document = System.Text.Json.JsonDocument.Parse(

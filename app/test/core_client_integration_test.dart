@@ -55,6 +55,27 @@ void main() {
   );
 
   test(
+    'system.gpu returns the hardware probe used by launch optimization',
+    () async {
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+
+      final gpu = await client.getSystemGpu();
+      expect(gpu, isNotNull);
+      expect(
+        gpu!['platform'],
+        anyOf('linux', 'windows', 'macos', 'unknown'),
+      );
+      expect(gpu['gpus'], isA<List<Object?>>());
+      expect(gpu['hybrid'], isA<bool>());
+    },
+    skip: library.existsSync()
+        ? false
+        : 'Run the CMake native build to enable the FFI smoke test.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
+
+  test(
     'system.openUrl rejects non-http urls before touching the desktop',
     () async {
       final client = CoreClient.openDefault();

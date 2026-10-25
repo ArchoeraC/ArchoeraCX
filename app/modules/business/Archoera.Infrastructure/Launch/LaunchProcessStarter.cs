@@ -38,6 +38,16 @@ internal static class LaunchProcessStarter
 
         var pid = process.Id;
         var log = new LaunchLogWriter(logPath);
+        log.WriteLine($"[archoera] java: {plan.JavaPath}");
+        if (plan.Environment.Count > 0)
+        {
+            // Keys only: values may contain user-provided paths or credentials.
+            log.WriteLine(
+                "[archoera] env: " +
+                string.Join(
+                    ", ",
+                    plan.Environment.Keys.OrderBy(key => key, StringComparer.Ordinal)));
+        }
         process.OutputDataReceived += (_, args) =>
         {
             if (args.Data is not null) log.WriteLine(args.Data);

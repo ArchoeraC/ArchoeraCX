@@ -51,6 +51,44 @@ public sealed class LaunchRuntimeOptionsTests
     }
 
     [Fact]
+    public void Nvidia_prime_environment_reaches_the_child_process()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var (instance, version, paths) = CreateFixture(root, ClassicArguments());
+            var hardware = new HardwareProfile(
+                "linux",
+                [new GpuInfo("nvidia", "nvidia (10DE:28E0)", true, true)],
+                "intel",
+                true);
+            var optimization = LaunchOptimizationPlanner.Build(
+                CreateSettings(root),
+                new LaunchMemoryPlan("auto", 1024, 4096, 4096, 32768, null, 0, null, null),
+                hardware,
+                cores: 8);
+
+            var plan = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                CreateSettings(root),
+                paths,
+                optimizationPlan: optimization);
+
+            var startInfo = LaunchProcessStarter.CreateStartInfo(plan);
+            Assert.Equal("1", startInfo.Environment["__NV_PRIME_RENDER_OFFLOAD"]);
+            Assert.Equal("nvidia", startInfo.Environment["__GLX_VENDOR_LIBRARY_NAME"]);
+            Assert.Equal("NVIDIA_only", startInfo.Environment["__VK_LAYER_NV_optimus"]);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void An_empty_instance_wrapper_disables_the_global_wrapper()
     {
         var root = CreateTempDirectory();

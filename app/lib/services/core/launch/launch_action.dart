@@ -13,7 +13,6 @@ import '../../../stores/account_policy.dart';
 import '../../../stores/accounts.dart';
 import '../../../stores/preferences.dart';
 import '../../../stores/providers.dart';
-import '../../../stores/settings.dart';
 import '../core_client.dart';
 import 'launch_memory.dart';
 import 'launch_post_actions.dart';
@@ -63,14 +62,15 @@ Future<void> launchInstance(
   }
 
   // The hardware snapshot comes from the C++ core; the launch module decides
-  // whether it is worth preferring the dedicated GPU.
+  // whether it is worth preferring the dedicated GPU. Probe unconditionally:
+  // the C# side already gates on the persisted gameOptimization value, and
+  // relying on the Dart async settings cache here silently skipped offload
+  // when the provider was still loading (or had a stale value).
   Map<String, Object?>? hardware;
-  if (ref.read(appSettingsProvider).value?.gameOptimization == true) {
-    try {
-      hardware = await client.getSystemGpu();
-    } catch (_) {
-      // Probing is best effort; the launch still works without it.
-    }
+  try {
+    hardware = await client.getSystemGpu();
+  } catch (_) {
+    // Probing is best effort; the launch still works without it.
   }
 
   toast(l10n.launchStarting, duration: const Duration(seconds: 4));
