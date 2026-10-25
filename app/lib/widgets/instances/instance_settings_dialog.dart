@@ -8,15 +8,20 @@ import '../../models/game_instance.dart';
 import '../../models/launch_options.dart';
 import '../../services/core/launch/launch_memory.dart';
 import '../../stores/instances.dart';
+import '../../stores/platform.dart';
 import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import '../../utils/absolute_path.dart';
+import '../../utils/window_mode.dart';
 import '../common/confirm.dart';
 import '../common/toast.dart';
 import 'instance_command_overrides.dart';
 import 'instance_java_runtime_picker.dart';
 import 'instance_override_switch.dart';
+import 'instance_performance_overrides.dart';
+import 'instance_window_overrides.dart';
 
 /// Per-instance overrides of the global launch settings.
 ///
@@ -47,16 +52,12 @@ class InstanceSettingsDialog extends ConsumerStatefulWidget {
 
 class _InstanceSettingsDialogState
     extends ConsumerState<InstanceSettingsDialog> {
-  static const _windowInherit = 'inherit';
-  static const _windowFullscreen = 'fullscreen';
-  static const _windowWindowed = 'windowed';
-
   static const _memoryMinMb = 128;
   static const _memoryMaxMb = 65536;
-  static const _windowMinWidth = 640;
-  static const _windowMaxWidth = 7680;
-  static const _windowMinHeight = 480;
-  static const _windowMaxHeight = 4320;
+  static const _windowMinWidth = gameWindowMinWidth;
+  static const _windowMaxWidth = gameWindowMaxWidth;
+  static const _windowMinHeight = gameWindowMinHeight;
+  static const _windowMaxHeight = gameWindowMaxHeight;
 
   final _minController = TextEditingController();
   final _maxController = TextEditingController();
@@ -70,9 +71,10 @@ class _InstanceSettingsDialogState
   final _javaController = TextEditingController();
   final _widthController = TextEditingController();
   final _heightController = TextEditingController();
+  late final InstancePerformanceOverridesController _performance;
 
   String? _gcMode;
-  String _windowMode = _windowInherit;
+  String _windowMode = instanceWindowInherit;
   bool _wrapperOverride = false;
   bool _environmentOverride = false;
   bool _autoJoin = false;
@@ -91,6 +93,7 @@ class _InstanceSettingsDialogState
       overrides: widget.instance.overrides,
     );
     final overrides = widget.instance.overrides;
+    _performance = InstancePerformanceOverridesController(overrides: overrides);
     if (overrides != null) {
       _minController.text = overrides.memoryMinMb?.toString() ?? '';
       _maxController.text = overrides.memoryMaxMb?.toString() ?? '';
@@ -109,10 +112,14 @@ class _InstanceSettingsDialogState
       _widthController.text = overrides.windowWidth?.toString() ?? '';
       _heightController.text = overrides.windowHeight?.toString() ?? '';
       _gcMode = overrides.gcMode;
-      _windowMode = switch (overrides.fullscreen) {
-        true => _windowFullscreen,
-        false => _windowWindowed,
-        null => _windowInherit,
+      _windowMode = switch (instanceWindowModeFrom(
+        fullscreen: overrides.fullscreen,
+        maximized: overrides.maximized,
+      )) {
+        GameWindowMode.fullscreen => instanceWindowFullscreen,
+        GameWindowMode.windowed => instanceWindowWindowed,
+        GameWindowMode.maximized => instanceWindowMaximized,
+        null => instanceWindowInherit,
       };
     }
     _loadMemoryPlan();
@@ -154,10 +161,32 @@ class _InstanceSettingsDialogState
   }
 
   bool? get _fullscreen => switch (_windowMode) {
-    _windowFullscreen => true,
-    _windowWindowed => false,
+    instanceWindowFullscreen => true,
+    instanceWindowWindowed || instanceWindowMaximized => false,
     _ => null,
   };
+
+  bool? get _maximized => switch (_windowMode) {
+    instanceWindowMaximized => true,
+    instanceWindowWindowed || instanceWindowFullscreen => false,
+    _ => null,
+  };
+
+  /// Selecting maximized resolves the primary display once and stores the
+  /// usable size in the width/height fields, because the game only accepts a
+  /// window size. A failed lookup keeps whatever size is already typed.
+  Future<void> _setWindowMode(String mode) async {
+    setState(() => _windowMode = mode);
+    if (mode != instanceWindowMaximized) return;
+    final size = await ref.read(maximizedWindowSizeProvider)();
+    if (!mounted || size == null || _windowMode != instanceWindowMaximized) {
+      return;
+    }
+    setState(() {
+      _widthController.text = '${size.width}';
+      _heightController.text = '${size.height}';
+    });
+  }
 
   Future<void> _save(AppLocalizations l10n) async {
     if (_saving) return;
@@ -201,6 +230,10 @@ class _InstanceSettingsDialogState
         windowWidth: _parseNumber(_widthController),
         windowHeight: _parseNumber(_heightController),
         fullscreen: _fullscreen,
+        maximized: _maximized,
+        enableGameMode: _performance.enableGameMode,
+        enableMangoHud: _performance.enableMangoHud,
+        useZink: _performance.useZink,
       );
       await ref.read(instancesProvider.notifier).reload();
       if (!mounted) return;
@@ -290,7 +323,7 @@ class _InstanceSettingsDialogState
     }
 
     final java = _text(_javaController);
-    if (java != null && !_isAbsolutePath(java)) {
+    if (java != null && !isAbsoluteFilePath(java)) {
       return l10n.instanceSettingsInvalidPath;
     }
 
@@ -342,12 +375,6 @@ class _InstanceSettingsDialogState
     return error;
   }
 
-  static bool _isAbsolutePath(String path) {
-    if (path.startsWith('/')) return true;
-    if (path.startsWith(r'\\')) return true;
-    return RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path);
-  }
-
   static int? _parseNumber(TextEditingController controller) =>
       int.tryParse(controller.text.trim());
 
@@ -384,11 +411,19 @@ class _InstanceSettingsDialogState
         : l10n.instanceSettingsFollowGlobalWith(_gcLabel(l10n, global.gcMode));
     final windowHint = global == null
         ? l10n.instanceSettingsWindowInherit
-        : l10n.instanceSettingsFollowGlobalWith(
-            global.fullscreen
-                ? l10n.instanceSettingsWindowFullscreen
-                : '${global.windowWidth} × ${global.windowHeight}',
-          );
+        : l10n.instanceSettingsFollowGlobalWith(switch (gameWindowModeFrom(
+            fullscreen: global.fullscreen,
+            maximized: global.maximized,
+          )) {
+            GameWindowMode.fullscreen => l10n.instanceSettingsWindowFullscreen,
+            GameWindowMode.maximized => l10n.instanceSettingsWindowMaximized,
+            GameWindowMode.windowed =>
+              '${global.windowWidth} × ${global.windowHeight}',
+          });
+    final linux = ref.watch(linuxPlatformProvider);
+    final sizeHint = _windowMode == instanceWindowMaximized
+        ? l10n.settingsWindowSizeMaximized
+        : windowHint;
     final javaHint = switch (global?.javaPath) {
       null => l10n.instanceSettingsFollowGlobal,
       final path => l10n.instanceSettingsFollowGlobalWith(path),
@@ -677,55 +712,23 @@ class _InstanceSettingsDialogState
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    DropdownButtonFormField<String>(
-                      key: const ValueKey('instance-window-mode'),
-                      initialValue: _windowMode,
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        labelText: l10n.instanceSettingsWindow,
-                        prefixIcon: const Icon(AppIcons.window, size: 18),
+                    InstanceWindowOverrides(
+                      value: _windowMode,
+                      inheritLabel: windowHint,
+                      sizeHint: sizeHint,
+                      widthController: _widthController,
+                      heightController: _heightController,
+                      enabled: !_saving,
+                      onChanged: _setWindowMode,
+                    ),
+                    if (linux) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      InstancePerformanceOverrides(
+                        controller: _performance,
+                        enabled: !_saving,
+                        onChanged: () => setState(() {}),
                       ),
-                      items: [
-                        DropdownMenuItem(
-                          value: _windowInherit,
-                          child: Text(windowHint),
-                        ),
-                        DropdownMenuItem(
-                          value: _windowFullscreen,
-                          child: Text(l10n.instanceSettingsWindowFullscreen),
-                        ),
-                        DropdownMenuItem(
-                          value: _windowWindowed,
-                          child: Text(l10n.instanceSettingsWindowWindowed),
-                        ),
-                      ],
-                      onChanged: _saving
-                          ? null
-                          : (value) => setState(
-                              () => _windowMode = value ?? _windowInherit,
-                            ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _numberField(
-                            controller: _widthController,
-                            label: l10n.instanceSettingsWindowWidth,
-                            hint: windowHint,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: _numberField(
-                            controller: _heightController,
-                            label: l10n.instanceSettingsWindowHeight,
-                            hint: windowHint,
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                     if (_error != null) ...[
                       const SizedBox(height: AppSpacing.md),
                       Text(

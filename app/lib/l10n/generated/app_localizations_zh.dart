@@ -688,13 +688,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsWindowNote =>
-      '窗口设置写入原版启动参数（--width / --height / --fullscreen），对支持这些参数的版本生效。';
+      '窗口模式写入原版启动参数（--width / --height / --fullscreen），对支持这些参数的版本生效。最大化会用主显示器的可用尺寸近似。';
 
   @override
-  String get settingsFullscreen => '全屏启动';
+  String get settingsWindowMode => '窗口模式';
 
   @override
-  String get settingsFullscreenDesc => '进入游戏后直接全屏；窗口尺寸仍会写入参数作为回退。';
+  String get settingsWindowModeDesc => '最大化会按屏幕可用区域设置窗口尺寸；部分版本未必会严格最大化。';
+
+  @override
+  String get settingsWindowModeWindowed => '窗口化';
+
+  @override
+  String get settingsWindowModeFullscreen => '全屏';
+
+  @override
+  String get settingsWindowModeMaximized => '最大化';
 
   @override
   String get settingsWindowSize => '窗口尺寸';
@@ -704,6 +713,68 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsWindowSizeFullscreen => '全屏启动时忽略该尺寸。';
+
+  @override
+  String get settingsWindowSizeMaximized => '选择最大化时会使用主显示器的可用尺寸。';
+
+  @override
+  String get settingsSectionPerformance => '性能（Linux）';
+
+  @override
+  String get settingsPerformanceNote =>
+      '通过包装命令或环境变量生效；若自定义包装命令或环境变量已实现相同效果，则以你的配置为准。这些开关不会改变下载或合规设置。';
+
+  @override
+  String get settingsGameMode => 'Feral GameMode';
+
+  @override
+  String get settingsGameModeDesc => '安装 GameMode 时通过 gamemoderun 启动游戏。';
+
+  @override
+  String get settingsMangoHud => 'MangoHud';
+
+  @override
+  String get settingsMangoHudDesc => '通过 LD_PRELOAD 注入 MangoHud 覆盖层。';
+
+  @override
+  String get settingsZink => 'Zink';
+
+  @override
+  String get settingsZinkDesc => '通过环境变量请求 Zink OpenGL-on-Vulkan 驱动。';
+
+  @override
+  String get settingsSectionAdvancedNative => '高级原生库（开发者）';
+
+  @override
+  String get settingsNativeWarning =>
+      '仅影响本地游戏启动，与下载/合规的开发者模式无关。只有确认库的 ABI 时才设置这些路径；GLFW、OpenAL 或 SDL 版本不匹配可能让游戏在主菜单前崩溃。';
+
+  @override
+  String get settingsDeveloperMode => '启用原生库覆盖';
+
+  @override
+  String get settingsDeveloperModeDesc => '只对本地游戏生效。关闭后仍保留已填路径，但不会应用。';
+
+  @override
+  String get settingsNativeGlfw => 'GLFW 库';
+
+  @override
+  String get settingsNativeOpenAL => 'OpenAL 库';
+
+  @override
+  String get settingsNativeSdl => 'SDL 库';
+
+  @override
+  String get settingsNativePathHint => '/绝对路径/到/库文件.so';
+
+  @override
+  String get settingsNativePathInvalid => '请输入绝对文件路径。';
+
+  @override
+  String get settingsNativePickFile => '选择文件';
+
+  @override
+  String get settingsNativePickerLabel => '原生库';
 
   @override
   String get settingsShareLoaderFiles => '共享加载器文件';
@@ -2416,6 +2487,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceSettingsWindowWindowed => '窗口化';
+
+  @override
+  String get instanceSettingsWindowMaximized => '最大化';
+
+  @override
+  String get instanceSettingsPerformance => '性能';
+
+  @override
+  String get instanceSettingsPerformanceHint =>
+      '可跟随全局、强制开启或强制关闭；跟随全局会清除本实例的覆盖。';
+
+  @override
+  String get instanceSettingsGameMode => 'Feral GameMode';
+
+  @override
+  String get instanceSettingsMangoHud => 'MangoHud';
+
+  @override
+  String get instanceSettingsZink => 'Zink';
+
+  @override
+  String get instanceSettingsOverrideInherit => '跟随全局';
+
+  @override
+  String get instanceSettingsOverrideOn => '开启';
+
+  @override
+  String get instanceSettingsOverrideOff => '关闭';
 
   @override
   String get instanceSettingsWindowWidth => '窗口宽度';

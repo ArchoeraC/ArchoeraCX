@@ -1,4 +1,5 @@
 import '../../../models/launch_options.dart';
+import '../../../utils/absolute_path.dart';
 
 /// Native settings document returned by `settings.get` / `settings.set`.
 class AppSettings {
@@ -26,6 +27,14 @@ class AppSettings {
     this.windowWidth = 854,
     this.windowHeight = 480,
     this.fullscreen = false,
+    this.maximized = false,
+    this.enableGameMode = false,
+    this.enableMangoHud = false,
+    this.useZink = false,
+    this.developerMode = false,
+    this.nativeGlfwPath,
+    this.nativeOpenALPath,
+    this.nativeSdlPath,
     this.downloadChunkSizeKb = 4096,
     this.downloadRangeThresholdKb = 8192,
     this.logRetentionFiles = 10,
@@ -92,6 +101,37 @@ class AppSettings {
 
   /// Adds `--fullscreen` to the game arguments.
   final bool fullscreen;
+
+  /// Starts the game in a window sized to the primary display's usable area.
+  ///
+  /// Minecraft has no `--maximized` flag, so the launcher approximates it by
+  /// resolving the display size into [windowWidth] / [windowHeight]. Never true
+  /// together with [fullscreen].
+  final bool maximized;
+
+  /// Linux only: run the game through Feral GameMode when available.
+  final bool enableGameMode;
+
+  /// Linux only: inject the MangoHud overlay through `LD_PRELOAD`.
+  final bool enableMangoHud;
+
+  /// Linux only: request the Zink OpenGL-on-Vulkan driver.
+  final bool useZink;
+
+  /// Gates the advanced native-library overrides below.
+  ///
+  /// This is unrelated to the download/compliance developer mode: it only
+  /// affects how the local game process loads GLFW/OpenAL/SDL.
+  final bool developerMode;
+
+  /// Absolute path to a GLFW shared library; null uses the bundled one.
+  final String? nativeGlfwPath;
+
+  /// Absolute path to an OpenAL shared library; null uses the bundled one.
+  final String? nativeOpenALPath;
+
+  /// Absolute path to an SDL shared library; null uses the bundled one.
+  final String? nativeSdlPath;
 
   /// Human label for the window preset, e.g. `1280 × 720`.
   String get windowLabel => '$windowWidth × $windowHeight';
@@ -181,6 +221,14 @@ class AppSettings {
       windowWidth: (_int(value['windowWidth']) ?? 854).clamp(640, 7680),
       windowHeight: (_int(value['windowHeight']) ?? 480).clamp(480, 4320),
       fullscreen: value['fullscreen'] == true,
+      maximized: value['maximized'] == true && value['fullscreen'] != true,
+      enableGameMode: value['enableGameMode'] == true,
+      enableMangoHud: value['enableMangoHud'] == true,
+      useZink: value['useZink'] == true,
+      developerMode: value['developerMode'] == true,
+      nativeGlfwPath: _nativePath(value['nativeGlfwPath']),
+      nativeOpenALPath: _nativePath(value['nativeOpenALPath']),
+      nativeSdlPath: _nativePath(value['nativeSdlPath']),
       downloadChunkSizeKb: (_int(value['downloadChunkSizeKb']) ?? 4096).clamp(
         128,
         8192,
@@ -202,6 +250,14 @@ class AppSettings {
     if (value is! String) return null;
     final text = value.trim();
     return text.isEmpty ? null : text;
+  }
+
+  /// A native library override must be an absolute file path. Malformed values
+  /// are treated as "use the bundled library" rather than crashing the page.
+  static String? _nativePath(Object? value) {
+    final text = _string(value);
+    if (text == null || !isAbsoluteFilePath(text)) return null;
+    return text;
   }
 
   /// A global lifecycle command: an absent, non-string or blank value means

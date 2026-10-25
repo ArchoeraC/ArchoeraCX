@@ -89,6 +89,34 @@ void main() {
         preLaunchCommand: null,
         postExitCommand: null,
       );
+
+      // Window mode, Linux performance presets and the separate native-library
+      // developer switch round trip too.
+      final parity = await client.setRuntimeOptions(
+        maximized: true,
+        enableGameMode: true,
+        enableMangoHud: true,
+        useZink: true,
+        developerMode: true,
+        nativeGlfwPath: Platform.isLinux ? '/bin/true' : null,
+      );
+      expect(parity.maximized, isTrue);
+      expect(parity.fullscreen, isFalse);
+      expect(parity.enableGameMode, isTrue);
+      expect(parity.enableMangoHud, isTrue);
+      expect(parity.useZink, isTrue);
+      expect(parity.developerMode, isTrue);
+      final reloadedParity = await client.getSettings();
+      expect(reloadedParity.maximized, isTrue);
+      expect(reloadedParity.developerMode, isTrue);
+      await client.setRuntimeOptions(
+        maximized: false,
+        enableGameMode: false,
+        enableMangoHud: false,
+        useZink: false,
+        developerMode: false,
+        nativeGlfwPath: null,
+      );
     },
     skip: enabled && core.existsSync() && module.existsSync()
         ? false

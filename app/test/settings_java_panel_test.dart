@@ -87,7 +87,7 @@ void main() {
     await tester.tap(find.text('Launch').first);
     await tester.pumpAndSettle();
     expect(find.text('Game window'), findsOneWidget);
-    expect(find.text('Start fullscreen'), findsOneWidget);
+    expect(find.text('Window mode'), findsOneWidget);
     expect(find.text('Window size'), findsOneWidget);
     expect(find.text('854 × 480'), findsOneWidget);
     expect(find.text('Additional game arguments'), findsOneWidget);
