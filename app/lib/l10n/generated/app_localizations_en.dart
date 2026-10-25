@@ -788,7 +788,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsMangoHudDesc =>
-      'Injects the MangoHud overlay through LD_PRELOAD.';
+      'Runs the game through the mangohud wrapper (install it first) and also sets MANGOHUD=1 for Vulkan layers.';
 
   @override
   String get settingsZink => 'Zink';

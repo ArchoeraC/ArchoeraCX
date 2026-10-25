@@ -452,7 +452,7 @@
   "@settingsMangoHud": {
     "description": "注入 MangoHud 覆盖层的全局开关。"
   },
-  "settingsMangoHudDesc": "通过 LD_PRELOAD 注入 MangoHud 覆盖层。",
+  "settingsMangoHudDesc": "通过 mangohud 包装命令注入覆盖层（需系统已安装），并为 Vulkan 场景设置 MANGOHUD=1。",
   "settingsZink": "Zink",
   "@settingsZink": {
     "description": "请求 Zink OpenGL-on-Vulkan 驱动的全局开关。"

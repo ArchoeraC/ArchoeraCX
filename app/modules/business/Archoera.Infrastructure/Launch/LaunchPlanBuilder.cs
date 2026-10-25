@@ -413,11 +413,12 @@ internal static class LaunchPlanBuilder
         AppendAutoJoin(game, instance, version, platform);
 
         // Wrapper tokens are parsed once here so the start info can place the
-        // Java path after them without re-splitting user text. GameMode is a
-        // prefix in front of a possibly user-provided wrapper.
+        // Java path after them without re-splitting user text. GameMode and
+        // MangoHud are prefixes in front of a possibly user-provided wrapper.
         var wrapper = LaunchPerformancePresets.ComposeWrapper(
             SplitUserArguments(settings.WrapperCommand, "wrapperCommand"),
             settings.EnableGameMode,
+            settings.EnableMangoHud,
             linux);
         // Preset variables come before the user's environment on purpose: a
         // user-provided MANGOHUD/GALLIUM value must win.

@@ -73,8 +73,10 @@ namespace Archoera.Domain.Settings;
 /// already the first wrapper token). Ignored entirely on other platforms.
 /// </param>
 /// <param name="EnableMangoHud">
-/// Linux only. Sets <c>MANGOHUD=1</c> in the child environment before the
-/// user's own environment, so an explicit user value still wins.
+/// Linux only. Prefixes the wrapper with <c>mangohud</c> (unless the user
+/// wrapper already contains it), which enables MangoHud's OpenGL overlay, and
+/// also sets <c>MANGOHUD=1</c> for Vulkan-layer setups. Ignored entirely on
+/// other platforms.
 /// </param>
 /// <param name="UseZink">
 /// Linux only. Sets <c>MESA_LOADER_DRIVER_OVERRIDE=zink</c> and

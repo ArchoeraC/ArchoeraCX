@@ -1439,7 +1439,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMangoHudDesc.
   ///
   /// In en, this message translates to:
-  /// **'Injects the MangoHud overlay through LD_PRELOAD.'**
+  /// **'Runs the game through the mangohud wrapper (install it first) and also sets MANGOHUD=1 for Vulkan layers.'**
   String get settingsMangoHudDesc;
 
   /// Global switch that requests the Zink OpenGL-on-Vulkan driver.

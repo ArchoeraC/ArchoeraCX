@@ -53,7 +53,7 @@
 | 设置 | 实现 | 我们的对应 |
 |---|---|---|
 | `EnableFeralGamemode` | 通过包装/环境调用 GameMode | 无（可用 wrapper 覆盖） |
-| `EnableMangoHud` | `LD_PRELOAD` 注入 MangoHud | 无（可用 env 覆盖） |
+| `EnableMangoHud` | `LD_PRELOAD` 注入 MangoHud | 有（`mangohud` 包装 + `MANGOHUD=1`；需系统安装） |
 | `UseDiscreteGpu` | PRIME/DRI 环境变量 | 有（优化器按 GPU 检测自动设） |
 | `UseZink` | `MESA_LOADER_DRIVER_OVERRIDE=zink` 等 | 无（可用 env 覆盖） |
 

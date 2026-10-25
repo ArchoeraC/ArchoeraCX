@@ -3,8 +3,8 @@ using Archoera.Domain.Settings;
 namespace Archoera.Infrastructure.Launch;
 
 /// <summary>
-/// Linux-only performance presets (GameMode wrapper, MangoHud and Zink
-/// environment). They are deliberately separate from
+/// Linux-only performance presets (GameMode/MangoHud wrapper commands and
+/// Zink environment). They are deliberately separate from
 /// <see cref="LaunchOptimizationPlanner"/>: the optimization plan may add GPU
 /// variables of its own, while these switches mirror the user's explicit
 /// choices even when automatic optimization is off.
@@ -16,38 +16,62 @@ namespace Archoera.Infrastructure.Launch;
 internal static class LaunchPerformancePresets
 {
     internal const string GameModeCommand = "gamemoderun";
+    internal const string MangoHudCommand = "mangohud";
     internal const string MangoHudVariable = "MANGOHUD";
     internal const string ZinkLoaderVariable = "MESA_LOADER_DRIVER_OVERRIDE";
     internal const string ZinkGalliumVariable = "GALLIUM_DRIVER";
     internal const string ZinkDriver = "zink";
 
     /// <summary>
-    /// Prepends <c>gamemoderun</c> to the wrapper tokens on Linux unless it is
-    /// already the first token. The result composes with a user wrapper, for
-    /// example <c>gamemoderun mangohud java ...</c>.
+    /// Prepends the requested wrapper commands on Linux. GameMode runs
+    /// outermost (<c>gamemoderun mangohud ...</c>) and MangoHud comes next;
+    /// a command already present in the user wrapper is not duplicated, and
+    /// the original list is returned unchanged when nothing is added.
     /// </summary>
     internal static IReadOnlyList<string> ComposeWrapper(
         IReadOnlyList<string> wrapper,
         bool gameMode,
+        bool mangoHud,
         bool linux)
     {
         ArgumentNullException.ThrowIfNull(wrapper);
-        if (!linux || !gameMode) return wrapper;
-        if (wrapper.Count > 0 &&
-            string.Equals(wrapper[0], GameModeCommand, StringComparison.Ordinal))
-        {
-            return wrapper;
-        }
+        if (!linux) return wrapper;
 
-        var result = new List<string>(wrapper.Count + 1) { GameModeCommand };
+        var prefix = new List<string>(2);
+        if (gameMode && !Contains(wrapper, GameModeCommand))
+        {
+            prefix.Add(GameModeCommand);
+        }
+        if (mangoHud && !Contains(wrapper, MangoHudCommand))
+        {
+            prefix.Add(MangoHudCommand);
+        }
+        if (prefix.Count == 0) return wrapper;
+
+        var result = new List<string>(prefix.Count + wrapper.Count);
+        result.AddRange(prefix);
         result.AddRange(wrapper);
         return result;
+
+        static bool Contains(IReadOnlyList<string> tokens, string command)
+        {
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                if (string.Equals(tokens[i], command, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     /// <summary>
     /// Builds the preset environment layer. It is merged before the user's
     /// global/instance environment, so an explicit user value always wins.
-    /// Non-Linux platforms get an empty layer.
+    /// Non-Linux platforms get an empty layer. <c>MANGOHUD=1</c> is kept in
+    /// addition to the wrapper because Vulkan-layer setups use it directly;
+    /// the wrapper is still what enables the OpenGL overlay.
     /// </summary>
     internal static Dictionary<string, string> BuildEnvironment(
         bool mangoHud,
