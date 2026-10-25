@@ -512,8 +512,14 @@ public sealed class AccountModuleService : IModuleMethodHandler
             "Sign in with a Microsoft account that owns Minecraft before using another account.");
     }
 
-    private static int ReadOAuthPort()
+    private int ReadOAuthPort()
     {
+        if (_auth.Options.OAuthPort is { } configured &&
+            configured is >= 0 and <= 65535)
+        {
+            return configured;
+        }
+
         var raw = Environment.GetEnvironmentVariable("ARCHOERACX_OAUTH_PORT");
         return int.TryParse(raw, out var port) && port is > 0 and <= 65535
             ? port

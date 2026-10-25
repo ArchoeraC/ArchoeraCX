@@ -861,6 +861,13 @@ public sealed record MicrosoftAuthOptions
     /// <summary>Optional override used by deterministic tests/local proxies.</summary>
     public Uri? LoginBase { get; init; }
 
+    /// <summary>
+    /// Loopback callback port. Null uses <c>ARCHOERACX_OAUTH_PORT</c> and then
+    /// the production default; 0 asks the OS for an ephemeral port, which keeps
+    /// parallel tests from competing for one fixed port.
+    /// </summary>
+    public int? OAuthPort { get; init; }
+
     public Uri DeviceCodeEndpoint =>
         LoginEndpoint("devicecode");
 

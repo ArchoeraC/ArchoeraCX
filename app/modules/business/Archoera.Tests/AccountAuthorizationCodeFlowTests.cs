@@ -269,6 +269,9 @@ public sealed class AccountAuthorizationCodeFlowTests
         {
             ClientId = "test-client",
             LoginBase = new Uri("https://login.test/tenant/oauth2/v2.0/"),
+            // Several auth-code tests can run in parallel; a fixed port makes
+            // one of them fail with OAUTH_PORT_UNAVAILABLE on slower runners.
+            OAuthPort = 0,
         };
 
     private static string TempDirectory()
