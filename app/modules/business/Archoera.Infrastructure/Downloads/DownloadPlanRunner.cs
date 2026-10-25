@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Archoera.Application.Downloads;
 using Archoera.Domain.Settings;
+using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Settings;
 using Archoera.Application.Modules;
 using Archoera.Domain.Downloads;
@@ -79,19 +80,33 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
     /// </summary>
     private static readonly TimeSpan PlanRetention = TimeSpan.FromDays(7);
 
-    private readonly string _downloaderPath;
+    private readonly string? _configuredDownloaderPath;
+    private string? _downloaderPath;
 
     public DownloadPlanRunner(string? downloaderPath = null)
     {
-        _downloaderPath = string.IsNullOrWhiteSpace(downloaderPath)
-            ? ResolveDownloaderPath()
+        _configuredDownloaderPath = string.IsNullOrWhiteSpace(downloaderPath)
+            ? null
             : downloaderPath;
     }
 
-    public string DownloaderPath => _downloaderPath;
+    /// <summary>
+    /// Resolution is lazy on purpose: the composition root builds runners
+    /// while the NativeAOT module is still loading, before ModuleInit gives
+    /// Infrastructure the hub-reported core directory. Caching the empty
+    /// result at construction time would lose archoera-dl forever.
+    /// </summary>
+    public string DownloaderPath =>
+        _configuredDownloaderPath ?? (_downloaderPath ??= ResolveDownloaderPath());
 
-    public bool IsAvailable =>
-        !string.IsNullOrWhiteSpace(_downloaderPath) && File.Exists(_downloaderPath);
+    public bool IsAvailable
+    {
+        get
+        {
+            var path = DownloaderPath;
+            return !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+        }
+    }
 
     public async Task<PlanExecutionResult> ExecuteAsync(
         DownloadPlan plan,
@@ -144,12 +159,12 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
 
         var startInfo = new ProcessStartInfo
         {
-            FileName = _downloaderPath,
+            FileName = DownloaderPath,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            WorkingDirectory = Path.GetDirectoryName(_downloaderPath)
+            WorkingDirectory = Path.GetDirectoryName(DownloaderPath)
                 ?? AppContext.BaseDirectory,
         };
         startInfo.ArgumentList.Add(planPath);
@@ -400,13 +415,22 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         bool includeDevelopmentProbes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baseDirectory);
-        var bases = new List<string>
+        var bases = new List<string>();
+        // The hub-reported core directory is the authoritative bundle location.
+        if (ModulePaths.NativeDirectory is { } nativeDirectory)
+        {
+            bases.Add(nativeDirectory);
+        }
+        bases.AddRange(new[]
         {
             baseDirectory,
             Path.Combine(baseDirectory, "lib"),
             Path.Combine(baseDirectory, ".."),
             Path.Combine(baseDirectory, "..", "lib"),
-        };
+            // macOS .app layout: Contents/MacOS -> Contents/Frameworks.
+            Path.Combine(baseDirectory, "Frameworks"),
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "Frameworks")),
+        });
 
         if (includeDevelopmentProbes && !string.IsNullOrWhiteSpace(currentDirectory))
         {

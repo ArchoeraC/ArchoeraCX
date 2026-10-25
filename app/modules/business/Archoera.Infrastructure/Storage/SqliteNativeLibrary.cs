@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Archoera.Domain;
+using Archoera.Infrastructure.Modules;
 using SQLitePCL;
 
 namespace Archoera.Infrastructure.Storage;
@@ -144,11 +145,20 @@ internal static class SqliteNativeLibrary
         string? processDirectory,
         string? cwd)
     {
-        var directories = new List<string>
+        var directories = new List<string>();
+        // The hub-reported core directory is the authoritative bundle location.
+        if (ModulePaths.NativeDirectory is { } nativeDirectory)
+        {
+            directories.Add(nativeDirectory);
+        }
+        directories.AddRange(new[]
         {
             baseDirectory,
             Path.Combine(baseDirectory, "lib"),
-        };
+            // macOS .app layout: Contents/MacOS -> Contents/Frameworks.
+            Path.Combine(baseDirectory, "Frameworks"),
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "Frameworks")),
+        });
 
         if (!string.IsNullOrWhiteSpace(processDirectory))
         {

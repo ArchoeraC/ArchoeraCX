@@ -223,7 +223,7 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 ### 2.7 发布渠道与构建期密钥
 
 - 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
-- 当前新仓库暂未启用 GitHub Actions；Workflow 草稿放在 `docs/ci-drafts/`，启用前不会自动构建或发布。
+- 发布由 `.github/workflows/build-all.yml` 在 Linux/macOS/Windows 三个 runner 原生构建；推送 `v*` tag 后才汇总三端产物发版。
 - Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
 - CurseForge 当前**不支持**：在线接口与其整合包 zip 导入都依赖 API key。`resource.*`/`modpack.install` 对 `provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。
 - Release 附件应包含源码 tag、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。

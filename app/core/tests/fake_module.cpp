@@ -18,12 +18,6 @@
 #include <utility>
 #include <vector>
 
-#if defined(_WIN32)
-#  define FAKE_MODULE_EXPORT __declspec(dllexport)
-#else
-#  define FAKE_MODULE_EXPORT __attribute__((visibility("default")))
-#endif
-
 namespace {
 
 constexpr const char* kScanResult =
@@ -195,7 +189,7 @@ const archoera_module_v1 kModule = {
 
 }  // namespace
 
-extern "C" FAKE_MODULE_EXPORT const archoera_module_v1*
+extern "C" ARCHOERACX_MODULE_API const archoera_module_v1*
 archoera_module_entry(void) {
   return &kModule;
 }

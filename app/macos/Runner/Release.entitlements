@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>com.apple.security.app-sandbox</key>
-	<true/>
-</dict>
+<!--
+  ArchoeraCX is distributed outside the Mac App Store and spawns Java plus the
+  bundled vault/downloader executables. App Sandbox is deliberately disabled:
+  the launcher must read/write arbitrary instance roots and the JVM binary the
+  user selected. Keep this file explicit instead of inheriting Flutter's
+  sandboxed template.
+-->
+<dict/>
 </plist>

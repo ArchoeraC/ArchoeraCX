@@ -164,6 +164,7 @@ endforeach()
 # module.
 add_library(archoera_fake_module SHARED tests/fake_module.cpp)
 target_compile_features(archoera_fake_module PRIVATE cxx_std_20)
+target_compile_definitions(archoera_fake_module PRIVATE ARCHOERACX_MODULE_BUILD)
 target_include_directories(archoera_fake_module PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/../contracts/abi"
   "${CMAKE_CURRENT_LIST_DIR}/../contracts/module"

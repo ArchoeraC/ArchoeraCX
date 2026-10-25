@@ -68,14 +68,20 @@ std::wstring utf8_to_wide(const std::string& text) {
 }
 #endif
 
-std::string make_module_config() {
-  // The host treats the module config as opaque data. dataDir is currently
-  // derived from the environment; an empty value is valid for the smoke
-  // tests and for development runs that do not need persistent storage.
+std::string make_module_config(const std::string& core_dir) {
+  // The host treats the module config as opaque data. dataDir is derived from
+  // the environment; coreDir is the directory of the loaded libarchoera_core
+  // and is the only trusted location for the C# module to find its sibling
+  // executables (archoera-dl / archoera-vault) and SQLite payload. The C#
+  // side cannot use AppContext.BaseDirectory for that: .NET reports the host
+  // executable directory for shared libraries, which is flutter_tester in
+  // tests and the .app bundle's MacOS directory on macOS.
   std::string json = "{\"schemaVersion\":1,\"appVersion\":\"";
   append_json_escaped(json, kArchoeraVersion);
   json.append("\",\"dataDir\":\"");
   append_json_escaped(json, get_env(kEnvDataDir));
+  json.append("\",\"coreDir\":\"");
+  append_json_escaped(json, core_dir);
   json.append("\"}");
   return json;
 }
@@ -270,7 +276,7 @@ bool ModuleHost::load() noexcept {
         return false;
       }
 
-      const std::string config = make_module_config();
+      const std::string config = make_module_config(core_library_dir());
       void* self = nullptr;
       archoera_error error = {};
       const int32_t status = entry->init(config.c_str(), &self, &error);

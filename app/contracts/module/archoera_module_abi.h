@@ -16,6 +16,23 @@ extern "C" {
 
 #define ARCHOERA_MODULE_ABI_VERSION 2u
 
+/*
+ * Every module exports `archoera_module_entry`. Windows needs the export
+ * attribute on the declaration as well as the definition; consumers use the
+ * symbol through the host loader, so only module builds opt in.
+ */
+#if defined(_WIN32)
+#  if defined(ARCHOERACX_MODULE_BUILD)
+#    define ARCHOERACX_MODULE_API __declspec(dllexport)
+#  else
+#    define ARCHOERACX_MODULE_API
+#  endif
+#elif defined(__GNUC__) || defined(__clang__)
+#  define ARCHOERACX_MODULE_API __attribute__((visibility("default")))
+#else
+#  define ARCHOERACX_MODULE_API
+#endif
+
 typedef void (*archoera_module_done_fn)(void* user,
                                         int32_t status,
                                         const char* result_json);
@@ -61,7 +78,7 @@ typedef struct archoera_module_v1 {
 } archoera_module_v1;
 
 /* Exported symbol name every module must provide. */
-const archoera_module_v1* archoera_module_entry(void);
+ARCHOERACX_MODULE_API const archoera_module_v1* archoera_module_entry(void);
 
 #ifdef __cplusplus
 }

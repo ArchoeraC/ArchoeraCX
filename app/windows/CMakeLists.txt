@@ -93,6 +93,31 @@ install(DIRECTORY "${NATIVE_ASSETS_DIR}"
    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
    COMPONENT Runtime)
 
+# ArchoeraCX native slice. tool/build-native.bat runs before
+# `flutter build windows`; install the modules when present so the Release
+# directory is relocatable. The C++ core resolves the C# module from its own
+# directory, and the C# module spawns archoera-dl/archoera-vault from the same
+# directory. e_sqlite3 is SQLitePCLRaw's bundled payload.
+set(ARCHOERACX_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../build/native")
+install(CODE "
+  foreach(archoera_native_lib
+      archoera_core.dll
+      archoera_cs.dll
+      e_sqlite3.dll
+      archoera_dl.dll)
+    if(EXISTS \"${ARCHOERACX_NATIVE_DIR}/\${archoera_native_lib}\")
+      file(INSTALL DESTINATION \"${INSTALL_BUNDLE_LIB_DIR}\" TYPE FILE
+        FILES \"${ARCHOERACX_NATIVE_DIR}/\${archoera_native_lib}\")
+    endif()
+  endforeach()
+  foreach(archoera_native_exe archoera-dl.exe archoera-vault.exe)
+    if(EXISTS \"${ARCHOERACX_NATIVE_DIR}/\${archoera_native_exe}\")
+      file(INSTALL DESTINATION \"${INSTALL_BUNDLE_LIB_DIR}\" TYPE PROGRAM
+        FILES \"${ARCHOERACX_NATIVE_DIR}/\${archoera_native_exe}\")
+    endif()
+  endforeach()
+" COMPONENT Runtime)
+
 # Fully re-copy the assets directory on each build to avoid having stale files
 # from a previous install.
 set(FLUTTER_ASSET_DIR_NAME "flutter_assets")

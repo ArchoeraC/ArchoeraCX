@@ -10,8 +10,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <time.h>
+
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+#  include <time.h>
+#endif
+
+/*
+ * The smoke harness polls for one asynchronous completion. Windows has no
+ * nanosleep, so keep the wait in one helper instead of dropping the check.
+ */
+static void sleep_millis(long millis) {
+#if defined(_WIN32)
+  Sleep((DWORD)millis);
+#else
+  struct timespec pause = {0, millis * 1000L * 1000L};
+  nanosleep(&pause, NULL);
+#endif
+}
 
 #define CHECK(cond)                                                        \
   do {                                                                     \
@@ -36,7 +53,7 @@ int main(void) {
   uint64_t unknown_task = 123;
   uint64_t first_seq = 0;
   char* json = NULL;
-  char small[4];
+  char tiny[4];
   size_t len = 0;
   int32_t count = 0;
 
@@ -73,12 +90,12 @@ int main(void) {
   CHECK(json[len - 1] == '\0');
 
   /* A too-small buffer reports E_BUFFER and the required size. */
-  memset(small, 'X', sizeof(small));
+  memset(tiny, 'X', sizeof(tiny));
   len = 0;
-  CHECK(archoera_result(core, ping_task, small, sizeof(small), &len, &err) ==
+  CHECK(archoera_result(core, ping_task, tiny, sizeof(tiny), &len, &err) ==
         ARCHOERA_E_BUFFER);
-  CHECK(len > sizeof(small));
-  CHECK(small[0] == 'X');
+  CHECK(len > sizeof(tiny));
+  CHECK(tiny[0] == 'X');
 
   /* system.info is the other built-in method. */
   CHECK(archoera_call(core, "system.info", "{}", &info_task, &err) ==
@@ -205,8 +222,7 @@ int main(void) {
         }
       }
       if (!found) {
-        struct timespec pause = {0, 10 * 1000 * 1000};
-        nanosleep(&pause, NULL);
+        sleep_millis(10);
       }
     }
     CHECK(found);

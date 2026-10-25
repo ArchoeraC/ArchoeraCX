@@ -16,6 +16,23 @@ extern "C" {
 
 #define ARCHOERA_ABI_VERSION 1u
 
+/*
+ * The core hides every non-ABI symbol. MSVC requires the export attribute on
+ * the declaration as well as the definition, so the macro lives here where
+ * both the header consumers and the core implementation can see it.
+ */
+#if defined(_WIN32) || defined(__CYGWIN__)
+#  if defined(ARCHOERA_CORE_EXPORTS)
+#    define ARCHOERA_API __declspec(dllexport)
+#  else
+#    define ARCHOERA_API
+#  endif
+#elif defined(__GNUC__) || defined(__clang__)
+#  define ARCHOERA_API __attribute__((visibility("default")))
+#else
+#  define ARCHOERA_API
+#endif
+
 typedef struct archoera_core archoera_core;
 
 typedef enum {
@@ -69,41 +86,42 @@ typedef struct {
   const char* json;
 } archoera_event;
 
-uint32_t archoera_abi_version(void);
-const char* archoera_build_info(void);
+ARCHOERA_API uint32_t archoera_abi_version(void);
+ARCHOERA_API const char* archoera_build_info(void);
 
-archoera_status archoera_init(const char* config_json,
-                              archoera_core** out,
-                              archoera_error* err);
+ARCHOERA_API archoera_status archoera_init(const char* config_json,
+                                           archoera_core** out,
+                                           archoera_error* err);
 
-void archoera_shutdown(archoera_core* core);
+ARCHOERA_API void archoera_shutdown(archoera_core* core);
 
 typedef void (*archoera_wake_fn)(void* user);
 
-archoera_status archoera_set_wakeup(archoera_core* core,
-                                    archoera_wake_fn fn,
-                                    void* user);
+ARCHOERA_API archoera_status archoera_set_wakeup(archoera_core* core,
+                                                 archoera_wake_fn fn,
+                                                 void* user);
 
-int32_t archoera_poll(archoera_core* core,
-                      archoera_event* out,
-                      int32_t max);
+ARCHOERA_API int32_t archoera_poll(archoera_core* core,
+                                   archoera_event* out,
+                                   int32_t max);
 
-archoera_status archoera_call(archoera_core* core,
-                              const char* method,
-                              const char* params_json,
-                              uint64_t* out_task_id,
-                              archoera_error* err);
+ARCHOERA_API archoera_status archoera_call(archoera_core* core,
+                                           const char* method,
+                                           const char* params_json,
+                                           uint64_t* out_task_id,
+                                           archoera_error* err);
 
-archoera_status archoera_cancel(archoera_core* core, uint64_t task_id);
+ARCHOERA_API archoera_status archoera_cancel(archoera_core* core,
+                                             uint64_t task_id);
 
-archoera_status archoera_result(archoera_core* core,
-                                uint64_t task_id,
-                                char* buf,
-                                size_t buf_len,
-                                size_t* out_len,
-                                archoera_error* err);
+ARCHOERA_API archoera_status archoera_result(archoera_core* core,
+                                             uint64_t task_id,
+                                             char* buf,
+                                             size_t buf_len,
+                                             size_t* out_len,
+                                             archoera_error* err);
 
-void archoera_release(archoera_core* core, uint64_t task_id);
+ARCHOERA_API void archoera_release(archoera_core* core, uint64_t task_id);
 
 #ifdef __cplusplus
 }

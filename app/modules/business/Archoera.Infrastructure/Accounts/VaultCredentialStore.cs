@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Archoera.Application.Accounts;
 using Archoera.Domain.Accounts;
+using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Accounts;
@@ -23,21 +24,29 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
     private static readonly TimeSpan CliTimeout = TimeSpan.FromSeconds(30);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _dataRoot;
-    private readonly string _binary;
+    private readonly string? _configuredBinaryPath;
+    private string? _binaryPath;
     private readonly string _anchorPath;
     private bool _ready;
 
     public VaultCredentialStore(string? dataRoot = null, string? binaryPath = null)
     {
         _dataRoot = AppDataPaths.Normalize(dataRoot ?? AppDataPaths.ResolveDataRoot());
-        _binary = string.IsNullOrWhiteSpace(binaryPath)
-            ? ResolveBinary()
+        _configuredBinaryPath = string.IsNullOrWhiteSpace(binaryPath)
+            ? null
             : Path.GetFullPath(binaryPath);
         _anchorPath = Path.Combine(_dataRoot, "vault.auth");
     }
 
     public string DataRoot => _dataRoot;
-    public string BinaryPath => _binary;
+
+    /// <summary>
+    /// Resolves lazily: the composition root builds the vault store while the
+    /// NativeAOT module is still loading, before ModuleInit supplies the
+    /// hub-reported core directory.
+    /// </summary>
+    public string BinaryPath =>
+        _configuredBinaryPath ?? (_binaryPath ??= ResolveBinary());
 
     public async Task<AccountCredential?> GetCredentialAsync(
         string accountId,
@@ -62,7 +71,7 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
     {
         await EnsureReadyAsync(cancellationToken).ConfigureAwait(false);
         await using var session = await VaultSession.OpenAsync(
-            _binary,
+            BinaryPath,
             _dataRoot,
             _anchorPath,
             cancellationToken).ConfigureAwait(false);
@@ -78,10 +87,11 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
         try
         {
             if (_ready) return;
-            if (!File.Exists(_binary))
+            var binary = BinaryPath;
+            if (!File.Exists(binary))
             {
                 throw new CredentialVaultException(
-                    $"credential vault binary not found: {_binary}");
+                    $"credential vault binary not found: {binary}");
             }
             Directory.CreateDirectory(_dataRoot);
 
@@ -125,7 +135,7 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
         CancellationToken cancellationToken)
     {
         await using var session = await VaultSession.OpenAsync(
-            _binary,
+            BinaryPath,
             _dataRoot,
             _anchorPath,
             cancellationToken).ConfigureAwait(false);
@@ -156,7 +166,7 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
         var bytes = JsonSerializer.SerializeToUtf8Bytes(dto, VaultCredentialJsonContext.Default.VaultCredentialDto);
         var payload = Convert.ToBase64String(bytes);
         await using var session = await VaultSession.OpenAsync(
-            _binary,
+            BinaryPath,
             _dataRoot,
             _anchorPath,
             cancellationToken).ConfigureAwait(false);
@@ -217,7 +227,7 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
     {
         var startInfo = new ProcessStartInfo
         {
-            FileName = _binary,
+            FileName = BinaryPath,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
@@ -352,14 +362,25 @@ public sealed class VaultCredentialStore : IAccountCredentialStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baseDirectory);
         var executable = ExecutableName();
-        var candidates = new List<string>
+        var candidates = new List<string>();
+        // The hub-reported core directory is the authoritative bundle location.
+        if (ModulePaths.NativeDirectory is { } nativeDirectory)
+        {
+            candidates.Add(Path.Combine(nativeDirectory, executable));
+        }
+        candidates.AddRange(new[]
         {
             Path.Combine(baseDirectory, executable),
             Path.Combine(baseDirectory, "lib", executable),
             Path.Combine(baseDirectory, "..", executable),
             Path.Combine(baseDirectory, "..", "..", executable),
             Path.Combine(baseDirectory, "..", "..", "..", executable),
-        };
+            // NativeAOT may report the host executable's directory
+            // (Contents/MacOS) as AppContext.BaseDirectory; the bundled
+            // vault lives in Contents/Frameworks next to archoera_cs.
+            Path.Combine(baseDirectory, "Frameworks", executable),
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "Frameworks", executable)),
+        });
 
         if (includeDevelopmentProbes && !string.IsNullOrWhiteSpace(currentDirectory))
         {

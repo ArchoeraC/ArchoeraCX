@@ -51,7 +51,8 @@ public static unsafe class ModuleExports
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static int ModuleInit(IntPtr configJson, IntPtr* outSelf, IntPtr err)
     {
-        _ = configJson;
+        ModulePaths.ConfigureFromJson(
+            configJson == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(configJson));
         _ = err;
 
         if (outSelf is null)

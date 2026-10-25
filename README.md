@@ -31,13 +31,17 @@ ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，�
 git clone https://github.com/BetaStudio2/ArchoeraCX.git
 cd ArchoeraCX/app
 
-./tool/build-core.sh    # C++ 核心
-./tool/build-cs.sh      # C# NativeAOT 模块
-./tool/build-dl.sh      # Rust 下载执行器
+# Linux / macOS
+./tool/build-native.sh
+
+# Windows
+# tool\build-native.bat
 
 flutter pub get && flutter gen-l10n
 flutter run -d linux    # 或 windows / macos
 ```
+
+CI 在 Linux x64、macOS arm64、Windows x64 上执行同一套原生构建、测试与打包（`.github/workflows/build-all.yml`）。
 
 Microsoft 登录需在构建 C# 模块时注入 client ID（`export ARCHOERACX_MICROSOFT_CLIENT_ID=...` 后再跑 `./tool/build-cs.sh`），否则返回 `MICROSOFT_CLIENT_ID_MISSING`。
 

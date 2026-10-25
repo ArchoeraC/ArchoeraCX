@@ -8,6 +8,10 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Archoera.Tests" />
+    <!-- The ABI adapter (AssemblyName archoera_cs) parses the module config and
+         hands the trusted native directory to Infrastructure before any
+         method runs. -->
+    <InternalsVisibleTo Include="archoera_cs" />
   </ItemGroup>
 
   <ItemGroup>

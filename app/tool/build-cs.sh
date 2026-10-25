@@ -12,7 +12,9 @@ esac
 case "$(uname -s)" in
   Darwin)
     RID="${RID:-osx-${DEFAULT_ARCH}}"
-    OUTPUT_NAME="archoera_cs.dylib"
+    # Matches the Linux naming rule and the shared libraries the core probes
+    # (`lib<name>.dylib`); tests look for the same path.
+    OUTPUT_NAME="libarchoera_cs.dylib"
     ;;
   *)
     RID="${RID:-linux-${DEFAULT_ARCH}}"
@@ -74,7 +76,9 @@ dotnet publish "${PROJECT}" \
   "$@"
 
 PRODUCED=""
-for candidate in "${OUT_DIR}/${OUTPUT_NAME}" "${OUT_DIR}/lib${OUTPUT_NAME}"; do
+# NativeAOT may or may not add the lib prefix to the produced dylib/so; accept
+# both spellings and always install the canonical name above.
+for candidate in "${OUT_DIR}/${OUTPUT_NAME}" "${OUT_DIR}/${OUTPUT_NAME#lib}"; do
   if [[ -f "${candidate}" ]]; then
     PRODUCED="${candidate}"
     break

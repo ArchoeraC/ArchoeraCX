@@ -55,19 +55,8 @@ inline constexpr char kBuildInfoJson[] =
     "\",\"buildType\":\"" ARCHOERA_CORE_BUILD_TYPE
     "\",\"abiVersion\":1,\"modules\":[\"system\"]}";
 
-// ABI export macro. The visibility presets hide everything else in the
-// library; only the functions decorated with this macro leave the .so.
-#if defined(_WIN32) || defined(__CYGWIN__)
-#  if defined(ARCHOERA_CORE_EXPORTS)
-#    define ARCHOERA_API __declspec(dllexport)
-#  else
-#    define ARCHOERA_API __declspec(dllimport)
-#  endif
-#elif defined(__GNUC__) || defined(__clang__)
-#  define ARCHOERA_API __attribute__((visibility("default")))
-#else
-#  define ARCHOERA_API
-#endif
+// ARCHOERA_API is owned by the public ABI header: the MSVC export attribute
+// must match on the declaration and the definition.
 
 // ---------------------------------------------------------------------------
 // Error message constants

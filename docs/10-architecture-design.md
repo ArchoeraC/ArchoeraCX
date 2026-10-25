@@ -1006,6 +1006,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 {
   "schemaVersion": 1,
   "appVersion": "0.0.1+1",
+  "coreDir": "/home/u/.local/share/archoera/lib",
   "dataDir": "/home/u/.local/share/archoera",
   "cacheDir": "/home/u/.cache/archoera",
   "logDir": "/home/u/.cache/archoera/logs",
@@ -1019,6 +1020,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 ```
 
 - 路径由 C++ 解析为绝对路径后传入；模块不得自行猜测。
+- `coreDir` 是 `libarchoera_core` 所在目录，也是 C# 定位 `archoera-dl` / `archoera-vault` / `e_sqlite3` 的信任根。不能用 `AppContext.BaseDirectory` 代替：NativeAOT 共享库把后者指向宿主进程目录（测试时是 `flutter_tester`，macOS 是 `.app/Contents/MacOS`），并不等于 bundle 的 `lib/` 或 `Contents/Frameworks/`。
 - 代理由 C# 解析后写入运行期配置，再传给 Rust；Rust 不重复读系统代理（避免两套行为）。
 - `safeMode` 下不加载 Rust、不启动网络任务，用于排障。
 

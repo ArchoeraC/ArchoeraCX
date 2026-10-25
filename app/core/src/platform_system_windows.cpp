@@ -73,7 +73,9 @@ void run_notification(std::wstring title, std::wstring body) {
   icon.uID = kNotificationId;
   icon.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP;
   icon.uCallbackMessage = WM_APP + 1;
-  icon.hIcon = LoadIconW(nullptr, IDI_INFORMATION);
+  // IDI_INFORMATION expands to an ANSI resource id unless UNICODE is set for
+  // the target, so cast the integer resource handle to the wide prototype.
+  icon.hIcon = LoadIconW(nullptr, reinterpret_cast<LPCWSTR>(IDI_INFORMATION));
   lstrcpynW(icon.szTip, L"ArchoeraCX", ARRAYSIZE(icon.szTip));
 
   if (!Shell_NotifyIconW(NIM_ADD, &icon)) {

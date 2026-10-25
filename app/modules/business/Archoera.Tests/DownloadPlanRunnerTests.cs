@@ -17,6 +17,10 @@ public sealed class DownloadPlanRunnerTests
 
         Assert.Equal(baseDirectory, candidates[0]);
         Assert.Equal(Path.Combine(baseDirectory, "lib"), candidates[1]);
+        Assert.Contains(Path.Combine(baseDirectory, "Frameworks"), candidates);
+        Assert.Contains(
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "Frameworks")),
+            candidates);
         Assert.DoesNotContain(
             candidates,
             candidate => candidate.StartsWith(cwd, StringComparison.Ordinal));

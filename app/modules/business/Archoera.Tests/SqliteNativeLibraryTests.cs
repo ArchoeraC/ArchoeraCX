@@ -143,6 +143,10 @@ public sealed class SqliteNativeLibraryTests
 
         Assert.Equal(baseDirectory, candidates[0]);
         Assert.Contains(Path.Combine(baseDirectory, "lib"), candidates);
+        Assert.Contains(Path.Combine(baseDirectory, "Frameworks"), candidates);
+        Assert.Contains(
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "Frameworks")),
+            candidates);
         Assert.Contains(Path.Combine("/work/archoera", "build", "native"), candidates);
         Assert.Contains(
             Path.Combine("/work/archoera", "app", "build", "native"),

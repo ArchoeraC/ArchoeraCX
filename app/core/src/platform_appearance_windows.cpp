@@ -83,8 +83,8 @@ class WindowsAppearance final : public PlatformAppearanceWatcher {
 
  private:
   void run() noexcept {
-    const HANDLE personal_key = open_notify_key(kPersonalizeKey);
-    const HANDLE dwm_key = open_notify_key(kDwmKey);
+    const HKEY personal_key = open_notify_key(kPersonalizeKey);
+    const HKEY dwm_key = open_notify_key(kDwmKey);
     HANDLE events[2] = {
         CreateEventW(nullptr, TRUE, FALSE, nullptr),
         CreateEventW(nullptr, TRUE, FALSE, nullptr),
@@ -186,13 +186,13 @@ class WindowsAppearance final : public PlatformAppearanceWatcher {
     }
   }
 
-  static HANDLE open_notify_key(const wchar_t* subkey) {
+  static HKEY open_notify_key(const wchar_t* subkey) {
     HKEY key = nullptr;
     if (RegOpenKeyExW(HKEY_CURRENT_USER, subkey, 0,
                       KEY_NOTIFY | KEY_QUERY_VALUE, &key) != ERROR_SUCCESS) {
       return nullptr;
     }
-    return reinterpret_cast<HANDLE>(key);
+    return key;
   }
 
   static void read_into(SystemAppearance* state) {

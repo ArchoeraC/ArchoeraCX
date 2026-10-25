@@ -72,6 +72,12 @@ public sealed class VaultCredentialStoreTests
         Assert.DoesNotContain(
             candidates,
             candidate => candidate.StartsWith(cwd, StringComparison.Ordinal));
+        var executable = OperatingSystem.IsWindows()
+            ? "archoera-vault.exe"
+            : "archoera-vault";
+        Assert.Contains(
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "Frameworks", executable)),
+            candidates);
     }
 
     [Fact]

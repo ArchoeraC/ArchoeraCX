@@ -19,7 +19,13 @@ if [[ ! -f "${ARTIFACT}" ]]; then
   exit 1
 fi
 
+# The C++ module registry loads archoera_dl from build/native (and the Linux
+# CMake install / macOS bundle copy it from there). Keeping only the CLI in
+# build/native left the cdylib out of every bundle.
+mkdir -p build/native
+install -m 0755 "${ARTIFACT}" "build/native/${LIB_NAME}"
 echo "Built: ${ARTIFACT}"
+echo "Module: build/native/${LIB_NAME}"
 
 # The Flutter/dev bridge invokes the CLI next to the native core; keep a copy
 # under build/native so a bundle can find it without cargo paths.

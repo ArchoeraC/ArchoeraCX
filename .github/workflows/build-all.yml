@@ -1,0 +1,421 @@
+# =====================================================================
+#  Three-platform build: Linux x64, macOS arm64, Windows x64.
+#
+#  Every push/PR builds and tests all three desktop targets. A `v*` tag also
+#  publishes a GitHub Release after all three builds succeed. The native
+#  modules are small (C++ core + C# NativeAOT + Rust), so there is no heavy
+#  FFmpeg/vcpkg layer and the matrix stays cheap.
+#
+#  Why one workflow instead of separate ci/release files: packaging, the
+#  Microsoft client-id injection and the bundle verification must be identical
+#  in both paths. The preflight job is the single place that decides which
+#  platforms run and whether this is a release build.
+#
+#  Local entry points (same commands as the workflow):
+#    Linux/macOS: app/tool/build-native.sh
+#    Windows:     app/tool/build-native.bat
+#    Package:     packaging/{linux,macos,windows}/...
+# =====================================================================
+name: Build all platforms
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      linux:
+        description: 'Linux x64'
+        type: boolean
+        default: true
+      macos:
+        description: 'macOS arm64'
+        type: boolean
+        default: true
+      windows:
+        description: 'Windows x64'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  # =====================================================================
+  #  preflight: resolve the platform matrix and version once. Tag builds
+  #  force all three platforms so a release can never be partial.
+  # =====================================================================
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+      version: ${{ steps.select.outputs.version }}
+      all_selected: ${{ steps.select.outputs.all_selected }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - id: select
+        shell: bash
+        env:
+          INPUT_LINUX: ${{ inputs.linux }}
+          INPUT_MACOS: ${{ inputs.macos }}
+          INPUT_WINDOWS: ${{ inputs.windows }}
+        run: |
+          set -euo pipefail
+          truthy() {
+            case "${1:-}" in
+              true|TRUE|True|1|yes|YES) echo true ;;
+              *) echo false ;;
+            esac
+          }
+
+          # Tag builds always cover all three platforms. Manual dispatch uses
+          # the checkboxes; every other event (push/PR) builds the full matrix.
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            LINUX=true; MACOS=true; WINDOWS=true
+          elif [[ "${GITHUB_EVENT_NAME}" == workflow_dispatch ]]; then
+            LINUX=$(truthy "${INPUT_LINUX}")
+            MACOS=$(truthy "${INPUT_MACOS}")
+            WINDOWS=$(truthy "${INPUT_WINDOWS}")
+          else
+            LINUX=true; MACOS=true; WINDOWS=true
+          fi
+
+          VERSION="$(sed -n 's/^version:[[:space:]]*//p' app/pubspec.yaml | head -n 1)"
+          if [[ -z "${VERSION}" ]]; then
+            echo "::error::could not read version from app/pubspec.yaml"
+            exit 1
+          fi
+
+          ENTRIES=""
+          add() {
+            ENTRIES="${ENTRIES}${ENTRIES:+,}{\"platform\":\"$1\",\"os\":\"$2\",\"arch\":\"$3\",\"name\":\"$4\"}"
+          }
+          [[ "${LINUX}" == true ]] && add linux ubuntu-24.04 x64 "Linux x64"
+          [[ "${MACOS}" == true ]] && add macos macos-15 arm64 "macOS arm64"
+          [[ "${WINDOWS}" == true ]] && add windows windows-latest x64 "Windows x64"
+
+          if [[ -z "${ENTRIES}" ]]; then
+            echo "::error::select at least one platform"
+            exit 1
+          fi
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+            if [[ "${TAG_VERSION}" != "${VERSION}" ]]; then
+              echo "::warning::tag ${GITHUB_REF_NAME} does not match app/pubspec.yaml ${VERSION}"
+            fi
+          fi
+
+          if [[ "${LINUX}" == true && "${MACOS}" == true && "${WINDOWS}" == true ]]; then
+            ALL=true
+          else
+            ALL=false
+          fi
+
+          {
+            echo "matrix=[${ENTRIES}]"
+            echo "version=${VERSION}"
+            echo "all_selected=${ALL}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "version=${VERSION} linux=${LINUX} macos=${MACOS} windows=${WINDOWS}"
+
+  # =====================================================================
+  #  build: native modules -> tests -> platform bundle -> package.
+  # =====================================================================
+  build:
+    name: Build ${{ matrix.name }}
+    needs: preflight
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.preflight.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      ARCHOERACX_MICROSOFT_CLIENT_ID: ${{ secrets.ARCHOERACX_MICROSOFT_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            libdbus-1-dev \
+            libgtk-3-dev \
+            liblzma-dev \
+            libstdc++-12-dev \
+            ninja-build \
+            pkg-config \
+            zlib1g-dev
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          toolchain: stable
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+
+      - name: Require Microsoft client id for tagged builds
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [[ -z "${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" ]]; then
+            echo "::error::ARCHOERACX_MICROSOFT_CLIENT_ID is not configured; refusing a tagged build without sign-in support."
+            exit 1
+          fi
+
+      - name: Build native modules (Linux/macOS)
+        if: runner.os != 'Windows'
+        working-directory: app
+        run: ./tool/build-native.sh
+
+      - name: Build native modules (Windows)
+        if: runner.os == 'Windows'
+        working-directory: app
+        shell: cmd
+        run: call tool\build-native.bat
+
+      - name: C++ ABI smoke tests
+        working-directory: app
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./build/native/abi_smoke
+          ./build/native/async_smoke
+          ./build/native/module_smoke
+          ./build/native/event_queue_smoke
+
+      - name: C# tests
+        working-directory: app
+        run: dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release --nologo
+
+      - name: C# DevHost diagnostics
+        working-directory: app
+        run: |
+          dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
+          dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
+
+      - name: Rust tests
+        working-directory: app
+        run: |
+          cargo test --locked --manifest-path modules/downloader/Cargo.toml
+          cargo test --locked --manifest-path core/vault-rs/Cargo.toml
+
+      - name: Flutter dependencies and localization
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter gen-l10n
+
+      - name: Dart analyze
+        working-directory: app
+        run: dart analyze
+
+      - name: Flutter tests
+        working-directory: app
+        run: flutter test
+
+      - name: Build Flutter bundle (Linux)
+        if: runner.os == 'Linux'
+        working-directory: app
+        run: flutter build linux --release
+
+      - name: Build Flutter bundle (macOS)
+        if: runner.os == 'macOS'
+        working-directory: app
+        run: flutter build macos --release
+
+      - name: Build Flutter bundle (Windows)
+        if: runner.os == 'Windows'
+        working-directory: app
+        run: flutter build windows --release
+
+      - name: Verify native slice (Linux)
+        if: runner.os == 'Linux'
+        working-directory: app
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=build/linux/x64/release/bundle
+          for file in \
+            lib/libarchoera_core.so \
+            lib/archoera_cs.so \
+            lib/libe_sqlite3.so \
+            lib/libarchoera_dl.so \
+            lib/archoera-dl \
+            lib/archoera-vault; do
+            [[ -f "${bundle}/${file}" ]] || { echo "::error::missing ${file}"; exit 1; }
+          done
+          python tool/check_icons.py "${bundle}/data/flutter_assets"
+
+      - name: Verify native slice (macOS)
+        if: runner.os == 'macOS'
+        working-directory: app
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path=build/macos/Build/Products/Release/archoera_cx.app
+          native="${app_path}/Contents/Frameworks"
+          for file in \
+            libarchoera_core.dylib \
+            libarchoera_cs.dylib \
+            libe_sqlite3.dylib \
+            libarchoera_dl.dylib \
+            archoera-dl \
+            archoera-vault; do
+            [[ -f "${native}/${file}" ]] || { echo "::error::missing ${file}"; exit 1; }
+          done
+          codesign --verify --deep --strict "${app_path}"
+          python tool/check_icons.py \
+            "${app_path}/Contents/Frameworks/App.framework/Resources/flutter_assets"
+
+      - name: Verify native slice (Windows)
+        if: runner.os == 'Windows'
+        working-directory: app
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=build/windows/x64/runner/Release
+          for file in \
+            archoera_core.dll \
+            archoera_cs.dll \
+            e_sqlite3.dll \
+            archoera_dl.dll \
+            archoera-dl.exe \
+            archoera-vault.exe; do
+            [[ -f "${bundle}/${file}" ]] || { echo "::error::missing ${file}"; exit 1; }
+          done
+          python tool/check_icons.py "${bundle}/data/flutter_assets"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          bash packaging/linux/package.sh \
+            app/build/linux/x64/release/bundle \
+            "${{ needs.preflight.outputs.version }}" x64
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          bash packaging/macos/package.sh \
+            app/build/macos/Build/Products/Release/archoera_cx.app \
+            "${{ needs.preflight.outputs.version }}" arm64
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pwsh packaging/windows/package.ps1 `
+            -ReleaseDir app/build/windows/x64/runner/Release `
+            -Version "${{ needs.preflight.outputs.version }}" `
+            -Arch x64
+
+      - name: Upload package
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ArchoeraCX-${{ needs.preflight.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  # =====================================================================
+  #  release: tag v* only, after all three builds succeeded. The tag must
+  #  point at a commit already merged to main.
+  # =====================================================================
+  release:
+    name: Release ${{ github.ref_name }}
+    needs: [preflight, build]
+    if: >-
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.preflight.outputs.all_selected == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Reject tags that are not on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          status="$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...${GITHUB_SHA}" --jq .status 2>/dev/null || echo error)"
+          echo "compare main...${GITHUB_SHA} => ${status}"
+          case "${status}" in
+            behind|identical) echo "OK: tag commit is on main" ;;
+            *)
+              echo "::error::release tag must point at a commit on main (SEC-23)"
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          path: artifacts
+
+      - name: Assemble release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.sha256' \) \
+            -exec cp -v {} assets/ \;
+          (
+            cd assets
+            sha256sum ./*.tar.gz ./*.zip > SHA256SUMS
+          )
+          ls -la assets
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VER="${TAG#v}"
+          NOTES="release-notes.md"
+          {
+            echo "ArchoeraCX ${VER}"
+            echo
+            echo "Development build for Linux x64, macOS arm64 and Windows x64."
+            echo
+            echo "- Linux: portable .tar.gz (run \`archoera_cx\` from the bundle)."
+            echo "- macOS: .tar.gz containing the ad-hoc signed \`ArchoeraCX.app\`."
+            echo "- Windows: portable .zip (run \`archoera_cx.exe\`)."
+            echo
+            echo "Microsoft sign-in requires the release client id; the build is"
+            echo "produced from the tagged commit by GitHub Actions."
+          } > "${NOTES}"
+
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release edit "${TAG}" --repo "${GITHUB_REPOSITORY}" --notes-file "${NOTES}"
+            gh release upload "${TAG}" assets/* --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create "${TAG}" assets/* \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "ArchoeraCX ${VER}" \
+              --notes-file "${NOTES}"
+          fi
