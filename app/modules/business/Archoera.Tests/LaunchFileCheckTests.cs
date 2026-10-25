@@ -5,6 +5,9 @@ namespace Archoera.Tests;
 
 public sealed class LaunchFileCheckTests
 {
+    // The fixture is Linux-shaped (natives-linux + Linux-only rules); pin the
+    // platform so macOS/Windows runners exercise the same deterministic data.
+
     [Fact]
     public void Reports_missing_native_classifier()
     {
@@ -36,7 +39,7 @@ public sealed class LaunchFileCheckTests
                 File.WriteAllText(full, "jar");
             }
 
-            var check = LaunchPlanBuilder.CheckFiles(version, paths);
+            var check = LaunchPlanBuilder.CheckFiles(version, paths, MojangPlatform.LinuxX64);
 
             Assert.False(check.Ok);
             Assert.Equal("LIBRARIES_MISSING", check.Code);
@@ -71,7 +74,7 @@ public sealed class LaunchFileCheckTests
             var paths = LaunchPaths.Resolve(root);
             var version = MojangTestData.Version();
 
-            var missingLibraries = LaunchPlanBuilder.CheckFiles(version, paths);
+            var missingLibraries = LaunchPlanBuilder.CheckFiles(version, paths, MojangPlatform.LinuxX64);
             Assert.False(missingLibraries.Ok);
             Assert.Equal("LIBRARIES_MISSING", missingLibraries.Code);
 
@@ -89,14 +92,14 @@ public sealed class LaunchFileCheckTests
                 File.WriteAllText(full, "jar");
             }
 
-            var missingClient = LaunchPlanBuilder.CheckFiles(version, paths);
+            var missingClient = LaunchPlanBuilder.CheckFiles(version, paths, MojangPlatform.LinuxX64);
             Assert.False(missingClient.Ok);
             Assert.Equal("CLIENT_JAR_MISSING", missingClient.Code);
 
             File.WriteAllText(
                 Path.Combine(root, $"{MojangTestData.VersionId}.jar"),
                 "client");
-            var missingIndex = LaunchPlanBuilder.CheckFiles(version, paths);
+            var missingIndex = LaunchPlanBuilder.CheckFiles(version, paths, MojangPlatform.LinuxX64);
             Assert.False(missingIndex.Ok);
             Assert.Equal("ASSET_INDEX_MISSING", missingIndex.Code);
 
@@ -104,7 +107,7 @@ public sealed class LaunchFileCheckTests
             File.WriteAllText(
                 Path.Combine(root, "assets", "indexes", "5.json"),
                 "{\"objects\":{\"icons/a.png\":{\"hash\":\"" + hash + "\"}}}");
-            var missingAsset = LaunchPlanBuilder.CheckFiles(version, paths);
+            var missingAsset = LaunchPlanBuilder.CheckFiles(version, paths, MojangPlatform.LinuxX64);
             Assert.False(missingAsset.Ok);
             Assert.Equal("ASSET_MISSING", missingAsset.Code);
 
@@ -116,7 +119,7 @@ public sealed class LaunchFileCheckTests
                 hash);
             Directory.CreateDirectory(Path.GetDirectoryName(objectPath)!);
             File.WriteAllText(objectPath, "asset");
-            Assert.True(LaunchPlanBuilder.CheckFiles(version, paths).Ok);
+            Assert.True(LaunchPlanBuilder.CheckFiles(version, paths, MojangPlatform.LinuxX64).Ok);
         }
         finally
         {

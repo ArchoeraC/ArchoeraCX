@@ -13,6 +13,9 @@ namespace Archoera.Tests;
 /// </summary>
 public sealed class LaunchFileRecoveryTests
 {
+    // Native fixtures use the Linux classifier; pin the platform so host OS
+    // rule filtering does not change the expected file set.
+
     [Fact]
     public void Copies_a_missing_library_from_another_root()
     {
@@ -38,7 +41,8 @@ public sealed class LaunchFileRecoveryTests
                 Instance(paths.InstanceRoot),
                 version,
                 paths,
-                [source, target]);
+                [source, target],
+                MojangPlatform.LinuxX64);
 
             Assert.Equal(1, repaired);
             Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(paths.LibrariesRoot, relative)));
@@ -84,7 +88,8 @@ public sealed class LaunchFileRecoveryTests
                 Instance(paths.InstanceRoot),
                 version,
                 paths,
-                [source, target]);
+                [source, target],
+                MojangPlatform.LinuxX64);
 
             Assert.Equal(1, repaired);
             Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(paths.LibrariesRoot, relative)));
@@ -120,7 +125,8 @@ public sealed class LaunchFileRecoveryTests
                     Instance(paths.InstanceRoot),
                     version,
                     paths,
-                    [source, target]));
+                    [source, target],
+                    MojangPlatform.LinuxX64));
             Assert.False(File.Exists(Path.Combine(paths.LibrariesRoot, relative)));
         }
         finally
@@ -163,7 +169,8 @@ public sealed class LaunchFileRecoveryTests
                 Instance(paths.InstanceRoot),
                 version,
                 paths,
-                [source, target]);
+                [source, target],
+                MojangPlatform.LinuxX64);
 
             Assert.Equal(2, repaired);
             Assert.True(File.Exists(Path.Combine(paths.AssetsRoot, "indexes", "17.json")));
@@ -202,7 +209,8 @@ public sealed class LaunchFileRecoveryTests
                 Instance(paths.InstanceRoot),
                 version,
                 paths,
-                [source, target]);
+                [source, target],
+                MojangPlatform.LinuxX64);
 
             Assert.Equal(1, repaired);
             Assert.Equal(

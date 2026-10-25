@@ -28,9 +28,12 @@ internal static class LaunchPlanBuilder
     /// Downloadable files are intentionally not excluded: a missing library,
     /// client jar or asset index is reported so the caller can repair it.
     /// </summary>
-    internal static LaunchFileCheck CheckFiles(MojangVersion version, LaunchPaths paths)
+    internal static LaunchFileCheck CheckFiles(
+        MojangVersion version,
+        LaunchPaths paths,
+        MojangPlatform? platform = null)
     {
-        var platform = MojangPlatform.Current();
+        platform ??= MojangPlatform.Current();
         var missing = new List<string>();
         foreach (var library in version.Libraries)
         {

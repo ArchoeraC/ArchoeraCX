@@ -21,11 +21,12 @@ internal static class LaunchFileRecovery
         GameInstanceRecord instance,
         MojangVersion version,
         LaunchPaths paths,
-        IReadOnlyList<string> roots)
+        IReadOnlyList<string> roots,
+        MojangPlatform? platform = null)
     {
         if (roots.Count == 0) return 0;
 
-        var platform = MojangPlatform.Current();
+        platform ??= MojangPlatform.Current();
         var osKey = platform.OsName;
         var repaired = 0;
 
