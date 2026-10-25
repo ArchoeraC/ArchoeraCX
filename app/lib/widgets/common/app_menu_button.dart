@@ -31,20 +31,36 @@ class AppMenuEntry<T> {
 class AppMenuButton<T> extends StatelessWidget {
   const AppMenuButton({
     super.key,
-    required this.items,
+    this.items = const [],
+    this.itemBuilder,
     required this.onSelected,
+    this.enabled = true,
     this.tooltip,
     this.icon,
     this.child,
     this.initialValue,
-  });
+    this.constraints,
+    this.iconSize,
+  }) : assert(
+         itemBuilder != null || items.length > 0,
+         'Provide items or an itemBuilder.',
+       );
 
   final List<AppMenuEntry<T>> items;
+
+  /// Overrides the default [AppMenuEntry] rendering for menus with richer
+  /// rows (for example the Java runtime picker) while keeping the shared
+  /// button, placement and popup theme.
+  final PopupMenuItemBuilder<T>? itemBuilder;
+
   final ValueChanged<T> onSelected;
+  final bool enabled;
   final String? tooltip;
   final IconData? icon;
   final Widget? child;
   final T? initialValue;
+  final BoxConstraints? constraints;
+  final double? iconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -52,13 +68,15 @@ class AppMenuButton<T> extends StatelessWidget {
     final hasChild = child != null;
     return PopupMenuButton<T>(
       tooltip: tooltip,
+      enabled: enabled,
       padding: hasChild ? EdgeInsets.zero : const EdgeInsets.all(8),
       initialValue: initialValue,
+      constraints: constraints,
       onSelected: onSelected,
-      itemBuilder: (context) => appMenuEntries(context, items),
+      itemBuilder: itemBuilder ?? (context) => appMenuEntries(context, items),
       icon: hasChild || icon == null
           ? null
-          : Icon(icon, color: tokens.textSecondary),
+          : Icon(icon, size: iconSize, color: tokens.textSecondary),
       child: child,
     );
   }

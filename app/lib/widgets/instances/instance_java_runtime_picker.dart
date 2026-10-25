@@ -6,6 +6,7 @@ import '../../services/core/java/java_scan.dart';
 import '../../stores/java.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import '../common/app_menu_button.dart';
 
 /// Dropdown attached to the Java path field that lists scanned runtimes.
 ///
@@ -26,40 +27,34 @@ class InstanceJavaRuntimePicker extends ConsumerWidget {
   final bool enabled;
   final ValueChanged<String> onSelected;
 
+  static const _rescan = '\u0000rescan';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final runtimes = ref.watch(javaRuntimesProvider);
-    final tokens = context.tokens;
-    return MenuAnchor(
-      style: MenuStyle(
-        alignment: AlignmentDirectional.bottomEnd,
-        minimumSize: const WidgetStatePropertyAll(Size(380, 0)),
-        maximumSize: const WidgetStatePropertyAll(Size(520, 420)),
-        backgroundColor: WidgetStatePropertyAll(tokens.surface1),
-        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        shape: WidgetStatePropertyAll(
-          BeveledRectangleBorder(
-            side: BorderSide(color: tokens.border),
-            borderRadius: BorderRadius.only(
-              topRight: Radius.circular(tokens.bevelL),
-              bottomLeft: Radius.circular(tokens.bevelS),
-            ),
-          ),
-        ),
+    return AppMenuButton<String>(
+      key: const ValueKey('instance-java-picker'),
+      tooltip: l10n.instanceSettingsJavaPick,
+      enabled: enabled,
+      icon: AppIcons.chevronDown,
+      iconSize: 20,
+      constraints: const BoxConstraints(
+        minWidth: 380,
+        maxWidth: 520,
+        maxHeight: 420,
       ),
-      menuChildren: _entries(context, ref, runtimes),
-      builder: (context, controller, child) => IconButton(
-        key: const ValueKey('instance-java-picker'),
-        tooltip: l10n.instanceSettingsJavaPick,
-        onPressed: enabled
-            ? () => controller.isOpen ? controller.close() : controller.open()
-            : null,
-        icon: const Icon(AppIcons.chevronDown, size: 20),
-      ),
+      onSelected: (value) {
+        if (value == _rescan) {
+          ref.read(javaRuntimesProvider.notifier).rescan();
+          return;
+        }
+        onSelected(value);
+      },
+      itemBuilder: (context) => _entries(context, ref, runtimes),
     );
   }
 
-  List<Widget> _entries(
+  List<PopupMenuEntry<String>> _entries(
     BuildContext context,
     WidgetRef ref,
     AsyncValue<List<JavaRuntime>> runtimes,
@@ -70,66 +65,95 @@ class InstanceJavaRuntimePicker extends ConsumerWidget {
 
     return [
       if (selectedPath.isNotEmpty)
-        MenuItemButton(
-          onPressed: () => onSelected(''),
-          leadingIcon: const Icon(AppIcons.reset, size: 18),
-          child: Text(l10n.instanceSettingsJavaFollowGlobal),
+        PopupMenuItem<String>(
+          value: '',
+          child: Row(
+            children: [
+              const Icon(AppIcons.reset, size: 18),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(child: Text(l10n.instanceSettingsJavaFollowGlobal)),
+            ],
+          ),
         ),
       for (final runtime in items)
-        MenuItemButton(
-          onPressed: () => onSelected(runtime.path),
-          leadingIcon: Icon(
-            runtime.path == selectedPath ? AppIcons.check : AppIcons.java,
-            size: 18,
-            color: runtime.path == selectedPath ? tokens.accent : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+        PopupMenuItem<String>(
+          value: runtime.path,
+          height: 56,
+          child: Row(
             children: [
-              Text(runtime.displayVersion, style: textTheme.labelLarge),
-              Text(
-                runtime.path,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.bodySmall?.copyWith(
-                  color: tokens.textTertiary,
+              Icon(
+                runtime.path == selectedPath ? AppIcons.check : AppIcons.java,
+                size: 18,
+                color: runtime.path == selectedPath ? tokens.accent : null,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(runtime.displayVersion, style: textTheme.labelLarge),
+                    Text(
+                      runtime.path,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: tokens.textTertiary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
       if (runtimes.isLoading)
-        MenuItemButton(
-          onPressed: null,
-          leadingIcon: const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.instanceSettingsJavaScanning),
+            ],
           ),
-          child: Text(l10n.instanceSettingsJavaScanning),
         )
       else if (runtimes.hasError)
-        MenuItemButton(
-          onPressed: () => ref.read(javaRuntimesProvider.notifier).rescan(),
-          leadingIcon: Icon(AppIcons.error, size: 18, color: tokens.danger),
-          child: Text(l10n.instanceSettingsJavaScanFailed),
+        PopupMenuItem<String>(
+          value: _rescan,
+          child: Row(
+            children: [
+              Icon(AppIcons.error, size: 18, color: tokens.danger),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(child: Text(l10n.instanceSettingsJavaScanFailed)),
+            ],
+          ),
         )
       else if (items.isEmpty)
-        MenuItemButton(
-          onPressed: null,
-          leadingIcon: Icon(
-            AppIcons.info,
-            size: 18,
-            color: tokens.textTertiary,
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Row(
+            children: [
+              Icon(AppIcons.info, size: 18, color: tokens.textTertiary),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(child: Text(l10n.instanceSettingsJavaNone)),
+            ],
           ),
-          child: Text(l10n.instanceSettingsJavaNone),
         ),
-      const Divider(height: 1),
-      MenuItemButton(
-        onPressed: () => ref.read(javaRuntimesProvider.notifier).rescan(),
-        leadingIcon: const Icon(AppIcons.refresh, size: 18),
-        child: Text(l10n.instanceSettingsJavaRescan),
+      const PopupMenuDivider(),
+      PopupMenuItem<String>(
+        value: _rescan,
+        child: Row(
+          children: [
+            const Icon(AppIcons.refresh, size: 18),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(child: Text(l10n.instanceSettingsJavaRescan)),
+          ],
+        ),
       ),
     ];
   }

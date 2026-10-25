@@ -324,6 +324,7 @@ L4 浮层（对话框/任务中心/通知）
 - 表单内的下拉统一使用 `AppDropdownFormField`（同一文件）：保留 `InputDecorationTheme` 的标签/边框，同时共享同一弹出层、颜色和语义 chevron；不保留 Flutter 默认下划线或默认箭头。
 - 创建实例、加载器安装、日志文件选择等弹窗/工具栏下拉也走上述组件，不再出现透明无边框的 `DropdownButton` 或默认 Material 菜单。
 - 动作菜单（实例「更多」、账户操作、下载排序）统一使用 `AppMenuButton`（`lib/widgets/common/app_menu_button.dart`）+ `AppMenuEntry`；右键菜单复用 `appMenuEntries`，因此工具栏、右键和斜切弹出层不会各写一套。
+- Java 运行时选择器也走 `AppMenuButton` 的 `itemBuilder`，只自定义“版本 + 路径 + 扫描状态”行内容，按钮和菜单位置仍与其它菜单共用。
 
 ### 5.7 任务中心
 
