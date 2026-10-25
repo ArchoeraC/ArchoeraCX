@@ -48,12 +48,24 @@ public static class DownloaderMissing
 /// This is the single process bridge for <c>download.execute</c> and pack
 /// installs; the executor still validates the plan independently.
 /// </summary>
+/// <summary>
+/// Producer intent for runtime tuning. Resource plans contain many small
+/// mod/config files, so they use shorter ranges to keep a single large file
+/// parallel; game plans keep the user's normal chunk size.
+/// </summary>
+public enum DownloadProfile
+{
+    Default,
+    Resource,
+}
+
 public interface IDownloadPlanRunner
 {
     bool IsAvailable { get; }
     Task<PlanExecutionResult> ExecuteAsync(
         DownloadPlan plan,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        DownloadProfile profile = DownloadProfile.Default);
 }
 
 public sealed class DownloadPlanRunner : IDownloadPlanRunner
@@ -83,7 +95,8 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
 
     public async Task<PlanExecutionResult> ExecuteAsync(
         DownloadPlan plan,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        DownloadProfile profile = DownloadProfile.Default)
     {
         ArgumentNullException.ThrowIfNull(plan);
         if (!IsAvailable)
@@ -98,7 +111,7 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             var settings = await new JsonAppSettingsStore()
                 .LoadAsync(cancellationToken)
                 .ConfigureAwait(false);
-            plan = ApplyTuning(plan, settings);
+            plan = ApplyTuning(plan, settings, profile);
             manualProxy = DownloadProxyResolver.FromSettings(settings.DownloadProxy);
         }
         catch (Exception exception) when (
@@ -269,7 +282,10 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
     /// plan that was produced elsewhere. Plans stay declarative; the runner is
     /// the single place where runtime preferences win over producer defaults.
     /// </summary>
-    public static DownloadPlan ApplyTuning(DownloadPlan plan, AppSettings settings)
+    public static DownloadPlan ApplyTuning(
+        DownloadPlan plan,
+        AppSettings settings,
+        DownloadProfile profile = DownloadProfile.Default)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(settings);
@@ -283,6 +299,27 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             DownloadPlanLimits.MaxPerHostConcurrency);
         var chunkSizeKb = Math.Clamp(settings.DownloadChunkSizeKb, 128, 8192);
         var rangeThresholdKb = Math.Clamp(settings.DownloadRangeThresholdKb, 0, 65536);
+        if (profile == DownloadProfile.Resource)
+        {
+            // Mods and pack configs are usually only a few MiB. A 512 KiB
+            // range lets one file use several connections instead of waiting
+            // for a single 4 MiB stream, while a disabled range setting stays
+            // disabled.
+            chunkSizeKb = Math.Min(chunkSizeKb, 512);
+            if (rangeThresholdKb > 0)
+            {
+                rangeThresholdKb = Math.Min(rangeThresholdKb, 512);
+            }
+            // Resource packs contain many files from the same CDN host. When
+            // the user kept the historical default of 8, allow the plan to use
+            // the global budget (still capped by concurrency) instead of
+            // leaving half of it idle. An explicit lower cap is preserved.
+            if (plan.Files.Count > 1 &&
+                perHost == DownloadPlanLimits.DefaultPerHostConcurrency)
+            {
+                perHost = Math.Min(concurrency, 16);
+            }
+        }
         return plan with
         {
             Concurrency = concurrency,
@@ -291,6 +328,13 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
                 PerHostConcurrency = perHost,
                 ChunkSize = chunkSizeKb * 1024L,
                 RangeThreshold = rangeThresholdKb * 1024L,
+                // Thousands of tiny mod/config files must not turn into one
+                // fsync stall per file; a lost file is re-downloaded and
+                // verified, so the resource profile uses the fast durability
+                // mode already supported by the executor.
+                Durability = profile == DownloadProfile.Resource
+                    ? DownloadDurability.Fast
+                    : plan.Options.Durability,
             },
         };
     }

@@ -321,7 +321,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         try
         {
             var result = await _runner
-                .ExecuteAsync(plan!, cancellationToken)
+                .ExecuteAsync(plan!, cancellationToken, DownloadProfile.Resource)
                 .ConfigureAwait(false);
             return BuildEnvelope(writer =>
             {

@@ -366,7 +366,7 @@ public sealed partial class PackInstallService
         try
         {
             packDownload = await _runner
-                .ExecuteAsync(packPlan, cancellationToken)
+                .ExecuteAsync(packPlan, cancellationToken, DownloadProfile.Resource)
                 .ConfigureAwait(false);
             extracted = await extractTask.ConfigureAwait(false);
         }

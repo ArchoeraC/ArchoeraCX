@@ -84,7 +84,8 @@ public sealed class ForgeInstallerBootstrapTests
 
         public Task<PlanExecutionResult> ExecuteAsync(
             DownloadPlan plan,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            DownloadProfile profile = DownloadProfile.Default)
         {
             foreach (var file in plan.Files)
             {

@@ -446,7 +446,8 @@ public sealed class PackGameInstallServiceTests
 
         public Task<PlanExecutionResult> ExecuteAsync(
             DownloadPlan plan,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            DownloadProfile profile = DownloadProfile.Default)
         {
             Calls++;
             return Task.FromResult(

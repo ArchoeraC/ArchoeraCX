@@ -57,6 +57,61 @@ public sealed class DownloadTuningTests
     }
 
     [Fact]
+    public void Resource_profile_uses_shorter_ranges()
+    {
+        var settings = Settings(16, 8) with
+        {
+            DownloadChunkSizeKb = 4096,
+            DownloadRangeThresholdKb = 8192,
+        };
+
+        var tuned = DownloadPlanRunner.ApplyTuning(
+            Plan(),
+            settings,
+            DownloadProfile.Resource);
+
+        Assert.Equal(512L * 1024, tuned.Options.ChunkSize);
+        Assert.Equal(512L * 1024, tuned.Options.RangeThreshold);
+        Assert.Equal(DownloadDurability.Fast, tuned.Options.Durability);
+    }
+
+    [Fact]
+    public void Resource_profile_respects_disabled_ranges()
+    {
+        var settings = Settings(16, 8) with { DownloadRangeThresholdKb = 0 };
+
+        var tuned = DownloadPlanRunner.ApplyTuning(
+            Plan(),
+            settings,
+            DownloadProfile.Resource);
+
+        Assert.Equal(0, tuned.Options.RangeThreshold);
+    }
+
+    [Fact]
+    public void Resource_profile_raises_the_default_host_cap_for_many_files()
+    {
+        var file = PlanFile.Create(
+            "https://cdn.example.invalid/a.jar",
+            "mods/a.jar",
+            DownloadHash.Create(DownloadHashAlgorithm.Sha1, new string('a', 40)),
+            1024);
+        var many = Plan() with { Files = [file, file with { Dest = "mods/b.jar" }] };
+
+        var defaultCap = DownloadPlanRunner.ApplyTuning(
+            many,
+            Settings(16, 8),
+            DownloadProfile.Resource);
+        Assert.Equal(16, defaultCap.Options.PerHostConcurrency);
+
+        var explicitLow = DownloadPlanRunner.ApplyTuning(
+            many,
+            Settings(16, 4),
+            DownloadProfile.Resource);
+        Assert.Equal(4, explicitLow.Options.PerHostConcurrency);
+    }
+
+    [Fact]
     public void Disabling_ranges_keeps_the_plan_single_stream()
     {
         var tuned = DownloadPlanRunner.ApplyTuning(
