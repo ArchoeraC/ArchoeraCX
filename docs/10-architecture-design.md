@@ -1804,6 +1804,8 @@ void _drain() {
 | `joinServerAddress` | `host` / `host:port` / `[v6]` / `[v6]:port`，≤ 255 | 服务器地址；端口默认 25565 |
 | `joinWorldName` | string ≤ 128，拒绝 `/`、`\`、`..` | 单人世界名；仅版本支持 Quick Play 时生效 |
 | `preLoadCommand` / `preLaunchCommand` / `postExitCommand` | string ≤ 4096；`null` = 继承，`""` = 禁用 | 启动生命周期命令；无 shell、超时、`INST_*` 环境变量 |
+| `maximized` | bool；与 `fullscreen` 互斥 | 最大化近似：UI 把主显示器尺寸写入窗口宽高 |
+| `enableGameMode` / `enableMangoHud` / `useZink` | bool? | Linux 性能预设；通过 wrapper/env 生效 |
 | `windowWidth` / `windowHeight` | int，640–7680 / 480–4320 | 游戏窗口尺寸 |
 | `fullscreen` | bool | 全屏 |
 
@@ -1818,7 +1820,7 @@ void _drain() {
 ```
 
 - `instance.update` 新增可选 `overrides` 对象，语义是 **merge patch**：键缺省 = 不改变，显式 `null` = 清除，有值 = 设置；`instance.list` / `instance.create` / `instance.update` 返回的实例对象**始终**带 `overrides`（无覆盖为 `{}`）。
-- 全局 `settings.json`（schema 14）另有 `wrapperCommand`（string ≤ 4096）、`environment`（object ≤ 64 项）与 `preLoadCommand` / `preLaunchCommand` / `postExitCommand`（string ≤ 4096）。启动环境合并顺序：自动优化（dGPU）→ 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
+- 全局 `settings.json`（schema 15）另有 `wrapperCommand`（string ≤ 4096）、`environment`（object ≤ 64 项）、`preLoadCommand` / `preLaunchCommand` / `postExitCommand`（string ≤ 4096）、`maximized`（与 `fullscreen` 互斥）、`enableGameMode` / `enableMangoHud` / `useZink`（Linux 预设），以及仅用于高级原生库的 `developerMode` + `nativeGlfwPath` / `nativeOpenALPath` / `nativeSdlPath`。开发者模式与下载合规的开发者模式无关。启动环境合并顺序：自动优化（dGPU）→ 性能预设 → 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
 - 启动时 C# 用 `InstanceOverrides.ApplyTo(AppSettings)` 把实例覆盖合到全局设置，再选 Java、构建 LaunchPlan。
 - SQLite 只做索引，**不存** `overrides`；权威源仍是 `<instance root>/.archoera/instance.json`。
 
