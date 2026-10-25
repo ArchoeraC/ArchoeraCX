@@ -70,6 +70,9 @@ stdenv.mkDerivation (finalAttrs: {
     "libarchoera_core.so"
     "libarchoera_dl.so"
     "archoera_cs.so"
+    # libdartjni.so is the optional Flutter JNI bridge. It links libjvm.so,
+    # but this launcher launches an external JVM and never loads that bridge.
+    "libjvm.so"
   ];
 
   installPhase = ''
