@@ -1001,7 +1001,7 @@ abstract class AppLocalizations {
   /// No description provided for @sourceCurseForgePending.
   ///
   /// In en, this message translates to:
-  /// **'We are seeking CurseForge\'s approval; use Modrinth until access is granted.'**
+  /// **'CurseForge is unavailable until API access is configured; use Modrinth for now.'**
   String get sourceCurseForgePending;
 
   /// No description provided for @providerNotWired.

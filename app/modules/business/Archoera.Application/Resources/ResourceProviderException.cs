@@ -7,9 +7,9 @@ public static class ResourceErrorCode
     public const string ProviderAuth = "PROVIDER_AUTH";
 
     /// <summary>
-    /// The provider is known but not registered. CurseForge online access and
-    /// its zip import both need an API key; the provider remains unavailable
-    /// until a key-gated implementation is wired into the registry.
+    /// The provider is known but unavailable until API access is configured.
+    /// CurseForge online access and its zip import both need an API key; the
+    /// registry therefore keeps the provider behind that credential gate.
     /// </summary>
     public const string ProviderUnavailable = "PROVIDER_UNAVAILABLE";
 

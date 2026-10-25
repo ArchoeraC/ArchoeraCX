@@ -58,7 +58,7 @@ export ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>"
 ```
 
 - CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注入。
-- `CURSEFORGE_API_KEY` 是 CurseForge Provider 的保留键名；接入实现时与 Microsoft client ID 相同，经 CI secret / MSBuild 属性在构建期注入（当前 registry 尚未消费该属性），默认空值表示 provider 未注册。
+- `CURSEFORGE_API_KEY` 是 CurseForge Provider 的保留键名；接入实现时与 Microsoft client ID 相同，经 CI secret / MSBuild 属性在构建期注入（当前 registry 尚未消费该属性），默认空值使 provider 在 API 访问配置前不可用。
 - 构建期只把 client ID 的**高熵 blob**（随机 nonce + SHA-256 keystream 异或）写进 `obj/.../MicrosoftBuildConfig.g.cs`，运行时在内存里还原；明文不落仓库、不出现在二进制字符串表。
 - 本地构建未设置该变量时 client ID 为空，登录返回 `MICROSOFT_CLIENT_ID_MISSING`，不会发出网络请求。
 - 运行时环境变量优先于编译期默认值。

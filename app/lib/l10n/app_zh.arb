@@ -262,7 +262,7 @@
   "tabShaders": "光影",
   "sourceModrinth": "Modrinth",
   "sourceCurseForge": "CurseForge",
-  "sourceCurseForgePending": "正在尝试征得 CurseForge 同意；获批前请使用 Modrinth。",
+  "sourceCurseForgePending": "CurseForge 在配置 API 访问前不可用；请使用 Modrinth。",
   "providerNotWired": "下载源接线是下一步；当前为 UI 结构。",
   "loaderInstallTitle": "安装 Forge / NeoForge",
   "loaderKindLabel": "加载器",

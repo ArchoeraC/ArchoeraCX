@@ -214,7 +214,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             // provider must not touch the filesystem or change error precedence.
             throw new ResourceProviderException(
                 ResourceErrorCode.ProviderUnavailable,
-                "CurseForge provider is not registered; use Modrinth");
+                "CurseForge provider is unavailable until API access is configured; use Modrinth");
         }
 
         var kind = ReadKind(root);
@@ -403,7 +403,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         {
             throw new ResourceProviderException(
                 ResourceErrorCode.ProviderUnavailable,
-                "CurseForge provider is not registered; use Modrinth");
+                "CurseForge provider is unavailable until API access is configured; use Modrinth");
         }
 
         var baseAddress = ResolveProviderBase(ReadOptionalString(root, "providerBase"));

@@ -327,7 +327,7 @@
   "tabShaders": "Shaders",
   "sourceModrinth": "Modrinth",
   "sourceCurseForge": "CurseForge",
-  "sourceCurseForgePending": "We are seeking CurseForge's approval; use Modrinth until access is granted.",
+  "sourceCurseForgePending": "CurseForge is unavailable until API access is configured; use Modrinth for now.",
   "providerNotWired": "Provider wiring is next; this is the UI shell.",
   "loaderInstallTitle": "Install Forge / NeoForge",
   "loaderKindLabel": "Loader",

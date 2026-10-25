@@ -7,7 +7,7 @@
 > 实测日期 **2026-10-21**。配套：[05-download-engine.md](05-download-engine.md)（Rust 执行器）、[06-modpack-install.md](06-modpack-install.md)（整合包）、[03-mod-search.md](03-mod-search.md)（搜索/更新）、[09-forge-generated-artifacts.md](09-forge-generated-artifacts.md)（生成物）。
 > 发行/合规策略以 [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md) 与 [`07-compliance-gate.md`](07-compliance-gate.md) 为准；本文只谈技术源与计划字段。
 >
-> **实现状态（2026-10-25）**：Rust `DownloadPlan` 执行器 MVP、C# `DownloadPlan` 契约、Modrinth provider、Mojang 原版计划、Forge/NeoForge installer/依赖计划、Mojang Java runtime 计划均已落地；CurseForge 源当前因 API 访问权限尚未开通而门控（gated pending API access；`PROVIDER_UNAVAILABLE`：在线接口与 zip 导入都需要 API key）；计划尚未提交到 Rust 执行器。
+> **实现状态（2026-10-25）**：Rust `DownloadPlan` 执行器 MVP、C# `DownloadPlan` 契约、Modrinth provider、Mojang 原版计划、Forge/NeoForge installer/依赖计划、Mojang Java runtime 计划均已落地；CurseForge 源在 API 访问配置前不可用（unavailable until API access is configured；`PROVIDER_UNAVAILABLE`：在线接口与 zip 导入都需要 API key）；计划尚未提交到 Rust 执行器。
 
 ---
 
@@ -16,12 +16,12 @@
 | # | 结论 | 依据 |
 |---|---|---|
 | 1 | **源分三类：官方必需（Mojang/加载器/Java）、内容平台（Modrinth/CF）、用户提供（本地文件/JDK/账户）**。三类的默认等级、鉴权、镜像策略完全不同。 | [事实] 09 政策、06 生态接口 |
-| 2 | **Modrinth 是当前接入的内容源；CurseForge 源处于 API 访问门控**。Modrinth 无鉴权、有 SHA-512/直链/批量 hash 反查。 | [事实] 03 §0–§2；项目当前状态 |
+| 2 | **Modrinth 是当前接入的内容源；CurseForge 源在 API 访问配置前不可用**。Modrinth 无鉴权、有 SHA-512/直链/批量 hash 反查。 | [事实] 03 §0–§2；项目当前状态 |
 | 3 | **`DownloadPlan` 只描述「远端字节 → 本地文件」**。生成物（Forge `-client.jar`、`client-extra`、mappings）绝不进入下载计划；它们属于 loader 安装事务。 | [推断] 05 §1、09 §3 |
 | 4 | **每个文件必须带 hash 和 size**；镜像只提供字节，不提供信任。镜像 hash 不匹配直接丢弃并回退官方。 | [事实] 05 §3、09 政策 §4.2 |
 | 5 | **协议 JSON 没有 hash 的（Fabric/Quilt profile）不能当不可变文件**；按 TTL/ETag 缓存，合并结果由 C# 记录来源与抓取时间。 | [事实] 02 §1、06 §4；[推断] 缓存策略 |
 | 6 | **失败要分类**：403 可能是鉴权、配额、签名 URL 过期或作者禁转；429 才是明确限流；`DISTRIBUTION_DENIED` 不可重试、不可换第三方镜像。 | [事实] 03 §2.4 |
-| 7 | **CurseForge 源处于 API 访问门控**（`PROVIDER_UNAVAILABLE`）；`official-cn` L0 不提供内容下载。 | [事实] 03 §2.4、09 政策 §4.1 |
+| 7 | **CurseForge 源在 API 访问配置前不可用**（`PROVIDER_UNAVAILABLE`）；`official-cn` L0 不提供内容下载。 | [事实] 03 §2.4、09 政策 §4.1 |
 | 8 | **Java runtime 不只一个 URL**：Mojang `all.json` 按平台/组件给 manifest，再按文件下载；必须校验每文件 SHA-1/size，保留 executable 位。 | [事实] 本次实测 `all.json` + `java-runtime-delta` manifest |
 
 **一句话**：下载源不是 URL 列表，而是「来源 + 鉴权 + 哈希 + 条款 + 失败语义」的组合；Rust 只执行，C# 负责选择与解释。
@@ -67,7 +67,7 @@
 | Fabric/Quilt | profile JSON、loader 库 | 合并后的有效版本 | 无 |
 | Mod/资源包/光影 | 平台元数据 + 文件 | 本地扫描/依赖状态/更新状态 | 本地导入的文件、配置 |
 | Java | Mojang runtime 或 Adoptium | 解压/托管目录/版本探测 | 用户指定 JDK |
-| CurseForge | —（API 访问门控） | — | — |
+| CurseForge | —（API 访问配置前不可用） | — | — |
 
 ---
 
@@ -204,11 +204,11 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 
 ```
 默认：Modrinth
-补充：CurseForge API 访问门控
+补充：CurseForge 在 API 访问配置前不可用
 不默认：第三方聚合站/网盘/论坛附件
 ```
 
-理由：Modrinth 无鉴权、直链、双哈希、批量反查/更新；CurseForge 处于 API 访问门控。**[事实]** 03 §0。
+理由：Modrinth 无鉴权、直链、双哈希、批量反查/更新；CurseForge 在 API 访问配置前不可用。**[事实]** 03 §0。
 
 | 维度 | Modrinth | CurseForge |
 |---|---|---|
@@ -225,7 +225,7 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 
 1. 用户在实例/项目上显式选择的 provider 优先。
 2. 用统一 DTO 搜索 Modrinth；命中且版本级兼容 → 选 Modrinth。
-3. 未命中/不兼容 → `NO_COMPATIBLE_BUILD`（CurseForge 在 API 门控期间不参与）。
+3. 未命中/不兼容 → `NO_COMPATIBLE_BUILD`（CurseForge 在 API 访问配置前不参与）。
 4. 不允许「找不到指定版本就装最新」；必须锁定 `(provider, projectId, versionId/fileId)`。
 
 ### 3.2 版本级兼容
@@ -272,7 +272,7 @@ accept(version, target):
 
 ### 3.5 当前状态
 
-CurseForge 源当前因 API 访问权限尚未开通而门控：在线接口与整合包 zip 导入都依赖 API key。`provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。`official-cn` L0 不注册内容 provider；`official-global` 默认 L1，L2 需确认。**[事实]**
+CurseForge 源在 API 访问配置前不可用：在线接口与整合包 zip 导入都依赖 API key。`provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。`official-cn` L0 不注册内容 provider；`official-global` 默认 L1，L2 需确认。**[事实]**
 
 ### 3.6 源选择伪代码
 
@@ -448,7 +448,7 @@ Rust archoera_dl
 | 场景 | 典型来源 | 识别 | 重试/动作 | 用户提示 |
 |---|---|---|---|---|
 | **作者禁转** | CurseForge | `allowModDistribution=false`；`downloadUrl=null`；`/download-url` 无可用 URL | **不重试、不换镜像**；`DISTRIBUTION_DENIED` | 「作者未授权第三方下载，请到官网手动下载」 |
-| **API 访问门控** | CurseForge | `provider=curseforge`（在线或 zip 导入） | 不发请求；`PROVIDER_UNAVAILABLE` | 「CurseForge 源暂不可用」 |
+| **API 访问未配置** | CurseForge | `provider=curseforge`（在线或 zip 导入） | 不发请求；`PROVIDER_UNAVAILABLE` | 「CurseForge 在配置 API 访问前不可用」 |
 | **限流** | Modrinth/CF | 429 + `Retry-After`；Modrinth `Remaining` 低 | 退避/等待；`RATE_LIMITED` | 「请求过多，N 秒后重试」 |
 | **签名 URL 过期** | CF/CDN/自定义镜像 | 403/410/`URL_EXPIRED` | 同 URL 不重试；C# 重新解析 URL 后重提 | 「下载链接已过期，正在重新获取」 |
 | **镜像 hash 不一致** | BMCLAPI/自定义 | actual != expected | 删除 `.part`，拉黑 `(hash,host)`，换源；单源 `MIRROR_MISMATCH`，全失败 `HASH_MISMATCH` | 「镜像文件校验失败，已切换官方源」 |
@@ -504,7 +504,7 @@ Rust archoera_dl
 - Forge/NeoForge：installer 下载 + `loader.install`（见 09）；不在 CI 里跑完整 6 个 processor 除非有缓存。
 - Fabric/Quilt：profile JSON 解析 + 库下载；Quilt 当前网络在本次实测超时，需重试/镜像。
 - Modrinth：搜索/版本/下载一个公开 mod；记录 UA/限流头；不要高频。
-- CurseForge：**API 访问门控**；只测拒绝路径（`PROVIDER_UNAVAILABLE`），不发任何 CF 请求。
+- CurseForge：**API 访问配置前不可用**；只测拒绝路径（`PROVIDER_UNAVAILABLE`），不发任何 CF 请求。
 - Java runtime：`all.json` + 一个平台 manifest 的元数据；不下载完整 JRE。
 - 镜像：BMCLAPI 下载一个 installer/库，校验官方 hash。
 

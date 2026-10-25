@@ -32,8 +32,8 @@ class DownloadPage extends StatefulWidget {
 
 class _DownloadPageState extends State<DownloadPage> {
   /// Kept explicit so a second provider can be enabled without reshaping
-  /// the page. CurseForge has no registered provider (online and zip import
-  /// both need an API key), so the chip stays locked and explains that.
+  /// the page. CurseForge is unavailable until API access is configured
+  /// (online and zip import both need an API key), so the chip stays locked.
   String _source = 'modrinth';
 
   @override
