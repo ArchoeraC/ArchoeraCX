@@ -1,4 +1,5 @@
 import 'package:archoera_cx/app/app.dart';
+import 'package:archoera_cx/stores/platform.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/stores/settings.dart';
 import 'package:flutter/material.dart';
@@ -87,7 +88,12 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [coreClientProvider.overrideWithValue(null)],
+        overrides: [
+          coreClientProvider.overrideWithValue(null),
+          // The Advanced assertions below cover the Linux performance block;
+          // pin the provider so the macOS/Windows runners see the same page.
+          linuxPlatformProvider.overrideWithValue(true),
+        ],
         child: const ArchoeraApp(),
       ),
     );
