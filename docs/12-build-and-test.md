@@ -160,7 +160,7 @@ logs/account.log              脱敏的账户诊断日志
 - 中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；
 - 其他地区默认启用下载；
 - 发布包只从 GitHub CI 构建：[`.github/workflows/build-all.yml`](../.github/workflows/build-all.yml) 在 Linux/macOS/Windows 三个 runner 原生构建、测试、打包；推送 `v*` tag 后汇总三端产物发布；
-- 构建期凭据只通过 CI secret / MSBuild 属性注入，不进入仓库。当前注入的是 Microsoft client ID；`CURSEFORGE_API_KEY` 是 CurseForge provider 的保留键名，接入实现时按同一路径注入，默认空值使 provider 保持未注册。
+- 构建期凭据只通过 CI secret / MSBuild 属性注入，不进入仓库；当前注入的是 Microsoft client ID。
 
 发行通道、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
 
