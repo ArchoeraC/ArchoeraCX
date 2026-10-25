@@ -426,6 +426,184 @@ public sealed class LaunchRuntimeOptionsTests
         Assert.Equal("1", startInfo.Environment["SAFE"]);
     }
 
+    [Fact]
+    public void Maximized_uses_the_configured_window_size_and_fullscreen_still_wins()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var (instance, version, paths) = CreateFixture(root, WindowArguments());
+            var maximized = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                CreateSettings(root) with
+                {
+                    Maximized = true,
+                    WindowWidth = 2560,
+                    WindowHeight = 1440,
+                },
+                paths);
+
+            // Vanilla has no maximized flag; the UI stores the display size,
+            // which is what the game receives as resolution.
+            Assert.DoesNotContain("--fullscreen", maximized.Arguments);
+            AssertArgument(maximized, "--width", "2560");
+            AssertArgument(maximized, "--height", "1440");
+
+            // A hand-edited document with both modes must behave as fullscreen.
+            var both = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                CreateSettings(root) with
+                {
+                    Maximized = true,
+                    Fullscreen = true,
+                    WindowWidth = 1920,
+                    WindowHeight = 1080,
+                },
+                paths);
+
+            Assert.Contains("--fullscreen", both.Arguments);
+            AssertArgument(both, "--width", "1920");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Linux_presets_compose_the_wrapper_and_user_environment_wins()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+
+        var root = CreateTempDirectory();
+        try
+        {
+            var (instance, version, paths) = CreateFixture(root, ClassicArguments());
+            var settings = CreateSettings(root) with
+            {
+                WrapperCommand = "mangohud",
+                EnableGameMode = true,
+                EnableMangoHud = true,
+                UseZink = true,
+                Environment = new Dictionary<string, string>
+                {
+                    ["MANGOHUD"] = "0",
+                    ["MESA_LOADER_DRIVER_OVERRIDE"] = "user-loader",
+                    ["GALLIUM_DRIVER"] = "user-gallium",
+                },
+            };
+
+            var plan = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                settings,
+                paths);
+
+            Assert.Equal(["gamemoderun", "mangohud"], plan.Wrapper);
+            Assert.Equal("0", plan.Environment["MANGOHUD"]);
+            Assert.Equal("user-loader", plan.Environment["MESA_LOADER_DRIVER_OVERRIDE"]);
+            Assert.Equal("user-gallium", plan.Environment["GALLIUM_DRIVER"]);
+
+            var startInfo = LaunchProcessStarter.CreateStartInfo(plan);
+            Assert.Equal("gamemoderun", startInfo.FileName);
+            Assert.Equal("mangohud", startInfo.ArgumentList[0]);
+            Assert.Equal(plan.JavaPath, startInfo.ArgumentList[1]);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Native_overrides_are_inserted_before_user_jvm_arguments()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+
+        var root = CreateTempDirectory();
+        try
+        {
+            var glfw = Path.Combine(root, "libglfw.so");
+            var sdl = Path.Combine(root, "libSDL2.so");
+            File.WriteAllText(glfw, "native");
+            File.WriteAllText(sdl, "native");
+            var userGlfw = "-Dorg.lwjgl.glfw.libname=/user/libglfw.so";
+            var (instance, version, paths) = CreateFixture(root, ClassicArguments());
+
+            var plan = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                CreateSettings(root) with
+                {
+                    DeveloperMode = true,
+                    NativeGlfwPath = glfw,
+                    // Missing on purpose: it must be skipped without failing.
+                    NativeOpenALPath = Path.Combine(root, "missing-openal.so"),
+                    NativeSdlPath = sdl,
+                    JvmArgs = userGlfw,
+                },
+                paths);
+
+            var arguments = plan.Arguments.ToList();
+            var nativeGlfwIndex = arguments.IndexOf($"-Dorg.lwjgl.glfw.libname={glfw}");
+            var userGlfwIndex = arguments.IndexOf(userGlfw);
+            Assert.True(nativeGlfwIndex >= 0);
+            Assert.True(userGlfwIndex > nativeGlfwIndex);
+            Assert.Contains($"-Dorg.lwjgl.sdl.libname={sdl}", arguments);
+            Assert.DoesNotContain(
+                arguments,
+                argument => argument.StartsWith(
+                    "-Dorg.lwjgl.openal.libname=",
+                    StringComparison.Ordinal));
+
+            // Without developer mode the saved paths are ignored entirely.
+            var disabled = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                CreateSettings(root) with
+                {
+                    DeveloperMode = false,
+                    NativeGlfwPath = glfw,
+                    NativeSdlPath = sdl,
+                },
+                paths);
+            Assert.DoesNotContain(
+                disabled.Arguments,
+                argument => argument.StartsWith(
+                    "-Dorg.lwjgl.",
+                    StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static MojangArguments WindowArguments()
+        => new(
+            Game:
+            [
+                new MojangArgument(
+                    [],
+                    [
+                        "--width", "${resolution_width}",
+                        "--height", "${resolution_height}",
+                    ]),
+            ],
+            Jvm: []);
+
     private static void AssertArgument(LaunchPlan plan, string name, string expected)
     {
         var arguments = plan.Arguments.ToList();

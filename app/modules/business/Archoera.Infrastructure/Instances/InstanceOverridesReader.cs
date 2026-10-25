@@ -41,23 +41,27 @@ internal static class InstanceOverridesReader
         }
 
         var overrides = new InstanceOverrides(
-            memoryMin,
-            memoryMax,
-            String(element, "jvmArgs"),
-            String(element, "gcMode"),
-            String(element, "gameArgs"),
-            JavaPath(element),
-            Int(element, "windowWidth"),
-            Int(element, "windowHeight"),
-            Bool(element, "fullscreen"),
-            ImportedWrapper(element),
-            RuntimeOptionsJson.TryReadEnvironment(element, "environment"),
-            joinOnLaunch,
-            joinAddress,
-            joinWorld,
-            ImportedCommand(element, "preLoadCommand"),
-            ImportedCommand(element, "preLaunchCommand"),
-            ImportedCommand(element, "postExitCommand"));
+            MemoryMinMb: memoryMin,
+            MemoryMaxMb: memoryMax,
+            JvmArgs: String(element, "jvmArgs"),
+            GcMode: String(element, "gcMode"),
+            GameArgs: String(element, "gameArgs"),
+            JavaPath: JavaPath(element),
+            WindowWidth: Int(element, "windowWidth"),
+            WindowHeight: Int(element, "windowHeight"),
+            Fullscreen: Bool(element, "fullscreen"),
+            WrapperCommand: ImportedWrapper(element),
+            Environment: RuntimeOptionsJson.TryReadEnvironment(element, "environment"),
+            JoinServerOnLaunch: joinOnLaunch,
+            JoinServerAddress: joinAddress,
+            JoinWorldName: joinWorld,
+            PreLoadCommand: ImportedCommand(element, "preLoadCommand"),
+            PreLaunchCommand: ImportedCommand(element, "preLaunchCommand"),
+            PostExitCommand: ImportedCommand(element, "postExitCommand"),
+            Maximized: Bool(element, "maximized"),
+            EnableGameMode: Bool(element, "enableGameMode"),
+            EnableMangoHud: Bool(element, "enableMangoHud"),
+            UseZink: Bool(element, "useZink"));
         return overrides.IsEmpty ? null : overrides;
     }
 
