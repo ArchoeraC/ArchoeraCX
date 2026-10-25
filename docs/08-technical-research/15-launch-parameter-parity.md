@@ -7,8 +7,8 @@
 
 > **实现状态（2026-10-25）**
 >
-> - **[已实现]** 引号感知 tokenizer（JVM/game/wrapper/命令）；全局与每实例 `wrapperCommand`、`environment`（合并顺序：自动优化 → 性能预设 → 全局 → 实例；实例 `{}` 清空）；每实例 `joinServerOnLaunch` / `joinServerAddress` / `joinWorldName`（版本支持时用 Quick Play，否则 `--server/--port`）；pre-load / pre-launch / post-exit 命令（无 shell、超时、`INST_*` 环境变量、pre 失败中止、post 失败仅记日志、`INST_JAVA_ARGS` 脱敏、命令日志 0600 并纳入 `launch-*.log` 轮转）；窗口三态（最大化用主显示器尺寸近似，fullscreen 优先）；Linux GameMode / MangoHud / Zink 预设（wrapper/env，用户值覆盖预设）；原生 GLFW/OpenAL/SDL 覆盖仅在独立的 `developerMode` + Linux + 文件存在时生效，与下载合规的开发者模式无关；settings schema 15；`settings.setRuntimeOptions` 已登记 C++/C#。pre-load 在自动选择 Java 之前运行，`INST_JAVA` 只有在实例显式固定 Java 时才有值。
-> - **[未实现]** 独立控制台窗口（我们使用日志页/任务中心）、“启动后隐藏启动器”/“游戏退出后退出启动器”（需要进程退出事件，另开一批）、系统级 GLFW/OpenAL/SDL 只保留开发者选项，不做图形化自动探测。
+> - **[已实现]** 引号感知 tokenizer（JVM/game/wrapper/命令）；全局与每实例 `wrapperCommand`、`environment`（合并顺序：自动优化 → 性能预设 → 全局 → 实例；实例 `{}` 清空）；每实例 `joinServerOnLaunch` / `joinServerAddress` / `joinWorldName`（版本支持时用 Quick Play，否则 `--server/--port`）；pre-load / pre-launch / post-exit 命令（无 shell、超时、`INST_*` 环境变量、pre 失败中止、post 失败仅记日志、`INST_JAVA_ARGS` 脱敏、命令日志 0600 并纳入 `launch-*.log` 轮转）；窗口三态（最大化用主显示器尺寸近似，fullscreen 优先）；Linux GameMode / MangoHud / Zink 预设（wrapper/env，用户值覆盖预设）；原生 GLFW/OpenAL/SDL 覆盖仅在独立的 `developerMode` + Linux + 文件存在时生效，与下载合规的开发者模式无关；启动后隐藏（`ui.hideAfterLaunch`，无托盘入口时保持可见）与游戏退出后退出（`ui.quitAfterGameExit`，`launch.log.tail` 完成驱动，6 小时 follow 上限后复核 `running`）；settings schema 15；`settings.setRuntimeOptions` 已登记 C++/C#。pre-load 在自动选择 Java 之前运行，`INST_JAVA` 只有在实例显式固定 Java 时才有值。
+> - **[未实现]** 独立控制台窗口（我们使用日志查看器/任务中心，不另开 OS 窗口）、系统级 GLFW/OpenAL/SDL 自动探测（只保留独立的开发者选项）。
 
 ---
 
@@ -32,11 +32,11 @@
 | 设置 | 行为 | 我们的对应 |
 |---|---|---|
 | `MinecraftWinWidth/Height` | `--width`/`--height` | 有 |
-| `LaunchMaximized` | 近似最大化（部分版本不支持） | 无；只有 `--fullscreen` |
-| `CloseAfterLaunch` / `QuitAfterGameStop` | 启动后隐藏/退出启动器 | 无（UI 行为） |
-| `ShowConsole` / `ShowConsoleError` / `AutoCloseConsole` | 控制台窗口 | 无（我们用日志页） |
+| `LaunchMaximized` | 近似最大化（部分版本不支持） | 有（UI 存主显示器尺寸；无独立参数，fullscreen 优先） |
+| `CloseAfterLaunch` / `QuitAfterGameStop` | 启动后隐藏/退出启动器 | 有（UI 偏好；无托盘时保持可见；log tail 完成驱动退出） |
+| `ShowConsole` / `ShowConsoleError` / `AutoCloseConsole` | 控制台窗口 | 日志查看器（无独立 OS 控制台窗口） |
 | `JoinServerOnLaunch` + address / `JoinWorldOnLaunch` | 自动进服务器/单人世界；新版本用 Quick Play，旧版用 `--server/--port` | **无** |
-| `UseNativeGLFW/OpenAL/SDL` + 自定义路径 | Linux 系统库注入 `-Dorg.lwjgl.*.libname` | 无（低优先，平台特定） |
+| `UseNativeGLFW/OpenAL/SDL` + 自定义路径 | Linux 系统库注入 `-Dorg.lwjgl.*.libname` | 有（仅独立 `developerMode` + Linux + 文件存在） |
 | `OnlineFixes` | 旧在线服务模拟 | 无（不相关） |
 | 游戏时长统计 | 记录/显示游玩时间 | 无（产品功能） |
 
