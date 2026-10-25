@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/game_instance.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/common/app_dropdown.dart';
 
 /// Mutable tri-state values for the Linux-only per-instance performance
 /// overrides. `null` means "follow the global switch".
@@ -116,12 +117,9 @@ class InstancePerformanceOverrides extends StatelessWidget {
           child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
         ),
         const SizedBox(width: AppSpacing.sm),
-        DropdownButton<String>(
+        AppDropdown<String>(
           key: key,
           value: _wire(value),
-          isDense: true,
-          underline: const SizedBox.shrink(),
-          borderRadius: BorderRadius.circular(context.tokens.radiusM),
           items: [
             DropdownMenuItem(
               value: inherit,

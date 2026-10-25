@@ -3,6 +3,7 @@ part of '../settings_page.dart';
 enum _SettingsSection {
   appearance,
   launch,
+  advanced,
   download,
   storage,
   java,
@@ -80,11 +81,46 @@ class _SettingsNav extends StatelessWidget {
   }
 }
 
-class _SettingsTabs extends StatelessWidget {
+class _SettingsTabs extends StatefulWidget {
   const _SettingsTabs({required this.selected, required this.onSelected});
 
   final _SettingsSection selected;
   final ValueChanged<_SettingsSection> onSelected;
+
+  @override
+  State<_SettingsTabs> createState() => _SettingsTabsState();
+}
+
+class _SettingsTabsState extends State<_SettingsTabs> {
+  final Map<_SettingsSection, GlobalKey> _tabKeys = {
+    for (final section in _SettingsSection.values) section: GlobalKey(),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureSelected();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SettingsTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != widget.selected) _ensureSelected();
+  }
+
+  void _ensureSelected() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = _tabKeys[widget.selected]?.currentContext;
+      if (target == null) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,48 +130,56 @@ class _SettingsTabs extends StatelessWidget {
 
     return SizedBox(
       height: 42,
-      child: ListView.separated(
+      child: SingleChildScrollView(
+        key: const ValueKey('settings-tabs'),
         scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          final active = item.section == selected;
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => onSelected(item.section),
-              hoverColor: tokens.surface2,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: active ? tokens.accent : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 16,
-                      color: active ? tokens.accent : tokens.textSecondary,
-                    ),
-                    const SizedBox(width: AppSpacing.xxs),
-                    Text(
-                      item.label,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: active ? tokens.accent : tokens.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+        child: Row(
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              if (index > 0) const SizedBox(width: AppSpacing.md),
+              _tab(context, tokens, items[index]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tab(BuildContext context, AppTokens tokens, _SettingsItem item) {
+    final active = item.section == widget.selected;
+    return Material(
+      key: _tabKeys[item.section],
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => widget.onSelected(item.section),
+        hoverColor: tokens.surface2,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? tokens.accent : Colors.transparent,
+                width: 2,
               ),
             ),
-          );
-        },
+          ),
+          child: Row(
+            children: [
+              Icon(
+                item.icon,
+                size: 16,
+                color: active ? tokens.accent : tokens.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.xxs),
+              Text(
+                item.label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: active ? tokens.accent : tokens.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -159,6 +203,11 @@ List<_SettingsItem> _settingsItems(AppLocalizations l10n) => [
     _SettingsSection.launch,
     l10n.settingsSectionLaunch,
     AppIcons.play,
+  ),
+  _SettingsItem(
+    _SettingsSection.advanced,
+    l10n.settingsAdvanced,
+    AppIcons.settings,
   ),
   _SettingsItem(
     _SettingsSection.storage,

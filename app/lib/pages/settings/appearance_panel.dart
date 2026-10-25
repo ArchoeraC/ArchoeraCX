@@ -136,12 +136,9 @@ extension _AppearancePanelX on _SettingsPageState {
           icon: AppIcons.instances,
           title: l10n.settingsStartPage,
           subtitle: l10n.settingsStartPageDesc,
-          trailing: DropdownButton<String>(
+          trailing: AppDropdown<String>(
             key: const ValueKey('start-page-dropdown'),
             value: prefs.startPage,
-            isDense: true,
-            underline: const SizedBox.shrink(),
-            borderRadius: BorderRadius.circular(context.tokens.radiusM),
             items: [
               DropdownMenuItem(
                 value: '/',

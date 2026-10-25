@@ -1304,6 +1304,36 @@ abstract class AppLocalizations {
   /// **'Launch'**
   String get settingsSectionLaunch;
 
+  /// Settings navigation label for detailed launch defaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get settingsAdvanced;
+
+  /// Explains that the advanced page holds global defaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Defaults for instances without their own overrides; per-instance overrides still win.'**
+  String get settingsAdvancedNote;
+
+  /// Advanced section title for memory, GC and JVM defaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Java & memory defaults'**
+  String get settingsSectionJavaMemory;
+
+  /// Java settings row that opens the advanced section.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced launch defaults'**
+  String get settingsAdvancedJavaMemory;
+
+  /// Explains where memory and JVM defaults moved.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory, GC and JVM arguments live in the Advanced section.'**
+  String get settingsAdvancedJavaMemoryHint;
+
   /// No description provided for @settingsSectionWindow.
   ///
   /// In en, this message translates to:

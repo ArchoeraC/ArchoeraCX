@@ -22,7 +22,6 @@ extension _DownloadPanelX on _SettingsPageState {
     AppSettings? settings,
   ) {
     final notifier = ref.read(appSettingsProvider.notifier);
-    final tokens = context.tokens;
     final source = settings?.downloadSource ?? 'auto';
     final concurrency = settings?.downloadConcurrency ?? 16;
     final perHost = settings?.downloadPerHost ?? 8;
@@ -126,11 +125,8 @@ extension _DownloadPanelX on _SettingsPageState {
           icon: AppIcons.throughput,
           title: l10n.settingsDownloadRangeThreshold,
           subtitle: l10n.settingsDownloadRangeThresholdDesc,
-          trailing: DropdownButton<int>(
+          trailing: AppDropdown<int>(
             value: rangeThresholdKb,
-            isDense: true,
-            underline: const SizedBox.shrink(),
-            borderRadius: BorderRadius.circular(tokens.radiusM),
             items: [
               DropdownMenuItem(
                 value: 0,
@@ -155,11 +151,8 @@ extension _DownloadPanelX on _SettingsPageState {
           icon: AppIcons.download,
           title: l10n.settingsDownloadChunk,
           subtitle: l10n.settingsDownloadChunkDesc,
-          trailing: DropdownButton<int>(
+          trailing: AppDropdown<int>(
             value: chunkKb,
-            isDense: true,
-            underline: const SizedBox.shrink(),
-            borderRadius: BorderRadius.circular(tokens.radiusM),
             items: const [
               DropdownMenuItem(value: 256, child: Text('256 KiB')),
               DropdownMenuItem(value: 512, child: Text('512 KiB')),

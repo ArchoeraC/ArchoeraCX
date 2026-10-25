@@ -4,7 +4,6 @@ import 'package:archoera_cx/services/core/java/java_scan.dart';
 import 'package:archoera_cx/stores/java.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
-import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:archoera_cx/widgets/common/toast.dart';
 import 'package:archoera_cx/widgets/instances/instance_command_overrides.dart';
 import 'package:archoera_cx/widgets/instances/instance_settings_dialog.dart';
@@ -217,9 +216,11 @@ void main() {
       ],
     );
 
-    await tester.ensureVisible(find.byIcon(AppIcons.chevronDown));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('instance-java-picker')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(AppIcons.chevronDown));
+    await tester.tap(find.byKey(const ValueKey('instance-java-picker')));
     await tester.pumpAndSettle();
 
     expect(find.text('21.0.4'), findsOneWidget);

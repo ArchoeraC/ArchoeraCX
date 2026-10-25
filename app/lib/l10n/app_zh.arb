@@ -382,6 +382,26 @@
   "@settingsSectionLaunch": {
     "description": "启动器如何启动游戏：窗口与附加参数。"
   },
+  "settingsAdvanced": "高级",
+  "@settingsAdvanced": {
+    "description": "设置导航标签：详细的启动默认值。"
+  },
+  "settingsAdvancedNote": "未单独覆盖的实例使用这些默认值；实例设置中的覆盖仍然优先。",
+  "@settingsAdvancedNote": {
+    "description": "说明高级分区保存的是全局默认值。"
+  },
+  "settingsSectionJavaMemory": "Java 与内存默认值",
+  "@settingsSectionJavaMemory": {
+    "description": "高级分区中的内存、GC 与 JVM 默认值标题。"
+  },
+  "settingsAdvancedJavaMemory": "高级启动默认值",
+  "@settingsAdvancedJavaMemory": {
+    "description": "Java 设置中打开高级分区的入口。"
+  },
+  "settingsAdvancedJavaMemoryHint": "内存、GC 与 JVM 参数已移到高级分区。",
+  "@settingsAdvancedJavaMemoryHint": {
+    "description": "说明内存与 JVM 默认值的位置。"
+  },
   "settingsSectionWindow": "游戏窗口",
   "settingsWindowNote": "窗口模式写入原版启动参数（--width / --height / --fullscreen），对支持这些参数的版本生效。最大化会用主显示器的可用尺寸近似。",
   "settingsSectionBehavior": "启动器行为",

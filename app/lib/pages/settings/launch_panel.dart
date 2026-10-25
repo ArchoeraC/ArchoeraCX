@@ -17,13 +17,6 @@ class _LaunchSettingsPanel extends ConsumerStatefulWidget {
 }
 
 class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
-  static const _presets = <(int, int)>[
-    (854, 480),
-    (1280, 720),
-    (1600, 900),
-    (1920, 1080),
-  ];
-
   final _game = TextEditingController();
   final _wrapper = TextEditingController();
   final _environment = TextEditingController();
@@ -38,7 +31,6 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
   final _postExitFocus = FocusNode();
   Timer? _debounce;
   bool _saving = false;
-  bool _windowBusy = false;
   String? _error;
   String? _wrapperError;
   String? _environmentError;
@@ -172,42 +164,6 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     }
   }
 
-  Future<void> _applyWindow(int width, int height) async {
-    try {
-      await ref
-          .read(appSettingsProvider.notifier)
-          .setRuntimeOptions(windowWidth: width, windowHeight: height);
-    } catch (error) {
-      if (!mounted) return;
-      toast('$error', type: ToastType.error);
-    }
-  }
-
-  /// Switching modes writes both mutually exclusive flags plus, for maximized,
-  /// the primary display's usable size. A failed display lookup keeps the
-  /// currently configured size instead of writing zeroes or crashing.
-  Future<void> _setWindowMode(GameWindowMode mode) async {
-    if (_windowBusy) return;
-    setState(() => _windowBusy = true);
-    final size = mode == GameWindowMode.maximized
-        ? await ref.read(maximizedWindowSizeProvider)()
-        : null;
-    try {
-      await ref
-          .read(appSettingsProvider.notifier)
-          .setRuntimeOptions(
-            fullscreen: mode == GameWindowMode.fullscreen,
-            maximized: mode == GameWindowMode.maximized,
-            windowWidth: size?.width,
-            windowHeight: size?.height,
-          );
-    } catch (error) {
-      if (mounted) toast('$error', type: ToastType.error);
-    } finally {
-      if (mounted) setState(() => _windowBusy = false);
-    }
-  }
-
   Future<void> _setShareLoaderFiles(bool enabled) async {
     try {
       await ref
@@ -235,21 +191,11 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final settings = widget.settings;
-    final width = settings?.windowWidth ?? 854;
-    final height = settings?.windowHeight ?? 480;
-    final mode = gameWindowModeFrom(
-      fullscreen: settings?.fullscreen ?? false,
-      maximized: settings?.maximized ?? false,
-    );
-    final windowed = mode == GameWindowMode.windowed;
     final shareLoaderFiles = settings?.shareLoaderFiles ?? true;
     final gameOptimization = settings?.gameOptimization ?? true;
-    final linux = ref.watch(linuxPlatformProvider);
     final desktop = ref.watch(desktopPlatformProvider);
     final prefs = ref.watch(preferencesProvider);
     final prefsNotifier = ref.read(preferencesProvider.notifier);
-    final current = '${width}x$height';
-    final knownPreset = _presets.any((p) => '${p.$1}x${p.$2}' == current);
 
     final behaviorGroup = _SettingsGroup(
       title: l10n.settingsSectionBehavior,
@@ -273,80 +219,6 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
             key: const ValueKey('settings-quit-after-game-exit'),
             value: prefs.quitAfterGameExit,
             onChanged: prefsNotifier.setQuitAfterGameExit,
-          ),
-        ),
-      ],
-    );
-
-    final windowGroup = _SettingsGroup(
-      title: l10n.settingsSectionWindow,
-      note: l10n.settingsWindowNote,
-      children: [
-        _AppearanceTile(
-          icon: AppIcons.window,
-          title: l10n.settingsWindowMode,
-          subtitle: l10n.settingsWindowModeDesc,
-          trailing: DropdownButton<GameWindowMode>(
-            key: const ValueKey('settings-window-mode'),
-            value: mode,
-            isDense: true,
-            underline: const SizedBox.shrink(),
-            borderRadius: BorderRadius.circular(tokens.radiusM),
-            items: [
-              DropdownMenuItem(
-                value: GameWindowMode.windowed,
-                child: Text(l10n.settingsWindowModeWindowed),
-              ),
-              DropdownMenuItem(
-                value: GameWindowMode.fullscreen,
-                child: Text(l10n.settingsWindowModeFullscreen),
-              ),
-              DropdownMenuItem(
-                value: GameWindowMode.maximized,
-                child: Text(l10n.settingsWindowModeMaximized),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == null || _windowBusy) return;
-              _setWindowMode(value);
-            },
-          ),
-        ),
-        _AppearanceTile(
-          icon: AppIcons.density,
-          title: l10n.settingsWindowSize,
-          subtitle: switch (mode) {
-            GameWindowMode.fullscreen => l10n.settingsWindowSizeFullscreen,
-            GameWindowMode.maximized => l10n.settingsWindowSizeMaximized,
-            GameWindowMode.windowed => l10n.settingsWindowSizeDesc,
-          },
-          trailing: DropdownButton<String>(
-            value: current,
-            isDense: true,
-            underline: const SizedBox.shrink(),
-            borderRadius: BorderRadius.circular(tokens.radiusM),
-            items: [
-              for (final preset in _presets)
-                DropdownMenuItem(
-                  value: '${preset.$1}x${preset.$2}',
-                  child: Text('${preset.$1} × ${preset.$2}'),
-                ),
-              if (!knownPreset)
-                DropdownMenuItem(
-                  value: current,
-                  child: Text('$width × $height'),
-                ),
-            ],
-            onChanged: windowed
-                ? (value) {
-                    if (value == null) return;
-                    final parts = value.split('x');
-                    final w = int.tryParse(parts.first);
-                    final h = int.tryParse(parts.last);
-                    if (w == null || h == null) return;
-                    _applyWindow(w, h);
-                  }
-                : null,
           ),
         ),
         _AppearanceTile(
@@ -534,23 +406,12 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (desktop) ...[
-          behaviorGroup,
-          const SizedBox(height: AppSpacing.lg),
-        ],
-        windowGroup,
-        const SizedBox(height: AppSpacing.lg),
+        if (desktop) ...[behaviorGroup, const SizedBox(height: AppSpacing.lg)],
         argsGroup,
         const SizedBox(height: AppSpacing.lg),
         commandsGroup,
         const SizedBox(height: AppSpacing.lg),
         processGroup,
-        if (linux) ...[
-          const SizedBox(height: AppSpacing.lg),
-          _PerformanceSettingsPanel(settings: settings),
-          const SizedBox(height: AppSpacing.lg),
-          _NativeLibrariesPanel(settings: settings),
-        ],
       ],
     );
   }

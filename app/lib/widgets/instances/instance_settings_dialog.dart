@@ -533,6 +533,9 @@ class _InstanceSettingsDialogState
                       key: const ValueKey('instance-gc-mode'),
                       initialValue: _gcMode ?? '',
                       isExpanded: true,
+                      borderRadius: BorderRadius.circular(tokens.radiusM),
+                      dropdownColor: tokens.surface1,
+                      icon: const Icon(AppIcons.chevronDown, size: 18),
                       decoration: InputDecoration(
                         labelText: l10n.instanceSettingsGc,
                         prefixIcon: const Icon(AppIcons.settings, size: 18),

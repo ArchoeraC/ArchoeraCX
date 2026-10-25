@@ -447,6 +447,26 @@
   "@settingsSectionLaunch": {
     "description": "How the launcher starts the game: window and extra arguments."
   },
+  "settingsAdvanced": "Advanced",
+  "@settingsAdvanced": {
+    "description": "Settings navigation label for detailed launch defaults."
+  },
+  "settingsAdvancedNote": "Defaults for instances without their own overrides; per-instance overrides still win.",
+  "@settingsAdvancedNote": {
+    "description": "Explains that the advanced page holds global defaults."
+  },
+  "settingsSectionJavaMemory": "Java & memory defaults",
+  "@settingsSectionJavaMemory": {
+    "description": "Advanced section title for memory, GC and JVM defaults."
+  },
+  "settingsAdvancedJavaMemory": "Advanced launch defaults",
+  "@settingsAdvancedJavaMemory": {
+    "description": "Java settings row that opens the advanced section."
+  },
+  "settingsAdvancedJavaMemoryHint": "Memory, GC and JVM arguments live in the Advanced section.",
+  "@settingsAdvancedJavaMemoryHint": {
+    "description": "Explains where memory and JVM defaults moved."
+  },
   "settingsSectionWindow": "Game window",
   "settingsWindowNote": "Window mode is written as vanilla launch arguments (--width / --height / --fullscreen) and applies to versions that accept them. Maximized is approximated with the primary display's usable size.",
   "settingsSectionBehavior": "Launcher behavior",

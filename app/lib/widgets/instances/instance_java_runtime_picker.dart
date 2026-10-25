@@ -29,14 +29,27 @@ class InstanceJavaRuntimePicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final runtimes = ref.watch(javaRuntimesProvider);
+    final tokens = context.tokens;
     return MenuAnchor(
-      style: const MenuStyle(
+      style: MenuStyle(
         alignment: AlignmentDirectional.bottomEnd,
-        minimumSize: WidgetStatePropertyAll(Size(380, 0)),
-        maximumSize: WidgetStatePropertyAll(Size(520, 420)),
+        minimumSize: const WidgetStatePropertyAll(Size(380, 0)),
+        maximumSize: const WidgetStatePropertyAll(Size(520, 420)),
+        backgroundColor: WidgetStatePropertyAll(tokens.surface1),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: WidgetStatePropertyAll(
+          BeveledRectangleBorder(
+            side: BorderSide(color: tokens.border),
+            borderRadius: BorderRadius.only(
+              topRight: Radius.circular(tokens.bevelL),
+              bottomLeft: Radius.circular(tokens.bevelS),
+            ),
+          ),
+        ),
       ),
       menuChildren: _entries(context, ref, runtimes),
       builder: (context, controller, child) => IconButton(
+        key: const ValueKey('instance-java-picker'),
         tooltip: l10n.instanceSettingsJavaPick,
         onPressed: enabled
             ? () => controller.isOpen ? controller.close() : controller.open()

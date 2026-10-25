@@ -199,7 +199,7 @@ LauncherX 的暖黄只作为“可选主题”存在，不作为默认品牌识�
 | Download | 来源选择 + 分类 Tab + 搜索/结果区，内容区独立滚动；项目行显示图标/统计/标签，结果支持排序、自动分页和图片预览；项目详情与版本选择是右侧内联侧板（≥1120 宽与列表并排，更窄时接管当前标签页），不弹窗；安装提交后台任务后立即恢复浏览，页面底部常驻下载队列条 |
 | Accounts | 当前账户 Hero + 全宽账户列表；空态合并为单个添加账户面板 |
 | Wiki | 顶部机器负载面板（CPU/内存/磁盘/启动器四项指标 + 3px 比例条 + 系统运行时长，由 C++ 每 5 秒推送） + 社区动态单列流（来源健康 chip + 时间/来源/版本元信息行）；宽屏指标四列、窄屏两列或一列 |
-| Settings | 左侧分区导航 + 右侧平铺设置组（外观 / 启动 / 下载 / 存储 / Java / 任务与日志 / 通知 / 关于）；Java 分区内联内存/GC/JVM 参数与系统内存信息，并提供 /settings/java 子页入口；启动分区提供窗口全屏、窗口尺寸与附加游戏参数；窄屏切为顶部横向 Tab |
+| Settings | 左侧分区导航 + 右侧平铺设置组（外观 / 启动 / 高级 / 下载 / 存储 / Java / 任务与日志 / 通知 / 关于）；启动分区提供启动器行为、附加游戏参数、生命周期命令、包装命令与环境变量；高级分区集中放窗口模式/尺寸、Linux 性能预设、Java/内存/GC/JVM 默认值与原生库开发者选项；Java 分区只保留运行环境入口并链接到高级分区；窄屏切为顶部横向 Tab（可横向滚动） |
 | Java（子页） | 返回按钮 + 页头（标题/副标题/安装 Java/重新扫描）→ 当前选择面板（自动开关、当前版本）→ 搜索与添加目录/可执行文件 → 全部 Java 运行环境平铺网格（版本徽标、厂商/架构/来源、使用中标记）；宽屏两列、窄屏一列 |
 | Task center | 标题栏右上角任务入口；展示运行中/已完成任务、字节进度、速度、当前文件与取消操作；任务面板不占页面路由 |
 
@@ -212,7 +212,7 @@ LauncherX 的暖黄只作为“可选主题”存在，不作为默认品牌识�
 | `/download` | Download | 版本、全局 Mod、整合包、资源包、光影（Tab） |
 | `/accounts` | Accounts | 账户列表、添加账户、当前账户 |
 | `/wiki` | Wiki | 系统负载、官方新闻、Java 版本、Wiki 最近编辑 |
-| `/settings` | Settings | 外观/存储/Java/关于 |
+| `/settings` | Settings | 外观/启动/高级/下载/存储/Java/任务/通知/关于 |
 | `/settings/java` | Java | 当前 Java、全部扫描结果、搜索、自定义目录/可执行文件 |
 | overlay | Task Center | 下载/安装队列、暂停/取消 |
 | overlay | Notifications | 成功/失败/更新提示 |
@@ -317,6 +317,12 @@ L4 浮层（对话框/任务中心/通知）
 
 - 错误态必须包含：原因、可重试动作、查看日志/诊断入口。
 - 不用只弹 toast 处理页面级错误。
+
+### 5.6 下拉选择
+
+- 设置页和实例设置弹窗的紧凑下拉统一使用 `AppDropdown`（`lib/widgets/common/app_dropdown.dart`）：`surface2` 填充、1px `border`、`radiusM`、自带 `AppIcons.chevronDown`，弹出层用 `surface1` + `radiusM`。
+- 表单内的下拉继续用 `DropdownButtonFormField` + `InputDecorationTheme`；同样设置 `dropdownColor`、`borderRadius` 和语义 chevron，不保留 Flutter 默认下划线或默认箭头。
+- 实例设置弹窗内不再混用透明无边框的 `DropdownButton`；新增下拉先复用上述两种形态。
 
 ### 5.6 任务中心
 
@@ -470,6 +476,7 @@ L4 浮层（对话框/任务中心/通知）
 | 主题 | `lib/theme/app_theme.dart` |
 | 图标 | `lib/theme/icons/app_icons.dart`（语义层）· `app_icon_data.dart`（生成）· `assets/fonts/AppIcons.ttf` |
 | AppShell | `lib/app/shell.dart` |
+| 下拉选择 | `lib/widgets/common/app_dropdown.dart`（紧凑）· `DropdownButtonFormField` + `InputDecorationTheme`（表单） |
 | 导航 | `lib/app/shell.dart`（底部 CommandBar） |
 | 页面 | `lib/pages/` |
 | CoreClient / 事件 | `lib/services/core/` |

@@ -11,7 +11,7 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
-  testWidgets('settings java panel keeps runtimes and memory together', (
+  testWidgets('settings java panel links to memory and advanced defaults', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -31,29 +31,41 @@ void main() {
     await tester.pumpAndSettle();
 
     // Java selection (auto/current) lives on the dedicated Java page, so this
-    // section only links there and keeps the memory/GC/JVM/game options.
+    // section links there and points at the advanced launch defaults.
     expect(find.text('Java runtimes'), findsOneWidget);
     expect(find.textContaining('Browse every scan result'), findsOneWidget);
     expect(find.text('Automatic (per game version)'), findsNothing);
     expect(find.text('Current Java'), findsNothing);
     expect(find.textContaining('View all'), findsNothing);
     expect(find.text('Scan Java'), findsNothing);
-    expect(find.text('System memory'), findsOneWidget);
-    expect(find.text('Automatic memory'), findsOneWidget);
-    // Automatic sizing hides the manual heap fields by default.
-    expect(find.text('Minimum memory (MB)'), findsNothing);
-    expect(find.text('Maximum memory (MB)'), findsNothing);
-    // Game arguments moved to the Launch section.
+    expect(find.text('System memory'), findsNothing);
+    expect(find.text('Automatic memory'), findsNothing);
+    expect(find.text('Advanced launch defaults'), findsOneWidget);
     expect(find.text('Additional game arguments'), findsNothing);
     expect(tester.takeException(), isNull);
 
-    // Switching to manual brings the fields back so a value can be forced.
+    // Memory, GC and JVM defaults moved to the Advanced section, which is
+    // reachable from this row and still exposes the manual heap fields.
+    await tester.tap(find.text('Advanced launch defaults'));
+    await tester.pumpAndSettle();
+    expect(find.text('System memory'), findsOneWidget);
+    expect(find.text('Automatic memory'), findsOneWidget);
+    expect(find.text('Minimum memory (MB)'), findsNothing);
+    expect(find.text('Maximum memory (MB)'), findsNothing);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('settings-memory-auto')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('settings-memory-auto')));
     await tester.pumpAndSettle();
     expect(find.text('Minimum memory (MB)'), findsOneWidget);
     expect(find.text('Maximum memory (MB)'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
+    // The dedicated Java page still opens from the Java section.
+    await tester.tap(find.text('Java').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Java runtimes'));
     await tester.pumpAndSettle();
 
@@ -83,13 +95,10 @@ void main() {
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
-    // Launch: window size, fullscreen, game arguments and process options.
+    // Launch: game arguments and process options.
     await tester.tap(find.text('Launch').first);
     await tester.pumpAndSettle();
-    expect(find.text('Game window'), findsOneWidget);
-    expect(find.text('Window mode'), findsOneWidget);
-    expect(find.text('Window size'), findsOneWidget);
-    expect(find.text('854 × 480'), findsOneWidget);
+    expect(find.text('Game window'), findsNothing);
     expect(find.text('Additional game arguments'), findsOneWidget);
     expect(find.text('Commands'), findsOneWidget);
     expect(find.text('Pre-load command'), findsOneWidget);
@@ -98,6 +107,16 @@ void main() {
     expect(find.text('Wrapper & environment'), findsOneWidget);
     expect(find.text('Wrapper command'), findsOneWidget);
     expect(find.text('Environment variables'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // Advanced: window and Linux performance defaults live here.
+    await tester.tap(find.text('Advanced').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Game window'), findsOneWidget);
+    expect(find.text('Window mode'), findsOneWidget);
+    expect(find.text('Window size'), findsOneWidget);
+    expect(find.text('854 × 480'), findsOneWidget);
+    expect(find.text('Performance (Linux)'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     // Tasks & logs: both limits are segmented controls.

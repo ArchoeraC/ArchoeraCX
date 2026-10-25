@@ -684,6 +684,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSectionLaunch => '启动';
 
   @override
+  String get settingsAdvanced => '高级';
+
+  @override
+  String get settingsAdvancedNote => '未单独覆盖的实例使用这些默认值；实例设置中的覆盖仍然优先。';
+
+  @override
+  String get settingsSectionJavaMemory => 'Java 与内存默认值';
+
+  @override
+  String get settingsAdvancedJavaMemory => '高级启动默认值';
+
+  @override
+  String get settingsAdvancedJavaMemoryHint => '内存、GC 与 JVM 参数已移到高级分区。';
+
+  @override
   String get settingsSectionWindow => '游戏窗口';
 
   @override

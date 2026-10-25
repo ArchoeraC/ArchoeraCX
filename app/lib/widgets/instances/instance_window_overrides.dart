@@ -54,6 +54,9 @@ class InstanceWindowOverrides extends StatelessWidget {
           key: const ValueKey('instance-window-mode'),
           initialValue: value,
           isExpanded: true,
+          borderRadius: BorderRadius.circular(tokens.radiusM),
+          dropdownColor: tokens.surface1,
+          icon: const Icon(AppIcons.chevronDown, size: 18),
           decoration: InputDecoration(
             labelText: l10n.instanceSettingsWindow,
             prefixIcon: const Icon(AppIcons.window, size: 18),

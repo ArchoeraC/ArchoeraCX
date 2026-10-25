@@ -712,6 +712,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionLaunch => 'Launch';
 
   @override
+  String get settingsAdvanced => 'Advanced';
+
+  @override
+  String get settingsAdvancedNote =>
+      'Defaults for instances without their own overrides; per-instance overrides still win.';
+
+  @override
+  String get settingsSectionJavaMemory => 'Java & memory defaults';
+
+  @override
+  String get settingsAdvancedJavaMemory => 'Advanced launch defaults';
+
+  @override
+  String get settingsAdvancedJavaMemoryHint =>
+      'Memory, GC and JVM arguments live in the Advanced section.';
+
+  @override
   String get settingsSectionWindow => 'Game window';
 
   @override

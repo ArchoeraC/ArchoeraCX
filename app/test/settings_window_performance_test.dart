@@ -37,7 +37,7 @@ Future<void> _pump(
     ),
   );
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Launch').first);
+  await tester.tap(find.text('Advanced').first);
   await tester.pumpAndSettle();
 }
 

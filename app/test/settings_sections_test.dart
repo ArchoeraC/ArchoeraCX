@@ -53,7 +53,10 @@ void main() {
     await pumpSettings(tester, const Size(700, 800));
 
     // The tab strip scrolls horizontally; bring Java into view first.
-    await tester.ensureVisible(find.text('Java'));
+    await tester.drag(
+      find.byKey(const ValueKey('settings-tabs')),
+      const Offset(-600, 0),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Java'));
     await tester.pump();

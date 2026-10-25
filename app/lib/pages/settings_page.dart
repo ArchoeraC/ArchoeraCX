@@ -32,6 +32,7 @@ import '../theme/tokens.dart';
 import '../utils/absolute_path.dart';
 import '../utils/window_mode.dart';
 import '../widgets/common/app_progress_bar.dart';
+import '../widgets/common/app_dropdown.dart';
 import '../widgets/common/safe_url.dart';
 import '../utils/app_info.dart';
 import '../utils/format.dart';
@@ -51,6 +52,7 @@ part 'settings/download_panel.dart';
 part 'settings/storage_panel.dart';
 part 'settings/memory_panel.dart';
 part 'settings/launch_panel.dart';
+part 'settings/advanced_panel.dart';
 part 'settings/performance_panel.dart';
 part 'settings/native_panel.dart';
 part 'settings/tasks_panel.dart';
@@ -171,22 +173,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         locale,
       ),
       _SettingsSection.launch => _LaunchSettingsPanel(settings: settings),
+      _SettingsSection.advanced => _AdvancedSettingsPanel(settings: settings),
       _SettingsSection.download => _downloadContent(context, l10n, settings),
       _SettingsSection.storage => _storageContent(context, l10n, settings),
       _SettingsSection.java => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Java selection (auto/manual) and the current runtime live on the
-          // dedicated Java page; this section only links to it and keeps the
-          // memory/GC/JVM/game argument panel.
-          _SettingRow(
-            icon: AppIcons.java,
-            title: l10n.javaPageManage,
-            subtitle: l10n.javaPageManageHint,
-            onTap: () => context.go('/settings/java'),
+          // dedicated Java page. Memory/GC/JVM defaults moved to Advanced so
+          // all overridable launch defaults sit together.
+          _SettingsCard(
+            children: [
+              _SettingRow(
+                icon: AppIcons.java,
+                title: l10n.javaPageManage,
+                subtitle: l10n.javaPageManageHint,
+                onTap: () => context.go('/settings/java'),
+              ),
+              _SettingRow(
+                icon: AppIcons.settings,
+                title: l10n.settingsAdvancedJavaMemory,
+                subtitle: l10n.settingsAdvancedJavaMemoryHint,
+                onTap: () =>
+                    setState(() => _section = _SettingsSection.advanced),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          _RuntimeSettingsPanel(settings: settings),
         ],
       ),
       _SettingsSection.tasks => const _TasksSettingsPanel(),
