@@ -339,13 +339,9 @@ class _RuntimeSettingsPanelState extends ConsumerState<_RuntimeSettingsPanel> {
                     ),
                   SizedBox(
                     width: 240,
-                    child: DropdownButtonFormField<String>(
+                    child: AppDropdownFormField<String>(
                       key: ValueKey('gc-$_gcMode'),
                       initialValue: _gcMode,
-                      isExpanded: true,
-                      borderRadius: BorderRadius.circular(tokens.radiusM),
-                      dropdownColor: tokens.surface1,
-                      icon: const Icon(AppIcons.chevronDown, size: 18),
                       decoration: InputDecoration(labelText: l10n.settingsGc),
                       items: [
                         for (final item in _gcOptions(l10n))

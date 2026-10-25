@@ -321,8 +321,8 @@ L4 浮层（对话框/任务中心/通知）
 ### 5.6 下拉选择
 
 - 设置页和实例设置弹窗的紧凑下拉统一使用 `AppDropdown`（`lib/widgets/common/app_dropdown.dart`）：`surface2` 填充、1px `border`、`radiusM`、自带 `AppIcons.chevronDown`，弹出层用 `surface1` + `radiusM`。
-- 表单内的下拉继续用 `DropdownButtonFormField` + `InputDecorationTheme`；同样设置 `dropdownColor`、`borderRadius` 和语义 chevron，不保留 Flutter 默认下划线或默认箭头。
-- 实例设置弹窗内不再混用透明无边框的 `DropdownButton`；新增下拉先复用上述两种形态。
+- 表单内的下拉统一使用 `AppDropdownFormField`（同一文件）：保留 `InputDecorationTheme` 的标签/边框，同时共享弹出层颜色、圆角和语义 chevron；不保留 Flutter 默认下划线或默认箭头。
+- 创建实例、加载器安装、日志文件选择等弹窗/工具栏下拉也走上述组件，不再出现透明无边框的 `DropdownButton`。
 
 ### 5.6 任务中心
 
@@ -476,7 +476,7 @@ L4 浮层（对话框/任务中心/通知）
 | 主题 | `lib/theme/app_theme.dart` |
 | 图标 | `lib/theme/icons/app_icons.dart`（语义层）· `app_icon_data.dart`（生成）· `assets/fonts/AppIcons.ttf` |
 | AppShell | `lib/app/shell.dart` |
-| 下拉选择 | `lib/widgets/common/app_dropdown.dart`（紧凑）· `DropdownButtonFormField` + `InputDecorationTheme`（表单） |
+| 下拉选择 | `lib/widgets/common/app_dropdown.dart`（`AppDropdown` 紧凑 / `AppDropdownFormField` 表单） |
 | 导航 | `lib/app/shell.dart`（底部 CommandBar） |
 | 页面 | `lib/pages/` |
 | CoreClient / 事件 | `lib/services/core/` |

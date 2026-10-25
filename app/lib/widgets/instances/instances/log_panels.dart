@@ -130,36 +130,23 @@ class _FilePicker extends StatelessWidget {
         ? selected
         : null;
 
-    return InputDecorator(
-      decoration: const InputDecoration(
-        isDense: true,
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          isDense: true,
-          hint: Text(l10n.gameLogFileLabel),
-          items: [
-            for (final file in logs)
-              DropdownMenuItem(
-                value: file.fileName,
-                child: Text(
-                  '${file.fileName}  ·  ${formatBytes(file.size)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-          ],
-          onChanged: logs.isEmpty ? null : onChanged,
-        ),
-      ),
+    return AppDropdown<String>(
+      value: value,
+      isExpanded: true,
+      hint: Text(l10n.gameLogFileLabel),
+      items: [
+        for (final file in logs)
+          DropdownMenuItem(
+            value: file.fileName,
+            child: Text(
+              '${file.fileName}  ·  ${formatBytes(file.size)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+      ],
+      onChanged: logs.isEmpty ? null : onChanged,
     );
   }
 }

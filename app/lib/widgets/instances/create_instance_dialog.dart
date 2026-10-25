@@ -12,6 +12,7 @@ import '../../stores/settings.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import 'loader_picker_panel.dart';
+import '../common/app_dropdown.dart';
 import '../common/toast.dart';
 import '../../utils/app_paths.dart';
 
@@ -129,9 +130,8 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
+              AppDropdownFormField<String>(
                 initialValue: selectedRoot,
-                isExpanded: true,
                 decoration: InputDecoration(labelText: l10n.instanceRootLabel),
                 items: [
                   for (final root in roots)
@@ -183,7 +183,7 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                 controlAffinity: ListTileControlAffinity.leading,
               ),
               const SizedBox(height: AppSpacing.sm),
-              DropdownButtonFormField<String>(
+              AppDropdownFormField<String>(
                 initialValue: _gameVersion,
                 decoration: InputDecoration(
                   labelText: l10n.instanceGameVersionLabel,

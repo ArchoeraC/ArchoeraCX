@@ -13,6 +13,7 @@ import '../../stores/providers.dart';
 import '../../stores/settings.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
+import '../common/app_dropdown.dart';
 import '../common/toast.dart';
 import 'loader_version_picker.dart';
 
@@ -291,9 +292,8 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                 children: [
                   SizedBox(
                     width: 180,
-                    child: DropdownButtonFormField<String>(
+                    child: AppDropdownFormField<String>(
                       initialValue: _kind,
-                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: l10n.loaderKindLabel,
                       ),
@@ -389,7 +389,8 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
               // Follows the global setting until the user changes it here;
               // the choice applies to this install only.
               CheckboxListTile(
-                value: _shareLoaderFiles ??
+                value:
+                    _shareLoaderFiles ??
                     (ref.watch(appSettingsProvider).value?.shareLoaderFiles ??
                         true),
                 onChanged: _busy

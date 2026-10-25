@@ -66,3 +66,46 @@ class AppDropdown<T> extends StatelessWidget {
     );
   }
 }
+
+/// Form-field variant of [AppDropdown] for dialogs.
+///
+/// Keeps the caller's label/hint decoration but shares the popup color,
+/// corner radius and semantic chevron with the compact control.
+class AppDropdownFormField<T> extends StatelessWidget {
+  const AppDropdownFormField({
+    super.key,
+    this.initialValue,
+    required this.items,
+    required this.onChanged,
+    this.decoration = const InputDecoration(),
+    this.isExpanded = true,
+    this.hint,
+  });
+
+  final T? initialValue;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?>? onChanged;
+  final InputDecoration decoration;
+  final bool isExpanded;
+  final Widget? hint;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return DropdownButtonFormField<T>(
+      initialValue: initialValue,
+      isExpanded: isExpanded,
+      hint: hint,
+      borderRadius: BorderRadius.circular(tokens.radiusM),
+      dropdownColor: tokens.surface1,
+      icon: Icon(
+        AppIcons.chevronDown,
+        size: 18,
+        color: onChanged == null ? tokens.textTertiary : tokens.textSecondary,
+      ),
+      decoration: decoration,
+      items: items,
+      onChanged: onChanged,
+    );
+  }
+}

@@ -13,6 +13,7 @@ import '../../stores/providers.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../../utils/format.dart';
+import '../common/app_dropdown.dart';
 import '../common/toast.dart';
 
 part 'instances/log_panels.dart';

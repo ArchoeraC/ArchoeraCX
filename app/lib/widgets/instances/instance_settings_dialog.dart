@@ -16,6 +16,7 @@ import '../../theme/tokens.dart';
 import '../../utils/absolute_path.dart';
 import '../../utils/window_mode.dart';
 import '../common/confirm.dart';
+import '../common/app_dropdown.dart';
 import '../common/toast.dart';
 import 'instance_command_overrides.dart';
 import 'instance_java_runtime_picker.dart';
@@ -529,13 +530,9 @@ class _InstanceSettingsDialogState
                       ),
                     ],
                     const SizedBox(height: AppSpacing.md),
-                    DropdownButtonFormField<String>(
+                    AppDropdownFormField<String>(
                       key: const ValueKey('instance-gc-mode'),
                       initialValue: _gcMode ?? '',
-                      isExpanded: true,
-                      borderRadius: BorderRadius.circular(tokens.radiusM),
-                      dropdownColor: tokens.surface1,
-                      icon: const Icon(AppIcons.chevronDown, size: 18),
                       decoration: InputDecoration(
                         labelText: l10n.instanceSettingsGc,
                         prefixIcon: const Icon(AppIcons.settings, size: 18),
