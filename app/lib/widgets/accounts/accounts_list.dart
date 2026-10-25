@@ -6,6 +6,7 @@ import '../../models/account.dart';
 import '../../theme/icons/app_icons.dart';
 import '../../theme/tokens.dart';
 import '../common/app_panel.dart';
+import '../common/app_menu_button.dart';
 import '../common/context_menu.dart';
 import 'account_avatar.dart';
 
@@ -260,12 +261,11 @@ class _AccountMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return PopupMenuButton<String>(
+    return AppMenuButton<String>(
       tooltip: l10n.accountsTitle,
-      icon: Icon(AppIcons.more, color: tokens.textSecondary),
+      icon: AppIcons.more,
+      items: _items(),
       onSelected: _dispatch,
-      itemBuilder: _items,
     );
   }
 
@@ -273,34 +273,24 @@ class _AccountMenu extends StatelessWidget {
     final value = await showContextMenuAt<String>(
       context,
       globalPosition: globalPosition,
-      items: _items(context),
+      items: appMenuEntries(context, _items()),
     );
     if (value != null) _dispatch(value);
   }
 
-  List<PopupMenuEntry<String>> _items(BuildContext context) {
-    final tokens = context.tokens;
+  List<AppMenuEntry<String>> _items() {
     return [
       if (onRefresh != null)
-        PopupMenuItem(
+        AppMenuEntry(
           value: 'refresh',
-          child: Row(
-            children: [
-              const Icon(AppIcons.refresh, size: 20),
-              const SizedBox(width: AppSpacing.xs),
-              Text(l10n.accountRefresh),
-            ],
-          ),
+          label: l10n.accountRefresh,
+          icon: AppIcons.refresh,
         ),
-      PopupMenuItem(
+      AppMenuEntry(
         value: 'remove',
-        child: Row(
-          children: [
-            Icon(AppIcons.delete, size: 20, color: tokens.danger),
-            const SizedBox(width: AppSpacing.xs),
-            Text(l10n.accountRemove, style: TextStyle(color: tokens.danger)),
-          ],
-        ),
+        label: l10n.accountRemove,
+        icon: AppIcons.delete,
+        danger: true,
       ),
     ];
   }

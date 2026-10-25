@@ -15,6 +15,7 @@ import '../../theme/tokens.dart';
 import '../../utils/format.dart';
 import '../common/app_progress_bar.dart';
 import '../common/app_empty_state.dart';
+import '../common/app_menu_button.dart';
 import '../common/app_network_image.dart';
 import '../common/app_section.dart';
 import '../common/toast.dart';
@@ -341,9 +342,7 @@ class _ResourceSearchPanelState extends ConsumerState<ResourceSearchPanel> {
         projectId: project.id,
         kind: widget.kind,
         gameVersion: pack ? null : instance?.gameVersion,
-        loader: pack || instance == null
-            ? null
-            : loaderSlug(instance.loader),
+        loader: pack || instance == null ? null : loaderSlug(instance.loader),
         shaderLoader: widget.kind == 'shader' ? 'iris' : null,
       );
       if (!mounted || _selected?.id != project.id) return;

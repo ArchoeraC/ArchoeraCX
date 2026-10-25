@@ -320,9 +320,10 @@ L4 浮层（对话框/任务中心/通知）
 
 ### 5.6 下拉选择
 
-- 设置页和实例设置弹窗的紧凑下拉统一使用 `AppDropdown`（`lib/widgets/common/app_dropdown.dart`）：`surface2` 填充、1px `border`、`radiusM`、自带 `AppIcons.chevronDown`；弹出层由 `MenuAnchor` 绘制，使用 `surface1`、`bevelL`/`bevelS` 斜切、1px 边框和阴影，与浮层规范一致。
-- 表单内的下拉统一使用 `AppDropdownFormField`（同一文件）：保留 `InputDecorationTheme` 的标签/边框，同时共享斜切弹出层、颜色和语义 chevron；不保留 Flutter 默认下划线或默认箭头。
+- 设置页和实例设置弹窗的紧凑下拉统一使用 `AppDropdown`（`lib/widgets/common/app_dropdown.dart`）：`surface2` 填充、1px `border`、`radiusM`、自带 `AppIcons.chevronDown`；弹出层由 `PopupMenuButton` 绘制并复用 `popupMenuTheme` 的 `surface1`、`bevelL`/`bevelS` 斜切、1px 边框和阴影，位置/键盘行为与动作菜单一致。
+- 表单内的下拉统一使用 `AppDropdownFormField`（同一文件）：保留 `InputDecorationTheme` 的标签/边框，同时共享同一弹出层、颜色和语义 chevron；不保留 Flutter 默认下划线或默认箭头。
 - 创建实例、加载器安装、日志文件选择等弹窗/工具栏下拉也走上述组件，不再出现透明无边框的 `DropdownButton` 或默认 Material 菜单。
+- 动作菜单（实例「更多」、账户操作、下载排序）统一使用 `AppMenuButton`（`lib/widgets/common/app_menu_button.dart`）+ `AppMenuEntry`；右键菜单复用 `appMenuEntries`，因此工具栏、右键和斜切弹出层不会各写一套。
 
 ### 5.7 任务中心
 
@@ -477,6 +478,7 @@ L4 浮层（对话框/任务中心/通知）
 | 图标 | `lib/theme/icons/app_icons.dart`（语义层）· `app_icon_data.dart`（生成）· `assets/fonts/AppIcons.ttf` |
 | AppShell | `lib/app/shell.dart` |
 | 下拉选择 | `lib/widgets/common/app_dropdown.dart`（`AppDropdown` 紧凑 / `AppDropdownFormField` 表单） |
+| 动作菜单 | `lib/widgets/common/app_menu_button.dart`（`AppMenuButton` / `AppMenuEntry` / `appMenuEntries`） |
 | 导航 | `lib/app/shell.dart`（底部 CommandBar） |
 | 页面 | `lib/pages/` |
 | CoreClient / 事件 | `lib/services/core/` |

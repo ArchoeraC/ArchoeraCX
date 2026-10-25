@@ -1,20 +1,5 @@
 part of '../instances_page.dart';
 
-/// Shared menu entry: value + icon + label. All ten items previously repeated
-/// the same Row(Icon + gap + Flexible(Text)) wrapper.
-PopupMenuItem<String> _popupItem(String value, Widget icon, String label) {
-  return PopupMenuItem<String>(
-    value: value,
-    child: Row(
-      children: [
-        icon,
-        const SizedBox(width: AppSpacing.xs),
-        Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
-      ],
-    ),
-  );
-}
-
 /// Instance action menu.
 ///
 /// The same entries back the "more" button and the row/card context menu.
@@ -49,12 +34,11 @@ class _InstanceMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return PopupMenuButton<String>(
+    return AppMenuButton<String>(
       tooltip: l10n.instanceManage,
-      icon: Icon(AppIcons.more, color: tokens.textSecondary),
+      icon: AppIcons.more,
+      items: _items(),
       onSelected: _dispatch,
-      itemBuilder: _items,
     );
   }
 
@@ -63,65 +47,65 @@ class _InstanceMenu extends StatelessWidget {
     final value = await showContextMenuAt<String>(
       context,
       globalPosition: globalPosition,
-      items: _items(context),
+      items: appMenuEntries(context, _items()),
     );
     if (value != null) _dispatch(value);
   }
 
-  List<PopupMenuEntry<String>> _items(BuildContext context) {
-    final tokens = context.tokens;
+  List<AppMenuEntry<String>> _items() {
     return [
       if (downloadsEnabled) ...[
-        _popupItem(
-          'manageLoader',
-          const Icon(AppIcons.repair, size: 20),
-          l10n.instanceManageLoader,
+        AppMenuEntry(
+          value: 'manageLoader',
+          label: l10n.instanceManageLoader,
+          icon: AppIcons.repair,
         ),
-        _popupItem(
-          'installGame',
-          const Icon(AppIcons.download, size: 20),
-          l10n.instanceInstallGame,
+        AppMenuEntry(
+          value: 'installGame',
+          label: l10n.instanceInstallGame,
+          icon: AppIcons.download,
         ),
       ],
-      _popupItem(
-        'settings',
-        const Icon(AppIcons.settings, size: 20),
-        l10n.instanceSettingsTitle,
+      AppMenuEntry(
+        value: 'settings',
+        label: l10n.instanceSettingsTitle,
+        icon: AppIcons.settings,
       ),
-      _popupItem(
-        'duplicate',
-        const Icon(AppIcons.copy, size: 20),
-        l10n.instanceDuplicate,
+      AppMenuEntry(
+        value: 'duplicate',
+        label: l10n.instanceDuplicate,
+        icon: AppIcons.copy,
       ),
-      _popupItem(
-        'manageMods',
-        const Icon(AppIcons.mod, size: 20),
-        l10n.instanceManageMods,
+      AppMenuEntry(
+        value: 'manageMods',
+        label: l10n.instanceManageMods,
+        icon: AppIcons.mod,
       ),
-      _popupItem(
-        'viewLogs',
-        const Icon(AppIcons.news, size: 20),
-        l10n.instanceViewLogs,
+      AppMenuEntry(
+        value: 'viewLogs',
+        label: l10n.instanceViewLogs,
+        icon: AppIcons.news,
       ),
-      _popupItem(
-        'openFolder',
-        const Icon(AppIcons.folder, size: 20),
-        l10n.instanceOpenFolder,
+      AppMenuEntry(
+        value: 'openFolder',
+        label: l10n.instanceOpenFolder,
+        icon: AppIcons.folder,
       ),
-      _popupItem(
-        'checkQuick',
-        const Icon(AppIcons.quick, size: 20),
-        l10n.instanceCheckQuick,
+      AppMenuEntry(
+        value: 'checkQuick',
+        label: l10n.instanceCheckQuick,
+        icon: AppIcons.quick,
       ),
-      _popupItem(
-        'checkFull',
-        const Icon(AppIcons.checklist, size: 20),
-        l10n.instanceCheckFull,
+      AppMenuEntry(
+        value: 'checkFull',
+        label: l10n.instanceCheckFull,
+        icon: AppIcons.checklist,
       ),
-      _popupItem(
-        'delete',
-        Icon(AppIcons.delete, color: tokens.danger),
-        l10n.instanceDelete,
+      AppMenuEntry(
+        value: 'delete',
+        label: l10n.instanceDelete,
+        icon: AppIcons.delete,
+        danger: true,
       ),
     ];
   }

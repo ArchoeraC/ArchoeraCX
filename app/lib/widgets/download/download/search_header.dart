@@ -109,17 +109,32 @@ class _SearchHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpacing.xs),
                 ],
-                PopupMenuButton<String>(
+                AppMenuButton<String>(
                   tooltip: l10n.downloadSort,
                   initialValue: sort,
-                  onSelected: onSortChanged,
-                  itemBuilder: (context) => [
-                    _sortItem('relevance', l10n.downloadSortRelevance),
-                    _sortItem('downloads', l10n.downloadSortDownloads),
-                    _sortItem('follows', l10n.downloadSortFollows),
-                    _sortItem('newest', l10n.downloadSortNewest),
-                    _sortItem('updated', l10n.downloadSortUpdated),
+                  items: [
+                    AppMenuEntry(
+                      value: 'relevance',
+                      label: l10n.downloadSortRelevance,
+                    ),
+                    AppMenuEntry(
+                      value: 'downloads',
+                      label: l10n.downloadSortDownloads,
+                    ),
+                    AppMenuEntry(
+                      value: 'follows',
+                      label: l10n.downloadSortFollows,
+                    ),
+                    AppMenuEntry(
+                      value: 'newest',
+                      label: l10n.downloadSortNewest,
+                    ),
+                    AppMenuEntry(
+                      value: 'updated',
+                      label: l10n.downloadSortUpdated,
+                    ),
                   ],
+                  onSelected: onSortChanged,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -161,9 +176,6 @@ class _SearchHeader extends StatelessWidget {
       ),
     );
   }
-
-  PopupMenuItem<String> _sortItem(String value, String label) =>
-      PopupMenuItem(value: value, child: Text(label));
 
   String _sortLabel(AppLocalizations l10n, String value) => switch (value) {
     'downloads' => l10n.downloadSortDownloads,
