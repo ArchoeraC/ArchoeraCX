@@ -36,6 +36,7 @@ class AppDropdown<T> extends StatelessWidget {
       enabled: enabled,
       padding: EdgeInsets.zero,
       initialValue: value,
+      clipBehavior: Clip.antiAlias,
       onSelected: enabled ? (value) => onChanged!(value) : null,
       itemBuilder: (context) => _menuItems(context, tokens, items, value),
       child: Material(
@@ -113,6 +114,7 @@ class AppDropdownFormField<T> extends StatelessWidget {
       enabled: enabled,
       padding: EdgeInsets.zero,
       initialValue: initialValue,
+      clipBehavior: Clip.antiAlias,
       onSelected: enabled ? (value) => onChanged!(value) : null,
       itemBuilder: (context) =>
           _menuItems(context, tokens, items, initialValue),

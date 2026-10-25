@@ -19,6 +19,7 @@ Future<T?> showContextMenuAt<T>(
       local & Size.zero,
       Offset.zero & overlay.size,
     ),
+    clipBehavior: Clip.antiAlias,
     items: items,
   );
 }

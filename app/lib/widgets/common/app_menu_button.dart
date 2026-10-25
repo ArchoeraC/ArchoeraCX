@@ -72,6 +72,7 @@ class AppMenuButton<T> extends StatelessWidget {
       padding: hasChild ? EdgeInsets.zero : const EdgeInsets.all(8),
       initialValue: initialValue,
       constraints: constraints,
+      clipBehavior: Clip.antiAlias,
       onSelected: onSelected,
       itemBuilder: itemBuilder ?? (context) => appMenuEntries(context, items),
       icon: hasChild || icon == null
