@@ -61,6 +61,10 @@ bool open_path(const std::string& path, std::string* error) {
   return true;
 }
 
+bool reveal_path(const std::string& path, std::string* error) {
+  return open_path(path, error);
+}
+
 bool send_system_notification(const std::string& title,
                               const std::string& body,
                               std::string* error) {

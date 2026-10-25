@@ -119,6 +119,48 @@ std::string encode_uri_path(const std::string& path) {
   return encoded;
 }
 
+// Asks the desktop's FileManager1 service to reveal one directory. The
+// service is optional; callers fall back to the portal when it is absent.
+bool file_manager_show_items(const std::string& uri) {
+  DBusConnection* connection = open_session_bus();
+  if (connection == nullptr) return false;
+
+  DBusMessage* message = dbus_message_new_method_call(
+      "org.freedesktop.FileManager1", "/org/freedesktop/FileManager1",
+      "org.freedesktop.FileManager1", "ShowItems");
+  if (message == nullptr) {
+    close_session_bus(connection);
+    return false;
+  }
+
+  DBusMessageIter iterator;
+  DBusMessageIter uris;
+  const char* target = uri.c_str();
+  const char* startup_id = "";
+  dbus_message_iter_init_append(message, &iterator);
+  const bool built =
+      dbus_message_iter_open_container(&iterator, DBUS_TYPE_ARRAY,
+                                       DBUS_TYPE_STRING_AS_STRING,
+                                       &uris) != FALSE &&
+      dbus_message_iter_append_basic(&uris, DBUS_TYPE_STRING, &target) !=
+          FALSE &&
+      dbus_message_iter_close_container(&iterator, &uris) != FALSE &&
+      dbus_message_iter_append_basic(&iterator, DBUS_TYPE_STRING, &startup_id) !=
+          FALSE;
+  if (!built) {
+    dbus_message_unref(message);
+    close_session_bus(connection);
+    return false;
+  }
+
+  DBusMessage* reply = call_with_reply(connection, message, 3000);
+  dbus_message_unref(message);
+  close_session_bus(connection);
+  if (reply == nullptr) return false;
+  dbus_message_unref(reply);
+  return true;
+}
+
 }  // namespace
 
 bool open_external_url(const std::string& url, std::string* error) {
@@ -142,6 +184,21 @@ bool open_path(const std::string& path, std::string* error) {
     uri.push_back('/');
   }
   return open_uri_via_portal(uri, error);
+}
+
+bool reveal_path(const std::string& path, std::string* error) {
+  if (!is_safe_directory_path(path)) {
+    if (error != nullptr) *error = "invalid directory";
+    return false;
+  }
+
+  std::string uri = "file://";
+  uri.append(encode_uri_path(path));
+  if (file_manager_show_items(uri)) return true;
+
+  // FileManager1 is not present on every desktop (or may be unavailable over
+  // the session bus); the portal OpenURI call still opens the directory.
+  return open_path(path, error);
 }
 
 bool send_system_notification(const std::string& title,

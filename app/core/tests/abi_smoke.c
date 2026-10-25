@@ -277,6 +277,21 @@ int main(void) {
                       &rejected_task, &err) == ARCHOERA_E_INVALID);
   CHECK(rejected_task == 0);
 
+  /* system.revealPath uses the same directory-only contract. */
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.revealPath", "{\"path\":\"relative/dir\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.revealPath",
+                      "{\"path\":\"/archoera-cx/no-such-directory\"}",
+                      &rejected_task, &err) == ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+  rejected_task = 123;
+  CHECK(archoera_call(core, "system.revealPath", "{}", &rejected_task, &err) ==
+        ARCHOERA_E_INVALID);
+  CHECK(rejected_task == 0);
+
   /* Cancel is idempotent for terminal tasks. */
   CHECK(archoera_cancel(core, ping_task) == ARCHOERA_OK);
   CHECK(archoera_cancel(core, ping_task) == ARCHOERA_OK);

@@ -17,7 +17,7 @@
 namespace archoera {
 namespace {
 
-enum class SystemActionKind { kOpenUrl, kOpenPath, kNotify };
+enum class SystemActionKind { kOpenUrl, kOpenPath, kRevealPath, kNotify };
 
 struct SystemAction {
   SystemActionKind kind = SystemActionKind::kOpenUrl;
@@ -29,7 +29,8 @@ struct SystemAction {
 
 std::string make_system_action_result(const SystemAction& action,
                                       const bool success) {
-  if (action.kind == SystemActionKind::kOpenPath) {
+  if (action.kind == SystemActionKind::kOpenPath ||
+      action.kind == SystemActionKind::kRevealPath) {
     return make_open_path_result(action.path, success);
   }
   return make_action_result(
@@ -53,6 +54,8 @@ void system_action_worker(archoera_core* core,
           success = open_external_url(held->action.url, &error);
         } else if (held->action.kind == SystemActionKind::kOpenPath) {
           success = open_path(held->action.path, &error);
+        } else if (held->action.kind == SystemActionKind::kRevealPath) {
+          success = reveal_path(held->action.path, &error);
         } else {
           success = send_system_notification(held->action.title,
                                              held->action.body, &error);
@@ -127,6 +130,27 @@ archoera_status handle_system_open_path(archoera_core& core,
                                         archoera_error* err) {
   SystemAction action;
   action.kind = SystemActionKind::kOpenPath;
+  if (!extract_json_string(params, "path", &action.path) ||
+      !is_safe_directory_path(action.path)) {
+    set_error(err, ARCHOERA_E_INVALID, kMsgOpenPathInvalid);
+    return ARCHOERA_E_INVALID;
+  }
+
+  TaskRecord record;
+  record.method = std::string(route.name);
+  return spawn_async_task<SystemActionPayload>(
+      &core, std::move(record), &system_action_worker,
+      SystemActionPayload{std::move(action)}, out_task_id, err);
+}
+
+archoera_status handle_system_reveal_path(archoera_core& core,
+                                          const MethodRoute& route,
+                                          const std::string_view params,
+                                          std::string&,
+                                          uint64_t* out_task_id,
+                                          archoera_error* err) {
+  SystemAction action;
+  action.kind = SystemActionKind::kRevealPath;
   if (!extract_json_string(params, "path", &action.path) ||
       !is_safe_directory_path(action.path)) {
     set_error(err, ARCHOERA_E_INVALID, kMsgOpenPathInvalid);

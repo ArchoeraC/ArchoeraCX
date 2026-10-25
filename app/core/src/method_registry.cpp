@@ -30,6 +30,7 @@ constexpr MethodRoute kRoutes[] = {
     {"system.appearance", &handle_system_appearance, {}},
     {"system.openUrl", &handle_system_open_url, {}},
     {"system.openPath", &handle_system_open_path, {}},
+    {"system.revealPath", &handle_system_reveal_path, {}},
     {"system.notify", &handle_system_notify, {}},
     {"system.status", &handle_system_status, {}},
     {"system.status.watch", &handle_system_status_watch, {}},

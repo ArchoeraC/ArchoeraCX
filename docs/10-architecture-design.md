@@ -634,7 +634,7 @@ Flutter 热重启
 | 文件关联 | C++ 注册 | `.mrpack`/zip 导入；不自动执行 |
 | 开机自启 | C++ | 注册表/LaunchAgent/.desktop |
 | 窗口 | Flutter 插件 + C++ 平台调用 | 无边框、Mica/Acrylic、DPI |
-| 打开路径/URL | C++ | `system.openUrl` 只允许 `https` 白名单；`system.openPath` 只接受已存在、绝对路径的目录，用于打开数据目录/实例目录（Linux XDG Portal OpenURI 的 `file:` URI、Windows `ShellExecute`、macOS `NSWorkspace`）；`file:` 只用于目录定位，不作为可执行入口 |
+| 打开路径/URL | C++ | `system.openUrl` 只允许 `https` 白名单；`system.openPath` 只接受已存在、绝对路径的目录，用于打开数据目录/实例目录；`system.revealPath` 进一步走系统文件管理器定位 API（Linux `org.freedesktop.FileManager1.ShowItems`，回退 XDG Portal；Windows Explorer；macOS Finder），`file:` 只用于目录定位，不作为可执行入口 |
 | 通知 | C++/系统 API | 下载完成、崩溃、更新 |
 
 - 托盘与窗口是 Flutter 进程内能力：托盘菜单、显示/隐藏窗口与关闭行为都由 Dart 处理，不经过 C#，也不新增 ABI 方法；C++ 只保留单实例、深链、文件关联与更新。
@@ -2407,6 +2407,7 @@ public interface IDownloadProvider {
 | `wiki.feed` | C# | Wiki 页社区流：Mojang 官方新闻、Java 版本补丁说明、Minecraft Wiki 最近编辑；逐源独立失败 + 5 分钟缓存 |
 | `system.diagnostics` | C++/C# | 生成诊断包 |
 | `system.openPath` | C++ | 打开本地目录（核心自有方法，不经 C#）：参数 `{"path":"/absolute/dir"}`，返回 `{"opened":bool}`；只接受已存在、绝对路径的目录，文件/不存在/非绝对路径返回 `E_INVALID`（`system.openPath requires an absolute existing directory`）；Linux 走 XDG Portal OpenURI 的 `file:` URI，Windows `ShellExecute`，macOS `NSWorkspace`，无实现返回 `opened:false` |
+| `system.revealPath` | C++ | 在系统文件管理器中定位本地目录（核心自有方法，不经 C#）：参数与返回同 `system.openPath`；Linux 优先 `org.freedesktop.FileManager1.ShowItems`，失败回退 Portal；Windows Explorer / macOS Finder；校验规则相同 |
 | `system.openUrl` | C++ | 打开 https 白名单 |
 | `download.policy` | C# | 中国大陆本地下载风险门槛状态/配置路径 |
 | `settings.get` | C# | 应用设置 |

@@ -20,6 +20,11 @@ bool open_external_url(const std::string& url, std::string* error);
 // Never used for files: opening arbitrary paths would launch applications.
 bool open_path(const std::string& path, std::string* error);
 
+// Reveals an already validated absolute directory in the platform file manager.
+// Unlike open_path this uses the OS "show item" API where available: Linux
+// org.freedesktop.FileManager1, Windows Explorer, macOS Finder.
+bool reveal_path(const std::string& path, std::string* error);
+
 bool send_system_notification(const std::string& title,
                               const std::string& body,
                               std::string* error);

@@ -17,6 +17,11 @@ bool open_path(const std::string&, std::string* error) {
   return false;
 }
 
+bool reveal_path(const std::string&, std::string* error) {
+  if (error != nullptr) *error = "unsupported platform";
+  return false;
+}
+
 bool send_system_notification(const std::string&,
                               const std::string&,
                               std::string* error) {

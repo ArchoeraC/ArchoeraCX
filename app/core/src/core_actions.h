@@ -29,6 +29,13 @@ archoera_status handle_system_open_path(archoera_core& core,
                                         uint64_t* out_task_id,
                                         archoera_error* err);
 
+archoera_status handle_system_reveal_path(archoera_core& core,
+                                          const MethodRoute& route,
+                                          std::string_view params,
+                                          std::string& result,
+                                          uint64_t* out_task_id,
+                                          archoera_error* err);
+
 archoera_status handle_system_notify(archoera_core& core,
                                      const MethodRoute& route,
                                      std::string_view params,
