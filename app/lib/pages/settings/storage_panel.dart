@@ -138,7 +138,7 @@ extension _StoragePanelX on _SettingsPageState {
     String path,
   ) async {
     final client = ref.read(coreClientProvider);
-    final opened = client != null && await client.openSystemPath(path);
+    final opened = client != null && await client.revealSystemPath(path);
     if (!opened && context.mounted) {
       _notify(context, l10n.settingsOpenFailed, type: ToastType.error);
     }

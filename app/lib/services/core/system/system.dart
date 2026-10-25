@@ -91,6 +91,23 @@ mixin CoreClientSystem on CoreTransport {
     onProgress: onProgress,
   );
 
+  /// Reveals an existing absolute directory in the OS file manager.
+  ///
+  /// Uses the platform "show item" API where available (Linux
+  /// `org.freedesktop.FileManager1`, Windows Explorer, macOS Finder) and
+  /// falls back to opening the directory. The core rejects relative, missing
+  /// or non-directory paths with `E_INVALID`; false means the platform
+  /// refused the request.
+  Future<bool> revealSystemPath(
+    String path, {
+    void Function(int done, int total)? onProgress,
+  }) => tryRunBool(
+    'system.revealPath',
+    paramsJson: jsonEncode(<String, Object?>{'path': path}),
+    dataKey: 'opened',
+    onProgress: onProgress,
+  );
+
   /// Posts a desktop notification through the OS notification service.
   Future<bool> showSystemNotification({
     required String title,

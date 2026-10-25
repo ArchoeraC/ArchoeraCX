@@ -395,7 +395,7 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
     final directory = _list?.logDirectory;
     if (directory == null || directory.isEmpty) return;
     final client = ref.read(coreClientProvider);
-    final opened = client != null && await client.openSystemPath(directory);
+    final opened = client != null && await client.revealSystemPath(directory);
     if (!opened && mounted) {
       toast(
         AppLocalizations.of(context).gameLogOpenFolderFailed,

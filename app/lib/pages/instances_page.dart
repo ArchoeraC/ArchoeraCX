@@ -513,7 +513,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   ) async {
     final client = ref.read(coreClientProvider);
     final opened =
-        client != null && await client.openSystemPath(instance.rootPath);
+        client != null && await client.revealSystemPath(instance.rootPath);
     if (!opened && mounted) {
       _notify(context, l10n.settingsOpenFailed, type: ToastType.error);
     }
