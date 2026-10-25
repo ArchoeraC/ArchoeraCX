@@ -25,8 +25,9 @@ Microsoft Authorization Code + PKCE
 ## 2. client_id 配置
 
 client_id 是应用构建配置，不由用户在设置页填写，也不硬编码在源码中。
-新 GitHub 仓库已把值保存为 Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID`；
-Actions 当前未启用。
+GitHub 仓库把它保存为 Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID`
+（Settings → Secrets and variables → Actions）。工作流只在编译 C# 模块和校验
+形状的步骤里读取它；tag 构建缺失该 secret 会直接失败。
 
 发布 / CI 构建注入：
 

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ArchoeraCX
+GenericName=Minecraft Launcher
+Comment=Open-source Minecraft: Java Edition launcher
+Comment[zh_CN]=开源的 Minecraft: Java Edition 启动器
+Exec=@EXEC@
+Icon=awa.archoera.archoera_cx
+Terminal=false
+Categories=Game;
+Keywords=minecraft;launcher;game;
+StartupNotify=true
+StartupWMClass=archoera_cx

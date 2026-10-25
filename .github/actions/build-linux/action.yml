@@ -1,0 +1,127 @@
+name: Build ArchoeraCX (Linux)
+description: >-
+  Shared Linux build: install .NET/Flutter/Rust/Python, compile the native
+  modules with the injected Microsoft client id, run the smoke/Flutter suites,
+  verify the compiled build identity, and produce the release bundle.
+  Distribution-specific system dependencies and packaging stay in the caller.
+inputs:
+  client_id:
+    description: Microsoft OAuth client id injected into the C# module.
+    required: false
+    default: ''
+  require_client_id:
+    description: '"1" on tagged releases; fail when client_id is empty.'
+    required: false
+    default: '0'
+  require_official:
+    description: '"1" on tagged releases; assert the official client-id digest.'
+    required: false
+    default: '0'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+      with:
+        dotnet-version: '10.0.x'
+
+    - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      with:
+        toolchain: stable
+        # vault-rs is built as a static musl binary in CI; crt-static alone
+        # would require a static glibc on every distro.
+        targets: x86_64-unknown-linux-musl
+
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+      with:
+        channel: stable
+        flutter-version: '3.47.7'
+        cache: true
+
+    - name: Validate Microsoft client id
+      if: inputs.client_id != ''
+      shell: bash
+      env:
+        ARCHOERACX_MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
+      run: |
+        set -euo pipefail
+        if [[ ! "${ARCHOERACX_MICROSOFT_CLIENT_ID}" =~ ^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$ ]]; then
+          echo "::error::ARCHOERACX_MICROSOFT_CLIENT_ID is not a GUID (length ${#ARCHOERACX_MICROSOFT_CLIENT_ID}); refusing to build with a broken sign-in configuration."
+          exit 1
+        fi
+        echo "Microsoft client id: configured (value not echoed)"
+
+    - name: Require Microsoft client id for tagged builds
+      if: inputs.require_client_id == '1'
+      shell: bash
+      env:
+        ARCHOERACX_MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
+      run: |
+        if [[ -z "${ARCHOERACX_MICROSOFT_CLIENT_ID:-}" ]]; then
+          echo "::error::ARCHOERACX_MICROSOFT_CLIENT_ID is not configured; refusing a tagged build without sign-in support."
+          exit 1
+        fi
+
+    - name: Build native modules
+      shell: bash
+      working-directory: app
+      env:
+        ARCHOERACX_MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
+      run: ./tool/build-native.sh
+
+    - name: C++ ABI smoke tests
+      shell: bash
+      working-directory: app
+      run: |
+        set -euo pipefail
+        ./build/native/abi_smoke
+        ./build/native/async_smoke
+        ./build/native/module_smoke
+        ./build/native/event_queue_smoke
+
+    - name: Flutter dependencies and localization
+      shell: bash
+      working-directory: app
+      run: |
+        flutter pub get
+        flutter gen-l10n
+
+    - name: Dart analyze
+      shell: bash
+      working-directory: app
+      run: dart analyze
+
+    - name: Flutter tests
+      shell: bash
+      working-directory: app
+      run: flutter test
+
+    - name: Verify compiled Microsoft client id
+      if: inputs.client_id != ''
+      shell: bash
+      working-directory: app
+      env:
+        ARCHOERACX_CLIENT_ID_TESTS: '1'
+        ARCHOERACX_REQUIRE_OFFICIAL_BUILD: ${{ inputs.require_official }}
+      run: flutter test test/client_id_integration_test.dart
+
+    - name: Build Flutter Linux bundle
+      shell: bash
+      working-directory: app
+      run: flutter build linux --release
+
+    - name: Verify native slice
+      shell: bash
+      working-directory: app
+      run: |
+        set -euo pipefail
+        bundle=build/linux/x64/release/bundle
+        for file in \
+          lib/libarchoera_core.so \
+          lib/archoera_cs.so \
+          lib/libe_sqlite3.so \
+          lib/libarchoera_dl.so \
+          lib/archoera-dl \
+          lib/archoera-vault; do
+          [[ -f "${bundle}/${file}" ]] || { echo "::error::missing ${file}"; exit 1; }
+        done
+        python3 tool/check_icons.py "${bundle}/data/flutter_assets"

@@ -53,6 +53,8 @@ dist/
 *.ilk
 
 # --- Local material ------------------------------------------------------
+# Staging directories created by packaging/linux/package.sh for makepkg/nix.
+packaging/linux/work/
 # Reference/ is read-only source material. Only MANIFEST.md and README.md at
 # its root are tracked; upstream checkouts, samples, reverse-engineering notes
 # and local caches stay on this machine.

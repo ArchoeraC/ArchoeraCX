@@ -1,0 +1,50 @@
+# Arch Linux packaging definition.
+#
+# `packaging/linux/package.sh arch` stages this file next to bundle.tar.zst,
+# archoera-cx.desktop, the metainfo file and the 512px icon. The workflow then
+# runs makepkg as an unprivileged user (makepkg refuses root).
+pkgname=archoera-cx
+pkgver=0.0.1_1
+pkgrel=1
+pkgdesc="Open-source Minecraft: Java Edition launcher"
+arch=('x86_64')
+url="https://github.com/BetaStudio2/ArchoeraCX"
+license=('AGPL-3.0-only')
+options=('!strip' '!debug')
+depends=(
+  'glibc'
+  'gcc-libs'
+  'zlib'
+  'gtk3'
+  'dbus'
+  'libepoxy'
+  'fontconfig'
+  'fribidi'
+  'libx11'
+  'libxi'
+  'at-spi2-atk'
+  'libcloudproviders'
+  'libxkbcommon'
+  'mesa'
+  'libdrm'
+)
+source=(
+  'bundle.tar.zst'
+  'archoera-cx.desktop'
+  'awa.archoera.archoera_cx.metainfo.xml'
+  'awa.archoera.archoera_cx.png'
+)
+md5sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -d "$pkgdir/opt/archoera-cx"
+  cp -a "$srcdir/bundle/." "$pkgdir/opt/archoera-cx/"
+  install -d "$pkgdir/usr/bin"
+  ln -s /opt/archoera-cx/archoera_cx "$pkgdir/usr/bin/archoera_cx"
+  install -Dm644 "$srcdir/archoera-cx.desktop" \
+    "$pkgdir/usr/share/applications/awa.archoera.archoera_cx.desktop"
+  install -Dm644 "$srcdir/awa.archoera.archoera_cx.metainfo.xml" \
+    "$pkgdir/usr/share/metainfo/awa.archoera.archoera_cx.metainfo.xml"
+  install -Dm644 "$srcdir/awa.archoera.archoera_cx.png" \
+    "$pkgdir/usr/share/icons/hicolor/512x512/apps/awa.archoera.archoera_cx.png"
+}

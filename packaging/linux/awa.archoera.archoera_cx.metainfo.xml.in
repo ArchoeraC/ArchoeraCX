@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>awa.archoera.archoera_cx</id>
+  <name>ArchoeraCX</name>
+  <summary>Open-source Minecraft: Java Edition launcher</summary>
+  <summary xml:lang="zh_CN">开源的 Minecraft: Java Edition 启动器</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-only</project_license>
+  <description>
+    <p>
+      ArchoeraCX manages Minecraft: Java Edition instances, installs
+      Fabric/Quilt/Forge/NeoForge loaders, signs in with Microsoft, and
+      launches the game with a native C++/C#/Rust backend.
+    </p>
+    <p xml:lang="zh_CN">
+      ArchoeraCX 管理 Minecraft: Java Edition 实例，安装
+      Fabric/Quilt/Forge/NeoForge 加载器，支持 Microsoft 登录，并以
+      C++/C#/Rust 原生后端启动游戏。
+    </p>
+  </description>
+  <launchable type="desktop-id">awa.archoera.archoera_cx.desktop</launchable>
+  <url type="homepage">https://github.com/BetaStudio2/ArchoeraCX</url>
+  <url type="bugtracker">https://github.com/BetaStudio2/ArchoeraCX/issues</url>
+  <provides>
+    <binary>archoera_cx</binary>
+  </provides>
+  <releases>
+    <release version="@VERSION@" date="@DATE@" type="development"/>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>

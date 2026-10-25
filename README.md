@@ -41,9 +41,9 @@ flutter pub get && flutter gen-l10n
 flutter run -d linux    # 或 windows / macos
 ```
 
-CI 在 Linux x64、macOS arm64、Windows x64 上执行同一套原生构建、测试与打包（`.github/workflows/build-all.yml`）。
+CI 在 Linux、macOS arm64、Windows x64 上执行同一套原生构建、测试与打包（`.github/workflows/build-all.yml`）：Ubuntu / Deepin / Fedora / Arch 各自在对应环境从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu bundle；macOS 与 Windows 也是独立 job，各自完成构建和打包。Linux 产出 tar.gz / deb / rpm / Arch pkg / AppImage / Flatpak / NixOS 包，macOS 产出 tar.gz / dmg，Windows 产出便携 zip / 安装器。
 
-Microsoft 登录需在构建 C# 模块时注入 client ID（`export ARCHOERACX_MICROSOFT_CLIENT_ID=...` 后再跑 `./tool/build-cs.sh`），否则返回 `MICROSOFT_CLIENT_ID_MISSING`。
+Microsoft 登录需在构建 C# 模块时注入 client ID（`export ARCHOERACX_MICROSOFT_CLIENT_ID=...` 后再跑 `./tool/build-cs.sh`），否则返回 `MICROSOFT_CLIENT_ID_MISSING`；CI 在打包前用 `system.identity` 断言编译期 id 已生效。
 
 ## 文档
 

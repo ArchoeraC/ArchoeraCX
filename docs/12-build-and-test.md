@@ -48,6 +48,70 @@ python tool\check_icons.py build\windows\x64\runner\Release\data\flutter_assets
 
 macOS 的 Xcode 工程有一个 `Bundle Native Libraries` 阶段，调用 `tool/bundle-macos.sh` 把 C++/C#/Rust/SQLite 收进 `ArchoeraCX.app/Contents/Frameworks` 并逐个 ad-hoc 签名；Windows 的 `app/windows/CMakeLists.txt` 把 `app/build/native` 里的 DLL/EXE 安装到 Release 目录。两者都要求先跑 `build-native`，否则 bundle 里只有 Flutter 外壳。
 
+### 2.1 打包
+
+`flutter build` 之后，`packaging/` 下的脚本生成可分发包（输出到 `dist/`，每个包同时生成 `.sha256`）：
+
+```bash
+# Linux 原生格式（Ubuntu 24.04 构建）
+bash packaging/linux/package.sh all app/build/linux/x64/release/bundle 0.0.1+1 x64
+#   all = tar.gz + .deb + AppImage
+
+# 仅 Debian/Ubuntu .deb；DISTRO_TAG 决定文件名与 BUILD-INFO
+DISTRO_TAG=ubuntu24.04 BUILD_BASE="Ubuntu 24.04" \
+  bash packaging/linux/package.sh deb app/build/linux/x64/release/bundle 0.0.1+1 x64
+
+# Fedora/RHEL/openSUSE .rpm（需要 rpmbuild）
+DISTRO_TAG=fedora bash packaging/linux/package.sh rpm \
+  app/build/linux/x64/release/bundle 0.0.1+1 x64
+
+# Arch/Manjaro：先预置工作目录，再在 Arch 上跑 makepkg
+DISTRO_TAG=arch bash packaging/linux/package.sh arch \
+  app/build/linux/x64/release/bundle 0.0.1+1 x64
+(cd packaging/linux/work/arch && makepkg -f --skipinteg --nocheck --nodeps)
+
+# Flatpak（需要 flatpak + flathub）
+bash packaging/linux/package-flatpak.sh \
+  app/build/linux/x64/release/bundle 0.0.1+1 x64
+
+# NixOS：预置工作目录后在 nix 环境构建
+bash packaging/linux/package.sh nix \
+  app/build/linux/x64/release/bundle 0.0.1+1 x64
+# 路径含非 ASCII 字符时先复制到 /tmp（flake 的 path: 解析更稳）：
+#   cp -a packaging/linux/work/nix /tmp/archoera-nix
+#   (cd /tmp/archoera-nix && nix build "path:$PWD#default" --option sandbox false)
+(cd packaging/linux/work/nix && nix build "path:$PWD#default" --option sandbox false)
+
+# macOS：便携 tar.gz、.dmg（必须在 macOS 上运行 hdiutil）
+bash packaging/macos/package.sh all \
+  app/build/macos/Build/Products/Release/archoera_cx.app 0.0.1+1 arm64
+
+# Windows：便携 zip、Inno Setup 安装器（需要 ISCC.exe 在 PATH 或默认安装目录）
+pwsh packaging/windows/package.ps1 `
+  -ReleaseDir app/build/windows/x64/runner/Release `
+  -Version 0.0.1+1 -Arch x64 -Installer
+```
+
+只给 `package.sh` 传 `<bundle> <version> [arch]`（不带格式）时仍生成便携 tar.gz，兼容旧命令。`all` 是本机便捷入口（tar.gz + deb + AppImage）；CI 按发行版拆分 job，rpm / Arch / Deepin 在各自容器内从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu job 上传的原始 bundle。每个包同时写入 `BUILD-INFO.txt` 与 `.sha256`。
+
+CI 的发行矩阵：
+
+| 产物 | 构建环境 | 说明 |
+|---|---|---|
+| Ubuntu tar.gz / `.deb` | Ubuntu 24.04 runner | 源码构建；同时上传原始 bundle |
+| Deepin `.deb` | Deepin 25 容器 | 源码构建；glibc 2.38 基线 |
+| `.rpm` | Fedora 容器 | 源码构建，链接 Fedora 的 glibc/libstdc++/GTK |
+| `.pkg.tar.zst` | Arch 容器 | 源码构建，`makepkg` |
+| `.AppImage` | Ubuntu 24.04，依赖 linux-deb | 消费 Ubuntu bundle，`linuxdeploy` 收拢 GTK/X11 |
+| `.flatpak` | Ubuntu 24.04，依赖 linux-deb | 消费 Ubuntu bundle |
+| NixOS `.tar.gz` | Ubuntu + Nix，依赖 linux-deb | 消费 Ubuntu bundle，`autoPatchelfHook` 处理 NixOS 动态库 |
+| macOS `.tar.gz` / `.dmg` | macOS-15 | 独立 `macos` job；源码构建并打包 |
+| Windows `.zip` / 安装器 | windows-latest | 独立 `windows` job；源码构建并打包 |
+
+AppImage 在 CI 中下载 `appimagetool`、`linuxdeploy` 和 type-2 runtime，用 `linuxdeploy` 收拢 GTK/X11 动态依赖。`.deb` / `.rpm` / Arch 包都安装到 `/opt/archoera-cx`，并注册 desktop 条目、AppStream 元数据和 hicolor 图标。Flatpak 使用 `--filesystem=home` 与只读 `host-os` / `host-etc`，以便访问实例目录和系统 Java。Gentoo overlay 的 ebuild 在 `packaging/gentoo/games-util/archoera-cx/`，直接消费发布 tar.gz。
+
+`workflow_dispatch` 可分别勾选九项：macOS / Windows / Ubuntu deb / Deepin deb / Fedora rpm / Arch pkg / AppImage / Flatpak / Nix。勾选 AppImage、Flatpak 或 Nix 会自动带上 Ubuntu deb（它们消费其原始 bundle）；只有九项全选的手动运行，`release` 才会放行。
+
 `app/shaders/*.frag` 由 `pubspec.yaml` 的 `flutter: shaders:` 声明交给 `impellerc` 编译；`flutter test` 同样会编译，`test/app_shaders_test.dart` 按各着色器声明的 uniform 个数逐个绘制，索引与 GLSL 不一致会在此失败。新增或调整 uniform 时必须同步修改调用方的 `setFloat` 索引。窗口背景是纯色、没有持续动画，测试里的 `pumpAndSettle` 可正常收敛。
 
 Microsoft 登录的 client ID 必须在 C# 构建步骤注入：
@@ -57,7 +121,7 @@ export ARCHOERACX_MICROSOFT_CLIENT_ID="<Application (client) ID>"
 ./tool/build-cs.sh
 ```
 
-- CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID` 注入。
+- CI/Release 构建从 GitHub Actions secret `ARCHOERACX_MICROSOFT_CLIENT_ID`（仓库 Settings → Secrets and variables → Actions）注入；工作流只在编译 C# 模块和校验形状的步骤里暴露该值，不放进 job 级环境。
 - `CURSEFORGE_API_KEY` 是 CurseForge Provider 的保留键名；接入实现时与 Microsoft client ID 相同，经 CI secret / MSBuild 属性在构建期注入（当前 registry 尚未消费该属性），默认空值使 provider 在 API 访问配置前不可用。
 - 构建期只把 client ID 的**高熵 blob**（随机 nonce + SHA-256 keystream 异或）写进 `obj/.../MicrosoftBuildConfig.g.cs`，运行时在内存里还原；明文不落仓库、不出现在二进制字符串表。
 - 本地构建未设置该变量时 client ID 为空，登录返回 `MICROSOFT_CLIENT_ID_MISSING`，不会发出网络请求。
@@ -113,6 +177,14 @@ ARCHOERACX_MICROSOFT_CLIENT_ID="<client id>" \
   flutter test test/microsoft_start_test.dart
 ```
 
+CI 在 `build-native` 之后用下面这条测试确认 client id 确实编译进了 C# 模块（`system.identity` 只返回摘要，不会输出原始 id）：
+
+```bash
+ARCHOERACX_CLIENT_ID_TESTS=1 flutter test test/client_id_integration_test.dart
+```
+
+发布 tag 构建额外设置 `ARCHOERACX_REQUIRE_OFFICIAL_BUILD=1`，要求编译期 id 与仓库公开的官方摘要一致；不一致会阻止发版。
+
 ### 4.1 在 Linux 主机上预检 Windows / macOS 的 C++ 核心
 
 CI 的三端 runner 才是最终验收；下面两个脚本只用于改完平台代码后的快速编译回归，不代替真机或 CI。
@@ -159,8 +231,8 @@ logs/account.log              脱敏的账户诊断日志
 
 - 中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；
 - 其他地区默认启用下载；
-- 发布包只从 GitHub CI 构建：[`.github/workflows/build-all.yml`](../.github/workflows/build-all.yml) 在 Linux/macOS/Windows 三个 runner 原生构建、测试、打包；推送 `v*` tag 后汇总三端产物发布；
-- 构建期凭据只通过 CI secret / MSBuild 属性注入，不进入仓库；当前注入的是 Microsoft client ID。
+- 发布包只从 GitHub CI 构建：[`.github/workflows/build-all.yml`](../.github/workflows/build-all.yml) 按发行版拆分 job，Ubuntu / Deepin / Fedora / Arch 各自在对应环境从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu 原始 bundle；macOS 与 Windows 是独立 job，各自完成构建和打包；推送 `v*` tag 后汇总全部产物、生成 `SHA256SUMS` 并发布；
+- 构建期凭据只通过 CI secret / MSBuild 属性注入，不进入仓库；当前注入的是 Microsoft client ID。tag 构建会校验 secret 的 GUID 形状，并在打包前用 `system.identity` 断言编译期 id 已生效且为官方 id；
 
 发行通道、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
 
