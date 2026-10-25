@@ -1121,7 +1121,7 @@
   "settingsAboutSecurity": "安全策略",
   "settingsAboutThirdParty": "第三方许可",
   "settingsAboutThirdPartyDesc": "查看随本构建分发的开源组件。",
-  "settingsAboutDisclaimer": "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
+  "settingsAboutDisclaimer": "独立启动器。并非官方 Minecraft 产品。Minecraft 是 Mojang Synergies AB 的商标。",
   "settingsAboutOpenFailed": "无法打开链接。",
   "instanceViewLogs": "查看日志",
   "gameLogTitle": "游戏日志",

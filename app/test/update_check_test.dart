@@ -33,7 +33,7 @@ void main() {
     await tester.tap(find.text('About').first);
     await tester.pumpAndSettle();
 
-    // The row sits in the environment card and mirrors its label/value shape.
+    // The update check is the last block in About, below the legal disclaimer.
     expect(find.text('Check for updates'), findsOneWidget);
     expect(
       find.textContaining('Compares against the newest GitHub release'),
@@ -41,6 +41,12 @@ void main() {
     );
     expect(find.text('Current version'), findsOneWidget);
     expect(find.text(AppInfo.version), findsWidgets);
+    expect(
+      tester.getTopLeft(find.text('Check for updates')).dy,
+      greaterThan(
+        tester.getTopLeft(find.textContaining('INDEPENDENT LAUNCHER')).dy,
+      ),
+    );
     expect(tester.takeException(), isNull);
   });
 }

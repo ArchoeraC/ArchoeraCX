@@ -2069,7 +2069,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAboutDisclaimer =>
-      'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.';
+      '独立启动器。并非官方 Minecraft 产品。Minecraft 是 Mojang Synergies AB 的商标。';
 
   @override
   String get settingsAboutOpenFailed => '无法打开链接。';

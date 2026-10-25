@@ -2190,7 +2190,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutDisclaimer =>
-      'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.';
+      'INDEPENDENT LAUNCHER. NOT AN OFFICIAL MINECRAFT PRODUCT. MINECRAFT IS A TRADEMARK OF MOJANG SYNERGIES AB.';
 
   @override
   String get settingsAboutOpenFailed => 'Could not open the link.';

@@ -184,7 +184,6 @@ class _AboutPanel extends ConsumerWidget {
                 label: l10n.settingsDataRoot,
                 value: settings!.dataRoot,
               ),
-            const _UpdateCheckRow(),
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xs,
@@ -293,6 +292,8 @@ class _AboutPanel extends ConsumerWidget {
                 ?.copyWith(color: tokens.textTertiary, letterSpacing: 0.2),
           ),
         ),
+        const SizedBox(height: AppSpacing.lg),
+        const _SettingsCard(children: [_UpdateCheckRow()]),
       ],
     );
   }

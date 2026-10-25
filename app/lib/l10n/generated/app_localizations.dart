@@ -3815,7 +3815,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutDisclaimer.
   ///
   /// In en, this message translates to:
-  /// **'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.'**
+  /// **'INDEPENDENT LAUNCHER. NOT AN OFFICIAL MINECRAFT PRODUCT. MINECRAFT IS A TRADEMARK OF MOJANG SYNERGIES AB.'**
   String get settingsAboutDisclaimer;
 
   /// No description provided for @settingsAboutOpenFailed.

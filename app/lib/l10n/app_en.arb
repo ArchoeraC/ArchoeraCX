@@ -1774,7 +1774,7 @@
   "settingsAboutSecurity": "Security policy",
   "settingsAboutThirdParty": "Third-party licenses",
   "settingsAboutThirdPartyDesc": "Open-source packages bundled with this build.",
-  "settingsAboutDisclaimer": "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
+  "settingsAboutDisclaimer": "INDEPENDENT LAUNCHER. NOT AN OFFICIAL MINECRAFT PRODUCT. MINECRAFT IS A TRADEMARK OF MOJANG SYNERGIES AB.",
   "settingsAboutOpenFailed": "Could not open the link.",
   "instanceViewLogs": "View logs",
   "gameLogTitle": "Game log",
