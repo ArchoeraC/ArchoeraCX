@@ -67,6 +67,20 @@ for program in archoera_cx lib/archoera-dl lib/archoera-vault; do
   fi
 done
 
+# Flutter plugins are linked with the build machine's ephemeral directory as
+# RUNPATH. That is harmless for a local bundle but breaks RPM's check-rpaths
+# and carries a build path into every package. Point bundled libraries at their
+# own directory instead; the main binary keeps its $ORIGIN/lib lookup.
+if command -v patchelf >/dev/null 2>&1; then
+  patchelf --set-rpath '$ORIGIN/lib' "${WORK}/bundle/archoera_cx"
+  for library in "${WORK}/bundle/lib/"*.so*; do
+    [[ -f "${library}" ]] || continue
+    patchelf --set-rpath '$ORIGIN' "${library}" 2>/dev/null || true
+  done
+else
+  echo "warning: patchelf not found; bundle RUNPATHs keep the build path" >&2
+fi
+
 cp "${ROOT}/README.md" "${ROOT}/LICENSE" "${ROOT}/PRIVACY.md" \
   "${ROOT}/THIRD-PARTY-NOTICES.md" "${WORK}/bundle/"
 mkdir -p "${WORK}/bundle/licenses"

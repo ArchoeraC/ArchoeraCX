@@ -30,6 +30,16 @@ for program in archoera_cx lib/archoera-dl lib/archoera-vault; do
   [[ -f "${BUNDLE}/${program}" ]] && chmod 0755 "${BUNDLE}/${program}"
 done
 
+# Rewrite Flutter's build-machine RUNPATHs to $ORIGIN before wrapping the
+# bundle (same normalization as the Linux package script).
+if command -v patchelf >/dev/null 2>&1; then
+  patchelf --set-rpath '$ORIGIN/lib' "${BUNDLE}/archoera_cx"
+  for library in "${BUNDLE}/lib/"*.so*; do
+    [[ -f "${library}" ]] || continue
+    patchelf --set-rpath '$ORIGIN' "${library}" 2>/dev/null || true
+  done
+fi
+
 command -v flatpak >/dev/null 2>&1 || {
   echo "error: flatpak is required" >&2
   exit 1
