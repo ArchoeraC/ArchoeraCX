@@ -517,7 +517,7 @@
   "@settingsMangoHud": {
     "description": "Global switch that injects the MangoHud overlay."
   },
-  "settingsMangoHudDesc": "Injects the MangoHud overlay through LD_PRELOAD.",
+  "settingsMangoHudDesc": "Runs the game through the mangohud wrapper (install it first) and also sets MANGOHUD=1 for Vulkan layers.",
   "settingsZink": "Zink",
   "@settingsZink": {
     "description": "Global switch that requests the Zink OpenGL-on-Vulkan driver."

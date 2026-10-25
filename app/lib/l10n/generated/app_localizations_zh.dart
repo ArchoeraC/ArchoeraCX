@@ -752,7 +752,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsMangoHud => 'MangoHud';
 
   @override
-  String get settingsMangoHudDesc => '通过 LD_PRELOAD 注入 MangoHud 覆盖层。';
+  String get settingsMangoHudDesc =>
+      '通过 mangohud 包装命令注入覆盖层（需系统已安装），并为 Vulkan 场景设置 MANGOHUD=1。';
 
   @override
   String get settingsZink => 'Zink';

@@ -13,7 +13,11 @@ public sealed class LaunchPerformancePresetsTests
     [Fact]
     public void GameMode_prepends_gamemoderun_to_an_empty_wrapper()
     {
-        var result = LaunchPerformancePresets.ComposeWrapper([], gameMode: true, linux: true);
+        var result = LaunchPerformancePresets.ComposeWrapper(
+            [],
+            gameMode: true,
+            mangoHud: false,
+            linux: true);
         Assert.Equal(["gamemoderun"], result);
     }
 
@@ -23,6 +27,7 @@ public sealed class LaunchPerformancePresetsTests
         var result = LaunchPerformancePresets.ComposeWrapper(
             ["mangohud", "--dlsym"],
             gameMode: true,
+            mangoHud: false,
             linux: true);
         Assert.Equal(["gamemoderun", "mangohud", "--dlsym"], result);
     }
@@ -34,25 +39,61 @@ public sealed class LaunchPerformancePresetsTests
         var result = LaunchPerformancePresets.ComposeWrapper(
             wrapper,
             gameMode: true,
+            mangoHud: false,
             linux: true);
 
         Assert.Same(wrapper, result);
     }
 
     [Fact]
-    public void GameMode_is_ignored_when_off_or_not_on_linux()
+    public void MangoHud_prepends_the_wrapper_and_composes_with_GameMode()
+    {
+        Assert.Equal(
+            ["mangohud"],
+            LaunchPerformancePresets.ComposeWrapper(
+                [],
+                gameMode: false,
+                mangoHud: true,
+                linux: true));
+
+        Assert.Equal(
+            ["gamemoderun", "mangohud", "prime-run"],
+            LaunchPerformancePresets.ComposeWrapper(
+                ["prime-run"],
+                gameMode: true,
+                mangoHud: true,
+                linux: true));
+    }
+
+    [Fact]
+    public void MangoHud_is_not_prepended_twice()
+    {
+        var wrapper = new[] { "mangohud", "--dlsym" };
+        var result = LaunchPerformancePresets.ComposeWrapper(
+            wrapper,
+            gameMode: false,
+            mangoHud: true,
+            linux: true);
+
+        Assert.Same(wrapper, result);
+    }
+
+    [Fact]
+    public void GameMode_and_MangoHud_are_ignored_when_off_or_not_on_linux()
     {
         Assert.Equal(
             ["mangohud"],
             LaunchPerformancePresets.ComposeWrapper(
                 ["mangohud"],
                 gameMode: false,
+                mangoHud: false,
                 linux: true));
         Assert.Equal(
             ["mangohud"],
             LaunchPerformancePresets.ComposeWrapper(
                 ["mangohud"],
                 gameMode: true,
+                mangoHud: true,
                 linux: false));
     }
 
