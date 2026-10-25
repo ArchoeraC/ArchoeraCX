@@ -79,44 +79,44 @@ runs:
         ./build/native/event_queue_smoke
 
     - name: C# tests
-      shell: bash
+      shell: pwsh
       working-directory: app
       run: dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release --nologo
 
     - name: C# DevHost diagnostics
-      shell: bash
+      shell: pwsh
       working-directory: app
       run: |
         dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
         dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
 
     - name: Rust tests
-      shell: bash
+      shell: pwsh
       working-directory: app
       run: |
         cargo test --locked --manifest-path modules/downloader/Cargo.toml
         cargo test --locked --manifest-path core/vault-rs/Cargo.toml
 
     - name: Flutter dependencies and localization
-      shell: bash
+      shell: pwsh
       working-directory: app
       run: |
         flutter pub get
         flutter gen-l10n
 
     - name: Dart analyze
-      shell: bash
+      shell: pwsh
       working-directory: app
       run: dart analyze
 
     - name: Flutter tests
-      shell: bash
+      shell: pwsh
       working-directory: app
       run: flutter test
 
     - name: Verify compiled Microsoft client id
       if: inputs.client_id != ''
-      shell: bash
+      shell: pwsh
       working-directory: app
       env:
         ARCHOERACX_CLIENT_ID_TESTS: '1'
@@ -124,7 +124,7 @@ runs:
       run: flutter test test/client_id_integration_test.dart
 
     - name: Build Flutter Windows bundle
-      shell: bash
+      shell: pwsh
       working-directory: app
       run: flutter build windows --release
 

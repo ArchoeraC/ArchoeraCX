@@ -364,7 +364,7 @@ jobs:
             gcc gcc-c++ clang cmake ninja-build pkgconf-pkg-config make patchelf binutils \
             zlib-devel gtk3-devel dbus-devel xz-devel libdrm-devel mesa-libGL-devel \
             libX11-devel libXi-devel libstdc++-devel libicu openssl-libs \
-            musl-gcc musl-devel python3 rpm-build coreutils sed gawk
+            musl-gcc musl-devel python3 rpm-build coreutils sed gawk jq
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Git safe directory
         run: git config --global --add safe.directory '*'
@@ -406,7 +406,7 @@ jobs:
             base-devel fakeroot shadow debugedit bzip2 gettext gnupg ncurses \
             git curl wget tar xz zstd unzip zip which findutils file libarchive \
             clang cmake ninja pkgconf patchelf binutils zlib gtk3 dbus xz \
-            libdrm mesa libx11 libxi musl python
+            libdrm mesa libx11 libxi musl python jq
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Git safe directory
         run: git config --global --add safe.directory '*'
