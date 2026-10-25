@@ -101,6 +101,14 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     int? windowWidth,
     int? windowHeight,
     bool? fullscreen,
+    bool? maximized,
+    bool? enableGameMode,
+    bool? enableMangoHud,
+    bool? useZink,
+    bool? developerMode,
+    Object? nativeGlfwPath = noChange,
+    Object? nativeOpenALPath = noChange,
+    Object? nativeSdlPath = noChange,
     int? logRetentionFiles,
     int? logRetentionMegabytes,
     bool? shareLoaderFiles,
@@ -143,6 +151,20 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           windowWidth: windowWidth ?? current.windowWidth,
           windowHeight: windowHeight ?? current.windowHeight,
           fullscreen: fullscreen ?? current.fullscreen,
+          maximized: maximized ?? current.maximized,
+          enableGameMode: enableGameMode ?? current.enableGameMode,
+          enableMangoHud: enableMangoHud ?? current.enableMangoHud,
+          useZink: useZink ?? current.useZink,
+          developerMode: developerMode ?? current.developerMode,
+          nativeGlfwPath: nativeGlfwPath == noChange
+              ? current.nativeGlfwPath
+              : nativeGlfwPath as String?,
+          nativeOpenALPath: nativeOpenALPath == noChange
+              ? current.nativeOpenALPath
+              : nativeOpenALPath as String?,
+          nativeSdlPath: nativeSdlPath == noChange
+              ? current.nativeSdlPath
+              : nativeSdlPath as String?,
           logRetentionFiles: logRetentionFiles ?? current.logRetentionFiles,
           logRetentionMegabytes:
               logRetentionMegabytes ?? current.logRetentionMegabytes,
@@ -169,6 +191,14 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         windowWidth: windowWidth,
         windowHeight: windowHeight,
         fullscreen: fullscreen,
+        maximized: maximized,
+        enableGameMode: enableGameMode,
+        enableMangoHud: enableMangoHud,
+        useZink: useZink,
+        developerMode: developerMode,
+        nativeGlfwPath: nativeGlfwPath,
+        nativeOpenALPath: nativeOpenALPath,
+        nativeSdlPath: nativeSdlPath,
         logRetentionFiles: logRetentionFiles,
         logRetentionMegabytes: logRetentionMegabytes,
         shareLoaderFiles: shareLoaderFiles,

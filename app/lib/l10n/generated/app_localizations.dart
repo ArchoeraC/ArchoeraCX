@@ -1313,20 +1313,38 @@ abstract class AppLocalizations {
   /// No description provided for @settingsWindowNote.
   ///
   /// In en, this message translates to:
-  /// **'Window settings are written as vanilla launch arguments (--width / --height / --fullscreen) and apply to versions that accept them.'**
+  /// **'Window mode is written as vanilla launch arguments (--width / --height / --fullscreen) and applies to versions that accept them. Maximized is approximated with the primary display\'s usable size.'**
   String get settingsWindowNote;
 
-  /// No description provided for @settingsFullscreen.
+  /// Global selector for windowed, fullscreen or maximized launch.
   ///
   /// In en, this message translates to:
-  /// **'Start fullscreen'**
-  String get settingsFullscreen;
+  /// **'Window mode'**
+  String get settingsWindowMode;
 
-  /// No description provided for @settingsFullscreenDesc.
+  /// Explains that maximized is an approximation, since Minecraft has no maximized flag.
   ///
   /// In en, this message translates to:
-  /// **'Enter the game fullscreen; the window size is still passed as a fallback.'**
-  String get settingsFullscreenDesc;
+  /// **'Maximized opens a window sized to the usable screen area; some versions may not strictly maximize it.'**
+  String get settingsWindowModeDesc;
+
+  /// Window mode option that opens a regular window.
+  ///
+  /// In en, this message translates to:
+  /// **'Windowed'**
+  String get settingsWindowModeWindowed;
+
+  /// Window mode option that starts the game fullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen'**
+  String get settingsWindowModeFullscreen;
+
+  /// Window mode option that approximates a maximized window.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximized'**
+  String get settingsWindowModeMaximized;
 
   /// No description provided for @settingsWindowSize.
   ///
@@ -1345,6 +1363,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ignored while starting fullscreen.'**
   String get settingsWindowSizeFullscreen;
+
+  /// Hint under the window size selector while maximized is selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Set from the primary display\'s usable size when you choose maximized.'**
+  String get settingsWindowSizeMaximized;
+
+  /// Global Linux-only performance switches header.
+  ///
+  /// In en, this message translates to:
+  /// **'Performance (Linux)'**
+  String get settingsSectionPerformance;
+
+  /// Explains that the performance switches are convenience wrapper/env presets.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied through a wrapper or environment variables. A custom wrapper or environment value with the same effect takes precedence; these switches do not change the download or compliance settings.'**
+  String get settingsPerformanceNote;
+
+  /// Global switch that runs the game through gamemoderun.
+  ///
+  /// In en, this message translates to:
+  /// **'Feral GameMode'**
+  String get settingsGameMode;
+
+  /// No description provided for @settingsGameModeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs the game through gamemoderun when GameMode is installed.'**
+  String get settingsGameModeDesc;
+
+  /// Global switch that injects the MangoHud overlay.
+  ///
+  /// In en, this message translates to:
+  /// **'MangoHud'**
+  String get settingsMangoHud;
+
+  /// No description provided for @settingsMangoHudDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Injects the MangoHud overlay through LD_PRELOAD.'**
+  String get settingsMangoHudDesc;
+
+  /// Global switch that requests the Zink OpenGL-on-Vulkan driver.
+  ///
+  /// In en, this message translates to:
+  /// **'Zink'**
+  String get settingsZink;
+
+  /// No description provided for @settingsZinkDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests the Zink OpenGL-on-Vulkan driver through the environment.'**
+  String get settingsZinkDesc;
+
+  /// Linux-only developer section title for native library overrides.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced native libraries (developer)'**
+  String get settingsSectionAdvancedNative;
+
+  /// Warning shown for advanced native library overrides.
+  ///
+  /// In en, this message translates to:
+  /// **'Only affects the local game launch and is unrelated to the download/compliance developer mode. Set these paths only when you know the ABI of the library; a mismatched GLFW, OpenAL or SDL build can crash the game before the main menu.'**
+  String get settingsNativeWarning;
+
+  /// Switch that reveals GLFW/OpenAL/SDL path overrides.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable native library overrides'**
+  String get settingsDeveloperMode;
+
+  /// Explains developer mode scope and that stored paths stay parked while off.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs only for the local game. Off keeps the stored paths but does not apply them.'**
+  String get settingsDeveloperModeDesc;
+
+  /// Absolute path field for a custom GLFW shared library.
+  ///
+  /// In en, this message translates to:
+  /// **'GLFW library'**
+  String get settingsNativeGlfw;
+
+  /// Absolute path field for a custom OpenAL shared library.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenAL library'**
+  String get settingsNativeOpenAL;
+
+  /// Absolute path field for a custom SDL shared library.
+  ///
+  /// In en, this message translates to:
+  /// **'SDL library'**
+  String get settingsNativeSdl;
+
+  /// Placeholder in the native library path fields.
+  ///
+  /// In en, this message translates to:
+  /// **'/absolute/path/to/library.so'**
+  String get settingsNativePathHint;
+
+  /// Inline validation for a relative native library path.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an absolute file path.'**
+  String get settingsNativePathInvalid;
+
+  /// Tooltip on the native library file picker button.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file'**
+  String get settingsNativePickFile;
+
+  /// File picker type group label for native libraries.
+  ///
+  /// In en, this message translates to:
+  /// **'Native library'**
+  String get settingsNativePickerLabel;
 
   /// Global default for the Forge/NeoForge install dialog checkbox.
   ///
@@ -4423,6 +4561,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Windowed'**
   String get instanceSettingsWindowWindowed;
+
+  /// Window mode option that approximates a maximized window.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximized'**
+  String get instanceSettingsWindowMaximized;
+
+  /// Per-instance performance override section on Linux.
+  ///
+  /// In en, this message translates to:
+  /// **'Performance'**
+  String get instanceSettingsPerformance;
+
+  /// Explains the inherit/on/off performance override choices.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow global, force on, or force off for this instance. Inherit keeps the global switch.'**
+  String get instanceSettingsPerformanceHint;
+
+  /// Per-instance GameMode override row.
+  ///
+  /// In en, this message translates to:
+  /// **'Feral GameMode'**
+  String get instanceSettingsGameMode;
+
+  /// Per-instance MangoHud override row.
+  ///
+  /// In en, this message translates to:
+  /// **'MangoHud'**
+  String get instanceSettingsMangoHud;
+
+  /// Per-instance Zink override row.
+  ///
+  /// In en, this message translates to:
+  /// **'Zink'**
+  String get instanceSettingsZink;
+
+  /// Tri-state override option that clears the per-instance value.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow global'**
+  String get instanceSettingsOverrideInherit;
+
+  /// Tri-state override option that forces the feature on.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get instanceSettingsOverrideOn;
+
+  /// Tri-state override option that forces the feature off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get instanceSettingsOverrideOff;
 
   /// Per-instance initial window width override.
   ///

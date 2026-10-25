@@ -90,6 +90,11 @@ mixin CoreClientSettings on CoreTransport {
   /// [noChange] to keep the stored value, pass null to clear it, or pass a
   /// value to replace it. An empty wrapper or command string also means "none";
   /// an empty environment map clears it.
+  ///
+  /// The native-library paths follow the same tri-state rule and only take
+  /// effect while [developerMode] is on. [maximized] and [fullscreen] are
+  /// mutually exclusive; the caller writes both so the native owner can
+  /// normalize the pair.
   Future<AppSettings> setRuntimeOptions({
     int? memoryMinMb,
     int? memoryMaxMb,
@@ -104,6 +109,14 @@ mixin CoreClientSettings on CoreTransport {
     int? windowWidth,
     int? windowHeight,
     bool? fullscreen,
+    bool? maximized,
+    bool? enableGameMode,
+    bool? enableMangoHud,
+    bool? useZink,
+    bool? developerMode,
+    Object? nativeGlfwPath = noChange,
+    Object? nativeOpenALPath = noChange,
+    Object? nativeSdlPath = noChange,
     int? logRetentionFiles,
     int? logRetentionMegabytes,
     bool? shareLoaderFiles,
@@ -133,6 +146,17 @@ mixin CoreClientSettings on CoreTransport {
         'windowWidth': ?windowWidth,
         'windowHeight': ?windowHeight,
         'fullscreen': ?fullscreen,
+        'maximized': ?maximized,
+        'enableGameMode': ?enableGameMode,
+        'enableMangoHud': ?enableMangoHud,
+        'useZink': ?useZink,
+        'developerMode': ?developerMode,
+        if (nativeGlfwPath != noChange)
+          'nativeGlfwPath': nativeGlfwPath as String?,
+        if (nativeOpenALPath != noChange)
+          'nativeOpenALPath': nativeOpenALPath as String?,
+        if (nativeSdlPath != noChange)
+          'nativeSdlPath': nativeSdlPath as String?,
         'logRetentionFiles': ?logRetentionFiles,
         'logRetentionMb': ?logRetentionMegabytes,
         'shareLoaderFiles': ?shareLoaderFiles,

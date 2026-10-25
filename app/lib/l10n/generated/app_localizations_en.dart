@@ -716,14 +716,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsWindowNote =>
-      'Window settings are written as vanilla launch arguments (--width / --height / --fullscreen) and apply to versions that accept them.';
+      'Window mode is written as vanilla launch arguments (--width / --height / --fullscreen) and applies to versions that accept them. Maximized is approximated with the primary display\'s usable size.';
 
   @override
-  String get settingsFullscreen => 'Start fullscreen';
+  String get settingsWindowMode => 'Window mode';
 
   @override
-  String get settingsFullscreenDesc =>
-      'Enter the game fullscreen; the window size is still passed as a fallback.';
+  String get settingsWindowModeDesc =>
+      'Maximized opens a window sized to the usable screen area; some versions may not strictly maximize it.';
+
+  @override
+  String get settingsWindowModeWindowed => 'Windowed';
+
+  @override
+  String get settingsWindowModeFullscreen => 'Fullscreen';
+
+  @override
+  String get settingsWindowModeMaximized => 'Maximized';
 
   @override
   String get settingsWindowSize => 'Window size';
@@ -734,6 +743,74 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsWindowSizeFullscreen =>
       'Ignored while starting fullscreen.';
+
+  @override
+  String get settingsWindowSizeMaximized =>
+      'Set from the primary display\'s usable size when you choose maximized.';
+
+  @override
+  String get settingsSectionPerformance => 'Performance (Linux)';
+
+  @override
+  String get settingsPerformanceNote =>
+      'Applied through a wrapper or environment variables. A custom wrapper or environment value with the same effect takes precedence; these switches do not change the download or compliance settings.';
+
+  @override
+  String get settingsGameMode => 'Feral GameMode';
+
+  @override
+  String get settingsGameModeDesc =>
+      'Runs the game through gamemoderun when GameMode is installed.';
+
+  @override
+  String get settingsMangoHud => 'MangoHud';
+
+  @override
+  String get settingsMangoHudDesc =>
+      'Injects the MangoHud overlay through LD_PRELOAD.';
+
+  @override
+  String get settingsZink => 'Zink';
+
+  @override
+  String get settingsZinkDesc =>
+      'Requests the Zink OpenGL-on-Vulkan driver through the environment.';
+
+  @override
+  String get settingsSectionAdvancedNative =>
+      'Advanced native libraries (developer)';
+
+  @override
+  String get settingsNativeWarning =>
+      'Only affects the local game launch and is unrelated to the download/compliance developer mode. Set these paths only when you know the ABI of the library; a mismatched GLFW, OpenAL or SDL build can crash the game before the main menu.';
+
+  @override
+  String get settingsDeveloperMode => 'Enable native library overrides';
+
+  @override
+  String get settingsDeveloperModeDesc =>
+      'Runs only for the local game. Off keeps the stored paths but does not apply them.';
+
+  @override
+  String get settingsNativeGlfw => 'GLFW library';
+
+  @override
+  String get settingsNativeOpenAL => 'OpenAL library';
+
+  @override
+  String get settingsNativeSdl => 'SDL library';
+
+  @override
+  String get settingsNativePathHint => '/absolute/path/to/library.so';
+
+  @override
+  String get settingsNativePathInvalid => 'Enter an absolute file path.';
+
+  @override
+  String get settingsNativePickFile => 'Choose file';
+
+  @override
+  String get settingsNativePickerLabel => 'Native library';
 
   @override
   String get settingsShareLoaderFiles => 'Share loader files';
@@ -2547,6 +2624,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceSettingsWindowWindowed => 'Windowed';
+
+  @override
+  String get instanceSettingsWindowMaximized => 'Maximized';
+
+  @override
+  String get instanceSettingsPerformance => 'Performance';
+
+  @override
+  String get instanceSettingsPerformanceHint =>
+      'Follow global, force on, or force off for this instance. Inherit keeps the global switch.';
+
+  @override
+  String get instanceSettingsGameMode => 'Feral GameMode';
+
+  @override
+  String get instanceSettingsMangoHud => 'MangoHud';
+
+  @override
+  String get instanceSettingsZink => 'Zink';
+
+  @override
+  String get instanceSettingsOverrideInherit => 'Follow global';
+
+  @override
+  String get instanceSettingsOverrideOn => 'On';
+
+  @override
+  String get instanceSettingsOverrideOff => 'Off';
 
   @override
   String get instanceSettingsWindowWidth => 'Window width';

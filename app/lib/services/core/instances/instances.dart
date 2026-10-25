@@ -163,6 +163,10 @@ mixin CoreClientInstances on CoreTransport {
     int? windowWidth,
     int? windowHeight,
     bool? fullscreen,
+    bool? maximized,
+    bool? enableGameMode,
+    bool? enableMangoHud,
+    bool? useZink,
   }) async {
     const methodName = 'instance.update';
     final jsonText = await runAsync(
@@ -187,6 +191,10 @@ mixin CoreClientInstances on CoreTransport {
           'windowWidth': windowWidth,
           'windowHeight': windowHeight,
           'fullscreen': fullscreen,
+          'maximized': maximized,
+          'enableGameMode': enableGameMode,
+          'enableMangoHud': enableMangoHud,
+          'useZink': useZink,
         },
       }),
     );

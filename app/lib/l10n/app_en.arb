@@ -448,12 +448,101 @@
     "description": "How the launcher starts the game: window and extra arguments."
   },
   "settingsSectionWindow": "Game window",
-  "settingsWindowNote": "Window settings are written as vanilla launch arguments (--width / --height / --fullscreen) and apply to versions that accept them.",
-  "settingsFullscreen": "Start fullscreen",
-  "settingsFullscreenDesc": "Enter the game fullscreen; the window size is still passed as a fallback.",
+  "settingsWindowNote": "Window mode is written as vanilla launch arguments (--width / --height / --fullscreen) and applies to versions that accept them. Maximized is approximated with the primary display's usable size.",
+  "settingsWindowMode": "Window mode",
+  "@settingsWindowMode": {
+    "description": "Global selector for windowed, fullscreen or maximized launch."
+  },
+  "settingsWindowModeDesc": "Maximized opens a window sized to the usable screen area; some versions may not strictly maximize it.",
+  "@settingsWindowModeDesc": {
+    "description": "Explains that maximized is an approximation, since Minecraft has no maximized flag."
+  },
+  "settingsWindowModeWindowed": "Windowed",
+  "@settingsWindowModeWindowed": {
+    "description": "Window mode option that opens a regular window."
+  },
+  "settingsWindowModeFullscreen": "Fullscreen",
+  "@settingsWindowModeFullscreen": {
+    "description": "Window mode option that starts the game fullscreen."
+  },
+  "settingsWindowModeMaximized": "Maximized",
+  "@settingsWindowModeMaximized": {
+    "description": "Window mode option that approximates a maximized window."
+  },
   "settingsWindowSize": "Window size",
   "settingsWindowSizeDesc": "Initial size of the game window.",
   "settingsWindowSizeFullscreen": "Ignored while starting fullscreen.",
+  "settingsWindowSizeMaximized": "Set from the primary display's usable size when you choose maximized.",
+  "@settingsWindowSizeMaximized": {
+    "description": "Hint under the window size selector while maximized is selected."
+  },
+  "settingsSectionPerformance": "Performance (Linux)",
+  "@settingsSectionPerformance": {
+    "description": "Global Linux-only performance switches header."
+  },
+  "settingsPerformanceNote": "Applied through a wrapper or environment variables. A custom wrapper or environment value with the same effect takes precedence; these switches do not change the download or compliance settings.",
+  "@settingsPerformanceNote": {
+    "description": "Explains that the performance switches are convenience wrapper/env presets."
+  },
+  "settingsGameMode": "Feral GameMode",
+  "@settingsGameMode": {
+    "description": "Global switch that runs the game through gamemoderun."
+  },
+  "settingsGameModeDesc": "Runs the game through gamemoderun when GameMode is installed.",
+  "settingsMangoHud": "MangoHud",
+  "@settingsMangoHud": {
+    "description": "Global switch that injects the MangoHud overlay."
+  },
+  "settingsMangoHudDesc": "Injects the MangoHud overlay through LD_PRELOAD.",
+  "settingsZink": "Zink",
+  "@settingsZink": {
+    "description": "Global switch that requests the Zink OpenGL-on-Vulkan driver."
+  },
+  "settingsZinkDesc": "Requests the Zink OpenGL-on-Vulkan driver through the environment.",
+  "settingsSectionAdvancedNative": "Advanced native libraries (developer)",
+  "@settingsSectionAdvancedNative": {
+    "description": "Linux-only developer section title for native library overrides."
+  },
+  "settingsNativeWarning": "Only affects the local game launch and is unrelated to the download/compliance developer mode. Set these paths only when you know the ABI of the library; a mismatched GLFW, OpenAL or SDL build can crash the game before the main menu.",
+  "@settingsNativeWarning": {
+    "description": "Warning shown for advanced native library overrides."
+  },
+  "settingsDeveloperMode": "Enable native library overrides",
+  "@settingsDeveloperMode": {
+    "description": "Switch that reveals GLFW/OpenAL/SDL path overrides."
+  },
+  "settingsDeveloperModeDesc": "Runs only for the local game. Off keeps the stored paths but does not apply them.",
+  "@settingsDeveloperModeDesc": {
+    "description": "Explains developer mode scope and that stored paths stay parked while off."
+  },
+  "settingsNativeGlfw": "GLFW library",
+  "@settingsNativeGlfw": {
+    "description": "Absolute path field for a custom GLFW shared library."
+  },
+  "settingsNativeOpenAL": "OpenAL library",
+  "@settingsNativeOpenAL": {
+    "description": "Absolute path field for a custom OpenAL shared library."
+  },
+  "settingsNativeSdl": "SDL library",
+  "@settingsNativeSdl": {
+    "description": "Absolute path field for a custom SDL shared library."
+  },
+  "settingsNativePathHint": "/absolute/path/to/library.so",
+  "@settingsNativePathHint": {
+    "description": "Placeholder in the native library path fields."
+  },
+  "settingsNativePathInvalid": "Enter an absolute file path.",
+  "@settingsNativePathInvalid": {
+    "description": "Inline validation for a relative native library path."
+  },
+  "settingsNativePickFile": "Choose file",
+  "@settingsNativePickFile": {
+    "description": "Tooltip on the native library file picker button."
+  },
+  "settingsNativePickerLabel": "Native library",
+  "@settingsNativePickerLabel": {
+    "description": "File picker type group label for native libraries."
+  },
   "settingsShareLoaderFiles": "Share loader files",
   "settingsShareLoaderFilesDesc": "Forge/NeoForge libraries and the merged loader profile are installed once in the game folder and reused by every instance of that loader build. Untick to keep them inside each instance.",
   "@settingsShareLoaderFiles": {
@@ -2210,6 +2299,42 @@
   "instanceSettingsWindowWindowed": "Windowed",
   "@instanceSettingsWindowWindowed": {
     "description": "Window mode option that always starts in a window."
+  },
+  "instanceSettingsWindowMaximized": "Maximized",
+  "@instanceSettingsWindowMaximized": {
+    "description": "Window mode option that approximates a maximized window."
+  },
+  "instanceSettingsPerformance": "Performance",
+  "@instanceSettingsPerformance": {
+    "description": "Per-instance performance override section on Linux."
+  },
+  "instanceSettingsPerformanceHint": "Follow global, force on, or force off for this instance. Inherit keeps the global switch.",
+  "@instanceSettingsPerformanceHint": {
+    "description": "Explains the inherit/on/off performance override choices."
+  },
+  "instanceSettingsGameMode": "Feral GameMode",
+  "@instanceSettingsGameMode": {
+    "description": "Per-instance GameMode override row."
+  },
+  "instanceSettingsMangoHud": "MangoHud",
+  "@instanceSettingsMangoHud": {
+    "description": "Per-instance MangoHud override row."
+  },
+  "instanceSettingsZink": "Zink",
+  "@instanceSettingsZink": {
+    "description": "Per-instance Zink override row."
+  },
+  "instanceSettingsOverrideInherit": "Follow global",
+  "@instanceSettingsOverrideInherit": {
+    "description": "Tri-state override option that clears the per-instance value."
+  },
+  "instanceSettingsOverrideOn": "On",
+  "@instanceSettingsOverrideOn": {
+    "description": "Tri-state override option that forces the feature on."
+  },
+  "instanceSettingsOverrideOff": "Off",
+  "@instanceSettingsOverrideOff": {
+    "description": "Tri-state override option that forces the feature off."
   },
   "instanceSettingsWindowWidth": "Window width",
   "@instanceSettingsWindowWidth": {

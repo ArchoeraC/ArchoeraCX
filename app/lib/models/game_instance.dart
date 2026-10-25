@@ -43,6 +43,10 @@ class InstanceOverrides {
     this.windowWidth,
     this.windowHeight,
     this.fullscreen,
+    this.maximized,
+    this.enableGameMode,
+    this.enableMangoHud,
+    this.useZink,
   });
 
   /// Supported garbage collectors, mirroring the global settings contract.
@@ -97,6 +101,15 @@ class InstanceOverrides {
   final int? windowHeight;
   final bool? fullscreen;
 
+  /// Starts this instance maximized (a window sized to the display). Null
+  /// inherits the global window mode; never true together with [fullscreen].
+  final bool? maximized;
+
+  /// Linux-only performance overrides. Null inherits the global switch.
+  final bool? enableGameMode;
+  final bool? enableMangoHud;
+  final bool? useZink;
+
   bool get isEmpty =>
       memoryMinMb == null &&
       memoryMaxMb == null &&
@@ -114,7 +127,11 @@ class InstanceOverrides {
       javaPath == null &&
       windowWidth == null &&
       windowHeight == null &&
-      fullscreen == null;
+      fullscreen == null &&
+      maximized == null &&
+      enableGameMode == null &&
+      enableMangoHud == null &&
+      useZink == null;
 
   /// Parse the `overrides` object of an instance payload. Returns null when the
   /// object is absent or carries no override at all.
@@ -160,6 +177,16 @@ class InstanceOverrides {
       fullscreen: value['fullscreen'] is bool
           ? value['fullscreen'] as bool
           : null,
+      maximized: value['maximized'] is bool && value['fullscreen'] != true
+          ? value['maximized'] as bool
+          : null,
+      enableGameMode: value['enableGameMode'] is bool
+          ? value['enableGameMode'] as bool
+          : null,
+      enableMangoHud: value['enableMangoHud'] is bool
+          ? value['enableMangoHud'] as bool
+          : null,
+      useZink: value['useZink'] is bool ? value['useZink'] as bool : null,
     );
     return overrides.isEmpty ? null : overrides;
   }
@@ -182,6 +209,10 @@ class InstanceOverrides {
     int? windowWidth,
     int? windowHeight,
     bool? fullscreen,
+    bool? maximized,
+    bool? enableGameMode,
+    bool? enableMangoHud,
+    bool? useZink,
   }) {
     return InstanceOverrides(
       memoryMinMb: memoryMinMb ?? this.memoryMinMb,
@@ -201,6 +232,10 @@ class InstanceOverrides {
       windowWidth: windowWidth ?? this.windowWidth,
       windowHeight: windowHeight ?? this.windowHeight,
       fullscreen: fullscreen ?? this.fullscreen,
+      maximized: maximized ?? this.maximized,
+      enableGameMode: enableGameMode ?? this.enableGameMode,
+      enableMangoHud: enableMangoHud ?? this.enableMangoHud,
+      useZink: useZink ?? this.useZink,
     );
   }
 }

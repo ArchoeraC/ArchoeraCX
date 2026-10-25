@@ -38,6 +38,7 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
   final _postExitFocus = FocusNode();
   Timer? _debounce;
   bool _saving = false;
+  bool _windowBusy = false;
   String? _error;
   String? _wrapperError;
   String? _environmentError;
@@ -182,14 +183,28 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     }
   }
 
-  Future<void> _setFullscreen(bool enabled) async {
+  /// Switching modes writes both mutually exclusive flags plus, for maximized,
+  /// the primary display's usable size. A failed display lookup keeps the
+  /// currently configured size instead of writing zeroes or crashing.
+  Future<void> _setWindowMode(GameWindowMode mode) async {
+    if (_windowBusy) return;
+    setState(() => _windowBusy = true);
+    final size = mode == GameWindowMode.maximized
+        ? await ref.read(maximizedWindowSizeProvider)()
+        : null;
     try {
       await ref
           .read(appSettingsProvider.notifier)
-          .setRuntimeOptions(fullscreen: enabled);
+          .setRuntimeOptions(
+            fullscreen: mode == GameWindowMode.fullscreen,
+            maximized: mode == GameWindowMode.maximized,
+            windowWidth: size?.width,
+            windowHeight: size?.height,
+          );
     } catch (error) {
-      if (!mounted) return;
-      toast('$error', type: ToastType.error);
+      if (mounted) toast('$error', type: ToastType.error);
+    } finally {
+      if (mounted) setState(() => _windowBusy = false);
     }
   }
 
@@ -222,9 +237,14 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     final settings = widget.settings;
     final width = settings?.windowWidth ?? 854;
     final height = settings?.windowHeight ?? 480;
-    final fullscreen = settings?.fullscreen ?? false;
+    final mode = gameWindowModeFrom(
+      fullscreen: settings?.fullscreen ?? false,
+      maximized: settings?.maximized ?? false,
+    );
+    final windowed = mode == GameWindowMode.windowed;
     final shareLoaderFiles = settings?.shareLoaderFiles ?? true;
     final gameOptimization = settings?.gameOptimization ?? true;
+    final linux = ref.watch(linuxPlatformProvider);
     final current = '${width}x$height';
     final knownPreset = _presets.any((p) => '${p.$1}x${p.$2}' == current);
 
@@ -234,16 +254,42 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
       children: [
         _AppearanceTile(
           icon: AppIcons.window,
-          title: l10n.settingsFullscreen,
-          subtitle: l10n.settingsFullscreenDesc,
-          trailing: Switch(value: fullscreen, onChanged: _setFullscreen),
+          title: l10n.settingsWindowMode,
+          subtitle: l10n.settingsWindowModeDesc,
+          trailing: DropdownButton<GameWindowMode>(
+            key: const ValueKey('settings-window-mode'),
+            value: mode,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            borderRadius: BorderRadius.circular(tokens.radiusM),
+            items: [
+              DropdownMenuItem(
+                value: GameWindowMode.windowed,
+                child: Text(l10n.settingsWindowModeWindowed),
+              ),
+              DropdownMenuItem(
+                value: GameWindowMode.fullscreen,
+                child: Text(l10n.settingsWindowModeFullscreen),
+              ),
+              DropdownMenuItem(
+                value: GameWindowMode.maximized,
+                child: Text(l10n.settingsWindowModeMaximized),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == null || _windowBusy) return;
+              _setWindowMode(value);
+            },
+          ),
         ),
         _AppearanceTile(
           icon: AppIcons.density,
           title: l10n.settingsWindowSize,
-          subtitle: fullscreen
-              ? l10n.settingsWindowSizeFullscreen
-              : l10n.settingsWindowSizeDesc,
+          subtitle: switch (mode) {
+            GameWindowMode.fullscreen => l10n.settingsWindowSizeFullscreen,
+            GameWindowMode.maximized => l10n.settingsWindowSizeMaximized,
+            GameWindowMode.windowed => l10n.settingsWindowSizeDesc,
+          },
           trailing: DropdownButton<String>(
             value: current,
             isDense: true,
@@ -261,14 +307,16 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
                   child: Text('$width × $height'),
                 ),
             ],
-            onChanged: (value) {
-              if (value == null) return;
-              final parts = value.split('x');
-              final w = int.tryParse(parts.first);
-              final h = int.tryParse(parts.last);
-              if (w == null || h == null) return;
-              _applyWindow(w, h);
-            },
+            onChanged: windowed
+                ? (value) {
+                    if (value == null) return;
+                    final parts = value.split('x');
+                    final w = int.tryParse(parts.first);
+                    final h = int.tryParse(parts.last);
+                    if (w == null || h == null) return;
+                    _applyWindow(w, h);
+                  }
+                : null,
           ),
         ),
         _AppearanceTile(
@@ -463,6 +511,12 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
         commandsGroup,
         const SizedBox(height: AppSpacing.lg),
         processGroup,
+        if (linux) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _PerformanceSettingsPanel(settings: settings),
+          const SizedBox(height: AppSpacing.lg),
+          _NativeLibrariesPanel(settings: settings),
+        ],
       ],
     );
   }

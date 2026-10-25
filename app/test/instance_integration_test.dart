@@ -53,6 +53,10 @@ void main() {
         preLoadCommand: 'echo load',
         preLaunchCommand: 'echo launch',
         postExitCommand: 'echo exit',
+        maximized: true,
+        enableGameMode: true,
+        enableMangoHud: true,
+        useZink: true,
       );
       expect(tuned.overrides?.wrapperCommand, 'prime-run');
       expect(tuned.overrides?.environment?['DRI_PRIME'], '1');
@@ -61,6 +65,10 @@ void main() {
       expect(tuned.overrides?.preLoadCommand, 'echo load');
       expect(tuned.overrides?.preLaunchCommand, 'echo launch');
       expect(tuned.overrides?.postExitCommand, 'echo exit');
+      expect(tuned.overrides?.maximized, isTrue);
+      expect(tuned.overrides?.enableGameMode, isTrue);
+      expect(tuned.overrides?.enableMangoHud, isTrue);
+      expect(tuned.overrides?.useZink, isTrue);
 
       final listed = await client.listInstances();
       expect(listed.any((instance) => instance.id == created.id), isTrue);
