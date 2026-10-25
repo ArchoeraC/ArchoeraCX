@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/services/core/core_client.dart';
 import 'package:archoera_cx/services/core/packs/pack_install_result.dart';
@@ -76,7 +78,11 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final downloads = _RecordingDownloads();
-    FileSelectorPlatform.instance = _FakeFileSelector('/tmp/BetterMC.mrpack');
+    // XFile.name splits on the host separator; a literal /tmp path yields the
+    // whole string as the label on Windows.
+    final packPath =
+        '${Directory.systemTemp.path}${Platform.pathSeparator}BetterMC.mrpack';
+    FileSelectorPlatform.instance = _FakeFileSelector(packPath);
 
     await tester.pumpWidget(_app(downloads));
     await tester.pumpAndSettle();
@@ -86,7 +92,7 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, 'Import pack'));
     await tester.pumpAndSettle();
 
-    expect(downloads.importedPaths, ['/tmp/BetterMC.mrpack']);
+    expect(downloads.importedPaths, [packPath]);
     expect(downloads.importedLabels, ['BetterMC.mrpack']);
     // The regression: a modal progress dialog used to own the whole install.
     expect(find.byType(AlertDialog), findsNothing);
