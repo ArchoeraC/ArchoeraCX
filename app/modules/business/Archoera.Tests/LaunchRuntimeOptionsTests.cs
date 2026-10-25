@@ -70,7 +70,10 @@ public sealed class LaunchRuntimeOptionsTests
                 paths);
 
             Assert.Empty(plan.Wrapper);
-            Assert.Equal(plan.JavaPath, LaunchProcessStarter.CreateStartInfo(plan).FileName);
+            var startInfo = LaunchProcessStarter.CreateStartInfo(plan);
+            Assert.Equal(plan.JavaPath, startInfo.FileName);
+            Assert.DoesNotContain(plan.JavaPath, startInfo.ArgumentList);
+            Assert.Equal(plan.Arguments[0], startInfo.ArgumentList[0]);
         }
         finally
         {

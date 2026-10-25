@@ -108,9 +108,14 @@ internal static class LaunchProcessStarter
             {
                 startInfo.ArgumentList.Add(plan.Wrapper[index]);
             }
+
+            // The wrapper becomes the executable, so Java must be passed as
+            // its first argument. Without a wrapper the Java path is already
+            // FileName and must not be repeated: doing so makes the JVM treat
+            // its own path as the main class (ClassNotFoundException).
+            startInfo.ArgumentList.Add(plan.JavaPath);
         }
 
-        startInfo.ArgumentList.Add(plan.JavaPath);
         foreach (var argument in plan.Arguments)
         {
             startInfo.ArgumentList.Add(argument);
