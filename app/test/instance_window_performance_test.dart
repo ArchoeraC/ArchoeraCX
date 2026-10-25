@@ -3,6 +3,7 @@ import 'package:archoera_cx/models/game_instance.dart';
 import 'package:archoera_cx/stores/platform.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
+import 'package:archoera_cx/widgets/common/app_dropdown.dart';
 import 'package:archoera_cx/widgets/common/toast.dart';
 import 'package:archoera_cx/widgets/instances/instance_performance_overrides.dart';
 import 'package:archoera_cx/widgets/instances/instance_settings_dialog.dart';
@@ -162,7 +163,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<DropdownButton<String>>(zink).value,
+      tester.widget<AppDropdown<String>>(zink).value,
       InstancePerformanceOverrides.off,
     );
     expect(tester.takeException(), isNull);

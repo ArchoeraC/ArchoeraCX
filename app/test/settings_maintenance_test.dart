@@ -4,6 +4,7 @@ import 'package:archoera_cx/models/game_instance.dart';
 import 'package:archoera_cx/stores/instances.dart';
 import 'package:archoera_cx/stores/preferences.dart';
 import 'package:archoera_cx/stores/providers.dart';
+import 'package:archoera_cx/widgets/common/app_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -124,7 +125,7 @@ void main() {
       find.text('Applied the next time the launcher starts.'),
       findsOneWidget,
     );
-    final dropdown = tester.widget<DropdownButton<String>>(
+    final dropdown = tester.widget<AppDropdown<String>>(
       find.byKey(const ValueKey('start-page-dropdown')),
     );
     expect(dropdown.value, '/');
