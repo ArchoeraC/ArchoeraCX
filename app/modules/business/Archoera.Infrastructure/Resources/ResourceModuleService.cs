@@ -214,7 +214,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
             // provider must not touch the filesystem or change error precedence.
             throw new ResourceProviderException(
                 ResourceErrorCode.ProviderUnavailable,
-                "CurseForge access is pending approval; use Modrinth until granted");
+                "CurseForge provider is not registered; use Modrinth");
         }
 
         var kind = ReadKind(root);
@@ -403,7 +403,7 @@ public sealed class ResourceModuleService : IModuleMethodHandler
         {
             throw new ResourceProviderException(
                 ResourceErrorCode.ProviderUnavailable,
-                "CurseForge access is pending approval; use Modrinth until granted");
+                "CurseForge provider is not registered; use Modrinth");
         }
 
         var baseAddress = ResolveProviderBase(ReadOptionalString(root, "providerBase"));

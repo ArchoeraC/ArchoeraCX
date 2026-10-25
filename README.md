@@ -19,7 +19,7 @@ ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，�
 - Rust `DownloadPlan` 执行器：hash 校验、原子落盘、分片续传、进度与取消
 - AppShell + 明暗主题、系统主题色、中英文 i18n，安装与下载统一走后台任务
 
-> **内容源**：当前接入 Modrinth 与本地 `.mrpack`。CurseForge 方面正在尝试征得其同意；CF 的在线接口与其整合包 zip 导入都依赖 CurseForge API key，获批前暂不接入、不发起请求。见 [发行与下载策略](docs/09-distribution-and-download-policy.md)。
+> **内容源**：当前接入 Modrinth 与本地 `.mrpack`。CurseForge 源处于 API 访问门控：CF 的在线接口与其整合包 zip 导入都依赖 CurseForge API key，Provider 未注册前不发起请求。见 [发行与下载策略](docs/09-distribution-and-download-policy.md)。
 
 > 代码以 **AGPL-3.0-only** 开源，不提供闭源商业授权；细则见 [docs/04-licensing.md](docs/04-licensing.md)。
 

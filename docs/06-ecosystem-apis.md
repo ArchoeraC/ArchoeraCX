@@ -199,11 +199,11 @@ server-overrides/     # 仅服务端
 
 | 项 | 说明 |
 |---|---|
-| API | `https://api.curseforge.com/v1`（需要 API key；获批前不接入） |
-| 当前状态 | **正在尝试征得官方同意**：在线接口与 zip 导入都需要 API key，获批前 `provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起请求 |
+| API | `https://api.curseforge.com/v1`（需要 API key；provider 未注册时不发请求） |
+| 当前状态 | **Provider 未注册**：在线接口与 zip 导入都依赖 API key；`provider=curseforge` 在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE` |
 | 关键端点 | `/mods/search`、`/mods/{id}`、`/mods/{id}/files`、`/mods/{id}/files/{fileId}/download-url` |
 | 整合包 | zip 内 `manifest.json`：`minecraft.version`、`modLoaders[{id, primary}]`、`files[{projectID, fileID, required}]`、`overrides` |
-| 条款 | 内容版权归作者与平台；本项目正在尝试征得官方同意，获批前不接入 |
+| 条款 | 内容版权归作者与平台；接入实现必须持有 API key，且不得绕过作者分发限制 |
 
 ### 5.4 本地 Mod 元数据
 

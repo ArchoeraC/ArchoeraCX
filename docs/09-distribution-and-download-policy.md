@@ -74,7 +74,7 @@ fork 仍然可以移除下载门控——但它必须继续以 AGPL 公开源码
 | Java runtime 下载（Mojang / Adoptium） | 打包的 Oracle JDK |
 | 校验、断点、原子落盘（Rust） | 遥测端点、用户追踪 |
 
-> 仓库与构建产物不含任何凭据；CurseForge 正在尝试征得官方同意，获批前不接入。
+> 仓库与构建产物不含任何凭据；CurseForge Provider 未注册，API 访问处于门控状态。
 
 ### 2.2 Provider 清单与默认约束
 
@@ -84,7 +84,7 @@ fork 仍然可以移除下载门控——但它必须继续以 AGPL 公开源码
 | Fabric / Quilt Meta | 否 | L1 允许 | 设置可识别 UA；遵守速率 |
 | Forge / NeoForge Maven | 否 | L1 允许 | 只取 installer/库；processors 需本地 Java |
 | Modrinth | 否 | L2（需确认） | UA、速率、CDN 直链、hash 校验 |
-| CurseForge | 是 | 待同意 | 在线与 zip 导入都需要 API key；获批前不发起请求 |
+| CurseForge | 是 | 未注册（API-key 门控） | 在线与 zip 导入都需要 API key；不发起请求 |
 | Java Runtime | 否 | L1 允许 | Mojang runtime / Adoptium；不打包 Oracle |
 | authlib-injector | 否 | L2 | AGPL 独立分发，附源码链接 |
 | 启动器自更新 | 否 | 官方渠道 | 只信自己的签名通道 |
@@ -225,7 +225,7 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 - 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
 - 发布由 `.github/workflows/build-all.yml` 在 Linux/macOS/Windows 三个 runner 原生构建；推送 `v*` tag 后才汇总三端产物发版。
 - Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
-- CurseForge 方面正在尝试征得官方同意：在线接口与其整合包 zip 导入都依赖 API key。获批前 `resource.*`/`modpack.install` 对 `provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。
+- CurseForge Provider 未注册：在线接口与其整合包 zip 导入都依赖 API key。`resource.*`/`modpack.install` 对 `provider=curseforge` 在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。
 - Release 附件应包含源码 tag、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。
 - 不发布带有未审核 Microsoft client ID 的公共构建；若审核未完成，发布说明必须明确在线登录/在线启动的不可用状态。
 
@@ -260,7 +260,7 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 
 ### 4.1 密钥
 
-- CurseForge 正在尝试征得官方同意；获批前不接入、不保存 API key。
+- CurseForge Provider 未注册；接入实现必须持有 API key，仓库与发布物不保存该凭据。
 - Microsoft client ID 只在构建期注入；账户 token 的存储见 §2.7 与凭据保险库设计。
 
 ### 4.2 镜像

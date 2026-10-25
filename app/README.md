@@ -21,7 +21,7 @@ ArchoeraCX 的 Flutter 桌面外壳 + 原生切片。当前包含 UI 基础设�
 - 账户 UI：Microsoft Device Code 登录、设备码展示/复制/取消、切换/刷新/移除账户；离线账户
 - Microsoft 登录链：Microsoft token → Xbox Live → XSTS → Minecraft login → profile/certificates；token 只留在 C#
 - 实例 UI：创建/选择/删除实例、搜索过滤、可选实例目录；C# SQLite 实例索引 + `instance.json` 权威元数据（Flutter 不引入数据库）
-- 下载页 UI：版本/加载器/Mod/整合包/资源包/光影分栏；Modrinth 搜索/版本/安装已接线，CurseForge 正在尝试征得官方同意（在线与 zip 导入均需 API key），获批前不接入
+- 下载页 UI：版本/加载器/Mod/整合包/资源包/光影分栏；Modrinth 搜索/版本/安装已接线，CurseForge 源处于 API 访问门控（在线与 zip 导入均需 API key），Provider 未注册
 - Modrinth 已接入 Flutter 下载页：真实搜索/版本选择/计划生成/下载（C# 临时桥接 Rust CLI；Sodium 1.21.1 Fabric 实测通过）
 
 > 事件模型：C++ 任务状态变化时调用 `wake`，Dart `NativeCallable.listener` 收到后批量 drain `archoera_poll`；**没有定时器/轮询**。

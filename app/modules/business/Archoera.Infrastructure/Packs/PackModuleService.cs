@@ -148,7 +148,7 @@ public sealed class PackModuleService : IModuleMethodHandler
         {
             throw new ResourceProviderException(
                 ResourceErrorCode.ProviderUnavailable,
-                "CurseForge access is pending approval; use Modrinth until granted");
+                "CurseForge provider is not registered; use Modrinth");
         }
 
         var projectId = RequireString(root, "projectId");

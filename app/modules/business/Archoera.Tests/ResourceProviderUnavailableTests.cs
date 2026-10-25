@@ -6,8 +6,8 @@ using Archoera.Infrastructure.Resources;
 namespace Archoera.Tests;
 
 /// <summary>
-/// CurseForge access is pending approval: online access and zip import both
-/// need an API key the project does not bundle or accept. The wire code must
+/// CurseForge provider is not registered: online access and zip import both
+/// need an API key the project does not bundle by default. The wire code must
 /// say <c>PROVIDER_UNAVAILABLE</c> so the UI does not send users looking for an
 /// API key setting that does not exist.
 /// </summary>

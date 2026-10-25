@@ -20,7 +20,7 @@ ArchoeraCX 的公开文档。实现以代码和契约为准；文档与代码冲
 | [路线图](05-roadmap.md) | 阶段目标、当前进度、验收标准 |
 | [许可证与资产边界](04-licensing.md) | AGPL-3.0-only、依赖组合、字体/图标/品牌红线 |
 | [发行与下载策略](09-distribution-and-download-policy.md) | 发行通道、Provider/Policy/DownloadPlan、密钥与镜像 |
-| [生态 API](06-ecosystem-apis.md) | Mojang、Microsoft、加载器、Modrinth、CurseForge（待同意）、Java |
+| [生态 API](06-ecosystem-apis.md) | Mojang、Microsoft、加载器、Modrinth、CurseForge（Provider 未注册）、Java |
 
 ## 技术预研
 

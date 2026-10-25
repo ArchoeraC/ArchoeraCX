@@ -7,12 +7,12 @@
 
 | # | 结论 | 依据 |
 |---|---|---|
-| 1 | **Modrinth 是当前接入的内容源；CurseForge 正在尝试征得官方同意**。前者无鉴权、文档全、支持 sha1 批量反查。 | [事实] 文档+实测；项目当前状态 |
+| 1 | **Modrinth 已注册为 `IResourceProvider`；CurseForge Provider 未注册**。前者无鉴权、文档全、支持 sha1 批量反查。 | [事实] 文档+实测；项目当前状态 |
 | 2 | UI 只认统一 DTO；provider 差异在 C# 消化，Dart 不拼 facet、不解析 CF 枚举。 | [事实] 架构 02 §3.5 |
 | 3 | 兼容性**必须用 version 级 `loaders/game_versions`**，不能用项目级并集；并集是历史数据，会假阳性。 | [事实] Modrinth 文档；Iris 项目含 quilt，但并非每版本都有 |
 | 4 | 更新检查：Modrinth 用 `POST /version_files/update` 批量；CF 用 Murmur2 fingerprint + `latestFilesIndexes`。两者都不保证“最新=兼容”。 | [事实] 文档+实测 |
 | 5 | 搜索工程核心是**取消 + single-flight + TTL + 离线降级**；300ms 防抖只在 Dart 做一次。 | [推断] 交互/限流约束 |
-| 6 | **CurseForge 待官方同意**（获批前 `PROVIDER_UNAVAILABLE`）：在线接口与 zip 导入都需要 API key。 | [事实] 项目当前状态 |
+| 6 | **CurseForge Provider 未注册**（`PROVIDER_UNAVAILABLE`）：在线接口与 zip 导入都需要 API key。 | [事实] 项目当前状态 |
 | 7 | 本地搜索：实例/文件名用内存索引；Mod 描述可选 FTS5；日志不要默认建 FTS5。 | [事实] FTS5 实测见 §6 |
 
 ## 1. Modrinth API v2
@@ -73,7 +73,7 @@ facets 语法 `{type} {op} {value}`，`:` 等价 `=`，支持 `!= >= > <= <`。�
 
 ## 2. CurseForge API v1
 
-> **当前状态（2026-10-25）**：正在尝试征得 CurseForge 官方同意；获批前 `provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`。本章记录获批后必须遵守的 API 事实，不代表已实现，也不代表已排期。
+> **当前状态（2026-10-25）**：CurseForge Provider 未注册，`provider=curseforge` 在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE`。本章记录实现该 Provider 时必须遵守的 API 事实。
 
 ### 2.1 鉴权与固定 id
 
@@ -127,7 +127,7 @@ facets 语法 `{type} {op} {value}`，`:` 等价 `=`，支持 `!= >= > <= <`。�
 
 ### 2.4 当前状态
 
-CurseForge 正在尝试征得官方同意；在线接口与 zip 导入都需要 API key。获批前 `provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起请求。**[事实]**
+CurseForge Provider 未注册；在线接口与 zip 导入都需要 API key。`provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起请求。**[事实]**
 
 ## 3. 统一 DTO 设计
 
@@ -220,7 +220,7 @@ accept(project, target):
 | `NOT_FOUND` | 404/未知 hash | 否 | 空态 |
 | `PROVIDER_AUTH` | 401/403（鉴权失败） | 否 | 配置提示 |
 | `RATE_LIMITED` | 429/403 配额 | 是 | 倒计时+降级 |
-| `PROVIDER_UNAVAILABLE` | 源未接入（CurseForge 待同意） | 否 | 提示待官方同意 |
+| `PROVIDER_UNAVAILABLE` | Provider 未注册（CurseForge） | 否 | 提示暂不可用 |
 | `PAGINATION_LIMIT` | CF >10000 | 否 | 收窄筛选 |
 | `DISTRIBUTION_DENIED` | CF 作者禁转 | 否 | 去官网 |
 | `SCHEMA_UNSUPPORTED` | 未知枚举/缺必填 | 否 | 报错+日志 |
