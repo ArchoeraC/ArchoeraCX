@@ -98,6 +98,7 @@ class AppDropdownFormField<T> extends StatelessWidget {
       hint: hint,
       borderRadius: BorderRadius.circular(tokens.radiusM),
       dropdownColor: tokens.surface1,
+      style: Theme.of(context).textTheme.bodyMedium,
       icon: Icon(
         AppIcons.chevronDown,
         size: 18,
