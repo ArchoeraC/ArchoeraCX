@@ -301,14 +301,14 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
         var rangeThresholdKb = Math.Clamp(settings.DownloadRangeThresholdKb, 0, 65536);
         if (profile == DownloadProfile.Resource)
         {
-            // Mods and pack configs are usually only a few MiB. A 512 KiB
-            // range lets one file use several connections instead of waiting
-            // for a single 4 MiB stream, while a disabled range setting stays
-            // disabled.
-            chunkSizeKb = Math.Min(chunkSizeKb, 512);
+            // Mods and pack configs are usually only a few MiB. A 1 MiB
+            // range gives large mods several connections without turning
+            // every small file into a swarm of tiny requests; an explicit
+            // smaller setting is preserved.
+            chunkSizeKb = Math.Min(chunkSizeKb, 1024);
             if (rangeThresholdKb > 0)
             {
-                rangeThresholdKb = Math.Min(rangeThresholdKb, 512);
+                rangeThresholdKb = Math.Min(rangeThresholdKb, 1024);
             }
             // Resource packs contain many files from the same CDN host. When
             // the user kept the historical default of 8, allow the plan to use

@@ -70,8 +70,8 @@ public sealed class DownloadTuningTests
             settings,
             DownloadProfile.Resource);
 
-        Assert.Equal(512L * 1024, tuned.Options.ChunkSize);
-        Assert.Equal(512L * 1024, tuned.Options.RangeThreshold);
+        Assert.Equal(1024L * 1024, tuned.Options.ChunkSize);
+        Assert.Equal(1024L * 1024, tuned.Options.RangeThreshold);
         Assert.Equal(DownloadDurability.Fast, tuned.Options.Durability);
     }
 

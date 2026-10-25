@@ -97,13 +97,13 @@ loop {
 | 不支持 Range / size 未知 | 单流；当前不做续传（分片才用 `.part.meta`），重启从头覆盖 |
 | 高丢包/高 RTT | **[推断]** H1 多连接可能优于 H2（H2 仍有 TCP HOL），需 A/B；当前由 per-origin 协议降级兜底（见 13） |
 
-> 资源/模组计划使用单独的 `DownloadProfile.Resource`：小文件仍单流，但单文件 >512 KiB 会主动分片，多文件计划的默认 per-host 上限提升到 16；这是为了改善大量小 mod 的延迟与尾部吞吐，不复用到游戏资源计划。
+> 资源/模组计划使用单独的 `DownloadProfile.Resource`：小文件仍单流，但单文件 >1 MiB 会主动分片，多文件计划的默认 per-host 上限提升到 16；这是为了改善大量小 mod 的延迟与尾部吞吐，不复用到游戏资源计划。
 
 **分片固定 HTTP/1.1**：所有 Range/chunk 请求都走 `http1` client（`http1_only()`），一个 chunk 独占一条 TCP 连接，避免单连接流控与 TCP HOL 压低聚合吞吐；单流文件才用 `auto`。协议类失败（421、h2 响应上的 505、连接/响应头阶段的 h2 连接级错误）会把该 origin 降级到 `http1` 600s，并对零字节的尝试立即用 h1 重试一次；`edge.rs` 的边缘探测保持 h1。
 
 **分片参数有边界**：`chunkSize` 只接受 64 KiB–64 MiB（0 关闭 Range），单文件最多 1024 片；文件更大时按 `size / 1024` 放大块大小，而不是继续增加请求与任务数。计划校验在 `plan.rs`，不要只依赖 C# 生产者的 clamp。
 
-**资源/模组计划**：C# 的 `DownloadProfile.Resource` 将 chunk/range 上限压到 512 KiB，并在多文件计划沿用默认 per-host 8 时提升到 `min(concurrency,16)`（显式更低值保留）；同时使用 `fast` durability，避免大量小 mod/config 每个文件一次 fsync。Rust 对最后一段 ≥512 KiB 的 range 再拆成最多 8 个尾分片，`tailParts` 写入 `.part.meta` 并在续传时重建，解决下载末尾只剩一个连接的问题。
+**资源/模组计划**：C# 的 `DownloadProfile.Resource` 将 chunk/range 上限压到 1 MiB，并在多文件计划沿用默认 per-host 8 时提升到 `min(concurrency,16)`（显式更低值保留）；同时使用 `fast` durability，避免大量小 mod/config 每个文件一次 fsync。Rust 对最后一段 ≥512 KiB 的 range 再拆成最多 8 个尾分片（每段至少 128 KiB），`tailParts` 写入 `.part.meta` 并在续传时重建，解决下载末尾只剩一个连接的问题。
 
 **探测**：`GET` + `Range: bytes=0-0`；仅当 `206` 且 `Content-Range: bytes 0-0/总长` 才认为支持。`200` 表示忽略 Range，立即 drop body。不要用 HEAD 判断 Range（CDN 的 HEAD/GET 行为可能不同）。**小文件合并**：不做 HTTP/1.1 pipelining，也不把多文件拼成一个请求；协议层没有安全的“合并”，只能靠 `auto` client 协商出的 H2 多路复用，或由 C# 生成“一个 zip + extract”的计划（另一计划，不是下载器职责）。**Range 与压缩**：固定 `Accept-Encoding: identity`，禁用 reqwest gzip/brotli/deflate/zstd；若响应仍带 `Content-Encoding`，直接 `ENCODING_UNSUPPORTED`，否则字节范围与哈希都会错。
 

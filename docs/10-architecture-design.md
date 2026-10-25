@@ -1441,7 +1441,7 @@ JavaLocator
 | 全局 streams | 16（1–64，设置页可调；>32 需显式确认） | 一个 plan 内所有流共享同一信号量；`DownloadPlanRunner` 执行前按 `settings.downloadConcurrency` 覆盖 |
 | 来源优先 | 自动 / 官方 / 镜像 | `settings.downloadSource`；自动按 `region.policy` 解析（中国大陆镜像优先），设置页把解析结果显示在「自动」行内。影响原版 client/库/资源、Forge/NeoForge installer、加载器元数据、Modrinth 文件（`cdn.modrinth.com` → `mod.mcimirror.top`）；另一侧始终作为回退 |
 | 每 host streams | 8（0–64，设置页可调，`options.perHostConcurrency`） | host = 小写 hostname；先全局后 host 取许可；`DownloadPlanRunner` 按 `settings.downloadPerHost` 覆盖；多文件 resource 计划在用户仍为默认 8 时提升到 `min(concurrency,16)`，显式更低值保留 |
-| 每文件 streams | 1 或 ⌈size/chunkSize⌉（受全局与 host 预算约束） | 默认 `rangeThreshold` 8 MiB、`chunkSize` 4 MiB，服务端返回 206 才分片；resource/modpack 计划把两者上限压到 512 KiB 并拆分最后 512 KiB 以上的尾段（最多 8 段）；大多数库/资源仍保持单流，避免 5k 文件安装时的请求/TLS 握手风暴 |
+| 每文件 streams | 1 或 ⌈size/chunkSize⌉（受全局与 host 预算约束） | 默认 `rangeThreshold` 8 MiB、`chunkSize` 4 MiB，服务端返回 206 才分片；resource/modpack 计划把两者上限压到 1 MiB 并拆分最后 512 KiB 以上的尾段（最多 8 段，每段至少 128 KiB）；大多数库/资源仍保持单流，避免 5k 文件安装时的请求/TLS 握手风暴 |
 
 - 用单一 `Mutex<SchedState> + Notify` 的 permit broker，避免嵌套 Semaphore 持锁等待。
 - plan 间按 `priority` + 轮转；文件 `priority` 只在 plan 内排序。
@@ -1481,7 +1481,7 @@ JavaLocator
 - 断点：强 ETag 优先；弱 ETag 不能用于 `If-Range`；无 ETag 用 `Last-Modified`；validator 变化则丢弃重下。
 - 分片：未完成 chunk 整块重下；响应必须 206 且 `Content-Range` 精确；任一 200 则退回单流。
 - 续传（已实现于分片模式）：`<dest>.part.meta` 存 `{size, hashAlgo, hashHex, chunkSize, tailParts, etag, lastModified, completed[]}`；仅当 size/hash/chunkSize/tailParts 一致且 `.part` 长度正确时续传，请求带 `If-Range`；每完成一个分片原子更新 meta；提交或取消时删除。单流（小文件）失败仍整体丢弃。
-- **资源/模组计划**：C# 的 `DownloadProfile.Resource` 将其 chunk/range 上限压到 512 KiB、对多文件计划把默认 per-host 8 提升到 `min(concurrency,16)`，并使用 `fast` durability（文件损坏/丢失可重新下载并校验）；最后一段 ≥512 KiB 时 Rust 再拆成最多 8 个尾分片，避免下载末尾只剩一个连接。`tailParts` 写入 `.part.meta`，续传按同一拆分重建。
+- **资源/模组计划**：C# 的 `DownloadProfile.Resource` 将其 chunk/range 上限压到 1 MiB、对多文件计划把默认 per-host 8 提升到 `min(concurrency,16)`，并使用 `fast` durability（文件损坏/丢失可重新下载并校验）；最后一段 ≥512 KiB 时 Rust 再拆成最多 8 个尾分片（每段至少 128 KiB），避免下载末尾只剩一个连接。`tailParts` 写入 `.part.meta`，续传按同一拆分重建。
 - Windows：`MoveFileExW`/`FileRenameInfoEx`；占用时重试 5 次；仍失败 `FILE_LOCKED`，保留 `.part`。
 - macOS：真正落盘需 `F_FULLFSYNC`（可选增强）。
 

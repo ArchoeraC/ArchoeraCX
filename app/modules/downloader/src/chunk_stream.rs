@@ -50,6 +50,7 @@ enum FetchOutcome {
 /// The split count is stored in the resume sidecar and reconstructed on resume.
 const TAIL_SPLIT_PARTS: u32 = 8;
 const TAIL_SPLIT_MIN_BYTES: u64 = 512 * 1024;
+const TAIL_SPLIT_PIECE_BYTES: u64 = 128 * 1024;
 
 /// Build the ranges for one file, optionally splitting the last configured
 /// range into several smaller requests. The split count is limited so a
@@ -74,7 +75,10 @@ fn build_ranges(size: u64, chunk: u64, tail_parts: u32) -> (Vec<(u64, u64)>, u32
         return (ranges, 0);
     }
 
-    let piece = total.div_ceil(parts);
+    // Keep tail pieces at least 128 KiB. A 512 KiB tail becomes four pieces,
+    // not eight 64 KiB requests; larger tails use up to eight.
+    let desired_parts = (total / TAIL_SPLIT_PIECE_BYTES).clamp(2, parts);
+    let piece = total.div_ceil(desired_parts);
     ranges.pop();
     let first_split = ranges.len();
     let mut next = start;
@@ -416,5 +420,17 @@ mod tests {
         let (ranges, tail_parts) = build_ranges(32 * 1024 * 1024, chunk, 0);
         assert_eq!(tail_parts, 0);
         assert_eq!(ranges.len(), 8);
+    }
+
+    #[test]
+    fn a_512_kib_tail_uses_four_pieces_not_eight() {
+        let chunk = 4 * 1024 * 1024;
+        let (ranges, tail_parts) = build_ranges(4 * 1024 * 1024 + 512 * 1024, chunk, 8);
+        assert_eq!(tail_parts, 4);
+        assert_eq!(ranges.len(), 5);
+        assert_eq!(
+            ranges.last().copied().unwrap().1,
+            4 * 1024 * 1024 + 512 * 1024 - 1
+        );
     }
 }
