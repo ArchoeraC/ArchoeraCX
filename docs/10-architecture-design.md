@@ -640,6 +640,7 @@ Flutter 热重启
 
 - 托盘与窗口是 Flutter 进程内能力：托盘菜单、显示/隐藏窗口与关闭行为都由 Dart 处理，不经过 C#，也不新增 ABI 方法；C++ 只保留单实例、深链、文件关联与更新。
 - 关闭窗口默认退出；开启「关闭窗口时最小化到托盘」（`shared_preferences` 的 `ui.closeToTray`，默认 false）后只隐藏窗口，下载/后台任务继续；托盘菜单提供「显示主窗口」「退出」。
+- 启动后隐藏启动器（`ui.hideAfterLaunch`，默认 false）只在托盘图标可用时隐藏；没有托盘入口时保持窗口可见，避免用户无法恢复。游戏退出后退出启动器（`ui.quitAfterGameExit`，默认 false）通过 `launch.log.tail` 的完成信号触发，不使用 `Timer.periodic`；模块的 6 小时 follow 上限结束后会查询 `running` 并继续 follow，避免长时游戏被误判为退出。
 
 ### 5.15 错误映射
 
@@ -1677,6 +1678,7 @@ void _drain() {
 - 托盘图标固定为 `assets/branding/tray_icon.png`（32×32 PNG）。Windows 托盘只接受 PNG（不要传 ICO 或其它格式），且右键菜单不会自动出现，必须在 Dart 里显式 `setContextMenu`，否则 Windows 上只有图标、没有菜单。
 - 关闭窗口默认退出应用；开启「关闭窗口时最小化到托盘」（`shared_preferences` 的 `ui.closeToTray`，默认 false）后，点关闭只隐藏窗口，下载与后台任务继续。
 - 托盘菜单固定为「显示主窗口」「退出」；「退出」走正常收尾流程，不绕过核心任务取消。
+- 启动后隐藏（`ui.hideAfterLaunch`）与游戏退出后退出（`ui.quitAfterGameExit`）是 UI 偏好，不进 C#/SQLite。隐藏需要托盘入口，否则保持可见；退出由 `launch.log.tail` 的完成信号驱动，follow 上限（6 小时）后会复核 `running`，不确定时保持启动器运行。
 - 托盘/窗口状态不进 C#、不进 SQLite；隐藏窗口不影响任务生命周期。
 
 ### 10.10 i18n 与无障碍
