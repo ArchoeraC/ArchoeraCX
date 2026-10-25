@@ -443,6 +443,18 @@ internal static class LaunchCommandRunner
             }
         }
 
+        // ProcessStartInfo inherits the launcher environment. Strip hostile
+        // JVM option variables here too, otherwise a developer shell (or a
+        // concurrently running test) can inject options the plan already
+        // filtered out.
+        foreach (var name in startInfo.Environment.Keys.ToList())
+        {
+            if (LaunchEnvironmentRules.IsHostile(name))
+            {
+                startInfo.Environment.Remove(name);
+            }
+        }
+
         startInfo.Environment["INST_NAME"] = EnvironmentValue(context.InstanceName);
         startInfo.Environment["INST_ID"] = EnvironmentValue(context.InstanceId);
         startInfo.Environment["INST_DIR"] = EnvironmentValue(context.InstanceRoot);
