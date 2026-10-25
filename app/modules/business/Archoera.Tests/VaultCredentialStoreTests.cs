@@ -126,19 +126,25 @@ public sealed class VaultCredentialStoreTests
     {
         var configured = Environment.GetEnvironmentVariable("ARCHOERACX_VAULT_BIN");
         if (!string.IsNullOrWhiteSpace(configured)) return configured;
+        var executable = OperatingSystem.IsWindows()
+            ? "archoera-vault.exe"
+            : "archoera-vault";
         var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (directory is not null)
         {
-            var candidate = Path.Combine(
-                directory.FullName,
-                "build",
-                "native",
-                "archoera-vault");
-            if (File.Exists(candidate)) return candidate;
+            foreach (var relative in new[]
+                     {
+                         Path.Combine("build", "native", executable),
+                         Path.Combine("app", "build", "native", executable),
+                     })
+            {
+                var candidate = Path.Combine(directory.FullName, relative);
+                if (File.Exists(candidate)) return candidate;
+            }
             directory = directory.Parent;
         }
         return Path.GetFullPath(
-            Path.Combine(Directory.GetCurrentDirectory(), "build", "native", "archoera-vault"));
+            Path.Combine(Directory.GetCurrentDirectory(), "build", "native", executable));
     }
 
     private static string TempDirectory()

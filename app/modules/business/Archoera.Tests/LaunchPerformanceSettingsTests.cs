@@ -105,7 +105,7 @@ public sealed class LaunchPerformanceSettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":14,"instancesRoot":"{{games}}",
+                  {"schemaVersion":14,"instancesRoot":{{TestJson.Quote(games)}},
                    "windowWidth":1280,"windowHeight":720,"fullscreen":true}
                   """);
 
@@ -155,7 +155,7 @@ public sealed class LaunchPerformanceSettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":15,"instancesRoot":"{{games}}",
+                  {"schemaVersion":15,"instancesRoot":{{TestJson.Quote(games)}},
                    "developerMode":true,
                    "nativeGlfwPath":"relative/glfw.so",
                    "nativeOpenALPath":"line\nbreak",

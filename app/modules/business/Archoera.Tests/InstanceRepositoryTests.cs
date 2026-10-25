@@ -231,7 +231,7 @@ public sealed class InstanceRepositoryTests
                     $$"""
                       {"name":"UI Instance","gameVersion":"1.21.4",
                        "loader":"fabric","loaderVersion":"0.16.10",
-                       "rootPath":"{{root}}"}
+                       "rootPath":{{TestJson.Quote(root)}}}
                       """,
                     CancellationToken.None));
             Assert.True(createDocument.RootElement.GetProperty("ok").GetBoolean());
@@ -283,7 +283,7 @@ public sealed class InstanceRepositoryTests
                     $$"""
                       {"name":"Mods","gameVersion":"1.21.4",
                        "loader":"fabric","loaderVersion":"0.16.10",
-                       "rootPath":"{{root}}"}
+                       "rootPath":{{TestJson.Quote(root)}}}
                       """,
                     CancellationToken.None));
             var id = createDocument.RootElement
@@ -373,7 +373,7 @@ public sealed class InstanceRepositoryTests
                     $$"""
                       {"name":"Mods","gameVersion":"1.21.4",
                        "loader":"fabric","loaderVersion":"0.16.10",
-                       "rootPath":"{{root}}"}
+                       "rootPath":{{TestJson.Quote(root)}}}
                       """,
                     CancellationToken.None));
             var id = createDocument.RootElement
@@ -865,7 +865,7 @@ public sealed class InstanceRepositoryTests
                 $$"""
                   {"name":"{{name}}","gameVersion":"1.21.4",
                    "loader":"vanilla","loaderVersion":"",
-                   "rootPath":"{{rootPath}}"}
+                   "rootPath":{{TestJson.Quote(rootPath)}}}
                   """,
                 CancellationToken.None));
         var id = document.RootElement

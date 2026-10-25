@@ -204,7 +204,7 @@ public sealed class LaunchCommandSettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":13,"instancesRoot":"{{games}}","jvmArgs":"-Xmx2G"}
+                  {"schemaVersion":13,"instancesRoot":{{TestJson.Quote(games)}},"jvmArgs":"-Xmx2G"}
                   """);
 
             var store = new JsonAppSettingsStore(dataRoot);
@@ -241,7 +241,7 @@ public sealed class LaunchCommandSettingsTests
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
                   {"schemaVersion":14,
-                   "instancesRoot":"{{games.Replace("\\", "\\\\", StringComparison.Ordinal)}}",
+                   "instancesRoot":{{TestJson.Quote(games)}},
                    "preLoadCommand":"\"unclosed",
                    "preLaunchCommand":"/bin/ok",
                    "postExitCommand":"line\nbreak"}
@@ -549,7 +549,7 @@ public sealed class LaunchCommandSettingsTests
                 $$"""
                   {"name":"{{name}}","gameVersion":"1.21.4",
                    "loader":"vanilla","loaderVersion":"",
-                   "rootPath":"{{rootPath}}"}
+                   "rootPath":{{TestJson.Quote(rootPath)}}}
                   """,
                 CancellationToken.None));
         var id = document.RootElement

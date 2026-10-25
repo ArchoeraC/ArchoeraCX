@@ -99,10 +99,13 @@ public sealed class JavaRuntimeSelectionTests
         {
             var store = new JsonAppSettingsStore(root);
             var settings = await store.LoadAsync();
+            // Keep the path fully qualified on every host: /global/java is not
+            // drive-rooted on Windows and would be dropped by the settings store.
+            var java = Path.Combine(root, "global-java");
             await store.SaveAsync(settings with
             {
                 JavaAuto = false,
-                JavaPath = "/global/java",
+                JavaPath = java,
             });
             var scanner = new RecordingScanner();
             var service = new JavaRuntimeSelectionService(scanner, store);
@@ -110,7 +113,7 @@ public sealed class JavaRuntimeSelectionTests
             await service.SelectAsync(21, "1.21.1");
 
             Assert.NotNull(scanner.LastRequest);
-            Assert.Equal(["/global/java"], scanner.LastRequest!.Executables);
+            Assert.Equal([java], scanner.LastRequest!.Executables);
         }
         finally
         {

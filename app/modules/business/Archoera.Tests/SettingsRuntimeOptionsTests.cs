@@ -121,7 +121,7 @@ public sealed class SettingsRuntimeOptionsTests
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
                     "settings.setRuntimeOptions",
-                    $$"""{"instancesRoots":["{{Path.Combine(directory, "games")}}"]}""",
+                    $$"""{"instancesRoots":[{{TestJson.Quote(Path.Combine(directory, "games"))}}]}""",
                     CancellationToken.None));
             Assert.False(document.RootElement.GetProperty("ok").GetBoolean());
             Assert.Equal(
@@ -255,7 +255,7 @@ public sealed class SettingsRuntimeOptionsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":12,"instancesRoot":"{{games}}",
+                  {"schemaVersion":12,"instancesRoot":{{TestJson.Quote(games)}},
                    "jvmArgs":"-XX:+UseG1GC"}
                   """);
 

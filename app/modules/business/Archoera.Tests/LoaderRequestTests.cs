@@ -15,7 +15,7 @@ public sealed class LoaderRequestTests
         var installer = Absolute("forge-installer.jar");
 
         var ok = LoaderRequestJson.TryParse(
-            $$"""{"installerPath":"{{installer}}","root":"{{root}}","kind":"forge"}""",
+            $$"""{"installerPath":{{TestJson.Quote(installer)}},"root":{{TestJson.Quote(root)}},"kind":"forge"}""",
             out var request,
             out var code,
             out var message);
@@ -40,7 +40,7 @@ public sealed class LoaderRequestTests
         var libraries = "game/libraries";
 
         var ok = LoaderRequestJson.TryParse(
-            $$"""{"installerPath":"{{installer}}","root":"{{root}}","librariesPath":"{{libraries}}","kind":"neoforge","javaPath":"{{java}}"}""",
+            $$"""{"installerPath":{{TestJson.Quote(installer)}},"root":{{TestJson.Quote(root)}},"librariesPath":{{TestJson.Quote(libraries)}},"kind":"neoforge","javaPath":{{TestJson.Quote(java)}}}""",
             out var request,
             out _,
             out _);
@@ -66,9 +66,9 @@ public sealed class LoaderRequestTests
         libraries = libraries == "__ABS_LIBS__" ? Absolute("libraries") : libraries;
         var librariesJson = libraries is null
             ? string.Empty
-            : $",\"librariesPath\":\"{libraries}\"";
+            : $",\"librariesPath\":{TestJson.Quote(libraries)}";
         var json =
-            $$"""{"installerPath":"{{installer}}","root":"{{root}}","kind":"{{kind}}"{{librariesJson}}}""";
+            $$"""{"installerPath":{{TestJson.Quote(installer)}},"root":{{TestJson.Quote(root)}},"kind":"{{kind}}"{{librariesJson}}}""";
 
         var ok = LoaderRequestJson.TryParse(json, out var request, out var code, out _);
 

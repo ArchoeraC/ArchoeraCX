@@ -73,7 +73,8 @@ public sealed class SettingsTests
             var first = Path.Combine(directory, "first");
             var second = Path.Combine(directory, "second");
 
-            var payload = $$"""{"instancesRoots":["{{first}}","{{second}}"]}""";
+            var payload =
+                $$"""{"instancesRoots":[{{TestJson.Quote(first)}},{{TestJson.Quote(second)}}]}""";
             using var document = JsonDocument.Parse(
                 await service.HandleAsync("settings.set", payload, CancellationToken.None));
             var settings = document.RootElement
@@ -176,7 +177,7 @@ public sealed class SettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":6,"instancesRoot":"{{games}}",
+                  {"schemaVersion":6,"instancesRoot":{{TestJson.Quote(games)}},
                    "downloadSource":"auto","downloadConcurrency":16,"downloadPerHost":6}
                   """);
 
@@ -203,7 +204,7 @@ public sealed class SettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":11,"instancesRoot":"{{games}}",
+                  {"schemaVersion":11,"instancesRoot":{{TestJson.Quote(games)}},
                    "downloadPerHost":16,"downloadChunkSizeKb":512,
                    "downloadRangeThresholdKb":1024}
                   """);
@@ -233,7 +234,7 @@ public sealed class SettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":11,"instancesRoot":"{{games}}",
+                  {"schemaVersion":11,"instancesRoot":{{TestJson.Quote(games)}},
                    "downloadPerHost":4,"downloadChunkSizeKb":2048,
                    "downloadRangeThresholdKb":0}
                   """);
@@ -263,7 +264,7 @@ public sealed class SettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":7,"instancesRoot":"{{games}}",
+                  {"schemaVersion":7,"instancesRoot":{{TestJson.Quote(games)}},
                    "downloadSource":"auto","downloadConcurrency":16,"downloadPerHost":6}
                   """);
 
@@ -451,7 +452,8 @@ public sealed class SettingsTests
             Directory.CreateDirectory(Path.GetDirectoryName(java)!);
             await File.WriteAllTextAsync(java, string.Empty);
 
-            var payload = $$"""{"javaPath":"{{java}}","javaAuto":false}""";
+            var payload =
+                $$"""{"javaPath":{{TestJson.Quote(java)}},"javaAuto":false}""";
             using var document = JsonDocument.Parse(
                 await service.HandleAsync("settings.set", payload, CancellationToken.None));
             var settings = document.RootElement.GetProperty("data").GetProperty("settings");
@@ -663,7 +665,7 @@ public sealed class SettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":10,"instancesRoot":"{{games}}",
+                  {"schemaVersion":10,"instancesRoot":{{TestJson.Quote(games)}},
                    "memoryMinMb":1024,"memoryMaxMb":6144}
                   """);
 
@@ -691,7 +693,7 @@ public sealed class SettingsTests
             await File.WriteAllTextAsync(
                 Path.Combine(dataRoot, "settings.json"),
                 $$"""
-                  {"schemaVersion":10,"instancesRoot":"{{games}}",
+                  {"schemaVersion":10,"instancesRoot":{{TestJson.Quote(games)}},
                    "memoryMinMb":512,"memoryMaxMb":2048}
                   """);
 
@@ -722,7 +724,7 @@ public sealed class SettingsTests
             using var setDocument = JsonDocument.Parse(
                 await service.HandleAsync(
                     "settings.set",
-                    $$"""{"instancesRoot":"{{instancesRoot}}"}""",
+                    $$"""{"instancesRoot":{{TestJson.Quote(instancesRoot)}}}""",
                     CancellationToken.None));
             Assert.True(setDocument.RootElement.GetProperty("ok").GetBoolean());
             var settings = setDocument.RootElement

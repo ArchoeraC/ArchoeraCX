@@ -279,7 +279,7 @@ public sealed class InstanceOverridesTests
                     $$"""
                       {"name":"Listed","gameVersion":"1.21.4",
                        "loader":"vanilla","loaderVersion":"",
-                       "rootPath":"{{root}}"}
+                       "rootPath":{{TestJson.Quote(root)}}}
                       """,
                     CancellationToken.None));
             var created = create.RootElement.GetProperty("data").GetProperty("instance");
@@ -653,7 +653,7 @@ public sealed class InstanceOverridesTests
                 $$"""
                   {"name":"{{name}}","gameVersion":"1.21.4",
                    "loader":"vanilla","loaderVersion":"",
-                   "rootPath":"{{rootPath}}"}
+                   "rootPath":{{TestJson.Quote(rootPath)}}}
                   """,
                 CancellationToken.None));
         var id = document.RootElement
