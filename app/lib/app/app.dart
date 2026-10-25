@@ -8,9 +8,15 @@ import '../stores/locale.dart';
 import '../stores/providers.dart';
 import '../widgets/common/toast.dart';
 import '../theme/app_theme.dart';
+import 'launch_splash.dart';
 
 class ArchoeraApp extends ConsumerWidget {
-  const ArchoeraApp({super.key});
+  const ArchoeraApp({super.key, this.showLaunchAnimation = false});
+
+  /// Shows the one-shot line animation above the shell. The production entry
+  /// point enables it; widget tests keep it off so they observe the shell
+  /// directly.
+  final bool showLaunchAnimation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,7 +59,10 @@ class ArchoeraApp extends ConsumerWidget {
       // interactive panels; loading them above the router keeps a single
       // compiled copy and lets every consumer degrade to its plain fallback.
       builder: (context, child) => AppShaderScope(
-        child: ToastOverlay(child: child ?? const SizedBox.shrink()),
+        child: AppLaunchSplash(
+          enabled: showLaunchAnimation,
+          child: ToastOverlay(child: child ?? const SizedBox.shrink()),
+        ),
       ),
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

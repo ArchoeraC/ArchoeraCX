@@ -25,7 +25,7 @@ Future<void> main() async {
             buildAppRouter(initialLocation: startPage),
           ),
       ],
-      child: const ArchoeraApp(),
+      child: const ArchoeraApp(showLaunchAnimation: true),
     ),
   );
 
