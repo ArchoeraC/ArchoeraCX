@@ -362,7 +362,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False \
             git curl wget tar xz zstd unzip zip which findutils file ca-certificates \
             gcc gcc-c++ clang cmake ninja-build pkgconf-pkg-config make patchelf binutils \
-            zlib-devel gtk3-devel dbus-devel liblzma-devel libdrm-devel mesa-libGL-devel \
+            zlib-devel gtk3-devel dbus-devel xz-devel libdrm-devel mesa-libGL-devel \
             libX11-devel libXi-devel libstdc++-devel libicu openssl-libs \
             musl-gcc musl-devel python3 rpm-build coreutils sed gawk
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -405,7 +405,7 @@ jobs:
           pacman -Sy --noconfirm --needed \
             base-devel fakeroot shadow debugedit bzip2 gettext gnupg ncurses \
             git curl wget tar xz zstd unzip zip which findutils file libarchive \
-            clang cmake ninja pkgconf patchelf binutils zlib gtk3 dbus liblzma \
+            clang cmake ninja pkgconf patchelf binutils zlib gtk3 dbus xz \
             libdrm mesa libx11 libxi musl python
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Git safe directory
