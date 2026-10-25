@@ -1488,7 +1488,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeFootnote =>
-      'ArchoeraCX is not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.';
+      'ArchoeraCX is an independent launcher and is not an official Minecraft product. Minecraft is a trademark of Mojang Synergies AB.';
 
   @override
   String javaStatusViewAll(int count) {

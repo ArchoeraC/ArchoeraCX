@@ -2627,7 +2627,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeFootnote.
   ///
   /// In en, this message translates to:
-  /// **'ArchoeraCX is not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.'**
+  /// **'ArchoeraCX is an independent launcher and is not an official Minecraft product. Minecraft is a trademark of Mojang Synergies AB.'**
   String get homeFootnote;
 
   /// No description provided for @javaStatusViewAll.

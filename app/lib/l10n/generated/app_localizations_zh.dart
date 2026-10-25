@@ -1400,7 +1400,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeFootnote =>
-      'ArchoeraCX 不是官方 Minecraft 产品，与 Mojang 或 Microsoft 无关联，也未获其批准。';
+      'ArchoeraCX 是独立启动器，并非官方 Minecraft 产品。Minecraft 是 Mojang Synergies AB 的商标。';
 
   @override
   String javaStatusViewAll(int count) {

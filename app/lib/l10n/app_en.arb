@@ -1085,7 +1085,7 @@
       }
     }
   },
-  "homeFootnote": "ArchoeraCX is not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.",
+  "homeFootnote": "ArchoeraCX is an independent launcher and is not an official Minecraft product. Minecraft is a trademark of Mojang Synergies AB.",
   "javaStatusViewAll": "View all {count}",
   "@javaStatusViewAll": {
     "placeholders": {
