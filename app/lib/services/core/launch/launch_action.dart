@@ -1,15 +1,22 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
+import '../../../app/desktop_integration.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../models/account.dart';
 import '../../../models/game_instance.dart';
 import '../../../stores/account_policy.dart';
 import '../../../stores/accounts.dart';
+import '../../../stores/preferences.dart';
 import '../../../stores/providers.dart';
 import '../../../stores/settings.dart';
 import '../core_client.dart';
 import 'launch_memory.dart';
+import 'launch_post_actions.dart';
 import '../../../widgets/common/toast.dart';
 
 /// Build and start a basic offline launch. UI code only calls this helper;
@@ -39,6 +46,11 @@ Future<void> launchInstance(
     toast(l10n.commonCoreNotConnected, type: ToastType.error);
     return;
   }
+
+  // Snapshot the desktop launch switches before the first await: the widget
+  // may be gone by the time the game starts, and the window actions below must
+  // still run for the launch that was requested.
+  final uiPrefs = ref.read(preferencesProvider);
 
   // Automatic sizing can still be tight on a small machine, and a manual value
   // can sit far below what the instance needs. Warn once, then let the user
@@ -72,8 +84,21 @@ Future<void> launchInstance(
       hardware: hardware,
       label: instance.name,
     );
-    if (!context.mounted) return;
-    toast(l10n.launchStarted(result.pid), type: ToastType.success);
+    if (context.mounted) {
+      toast(l10n.launchStarted(result.pid), type: ToastType.success);
+    }
+
+    // Window actions run after the success toast and never extend the launch
+    // call: hiding is best effort and the exit monitor follows the log until
+    // the game process ends. They also run when the page was closed mid-launch.
+    final plan = postLaunchPlan(
+      succeeded: true,
+      hideAfterLaunch: uiPrefs.hideAfterLaunch,
+      quitAfterGameExit: uiPrefs.quitAfterGameExit,
+    );
+    if (plan.hideWindow || plan.monitorGameExit) {
+      unawaited(_applyPostLaunchPlan(client, instance.id, plan));
+    }
   } catch (error) {
     if (!context.mounted) return;
     final message = switch (error) {
@@ -100,6 +125,51 @@ Future<void> launchInstance(
     };
     toast(message, type: ToastType.error, duration: const Duration(seconds: 4));
   }
+}
+
+/// Applies the desktop window actions after a successful start.
+///
+/// Hiding happens first, so enabling both switches hides the launcher and only
+/// quits once the game process ends. The exit monitor is never awaited here.
+Future<void> _applyPostLaunchPlan(
+  CoreClient client,
+  String instanceId,
+  PostLaunchPlan plan,
+) async {
+  if (plan.hideWindow) await _hideLauncherAfterStart();
+  if (!plan.monitorGameExit) return;
+  unawaited(quitWhenGameExits(client, instanceId));
+}
+
+Future<void> _hideLauncherAfterStart() async {
+  if (kIsWeb || !isTrayAvailable) {
+    // Without a tray icon a hidden window could not be restored, so keep it
+    // visible instead of trapping the user.
+    _logPostLaunchFailure(
+      'no tray icon, keeping the launcher visible',
+      'hide skipped',
+      StackTrace.current,
+    );
+    return;
+  }
+  try {
+    await windowManager.hide();
+  } catch (error, stackTrace) {
+    _logPostLaunchFailure(
+      'cannot hide the launcher after launch',
+      error,
+      stackTrace,
+    );
+  }
+}
+
+void _logPostLaunchFailure(
+  String message,
+  Object error,
+  StackTrace stackTrace,
+) {
+  if (!kDebugMode) return;
+  debugPrint('launch action: $message: $error\n$stackTrace');
 }
 
 Future<LaunchMemoryPlan?> _readMemory(

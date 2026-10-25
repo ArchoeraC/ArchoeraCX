@@ -384,6 +384,30 @@
   },
   "settingsSectionWindow": "游戏窗口",
   "settingsWindowNote": "窗口模式写入原版启动参数（--width / --height / --fullscreen），对支持这些参数的版本生效。最大化会用主显示器的可用尺寸近似。",
+  "settingsSectionBehavior": "启动器行为",
+  "@settingsSectionBehavior": {
+    "description": "桌面端专用的启动后窗口行为分区标题。"
+  },
+  "settingsHideAfterLaunch": "启动后隐藏启动器",
+  "@settingsHideAfterLaunch": {
+    "description": "游戏成功启动后隐藏启动器窗口的桌面开关。"
+  },
+  "settingsHideAfterLaunchDesc": "游戏开始后隐藏此窗口；可从托盘图标重新打开。",
+  "@settingsHideAfterLaunchDesc": {
+    "description": "说明如何恢复被隐藏的启动器。"
+  },
+  "settingsQuitAfterGameExit": "游戏退出后关闭启动器",
+  "@settingsQuitAfterGameExit": {
+    "description": "启动的游戏进程结束后关闭启动器的桌面开关。"
+  },
+  "settingsQuitAfterGameExitDesc": "该游戏进程结束后关闭启动器；正在进行的下载与任务也会随之停止。",
+  "@settingsQuitAfterGameExitDesc": {
+    "description": "提示关闭启动器会同时停止后台工作。"
+  },
+  "settingsBehaviorNote": "仅对当前桌面生效。游戏运行期间仍可从实例菜单（查看日志）打开游戏日志。",
+  "@settingsBehaviorNote": {
+    "description": "启动器行为开关下方指向现有日志查看器的说明。"
+  },
   "settingsWindowMode": "窗口模式",
   "@settingsWindowMode": {
     "description": "全局窗口模式选择器（窗口化/全屏/最大化）。"
