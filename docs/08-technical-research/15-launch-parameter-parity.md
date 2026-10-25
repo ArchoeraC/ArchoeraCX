@@ -7,8 +7,8 @@
 
 > **实现状态（2026-10-25）**
 >
-> - **[已实现]** 引号感知 tokenizer（JVM/game/wrapper/命令）；全局与每实例 `wrapperCommand`、`environment`（合并顺序：自动优化 → 全局 → 实例；实例 `{}` 清空）；每实例 `joinServerOnLaunch` / `joinServerAddress` / `joinWorldName`（版本支持时用 Quick Play，否则 `--server/--port`）；pre-load / pre-launch / post-exit 命令（无 shell、超时、`INST_*` 环境变量、pre 失败中止、post 失败仅记日志、`INST_JAVA_ARGS` 脱敏、命令日志 0600 并纳入 `launch-*.log` 轮转）；settings schema 14；`settings.setRuntimeOptions` 已登记 C++/C#。pre-load 在自动选择 Java 之前运行，`INST_JAVA` 只有在实例显式固定 Java 时才有值。
-> - **[未实现]** 最大化/控制台行为、GameMode/MangoHud 专用开关（可用 wrapper/env 覆盖）、系统 GLFW/OpenAL/SDL。
+> - **[已实现]** 引号感知 tokenizer（JVM/game/wrapper/命令）；全局与每实例 `wrapperCommand`、`environment`（合并顺序：自动优化 → 性能预设 → 全局 → 实例；实例 `{}` 清空）；每实例 `joinServerOnLaunch` / `joinServerAddress` / `joinWorldName`（版本支持时用 Quick Play，否则 `--server/--port`）；pre-load / pre-launch / post-exit 命令（无 shell、超时、`INST_*` 环境变量、pre 失败中止、post 失败仅记日志、`INST_JAVA_ARGS` 脱敏、命令日志 0600 并纳入 `launch-*.log` 轮转）；窗口三态（最大化用主显示器尺寸近似，fullscreen 优先）；Linux GameMode / MangoHud / Zink 预设（wrapper/env，用户值覆盖预设）；原生 GLFW/OpenAL/SDL 覆盖仅在独立的 `developerMode` + Linux + 文件存在时生效，与下载合规的开发者模式无关；settings schema 15；`settings.setRuntimeOptions` 已登记 C++/C#。pre-load 在自动选择 Java 之前运行，`INST_JAVA` 只有在实例显式固定 Java 时才有值。
+> - **[未实现]** 独立控制台窗口（我们使用日志页/任务中心）、“启动后隐藏启动器”/“游戏退出后退出启动器”（需要进程退出事件，另开一批）、系统级 GLFW/OpenAL/SDL 只保留开发者选项，不做图形化自动探测。
 
 ---
 
