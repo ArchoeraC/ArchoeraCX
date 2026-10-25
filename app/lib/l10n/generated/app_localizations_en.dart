@@ -2522,6 +2522,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instanceSettingsDesc => 'Blank fields follow the global settings.';
 
   @override
+  String get instanceSettingsName => 'Instance name';
+
+  @override
+  String get instanceSettingsNameHint =>
+      'Shown in the launcher; the game folder is not moved.';
+
+  @override
+  String get instanceSettingsNameRequired => 'Enter an instance name.';
+
+  @override
+  String get instanceSettingsNameTooLong =>
+      'Instance names may be at most 80 characters.';
+
+  @override
+  String get instanceSettingsNameInvalid =>
+      'Instance names cannot contain control characters.';
+
+  @override
   String get instanceSettingsMemoryMin => 'Minimum memory (MB)';
 
   @override

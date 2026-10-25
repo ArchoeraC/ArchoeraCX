@@ -2172,6 +2172,26 @@
     "description": "Dialog title and instance menu entry for per-instance launch overrides."
   },
   "instanceSettingsDesc": "Blank fields follow the global settings.",
+  "instanceSettingsName": "Instance name",
+  "@instanceSettingsName": {
+    "description": "Label for renaming the instance."
+  },
+  "instanceSettingsNameHint": "Shown in the launcher; the game folder is not moved.",
+  "@instanceSettingsNameHint": {
+    "description": "Explains that renaming does not move the instance directory."
+  },
+  "instanceSettingsNameRequired": "Enter an instance name.",
+  "@instanceSettingsNameRequired": {
+    "description": "Validation error for an empty instance name."
+  },
+  "instanceSettingsNameTooLong": "Instance names may be at most 80 characters.",
+  "@instanceSettingsNameTooLong": {
+    "description": "Validation error for an overlong instance name."
+  },
+  "instanceSettingsNameInvalid": "Instance names cannot contain control characters.",
+  "@instanceSettingsNameInvalid": {
+    "description": "Validation error for control characters in an instance name."
+  },
   "@instanceSettingsDesc": {
     "description": "Subtitle explaining that empty override fields inherit the global value."
   },

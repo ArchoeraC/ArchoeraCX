@@ -4370,6 +4370,36 @@ abstract class AppLocalizations {
   /// **'Blank fields follow the global settings.'**
   String get instanceSettingsDesc;
 
+  /// Label for renaming the instance.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance name'**
+  String get instanceSettingsName;
+
+  /// Explains that renaming does not move the instance directory.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown in the launcher; the game folder is not moved.'**
+  String get instanceSettingsNameHint;
+
+  /// Validation error for an empty instance name.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an instance name.'**
+  String get instanceSettingsNameRequired;
+
+  /// Validation error for an overlong instance name.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance names may be at most 80 characters.'**
+  String get instanceSettingsNameTooLong;
+
+  /// Validation error for control characters in an instance name.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance names cannot contain control characters.'**
+  String get instanceSettingsNameInvalid;
+
   /// Per-instance minimum heap size override.
   ///
   /// In en, this message translates to:

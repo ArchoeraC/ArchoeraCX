@@ -2390,6 +2390,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceSettingsDesc => '留空的项跟随全局设置。';
 
   @override
+  String get instanceSettingsName => '实例名称';
+
+  @override
+  String get instanceSettingsNameHint => '仅修改启动器内显示的名称，不移动游戏目录。';
+
+  @override
+  String get instanceSettingsNameRequired => '请输入实例名称。';
+
+  @override
+  String get instanceSettingsNameTooLong => '实例名称最多 80 个字符。';
+
+  @override
+  String get instanceSettingsNameInvalid => '实例名称不能包含控制字符。';
+
+  @override
   String get instanceSettingsMemoryMin => '最小内存（MB）';
 
   @override

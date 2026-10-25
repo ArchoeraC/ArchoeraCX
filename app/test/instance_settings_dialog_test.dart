@@ -124,6 +124,8 @@ void main() {
     await _open(tester, _instance());
 
     expect(find.text('Instance settings'), findsOneWidget);
+    expect(find.text('Instance name'), findsOneWidget);
+    expect(find.text('Test instance'), findsOneWidget);
     expect(find.text('Minimum memory (MB)'), findsOneWidget);
     expect(find.text('Maximum memory (MB)'), findsOneWidget);
     expect(find.text('Garbage collector'), findsOneWidget);
@@ -151,6 +153,18 @@ void main() {
     // Nothing is overridden, so the GC and window dropdowns inherit.
     expect(find.text('Follow global'), findsWidgets);
     expect(find.text('Automatic'), findsNothing);
+  });
+
+  testWidgets('rejects an empty instance name before saving', (tester) async {
+    await _open(tester, _instance());
+
+    final name = find.byKey(const ValueKey('instance-name'));
+    await _enterVisible(tester, name, '   ');
+    await _tapVisible(tester, find.text('Save'));
+
+    expect(find.text('Enter an instance name.'), findsWidgets);
+    expect(find.text('Instance settings'), findsOneWidget);
+    await _drainToasts(tester);
   });
 
   testWidgets('shows the stored overrides', (tester) async {

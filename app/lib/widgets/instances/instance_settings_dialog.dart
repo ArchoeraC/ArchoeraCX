@@ -62,6 +62,7 @@ class _InstanceSettingsDialogState
 
   final _minController = TextEditingController();
   final _maxController = TextEditingController();
+  final _nameController = TextEditingController();
   final _jvmController = TextEditingController();
   final _gameArgsController = TextEditingController();
   final _wrapperController = TextEditingController();
@@ -85,6 +86,7 @@ class _InstanceSettingsDialogState
   String? _worldError;
   String? _error;
   bool _saving = false;
+  String? _nameError;
   LaunchMemoryPlan? _memoryPlan;
 
   @override
@@ -93,6 +95,7 @@ class _InstanceSettingsDialogState
     _commands = InstanceCommandOverridesController(
       overrides: widget.instance.overrides,
     );
+    _nameController.text = widget.instance.name;
     final overrides = widget.instance.overrides;
     _performance = InstancePerformanceOverridesController(overrides: overrides);
     if (overrides != null) {
@@ -143,6 +146,7 @@ class _InstanceSettingsDialogState
   void dispose() {
     _minController.dispose();
     _maxController.dispose();
+    _nameController.dispose();
     _jvmController.dispose();
     _gameArgsController.dispose();
     _wrapperController.dispose();
@@ -207,9 +211,11 @@ class _InstanceSettingsDialogState
       _error = null;
     });
 
+    final newName = _nameController.text.trim();
     try {
       await client.updateInstanceOverrides(
         instanceId: widget.instance.id,
+        name: newName == widget.instance.name ? null : newName,
         memoryMinMb: _parseNumber(_minController),
         memoryMaxMb: _parseNumber(_maxController),
         jvmArgs: _text(_jvmController),
@@ -293,10 +299,21 @@ class _InstanceSettingsDialogState
   /// they render directly under the offending input.
   String? _validate(AppLocalizations l10n) {
     String? error;
+    _nameError = null;
     _wrapperError = null;
     _environmentError = null;
     _serverError = null;
     _worldError = null;
+
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _nameError = l10n.instanceSettingsNameRequired;
+    } else if (name.length > 80) {
+      _nameError = l10n.instanceSettingsNameTooLong;
+    } else if (name.contains(RegExp(r'[\x00-\x1f\x7f]'))) {
+      _nameError = l10n.instanceSettingsNameInvalid;
+    }
+    error ??= _nameError;
 
     int? parse(TextEditingController controller, int min, int max) {
       final raw = controller.text.trim();
@@ -496,6 +513,22 @@ class _InstanceSettingsDialogState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    TextField(
+                      key: const ValueKey('instance-name'),
+                      controller: _nameController,
+                      enabled: !_saving,
+                      textInputAction: TextInputAction.done,
+                      onChanged: (_) => setState(() => _nameError = null),
+                      decoration: InputDecoration(
+                        labelText: l10n.instanceSettingsName,
+                        helperText: l10n.instanceSettingsNameHint,
+                        helperMaxLines: 2,
+                        errorText: _nameError,
+                        errorMaxLines: 2,
+                        prefixIcon: const Icon(AppIcons.instances, size: 18),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

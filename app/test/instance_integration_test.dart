@@ -46,6 +46,7 @@ void main() {
       // Per-instance launch options cross the same C++/C# route.
       final tuned = await client.updateInstanceOverrides(
         instanceId: created.id,
+        name: 'Integration Renamed',
         wrapperCommand: 'prime-run',
         environment: <String, String>{'DRI_PRIME': '1'},
         joinServerOnLaunch: true,
@@ -59,6 +60,7 @@ void main() {
         useZink: true,
       );
       expect(tuned.overrides?.wrapperCommand, 'prime-run');
+      expect(tuned.name, 'Integration Renamed');
       expect(tuned.overrides?.environment?['DRI_PRIME'], '1');
       expect(tuned.overrides?.joinServerOnLaunch, isTrue);
       expect(tuned.overrides?.joinServerAddress, 'mc.example.org:25566');

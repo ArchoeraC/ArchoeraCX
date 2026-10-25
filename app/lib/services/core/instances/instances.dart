@@ -143,9 +143,11 @@ mixin CoreClientInstances on CoreTransport {
   ///
   /// [wrapperCommand] and the lifecycle commands keep an empty string as
   /// "explicitly none", and [environment] keeps an empty map as "explicitly
-  /// clear the global map".
+  /// clear the global map". [name] renames the launcher metadata; the instance
+  /// directory is not moved and an omitted name leaves it unchanged.
   Future<GameInstance> updateInstanceOverrides({
     required String instanceId,
+    String? name,
     int? memoryMinMb,
     int? memoryMaxMb,
     String? jvmArgs,
@@ -173,6 +175,7 @@ mixin CoreClientInstances on CoreTransport {
       methodName,
       paramsJson: jsonEncode(<String, Object?>{
         'id': instanceId,
+        'name': ?name,
         'overrides': <String, Object?>{
           'memoryMinMb': memoryMinMb,
           'memoryMaxMb': memoryMaxMb,

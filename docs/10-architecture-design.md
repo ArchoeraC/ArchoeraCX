@@ -2418,7 +2418,7 @@ public interface IDownloadProvider {
 | `instance.list` | C# | 实例列表/分组/搜索 |
 | `instance.get` | C# | 详情 |
 | `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离） |
-| `instance.update` | C# | 名称/内存/Java/参数；`overrides` 走 merge patch（缺省不改、`null` 清除），返回实例始终带 `overrides` |
+| `instance.update` | C# | 名称/收藏/最后游玩/内存/Java/参数；`name` 仅改元数据与 `instance.json`，不移动实例目录；`overrides` 走 merge patch（缺省不改、`null` 清除），返回实例始终带 `overrides` |
 | `instance.delete` | C# | 移除索引；`deleteFiles: true` 时同时删除实例目录（需 `.archoera/instance.json` 标记，且不与实例根或其它实例重叠，否则保留并在 `filesSkippedReason` 返回原因） |
 | `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |
 | `instance.mods.list` | C# | 列出实例 `mods/` 中的 jar 与 `.disabled` 文件 |
