@@ -21,10 +21,10 @@ cargo build --release
 # 产物：app/modules/downloader/target/release/libarchoera_dl.so
 ```
 
-crate 同时生成 `cdylib`（后续模块集成）和 `rlib`（测试/嵌入），并提供 `archoera-dl` CLI：
+crate 同时生成 `cdylib`（后续模块集成）和 `rlib`（测试/嵌入），并提供安装名为 `archoera-dl` 的 CLI。Cargo target 名为 `archoera-dl-cli`，避免 Windows 上 bin 与 `archoera_dl` cdylib 的 PDB 输出同名；`tool/build-dl.sh` / `.bat` 安装时会改回 `archoera-dl`。
 
 ```bash
-cargo run --release --bin archoera-dl -- /path/to/plan.json
+cargo run --release --bin archoera-dl-cli -- /path/to/plan.json
 ./tool/try-modrinth.sh sodium 1.21.1 fabric   # app/ 下的 Modrinth 端到端脚本
 ```
 

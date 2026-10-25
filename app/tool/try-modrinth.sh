@@ -34,4 +34,4 @@ dotnet run --project "$app_dir/modules/business/Archoera.DevHost" -c Release -- 
 
 cargo run --release \
   --manifest-path "$app_dir/modules/downloader/Cargo.toml" \
-  --bin archoera-dl -- "$plan"
+  --bin archoera-dl-cli -- "$plan"

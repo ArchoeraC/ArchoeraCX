@@ -12,7 +12,10 @@ name = "archoera_dl"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "archoera-dl"
+# The packaged CLI stays `archoera-dl`; this target name avoids Cargo's Windows
+# PDB collision with the `archoera_dl` cdylib (both normalize to the same
+# filename). build-dl.sh/.bat rename the artifact when installing it.
+name = "archoera-dl-cli"
 path = "src/bin/archoera_dl.rs"
 
 [dependencies]

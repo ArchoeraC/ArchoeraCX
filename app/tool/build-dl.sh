@@ -7,9 +7,9 @@ MANIFEST="modules/downloader/Cargo.toml"
 cargo build --release --locked --manifest-path "${MANIFEST}"
 
 case "$(uname -s)" in
-  Darwin) LIB_NAME="libarchoera_dl.dylib" ;;
-  MINGW*|MSYS*|CYGWIN*) LIB_NAME="archoera_dl.dll" ;;
-  *) LIB_NAME="libarchoera_dl.so" ;;
+  Darwin) LIB_NAME="libarchoera_dl.dylib"; CLI_SOURCE="archoera-dl-cli"; CLI_NAME="archoera-dl" ;;
+  MINGW*|MSYS*|CYGWIN*) LIB_NAME="archoera_dl.dll"; CLI_SOURCE="archoera-dl-cli.exe"; CLI_NAME="archoera-dl.exe" ;;
+  *) LIB_NAME="libarchoera_dl.so"; CLI_SOURCE="archoera-dl-cli"; CLI_NAME="archoera-dl" ;;
 esac
 
 ARTIFACT="$(pwd)/modules/downloader/target/release/${LIB_NAME}"
@@ -29,13 +29,12 @@ echo "Module: build/native/${LIB_NAME}"
 
 # The Flutter/dev bridge invokes the CLI next to the native core; keep a copy
 # under build/native so a bundle can find it without cargo paths.
-case "$(uname -s)" in
-  MINGW*|MSYS*|CYGWIN*) CLI_NAME="archoera-dl.exe" ;;
-  *) CLI_NAME="archoera-dl" ;;
-esac
-CLI_ARTIFACT="$(pwd)/modules/downloader/target/release/${CLI_NAME}"
-if [[ -f "${CLI_ARTIFACT}" ]]; then
-  mkdir -p build/native
-  cp "${CLI_ARTIFACT}" "build/native/${CLI_NAME}"
-  echo "CLI: build/native/${CLI_NAME}"
+CLI_ARTIFACT="$(pwd)/modules/downloader/target/release/${CLI_SOURCE}"
+if [[ ! -f "${CLI_ARTIFACT}" ]]; then
+  echo "error: downloader CLI not found: ${CLI_ARTIFACT}" >&2
+  exit 1
 fi
+mkdir -p build/native
+cp "${CLI_ARTIFACT}" "build/native/${CLI_NAME}"
+chmod 0755 "build/native/${CLI_NAME}"
+echo "CLI: build/native/${CLI_NAME}"

@@ -21,8 +21,8 @@ void main() {
   );
   final downloader = File(
     Platform.isWindows
-        ? 'modules/downloader/target/release/archoera-dl.exe'
-        : 'modules/downloader/target/release/archoera-dl',
+        ? 'build/native/archoera-dl.exe'
+        : 'build/native/archoera-dl',
   );
   final enabled = Platform.environment['ARCHOERACX_NETWORK_TESTS'] == '1';
 
