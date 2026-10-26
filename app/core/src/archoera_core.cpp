@@ -146,6 +146,19 @@ ARCHOERA_API void archoera_shutdown(archoera_core* core) {
     // The status sampler pushes domain events; join it before the queue dies.
     archoera::stop_status_watch(*core);
 
+    // The activation listener may publish a domain event from its own thread.
+    // shutting_down is already set, so stopping it here is the last producer
+    // that can touch the event queue.
+    {
+      std::lock_guard<std::mutex> lock(core->instance_mutex);
+      if (core->instance != nullptr) {
+        core->instance->stop();
+        core->instance.reset();
+        core->instance_primary = false;
+        core->instance_listening = false;
+      }
+    }
+
     // Module contract: shutdown blocks until callbacks stop, so no callback
     // can touch this core after this call. Only then may the core die.
     if (core->module_registry != nullptr) {

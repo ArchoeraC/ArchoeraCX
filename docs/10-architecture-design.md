@@ -629,7 +629,7 @@ Flutter 热重启
 
 | 能力 | 实现 | 说明 |
 |---|---|---|
-| 单实例 | C++ 命名互斥/文件锁 + 本地 socket | 第二实例唤醒第一个并传参 |
+| 单实例 | C++ 每用户锁 + 本地 IPC | Windows `Local\…SingleInstance` 命名互斥体 + 命名管道；Linux/macOS `flock` + Unix socket；首实例监听，后续实例发送 `platform.activate` 后退出 |
 | 托盘 | Flutter 插件（`tray_manager` + `window_manager`） | 图标 `assets/branding/tray_icon.png`（32×32 PNG）；Windows 只接受 PNG，且右键菜单必须在代码里显式 `setContextMenu`，否则不显示；不经 C# |
 | 深链 | C++ 注册协议 | 只接受白名单动作（导入/启动/登录回调） |
 | 文件关联 | C++ 注册 | `.mrpack`/zip 导入；不自动执行 |
@@ -639,6 +639,7 @@ Flutter 热重启
 | 通知 | C++/系统 API | 下载完成、崩溃、更新 |
 
 - 托盘与窗口是 Flutter 进程内能力：托盘菜单、显示/隐藏窗口与关闭行为都由 Dart 处理，不经过 C#，也不新增 ABI 方法；C++ 只保留单实例、深链、文件关联与更新。
+- 单实例在 `runApp` 前判定：`platform.singleInstance` 返回 `primary:true` 时 C++ 启动监听；返回 `primary:false` 的进程只转发激活并退出，不显示第二个窗口、不创建托盘或 widget tree（探测用的 core 在退出前关闭）。监听线程只发布 `platform.activate` 域事件，由 Dart 显示/聚焦已有窗口（含托盘隐藏与最小化），不使用定时轮询。
 - 关闭窗口默认退出；开启「关闭窗口时最小化到托盘」（`shared_preferences` 的 `ui.closeToTray`，默认 false）后只隐藏窗口，下载/后台任务继续；托盘菜单提供「显示主窗口」「退出」。
 - Windows 退出先 `setPreventClose(false)` 再 `close()`，让 `WM_DESTROY` 先销毁 Flutter controller；`window_manager.destroy()` 会先投递 `WM_QUIT`，runner 随后在窗口仍存活时销毁 controller，曾导致关闭时“未响应”。
 - 启动后隐藏启动器（`ui.hideAfterLaunch`，默认 false）只在托盘图标可用时隐藏；没有托盘入口时保持窗口可见，避免用户无法恢复。游戏退出后退出启动器（`ui.quitAfterGameExit`，默认 false）通过 `launch.log.tail` 的完成信号触发，不使用 `Timer.periodic`；模块的 6 小时 follow 上限结束后会查询 `running` 并继续 follow，避免长时游戏被误判为退出。
@@ -859,7 +860,7 @@ archoera_status archoera_module_info(archoera_core* core,
 | `TASK_STATE` | `{ "method": "...", "phase": "...", "message": "..." }` | 不合并 |
 | `TASK_PROGRESS` | `{ "phase": "download", "filesDone": 12, "filesTotal": 100, "currentFile": "..." }` | 同 task 合并 |
 | `LOG` | `{ "level": "info", "target": "...", "message": "..." }` | 可丢 DEBUG/TRACE |
-| `DOMAIN` | `{ "event": "instance.changed", "data": { } }` | 按 key 合并（可选） |
+| `DOMAIN` | `{ "event": "instance.changed", "data": { } }`；单实例激活为 `{ "kind": "platform.activate" }` | 按 key 合并（可选） |
 | `MODULE` | `{ "module": "archoera_dl", "state": "degraded", "message": "..." }` | 不合并 |
 
 - 进度事件同时填固定字段 `done/total/bytes_per_sec`，避免 Dart 为进度解析 JSON。
@@ -2520,7 +2521,7 @@ public interface IDownloadProvider {
 | `crash.list` | C# | 崩溃报告列表 |
 | `crash.analyze` | C# | 重新分析 |
 | `crash.exportDiagnostics` | C# | 诊断包 |
-| `platform.singleInstance` | C++ | 单实例状态/唤醒 |
+| `platform.singleInstance` | C++ | 单实例仲裁：返回 `{"primary":bool,"signaled":bool}`；首实例启动每用户监听，后续实例发送激活后退出，首实例收到 `platform.activate` 域事件 |
 | `platform.tray` | Flutter（非 ABI） | 托盘菜单由 Flutter `tray_manager` 直接提供，不经过 C#/ABI；Windows 只接受 PNG 图标，右键菜单需显式 `setContextMenu` |
 | `platform.window` | Flutter（非 ABI） | 窗口显示/隐藏与关闭行为由 `window_manager` 负责，不经过 C# |
 | `platform.revealPath` | C++ | 文件管理器定位 |

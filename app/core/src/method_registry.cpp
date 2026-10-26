@@ -7,6 +7,7 @@
 
 #include "core_actions.h"
 #include "core_appearance.h"
+#include "core_instance.h"
 #include "core_module_bridge.h"
 #include "core_result.h"
 #include "core_status.h"
@@ -36,6 +37,8 @@ constexpr MethodRoute kRoutes[] = {
     {"system.status.watch", &handle_system_status_watch, {}},
     {"system.status.unwatch", &handle_system_status_unwatch, {}},
     {"system.gpu", &handle_system_gpu, {}},
+
+    {"platform.singleInstance", &handle_platform_single_instance, {}},
 
     {"java.scan", &handle_module_method, kCsModule},
     {"java.select", &handle_module_method, kCsModule},

@@ -5,16 +5,19 @@ set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_stub.cpp)
 set(ARCHOERA_SYSTEM_SOURCES src/platform_system_stub.cpp)
 set(ARCHOERA_STATUS_SOURCES src/platform_status_stub.cpp)
 set(ARCHOERA_GPU_SOURCES src/platform_gpu_stub.cpp)
+set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_stub.cpp)
 if(WIN32)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_windows.cpp)
   set(ARCHOERA_SYSTEM_SOURCES src/platform_system_windows.cpp)
   set(ARCHOERA_STATUS_SOURCES src/platform_status_windows.cpp)
   set(ARCHOERA_GPU_SOURCES src/platform_gpu_windows.cpp)
+  set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_windows.cpp)
 elseif(APPLE)
   enable_language(OBJCXX)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_macos.mm)
   set(ARCHOERA_SYSTEM_SOURCES src/platform_system_macos.mm)
   set(ARCHOERA_STATUS_SOURCES src/platform_status_macos.cpp)
+  set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_posix.cpp)
   set_source_files_properties(src/platform_appearance_macos.mm
     src/platform_system_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 else()
@@ -30,6 +33,7 @@ else()
   set(ARCHOERA_STATUS_SOURCES src/platform_status_linux.cpp)
   # /sys/class/drm needs no extra dependency either.
   set(ARCHOERA_GPU_SOURCES src/platform_gpu_linux.cpp)
+  set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_posix.cpp)
 endif()
 
 add_library(archoera_core SHARED
@@ -43,6 +47,7 @@ add_library(archoera_core SHARED
   src/core_status.cpp
   src/core_actions.cpp
   src/core_appearance.cpp
+  src/core_instance.cpp
   src/core_module_bridge.cpp
   src/platform_system_common.cpp
   src/platform_status_common.cpp
@@ -50,6 +55,7 @@ add_library(archoera_core SHARED
   ${ARCHOERA_SYSTEM_SOURCES}
   ${ARCHOERA_STATUS_SOURCES}
   ${ARCHOERA_GPU_SOURCES}
+  ${ARCHOERA_INSTANCE_SOURCES}
 )
 
 target_compile_features(archoera_core PRIVATE cxx_std_20)
@@ -133,6 +139,26 @@ set_target_properties(async_smoke PROPERTIES
 foreach(config IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
   string(TOUPPER "${config}" config_upper)
   set_target_properties(async_smoke PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY_${config_upper} "${ARCHOERA_OUTPUT_DIR}"
+  )
+endforeach()
+
+# Native lock + local activation channel, without linking the core library.
+add_executable(single_instance_smoke tests/single_instance_smoke.cpp
+  ${ARCHOERA_INSTANCE_SOURCES})
+target_include_directories(single_instance_smoke PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/src"
+)
+target_link_libraries(single_instance_smoke PRIVATE Threads::Threads)
+set_target_properties(single_instance_smoke PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+  RUNTIME_OUTPUT_DIRECTORY "${ARCHOERA_OUTPUT_DIR}"
+)
+foreach(config IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
+  string(TOUPPER "${config}" config_upper)
+  set_target_properties(single_instance_smoke PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_${config_upper} "${ARCHOERA_OUTPUT_DIR}"
   )
 endforeach()

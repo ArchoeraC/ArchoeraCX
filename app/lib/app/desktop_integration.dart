@@ -132,7 +132,7 @@ tray.Menu? _createTrayMenu(AppLocalizations l10n) {
     return null;
   }
   showItem.addListener((event) {
-    if (event is tray.MenuItemClickedEvent) unawaited(_showMainWindow());
+    if (event is tray.MenuItemClickedEvent) unawaited(activateMainWindow());
   });
   menu.addItem(showItem);
 
@@ -183,17 +183,48 @@ void _onTrayEvent(tray.TrayIconEvent event) {
   if (event is tray.TrayIconClickedEvent ||
       event is tray.TrayIconDoubleClickedEvent ||
       event is tray.TrayIconRightClickedEvent) {
-    unawaited(_showMainWindow());
+    unawaited(activateMainWindow());
   }
 }
 
-Future<void> _showMainWindow() async {
+/// Brings the existing window forward, restoring it from minimized or hidden
+/// state. Shared by the tray and the single-instance activation event.
+Future<void> activateMainWindow() async {
+  if (_quitRequested) return;
   try {
+    await windowManager.ensureInitialized();
+    try {
+      if (await windowManager.isMinimized()) {
+        await windowManager.restore();
+      }
+    } catch (_) {
+      // show()/focus() below still work on platforms without minimize state.
+    }
     await windowManager.show();
     await windowManager.focus();
   } catch (error, stackTrace) {
     _logFailure('cannot show the main window', error, stackTrace);
   }
+}
+
+/// Hides and exits a secondary process before it builds a widget tree.
+///
+/// The primary has already received the activation message. Exiting here
+/// prevents a second visible window, tray icon and widget tree from being
+/// created.
+/// Window plugin calls are bounded because the only requirement is to exit; a
+/// stuck compositor (for example a restricted remote display) must not keep a
+/// second launcher alive.
+Future<void> exitSecondaryInstance() async {
+  try {
+    await windowManager.ensureInitialized().timeout(
+      const Duration(milliseconds: 500),
+    );
+    await windowManager.hide().timeout(const Duration(milliseconds: 500));
+  } catch (_) {
+    // The process must exit even when the window plugin is unavailable.
+  }
+  exit(0);
 }
 
 /// Handles the window close button while [windowManager] intercepts it.

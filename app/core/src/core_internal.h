@@ -18,6 +18,7 @@
 #include "method_registry.h"
 #include "module_registry.h"
 #include "platform_appearance.h"
+#include "platform_instance.h"
 
 #include <algorithm>
 #include <atomic>
@@ -83,6 +84,8 @@ constexpr const char* kMsgNotifyNeedsPayload =
     "system.notify requires a title or body";
 constexpr const char* kMsgNotifyTooLarge =
     "system.notify payload is too large";
+constexpr const char* kMsgInstanceUnavailable =
+    "the single-instance service is unavailable";
 
 // ---------------------------------------------------------------------------
 // State records
@@ -196,6 +199,14 @@ struct archoera_core {
   // system.status.watch: one native sampler thread that pushes a domain event
   // every interval. Started on demand and joined before the core is deleted.
   std::unique_ptr<archoera::StatusWatch> status_watch;
+
+  // platform.singleInstance: per-user lock and activation listener. The
+  // instance mutex serialises acquire/listen/notify with shutdown; it is
+  // separate from core.mutex because a secondary may wait on the primary.
+  std::mutex instance_mutex;
+  std::unique_ptr<archoera::PlatformInstance> instance;
+  bool instance_primary = false;
+  bool instance_listening = false;
 
   // Used for the launcher process uptime row; steady clock never jumps.
   std::chrono::steady_clock::time_point started_at =

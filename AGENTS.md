@@ -51,7 +51,7 @@
 ```bash
 cd app
 ./tool/build-core.sh && ./tool/build-cs.sh && ./tool/build-dl.sh && ./tool/build-vault.sh
-./build/native/abi_smoke && ./build/native/async_smoke && ./build/native/module_smoke
+./build/native/abi_smoke && ./build/native/async_smoke && ./build/native/module_smoke && ./build/native/single_instance_smoke
 dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
 dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
 dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader

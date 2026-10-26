@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'build_identity.dart';
 import '../core_transport.dart';
+import 'single_instance.dart';
 import 'system_appearance.dart';
 import 'system_memory.dart';
 import 'system_status.dart';
@@ -10,6 +11,24 @@ import 'system_status.dart';
 /// methods ever touch the desktop from Dart side; each one delegates to a
 /// native OS API through the C++ core.
 mixin CoreClientSystem on CoreTransport {
+  /// Claims the per-user single-instance lock through the native core.
+  ///
+  /// The primary process also starts the native activation listener, so later
+  /// launches wake this one through `platform.activate` domain events. The
+  /// caller must subscribe to [events] before invoking this method when it
+  /// needs every activation; otherwise an activation that races startup can be
+  /// missed.
+  Future<SingleInstanceClaim> claimSingleInstance() async {
+    const methodName = 'platform.singleInstance';
+    final jsonText = await runAsync(methodName);
+    final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = asMap(decoded['data'], methodName);
+    return SingleInstanceClaim(
+      primary: data['primary'] == true,
+      signaled: data['signaled'] == true,
+    );
+  }
+
   /// Read total/available physical memory through the native module.
   Future<SystemMemoryInfo?> getSystemMemory({
     void Function(int done, int total)? onProgress,

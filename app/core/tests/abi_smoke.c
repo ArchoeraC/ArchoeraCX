@@ -148,6 +148,7 @@ int main(void) {
         ARCHOERA_OK);
   CHECK(strstr(json, "\"system.ping\"") != NULL);
   CHECK(strstr(json, "\"system.modules\"") != NULL);
+  CHECK(strstr(json, "\"platform.singleInstance\"") != NULL);
   archoera_release(core, modules_task);
 
   /* system.gpu reports display adapters for launch optimization. The payload
