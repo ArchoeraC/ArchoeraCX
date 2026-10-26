@@ -640,6 +640,7 @@ Flutter 热重启
 
 - 托盘与窗口是 Flutter 进程内能力：托盘菜单、显示/隐藏窗口与关闭行为都由 Dart 处理，不经过 C#，也不新增 ABI 方法；C++ 只保留单实例、深链、文件关联与更新。
 - 关闭窗口默认退出；开启「关闭窗口时最小化到托盘」（`shared_preferences` 的 `ui.closeToTray`，默认 false）后只隐藏窗口，下载/后台任务继续；托盘菜单提供「显示主窗口」「退出」。
+- Windows 退出先 `setPreventClose(false)` 再 `close()`，让 `WM_DESTROY` 先销毁 Flutter controller；`window_manager.destroy()` 会先投递 `WM_QUIT`，runner 随后在窗口仍存活时销毁 controller，曾导致关闭时“未响应”。
 - 启动后隐藏启动器（`ui.hideAfterLaunch`，默认 false）只在托盘图标可用时隐藏；没有托盘入口时保持窗口可见，避免用户无法恢复。游戏退出后退出启动器（`ui.quitAfterGameExit`，默认 false）通过 `launch.log.tail` 的完成信号触发，不使用 `Timer.periodic`；模块的 6 小时 follow 上限结束后会查询 `running` 并继续 follow，避免长时游戏被误判为退出。
 
 ### 5.15 错误映射

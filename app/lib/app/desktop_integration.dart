@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -219,6 +220,34 @@ Future<void> _handleWindowClose() async {
   await quitApplication();
 }
 
+/// Sends the platform quit request without tearing the Flutter controller down
+/// while the native window is still alive.
+///
+/// On Windows `window_manager.destroy()` posts `WM_QUIT` before destroying the
+/// window. The runner then runs `FlutterViewController::~FlutterViewController`
+/// while the window still receives messages, which can access freed state and
+/// leave the window in the "Not responding" state for several seconds. Dropping
+/// close interception and sending the normal `SC_CLOSE` path lets `WM_DESTROY`
+/// tear the controller down first.
+///
+/// Linux `destroy` already drops interception before closing the GTK window;
+/// macOS needs `destroy` because closing the last window does not terminate the
+/// application.
+@visibleForTesting
+Future<void> closeMainWindowForQuit({
+  required bool isWindows,
+  required Future<void> Function(bool preventClose) setPreventClose,
+  required Future<void> Function() close,
+  required Future<void> Function() destroy,
+}) async {
+  if (!isWindows) {
+    await destroy();
+    return;
+  }
+  await setPreventClose(false);
+  await close();
+}
+
 /// Closes the launcher through the same path the tray uses.
 ///
 /// Shared by the tray menu, the window close button and the
@@ -228,9 +257,12 @@ Future<void> quitApplication() async {
   if (_quitRequested) return;
   _quitRequested = true;
   try {
-    // `destroy` also drops the close interception, so the window really goes
-    // away instead of asking us again.
-    await windowManager.destroy();
+    await closeMainWindowForQuit(
+      isWindows: Platform.isWindows,
+      setPreventClose: windowManager.setPreventClose,
+      close: windowManager.close,
+      destroy: windowManager.destroy,
+    );
   } catch (error, stackTrace) {
     _quitRequested = false;
     _logFailure('cannot close the application', error, stackTrace);
