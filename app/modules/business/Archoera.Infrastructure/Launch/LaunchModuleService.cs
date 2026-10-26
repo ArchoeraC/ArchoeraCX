@@ -728,6 +728,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 settings.LogRetentionFiles,
                 settings.LogRetentionMegabytes,
                 LaunchCommandRunner.CreatePostExitCallback(instance, settings, plan));
+
+            // The process is running, so this session counts as played. The
+            // write happens here (not in the UI) so hiding the launcher or
+            // quitting it right after the start cannot lose the timestamp.
+            await InstancePlayHistory
+                .MarkPlayedAsync(_instances, instance.Id, DateTimeOffset.UtcNow)
+                .ConfigureAwait(false);
+
             return ModuleJson.Envelope(writer =>
             {
                 writer.WriteNumber("pid", process.Id);

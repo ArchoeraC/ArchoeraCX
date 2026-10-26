@@ -48,6 +48,32 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
     state = AsyncData(await build());
   }
 
+  /// Re-reads the registry while keeping the current list when the native
+  /// module cannot answer.
+  ///
+  /// Used after a launch recorded by the business module: unlike the initial
+  /// [build], a transient failure must not replace real instances with the
+  /// fallback sample data.
+  Future<void> refresh() async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) return;
+    try {
+      final items = await client.listInstances();
+      state = AsyncData(items);
+      _ensureSelection(items);
+    } catch (_) {
+      // Keep the last known list; the next refresh or restart retries.
+    }
+  }
+
+  void _ensureSelection(List<GameInstance> items) {
+    final selected = ref.read(selectedInstanceIdProvider);
+    if (selected != null && items.any((item) => item.id == selected)) return;
+    ref
+        .read(selectedInstanceIdProvider.notifier)
+        .select(items.isEmpty ? null : items.first.id);
+  }
+
   Future<GameInstance> create({
     required String name,
     required String gameVersion,
@@ -158,24 +184,6 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
           .select(remaining.isEmpty ? null : remaining.first.id);
     }
     return outcome;
-  }
-
-  Future<void> markPlayed(String id) async {
-    final client = ref.read(coreClientProvider);
-    if (client == null) return;
-    try {
-      final updated = await client.updateInstance(
-        id: id,
-        lastPlayedAt: DateTime.now(),
-      );
-      final current = state.value ?? const <GameInstance>[];
-      state = AsyncData([
-        for (final instance in current)
-          if (instance.id == id) updated else instance,
-      ]);
-    } catch (_) {
-      // Best effort; a failed last-played write must not block launching.
-    }
   }
 }
 

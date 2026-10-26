@@ -2597,6 +2597,7 @@ public interface IDownloadProvider {
 可选参数 `hardware` 为 `system.gpu` 的 `data` 原样转发（Dart 不做裁剪），例如
 `{"platform":"linux","hybrid":true,"primaryVendor":"intel","gpus":[{"vendor":"nvidia","discrete":true,"driverLoaded":true}]}`。
 `launch.start` 结果额外返回 `memoryMode` / `memoryMaxMb` / `memoryRecommendedMb` / `optimizations`（已应用的优化项名称），便于任务中心与日志核对。
+进程成功启动后由 C# 记录实例的 `lastPlayedAt`（写失败不影响启动，也不回滚已启动的进程）；UI 随后重新拉取实例列表，使“上次游玩”与排序立即反映本次启动。
 
 **堆内存与游戏优化**
 

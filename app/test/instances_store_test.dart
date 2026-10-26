@@ -66,4 +66,13 @@ void main() {
       expect(provider.read(selectedInstanceIdProvider), remaining.first.id);
     },
   );
+
+  test('refresh keeps the local list when the core is unavailable', () async {
+    final provider = container();
+    final before = await provider.read(instancesProvider.future);
+
+    await provider.read(instancesProvider.notifier).refresh();
+
+    expect(identical(provider.read(instancesProvider).value, before), isTrue);
+  });
 }

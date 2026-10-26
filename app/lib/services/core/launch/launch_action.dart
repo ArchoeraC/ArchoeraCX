@@ -11,6 +11,7 @@ import '../../../models/account.dart';
 import '../../../models/game_instance.dart';
 import '../../../stores/account_policy.dart';
 import '../../../stores/accounts.dart';
+import '../../../stores/instances.dart';
 import '../../../stores/preferences.dart';
 import '../../../stores/providers.dart';
 import '../core_client.dart';
@@ -50,6 +51,9 @@ Future<void> launchInstance(
   // may be gone by the time the game starts, and the window actions below must
   // still run for the launch that was requested.
   final uiPrefs = ref.read(preferencesProvider);
+  // The C# launch module records the session's start time itself; refresh the
+  // mirrored list afterwards so the "last played" label and ordering follow.
+  final instances = ref.read(instancesProvider.notifier);
 
   // Automatic sizing can still be tight on a small machine, and a manual value
   // can sit far below what the instance needs. Warn once, then let the user
@@ -87,6 +91,10 @@ Future<void> launchInstance(
     if (context.mounted) {
       toast(l10n.launchStarted(result.pid), type: ToastType.success);
     }
+
+    // `launch.start` already persisted the timestamp; refresh the mirror so the
+    // card immediately shows "played today" instead of the previous session.
+    unawaited(instances.refresh());
 
     // Window actions run after the success toast and never extend the launch
     // call: hiding is best effort and the exit monitor follows the log until
