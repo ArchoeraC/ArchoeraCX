@@ -182,6 +182,83 @@ public sealed class LaunchProfileRecoveryTests
         }
     }
 
+    [Theory]
+    [InlineData("neoforge", "21.1.2", "neoforge-21.1.264", "1.21.1")]
+    [InlineData("forge", "58.1.2", "1.21.8-forge-58.1.26", "1.21.8")]
+    public async Task Refuses_a_profile_whose_loader_version_is_only_a_prefix(
+        string loader,
+        string loaderVersion,
+        string profileId,
+        string gameVersion)
+    {
+        var root = CreateRoot();
+        try
+        {
+            var versions = Path.Combine(root, "versions");
+            var instanceRoot = Path.Combine(versions, "MyPack");
+            Directory.CreateDirectory(instanceRoot);
+            File.WriteAllText(Path.Combine(instanceRoot, "MyPack.jar"), "jar");
+            WriteVersion(versions, gameVersion, BaseJson(gameVersion));
+            WriteVersion(
+                versions,
+                profileId,
+                $$"""{"id":"{{profileId}}","inheritsFrom":"{{gameVersion}}","mainClass":"x","libraries":[]}""");
+            var paths = LaunchPaths.Resolve(instanceRoot);
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "MyPack",
+                gameVersion,
+                loader,
+                loaderVersion,
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            Assert.False(await LaunchProfileRecovery.TryRecoverAsync(instance, paths));
+            Assert.False(File.Exists(Path.Combine(instanceRoot, "MyPack.json")));
+        }
+        finally
+        {
+            Delete(root);
+        }
+    }
+
+    [Fact]
+    public async Task Refuses_a_profile_that_inherits_another_game_version()
+    {
+        var root = CreateRoot();
+        try
+        {
+            var versions = Path.Combine(root, "versions");
+            var instanceRoot = Path.Combine(versions, "MyPack");
+            Directory.CreateDirectory(instanceRoot);
+            File.WriteAllText(Path.Combine(instanceRoot, "MyPack.jar"), "jar");
+            WriteVersion(versions, "1.21.1", BaseJson("1.21.1"));
+            WriteVersion(versions, "1.21.4", BaseJson("1.21.4"));
+
+            // The loader build is the instance's, but the profile belongs to a
+            // sibling instance of another game version.
+            WriteVersion(
+                versions,
+                "neoforge-21.1.248",
+                LoaderJson("neoforge-21.1.248", "1.21.4"));
+
+            var paths = LaunchPaths.Resolve(instanceRoot);
+            var instance = Instance("neoforge", "21.1.248", instanceRoot);
+
+            Assert.False(await LaunchProfileRecovery.TryRecoverAsync(instance, paths));
+            Assert.False(File.Exists(Path.Combine(instanceRoot, "MyPack.json")));
+        }
+        finally
+        {
+            Delete(root);
+        }
+    }
+
     [Fact]
     public async Task Refuses_a_profile_for_another_loader_or_game()
     {

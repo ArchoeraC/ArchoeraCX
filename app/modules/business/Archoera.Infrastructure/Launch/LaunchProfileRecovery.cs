@@ -179,7 +179,10 @@ internal static class LaunchProfileRecovery
         }
     }
 
-    /// <summary>Matches the same game version and loader family.</summary>
+    /// <summary>
+    /// Matches the instance's own folder, the same game version for vanilla,
+    /// or the exact loader build for a loader instance.
+    /// </summary>
     private static bool Matches(
         string path,
         string id,
@@ -188,92 +191,20 @@ internal static class LaunchProfileRecovery
     {
         if (string.Equals(id, folder, StringComparison.OrdinalIgnoreCase)) return true;
 
-        if (instance.Loader.Equals("vanilla", StringComparison.OrdinalIgnoreCase))
-        {
-            return string.Equals(
-                id,
-                instance.GameVersion,
-                StringComparison.OrdinalIgnoreCase);
-        }
-
-        var loaderMatches =
-            id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase) ||
-            (instance.Loader.Equals("neoforge", StringComparison.OrdinalIgnoreCase) &&
-             id.Contains("forge", StringComparison.OrdinalIgnoreCase));
-        if (!loaderMatches) return false;
-
-        string text;
+        MojangVersion? version;
         try
         {
-            text = File.ReadAllText(path);
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            version = MojangJson.ParseVersion(document.RootElement);
         }
         catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException)
+            exception is IOException or UnauthorizedAccessException or JsonException or
+            ArgumentException or MojangException)
         {
             return false;
         }
 
-        // Version ids can omit the game version (NeoForge's installer profile
-        // is "neoforge-<loader>"), but the loader version must match; a Forge
-        // profile must never stand in for NeoForge, or vice versa.
-        if (!string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
-            !id.Contains(instance.LoaderVersion, StringComparison.OrdinalIgnoreCase) &&
-            !text.Contains(instance.LoaderVersion, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        if (id.Contains(instance.GameVersion, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        // NeoForge's installer profile is id "neoforge-<loader>"; the game
-        // version only appears in inheritsFrom or --fml.mcVersion.
-        try
-        {
-            using var document = JsonDocument.Parse(text);
-            var root = document.RootElement;
-            if (root.TryGetProperty("inheritsFrom", out var parent) &&
-                parent.ValueKind == JsonValueKind.String &&
-                string.Equals(
-                    parent.GetString(),
-                    instance.GameVersion,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (!root.TryGetProperty("arguments", out var arguments) ||
-                !arguments.TryGetProperty("game", out var game) ||
-                game.ValueKind != JsonValueKind.Array)
-            {
-                return false;
-            }
-
-            var values = game.EnumerateArray()
-                .Where(item => item.ValueKind == JsonValueKind.String)
-                .Select(item => item.GetString())
-                .ToList();
-            for (var index = 0; index + 1 < values.Count; index++)
-            {
-                if (string.Equals(values[index], "--fml.mcVersion", StringComparison.Ordinal) &&
-                    string.Equals(
-                        values[index + 1],
-                        instance.GameVersion,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException or JsonException)
-        {
-            return false;
-        }
-
-        return false;
+        return LoaderProfileIdentity.Matches(instance, version);
     }
 
     private static string? ReadId(string path)

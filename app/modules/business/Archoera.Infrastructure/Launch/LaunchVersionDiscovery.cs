@@ -71,6 +71,9 @@ internal static class LaunchVersionDiscovery
                         Path.Combine(baseRoot, "versions", id, $"{id}.json"));
                     if (parsed is null) continue;
                     if (IsVanillaBase(parsed, instance)) continue;
+                    // The directory name is the expected id; the file itself
+                    // must still describe this loader build.
+                    if (!LoaderProfileIdentity.Matches(instance, parsed)) continue;
                     EnsureMerged(parsed);
                     return parsed;
                 }
@@ -121,32 +124,31 @@ internal static class LaunchVersionDiscovery
             {
                 // A vanilla base profile: usable for vanilla instances and as a
                 // last resort for a loader instance without a merged profile.
-                score += isLoaderInstance ? 10 : 80;
+                // A merged profile that keeps the game id still has to pass the
+                // loader identity check.
+                if (!isLoaderInstance)
+                {
+                    score += 80;
+                }
+                else if (LoaderProfileIdentity.HasLoaderLibraries(version))
+                {
+                    score += LoaderProfileIdentity.Matches(instance, version) ? 50 : 0;
+                }
+                else
+                {
+                    score += 10;
+                }
             }
-            else if (isLoaderInstance &&
-                     version.Id.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase))
+            else if (isLoaderInstance && LoaderProfileIdentity.Matches(instance, version))
             {
                 // Standard loader profile ids: "1.21.1-forge-47.2.0",
                 // "fabric-loader-0.16.14-1.21.1", and NeoForge's
-                // "neoforge-21.1.264" (which omits the game version).
-                var hasGame = version.Id.Contains(
-                    instance.GameVersion,
-                    StringComparison.OrdinalIgnoreCase);
-                var hasLoaderVersion =
-                    !string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
-                    version.Id.Contains(
-                        instance.LoaderVersion,
-                        StringComparison.OrdinalIgnoreCase);
-                if (!hasLoaderVersion &&
-                    MentionsLoaderVersion(version.Id, instance.Loader))
-                {
-                    // "neoforge-21.1.248" when the instance wants 21.1.264: a
-                    // profile for another loader build must not be used. Ids
-                    // such as "1.21.1-neoforge" carry no version and remain
-                    // acceptable as a last resort.
-                    continue;
-                }
-
+                // "neoforge-21.1.264" (which omits the game version). The
+                // identity check keeps another instance's build out of this
+                // instance: whole version tokens, not substrings.
+                var hasGame = LoaderProfileIdentity.HasToken(
+                    version.Id,
+                    instance.GameVersion);
                 if (hasGame)
                 {
                     score += version.Id.StartsWith(
@@ -162,10 +164,16 @@ internal static class LaunchVersionDiscovery
                     score += 20;
                 }
 
-                if (!string.IsNullOrWhiteSpace(instance.LoaderVersion) &&
-                    version.Id.Contains(
-                        instance.LoaderVersion,
-                        StringComparison.OrdinalIgnoreCase))
+                var loaderVersion = LoaderVersionText.Normalize(
+                    instance.Loader,
+                    instance.GameVersion,
+                    instance.LoaderVersion);
+                var namedBuild = LoaderProfileIdentity.LoaderVersionInId(
+                    version.Id,
+                    instance.Loader);
+                if (loaderVersion.Length > 0 &&
+                    namedBuild is not null &&
+                    LoaderProfileIdentity.SameBuild(namedBuild, loaderVersion))
                 {
                     score += 10;
                 }
@@ -201,19 +209,6 @@ internal static class LaunchVersionDiscovery
 
         EnsureMerged(selected);
         return selected;
-    }
-
-    /// <summary>
-    /// True when the id names a concrete loader build, for example
-    /// <c>neoforge-21.1.248</c> or <c>1.21.8-forge-58.1.26</c>.
-    /// </summary>
-    private static bool MentionsLoaderVersion(string id, string loader)
-    {
-        var marker = loader + "-";
-        var index = id.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (index < 0) return false;
-        var rest = index + marker.Length;
-        return rest < id.Length && char.IsAsciiDigit(id[rest]);
     }
 
     /// <summary>
