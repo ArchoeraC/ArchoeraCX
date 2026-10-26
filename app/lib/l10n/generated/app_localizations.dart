@@ -1118,12 +1118,6 @@ abstract class AppLocalizations {
   /// **'Install'**
   String get downloadInstall;
 
-  /// No description provided for @downloadInstalling.
-  ///
-  /// In en, this message translates to:
-  /// **'Downloading…'**
-  String get downloadInstalling;
-
   /// No description provided for @downloadInstalled.
   ///
   /// In en, this message translates to:
@@ -3235,6 +3229,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Description'**
   String get downloadDescription;
+
+  /// Full project page could not load the provider record.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load project details.'**
+  String get downloadProjectLoadFailed;
 
   /// Instance menu action that installs vanilla game files.
   ///

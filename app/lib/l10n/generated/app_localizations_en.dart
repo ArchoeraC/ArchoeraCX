@@ -597,9 +597,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadInstall => 'Install';
 
   @override
-  String get downloadInstalling => 'Downloading…';
-
-  @override
   String get downloadInstalled => 'Installed';
 
   @override
@@ -1860,6 +1857,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadDescription => 'Description';
+
+  @override
+  String get downloadProjectLoadFailed => 'Could not load project details.';
 
   @override
   String get instanceInstallGame => 'Download game files';

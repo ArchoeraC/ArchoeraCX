@@ -7,8 +7,10 @@ import '../pages/dashboard_page.dart';
 import '../pages/download_page.dart';
 import '../pages/instances_page.dart';
 import '../pages/java_page.dart';
+import '../pages/resource_detail_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/wiki_page.dart';
+import '../services/core/resources/resource_models.dart';
 import '../widgets/common/app_navigator.dart';
 import '../widgets/common/page_surface.dart';
 import 'shell.dart';
@@ -66,6 +68,24 @@ GoRouter buildAppRouter({String? initialLocation}) {
                 name: 'download',
                 builder: (context, state) =>
                     const AppPageSurface(child: DownloadPage()),
+                routes: [
+                  GoRoute(
+                    path: 'project/:kind/:projectId',
+                    name: 'download-project',
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      return AppPageSurface(
+                        child: ResourceDetailPage(
+                          kind: state.pathParameters['kind'] ?? 'mod',
+                          projectId: state.pathParameters['projectId'] ?? '',
+                          project: extra is ResourceProject ? extra : null,
+                          focusVersions:
+                              state.uri.queryParameters['versions'] == '1',
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

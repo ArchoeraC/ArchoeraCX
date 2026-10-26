@@ -8,7 +8,6 @@ class _SearchHeader extends StatelessWidget {
     required this.controller,
     required this.target,
     required this.busy,
-    required this.installing,
     required this.total,
     required this.sort,
     required this.onQueryChanged,
@@ -20,7 +19,6 @@ class _SearchHeader extends StatelessWidget {
   final TextEditingController controller;
   final String target;
   final bool busy;
-  final bool installing;
   final int total;
   final String sort;
   final ValueChanged<String> onQueryChanged;
@@ -153,22 +151,6 @@ class _SearchHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (installing) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.6,
-                      color: tokens.accent,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xxs),
-                  Text(
-                    l10n.downloadInstalling,
-                    style: textTheme.labelSmall?.copyWith(color: tokens.accent),
-                  ),
-                ],
               ],
             ),
           ),

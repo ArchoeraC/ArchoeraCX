@@ -351,7 +351,6 @@
   "downloadSearchEmpty": "No compatible projects found.",
   "downloadSearchError": "Search failed",
   "downloadInstall": "Install",
-  "downloadInstalling": "Downloading…",
   "downloadInstalled": "Installed",
   "downloadSelectVersion": "Select version",
   "downloadNoVersions": "No compatible versions.",
@@ -1522,6 +1521,10 @@
   "downloadDescription": "Description",
   "@downloadDescription": {
     "description": "Project long description heading."
+  },
+  "downloadProjectLoadFailed": "Could not load project details.",
+  "@downloadProjectLoadFailed": {
+    "description": "Full project page could not load the provider record."
   },
   "instanceInstallGame": "Download game files",
   "@instanceInstallGame": {

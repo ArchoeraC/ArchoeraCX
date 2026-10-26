@@ -572,9 +572,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadInstall => '安装';
 
   @override
-  String get downloadInstalling => '下载中…';
-
-  @override
   String get downloadInstalled => '已安装';
 
   @override
@@ -1762,6 +1759,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadDescription => '描述';
+
+  @override
+  String get downloadProjectLoadFailed => '无法加载项目详情。';
 
   @override
   String get instanceInstallGame => '下载游戏本体';

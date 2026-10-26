@@ -3,13 +3,11 @@ part of '../resource_search_panel.dart';
 class _ResourceRow extends StatelessWidget {
   const _ResourceRow({
     required this.project,
-    this.selected = false,
     this.onTap,
     this.onInstall,
   });
 
   final ResourceProject project;
-  final bool selected;
   final VoidCallback? onTap;
   final VoidCallback? onInstall;
 
@@ -31,18 +29,11 @@ class _ResourceRow extends StatelessWidget {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: selected ? tokens.accentSoft : null,
-            border: Border(
-              left: BorderSide(
-                color: selected ? tokens.accent : Colors.transparent,
-                width: 2,
-              ),
-              bottom: BorderSide(color: tokens.border),
-            ),
+            border: Border(bottom: BorderSide(color: tokens.border)),
           ),
           child: Row(
             children: [
-              _ProjectThumb(project: project, size: 56),
+              ResourceProjectThumb(project: project, size: 56),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -82,16 +73,16 @@ class _ResourceRow extends StatelessWidget {
                       spacing: AppSpacing.sm,
                       runSpacing: 2,
                       children: [
-                        _MetaText(
+                        ResourceMetaText(
                           icon: AppIcons.fileDownload,
-                          text: _formatCount(project.downloads),
+                          text: formatResourceCount(project.downloads),
                         ),
-                        _MetaText(
+                        ResourceMetaText(
                           icon: AppIcons.favorite,
-                          text: _formatCount(project.follows),
+                          text: formatResourceCount(project.follows),
                         ),
                         for (final category in project.categories.take(2))
-                          _Tag(label: category),
+                          ResourceTag(label: category),
                       ],
                     ),
                   ],
@@ -107,80 +98,6 @@ class _ResourceRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ProjectThumb extends StatelessWidget {
-  const _ProjectThumb({required this.project, required this.size});
-
-  final ResourceProject project;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final icon = _kindIcon(project.kind);
-    final url = project.iconUrl;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(tokens.radiusM),
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: url == null || url.isEmpty
-            ? ColoredBox(
-                color: tokens.surface2,
-                child: Icon(icon, color: tokens.accent, size: size * 0.44),
-              )
-            : AppNetworkImage(url: url, fallbackIcon: icon),
-      ),
-    );
-  }
-}
-
-class _MetaText extends StatelessWidget {
-  const _MetaText({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: tokens.textTertiary),
-        const SizedBox(width: 3),
-        Text(
-          text,
-          style: Theme.of(context).textTheme.labelSmall
-              ?.copyWith(color: tokens.textTertiary),
-        ),
-      ],
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: tokens.surface2,
-        borderRadius: BorderRadius.circular(tokens.radiusS),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: tokens.textSecondary),
       ),
     );
   }
