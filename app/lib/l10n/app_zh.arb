@@ -288,6 +288,20 @@
   "downloadInstall": "安装",
   "downloadInstalled": "已安装",
   "downloadSelectVersion": "选择版本",
+  "downloadInstallTarget": "安装到",
+  "downloadInstallSelected": "安装所选版本",
+  "downloadInstalling": "安装中…",
+  "downloadSelectedVersion": "已选择：{version}",
+  "@downloadSelectedVersion": {
+    "description": "项目页底部显示当前选中的版本。",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadVersionPick": "先在下方选择一个要安装的版本。",
+  "downloadVersionIncompatible": "所选版本与目标实例不兼容，请切换实例或选择其他版本。",
   "downloadNoVersions": "没有兼容版本。",
   "downloadResult": "结果：{status}",
   "downloadQueued": "“{name}”已加入下载队列，可在任务或页面底部查看进度。",

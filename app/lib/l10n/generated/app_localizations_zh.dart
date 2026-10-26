@@ -578,6 +578,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadSelectVersion => '选择版本';
 
   @override
+  String get downloadInstallTarget => '安装到';
+
+  @override
+  String get downloadInstallSelected => '安装所选版本';
+
+  @override
+  String get downloadInstalling => '安装中…';
+
+  @override
+  String downloadSelectedVersion(String version) {
+    return '已选择：$version';
+  }
+
+  @override
+  String get downloadVersionPick => '先在下方选择一个要安装的版本。';
+
+  @override
+  String get downloadVersionIncompatible => '所选版本与目标实例不兼容，请切换实例或选择其他版本。';
+
+  @override
   String get downloadNoVersions => '没有兼容版本。';
 
   @override

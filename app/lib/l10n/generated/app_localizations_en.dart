@@ -603,6 +603,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadSelectVersion => 'Select version';
 
   @override
+  String get downloadInstallTarget => 'Install to';
+
+  @override
+  String get downloadInstallSelected => 'Install selected version';
+
+  @override
+  String get downloadInstalling => 'Installing…';
+
+  @override
+  String downloadSelectedVersion(String version) {
+    return 'Selected: $version';
+  }
+
+  @override
+  String get downloadVersionPick => 'Pick a version below to install.';
+
+  @override
+  String get downloadVersionIncompatible =>
+      'This version does not match the target instance. Switch instances or pick another build.';
+
+  @override
   String get downloadNoVersions => 'No compatible versions.';
 
   @override

@@ -1130,6 +1130,42 @@ abstract class AppLocalizations {
   /// **'Select version'**
   String get downloadSelectVersion;
 
+  /// No description provided for @downloadInstallTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Install to'**
+  String get downloadInstallTarget;
+
+  /// No description provided for @downloadInstallSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Install selected version'**
+  String get downloadInstallSelected;
+
+  /// No description provided for @downloadInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing…'**
+  String get downloadInstalling;
+
+  /// Footer summary of the version the user picked on a project page.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected: {version}'**
+  String downloadSelectedVersion(String version);
+
+  /// No description provided for @downloadVersionPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a version below to install.'**
+  String get downloadVersionPick;
+
+  /// No description provided for @downloadVersionIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'This version does not match the target instance. Switch instances or pick another build.'**
+  String get downloadVersionIncompatible;
+
   /// No description provided for @downloadNoVersions.
   ///
   /// In en, this message translates to:

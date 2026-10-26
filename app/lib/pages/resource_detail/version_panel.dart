@@ -1,18 +1,35 @@
 part of '../resource_detail_page.dart';
 
-/// Compatible versions plus the install target.
+/// Compatible versions plus the install target and facet filters.
 ///
 /// The list lives on the page (not in a dialog) so the overview and the
 /// version picker share the window instead of competing for a narrow pane.
 /// Large projects can return hundreds of versions; only one page is built at a
 /// time so opening the page stays responsive.
+///
+/// Picking a row only marks it; installation happens from the footer button.
+/// That keeps a stray tap from queueing a build while the user is still
+/// comparing versions, and gives the page one obvious primary action.
 class _VersionPanel extends StatefulWidget {
   const _VersionPanel({
     required this.versions,
     required this.loading,
     required this.error,
     required this.preparing,
+    required this.selected,
+    required this.onSelect,
+    required this.gameVersions,
+    required this.gameVersion,
+    required this.onGameVersionChanged,
+    required this.loaders,
+    required this.loader,
+    required this.onLoaderChanged,
+    required this.instances,
+    required this.targetInstanceId,
+    required this.onTargetChanged,
     required this.target,
+    required this.installHint,
+    required this.installing,
     required this.onInstall,
     required this.onRetry,
   });
@@ -22,9 +39,29 @@ class _VersionPanel extends StatefulWidget {
   final String? error;
   final Set<String> preparing;
 
-  /// Instance the install lands in, or the "select an instance" hint.
+  final ResourceVersion? selected;
+  final ValueChanged<ResourceVersion> onSelect;
+
+  /// Game versions offered to the filter; empty for modpacks.
+  final List<String> gameVersions;
+  final String? gameVersion;
+  final ValueChanged<String> onGameVersionChanged;
+
+  /// Loader families offered to the filter; only mods use this facet.
+  final List<String> loaders;
+  final String? loader;
+  final ValueChanged<String> onLoaderChanged;
+
+  /// Instances the install can target; empty for modpacks.
+  final List<GameInstance> instances;
+  final String? targetInstanceId;
+  final ValueChanged<String> onTargetChanged;
+
+  /// Human-readable target, or the "select an instance" hint.
   final String target;
-  final ValueChanged<ResourceVersion> onInstall;
+  final String? installHint;
+  final bool installing;
+  final VoidCallback? onInstall;
   final VoidCallback onRetry;
 
   @override
@@ -50,12 +87,10 @@ class _VersionPanelState extends State<_VersionPanel> {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final items = widget.versions ?? const <ResourceVersion>[];
-    final shown = items.length > _visible
-        ? items.sublist(0, _visible)
-        : items;
+    final shown = items.length > _visible ? items.sublist(0, _visible) : items;
 
-    return AppPanel(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return AppSection(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -81,6 +116,43 @@ class _VersionPanelState extends State<_VersionPanel> {
             widget.target,
             style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
           ),
+          if (widget.instances.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _TargetField(
+              key: const Key('versionTargetField'),
+              l10n: l10n,
+              instances: widget.instances,
+              value: widget.targetInstanceId,
+              onChanged: widget.onTargetChanged,
+            ),
+          ],
+          if (widget.gameVersions.isNotEmpty || widget.loaders.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                if (widget.gameVersions.isNotEmpty)
+                  _FilterControl(
+                    key: const Key('versionGameFilter'),
+                    label: l10n.instanceGameVersionLabel,
+                    value: widget.gameVersion,
+                    values: widget.gameVersions,
+                    labelFor: (value) => value,
+                    onChanged: widget.onGameVersionChanged,
+                  ),
+                if (widget.loaders.isNotEmpty)
+                  _FilterControl(
+                    key: const Key('versionLoaderFilter'),
+                    label: l10n.loaderKindLabel,
+                    value: widget.loader,
+                    values: widget.loaders,
+                    labelFor: (value) => _loaderLabel(l10n, value),
+                    onChanged: widget.onLoaderChanged,
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           if (widget.loading)
             const Padding(
@@ -110,9 +182,11 @@ class _VersionPanelState extends State<_VersionPanel> {
             for (var index = 0; index < shown.length; index++) ...[
               if (index > 0) Divider(height: 1, color: tokens.border),
               _VersionRow(
+                key: ValueKey('version-${shown[index].id}'),
                 version: shown[index],
+                selected: shown[index].id == widget.selected?.id,
                 preparing: widget.preparing.contains(shown[index].id),
-                onInstall: widget.onInstall,
+                onSelect: widget.onSelect,
               ),
             ],
             if (items.length > shown.length) ...[
@@ -123,6 +197,14 @@ class _VersionPanelState extends State<_VersionPanel> {
                 label: Text(l10n.downloadLoadMore),
               ),
             ],
+            const SizedBox(height: AppSpacing.md),
+            _InstallFooter(
+              l10n: l10n,
+              selected: widget.selected,
+              hint: widget.installHint,
+              installing: widget.installing,
+              onInstall: widget.onInstall,
+            ),
           ],
         ],
       ),
@@ -130,16 +212,122 @@ class _VersionPanelState extends State<_VersionPanel> {
   }
 }
 
+/// Instance picker: the version facets follow this target, and the install
+/// plan is built against it.
+class _TargetField extends StatelessWidget {
+  const _TargetField({
+    super.key,
+    required this.l10n,
+    required this.instances,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final AppLocalizations l10n;
+  final List<GameInstance> instances;
+  final String? value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      children: [
+        Icon(AppIcons.instances, size: 16, color: tokens.textTertiary),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          l10n.downloadInstallTarget,
+          style: textTheme.labelMedium?.copyWith(color: tokens.textSecondary),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: AppDropdown<String>(
+            value: value,
+            isExpanded: true,
+            hint: Text(l10n.selectInstance),
+            items: [
+              for (final instance in instances)
+                DropdownMenuItem(
+                  value: instance.id,
+                  child: Text(
+                    '${instance.name} · ${instance.gameVersion} · '
+                    '${instance.loaderLabelFor(l10n)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (id) {
+              if (id != null) onChanged(id);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterControl extends StatelessWidget {
+  const _FilterControl({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.labelFor,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String? value;
+  final List<String> values;
+  final String Function(String value) labelFor;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label:',
+          style: textTheme.labelMedium?.copyWith(color: tokens.textTertiary),
+        ),
+        const SizedBox(width: AppSpacing.xxs),
+        AppDropdown<String>(
+          value: value,
+          items: [
+            for (final item in values)
+              DropdownMenuItem(value: item, child: Text(labelFor(item))),
+          ],
+          onChanged: values.length > 1
+              ? (item) {
+                  if (item != null) onChanged(item);
+                }
+              : null,
+        ),
+      ],
+    );
+  }
+}
+
 class _VersionRow extends StatelessWidget {
   const _VersionRow({
+    super.key,
     required this.version,
+    required this.selected,
     required this.preparing,
-    required this.onInstall,
+    required this.onSelect,
   });
 
   final ResourceVersion version;
+  final bool selected;
   final bool preparing;
-  final ValueChanged<ResourceVersion> onInstall;
+  final ValueChanged<ResourceVersion> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -160,9 +348,25 @@ class _VersionRow extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: preparing ? null : () => onInstall(version),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        onTap: preparing ? null : () => onSelect(version),
+        child: AnimatedContainer(
+          duration: tokens.fast,
+          curve: tokens.curve,
+          decoration: BoxDecoration(
+            color: selected ? tokens.accentSoft : Colors.transparent,
+            border: Border(
+              left: BorderSide(
+                color: selected ? tokens.accent : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.sm,
+            AppSpacing.sm,
+            AppSpacing.sm,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -210,18 +414,20 @@ class _VersionRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (preparing)
                 const SizedBox(
-                  width: 40,
-                  height: 40,
+                  width: 24,
+                  height: 24,
                   child: Padding(
-                    padding: EdgeInsets.all(11),
+                    padding: EdgeInsets.all(4),
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 )
               else
-                IconButton.filledTonal(
-                  onPressed: () => onInstall(version),
-                  tooltip: l10n.downloadInstall,
-                  icon: const Icon(AppIcons.download, size: 18),
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: selected
+                      ? Icon(AppIcons.check, size: 18, color: tokens.accent)
+                      : null,
                 ),
             ],
           ),
@@ -229,6 +435,107 @@ class _VersionRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Selected build, compatibility hint and the one primary install action.
+class _InstallFooter extends StatelessWidget {
+  const _InstallFooter({
+    required this.l10n,
+    required this.selected,
+    required this.hint,
+    required this.installing,
+    required this.onInstall,
+  });
+
+  final AppLocalizations l10n;
+  final ResourceVersion? selected;
+  final String? hint;
+  final bool installing;
+  final VoidCallback? onInstall;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final version = selected;
+
+    final info = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          version == null
+              ? l10n.downloadVersionPick
+              : l10n.downloadSelectedVersion(version.name),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.bodyMedium?.copyWith(
+            color: version == null ? tokens.textSecondary : tokens.textPrimary,
+          ),
+        ),
+        if (hint != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            hint!,
+            style: textTheme.labelSmall?.copyWith(color: tokens.warning),
+          ),
+        ],
+      ],
+    );
+
+    final button = FilledButton.icon(
+      key: const Key('installSelectedVersion'),
+      onPressed: installing ? null : onInstall,
+      icon: installing
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(AppIcons.download, size: 18),
+      label: Text(
+        installing ? l10n.downloadInstalling : l10n.downloadInstallSelected,
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: tokens.border)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 460) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                info,
+                const SizedBox(height: AppSpacing.sm),
+                button,
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: info),
+              const SizedBox(width: AppSpacing.md),
+              button,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+String _loaderLabel(AppLocalizations l10n, String slug) {
+  return switch (slug.trim().toLowerCase()) {
+    'fabric' => l10n.loaderFabric,
+    'quilt' => l10n.loaderQuilt,
+    'forge' => l10n.loaderForge,
+    'neoforge' => l10n.loaderNeoForge,
+    _ => slug,
+  };
 }
 
 class _VersionLoadError extends StatelessWidget {

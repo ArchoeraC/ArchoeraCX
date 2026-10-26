@@ -43,6 +43,7 @@ const _project = ResourceProject(
   license: 'LGPL-3.0',
   categories: ['optimization'],
   loaders: ['fabric'],
+  gameVersions: ['1.21.1', '1.20.1'],
   gallery: [ResourceGalleryImage(url: '')],
   body: '## Features\n\nA **fast** renderer.',
 );
@@ -90,6 +91,7 @@ void main() {
     GameInstance? instance = _fabric,
     bool focusVersions = false,
     List<ResourceVersion>? versions,
+    List<(String?, String?)>? requests,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -120,7 +122,10 @@ void main() {
                 project: _project,
                 focusVersions: focusVersions,
                 projectLoader: (_) async => _project,
-                versionsLoader: (_) async => versions ?? _versions,
+                versionsLoader: (_, {gameVersion, loader}) async {
+                  requests?.add((gameVersion, loader));
+                  return versions ?? _versions;
+                },
               ),
             ),
           ),
@@ -137,7 +142,10 @@ void main() {
     await pumpPage(tester);
 
     expect(find.text('Sodium'), findsOneWidget);
-    expect(find.text('A modern rendering engine for Minecraft.'), findsOneWidget);
+    expect(
+      find.text('A modern rendering engine for Minecraft.'),
+      findsOneWidget,
+    );
     expect(find.text('Screenshots'), findsOneWidget);
     expect(find.textContaining('A fast renderer.'), findsOneWidget);
     expect(find.text('Select version'), findsOneWidget);
@@ -198,19 +206,109 @@ void main() {
     await pumpPage(tester, instance: _vanilla);
 
     expect(find.text('Minecraft 1.21.1 · Vanilla'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Install').first);
-    await tester.pump();
     expect(
       find.text(
         'Select a Fabric/Forge/NeoForge/Quilt instance before installing mods.',
       ),
       findsOneWidget,
     );
+
+    final install = find.byKey(const Key('installSelectedVersion'));
+    await tester.ensureVisible(install);
+    await tester.tap(install);
+    await tester.pump();
+    expect(
+      find.text(
+        'Select a Fabric/Forge/NeoForge/Quilt instance before installing mods.',
+      ),
+      findsWidgets,
+    );
     expect(tester.takeException(), isNull);
 
     // Let the toast timer expire before teardown.
     await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('selects a build and follows the game version filter', (
+    tester,
+  ) async {
+    final requests = <(String?, String?)>[];
+    await pumpPage(tester, requests: requests);
+
+    expect(requests.single, ('1.21.1', 'fabric'));
+    expect(find.text('Selected: Sodium 0.6.0'), findsOneWidget);
+
+    final older = find.byKey(const ValueKey('version-sodium-2'));
+    await tester.ensureVisible(older);
+    await tester.tap(older);
+    await tester.pumpAndSettle();
+    expect(find.text('Selected: Sodium 0.5.11'), findsOneWidget);
+
+    final gameFilter = find.descendant(
+      of: find.byKey(const Key('versionGameFilter')),
+      matching: find.byType(PopupMenuButton<String>),
+    );
+    await tester.tap(gameFilter);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1.20.1').last);
+    await tester.pumpAndSettle();
+
+    expect(requests.last, ('1.20.1', 'fabric'));
+    expect(find.text('Selected: Sodium 0.6.0'), findsOneWidget);
+  });
+
+  testWidgets('loads versions from the project when no instance is selected', (
+    tester,
+  ) async {
+    final requests = <(String?, String?)>[];
+    await pumpPage(tester, instance: null, requests: requests);
+
+    // A deep link used to send gameVersion=null and fail before any version
+    // could be chosen. The project's newest game version is a usable default.
+    expect(requests.single, ('1.21.1', 'fabric'));
+    expect(find.text('Sodium 0.6.0'), findsOneWidget);
+    expect(find.byKey(const Key('installSelectedVersion')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('fades and lifts the project page when it opens', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = buildAppRouter(initialLocation: '/download');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coreClientProvider.overrideWithValue(null),
+          routerProvider.overrideWithValue(router),
+        ],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    router.push('/download/project/mod/sodium?versions=1', extra: _project);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+
+    final fade = tester.widget<Opacity>(
+      find.byKey(const Key('detailRouteFade')),
+    );
+    expect(fade.opacity, greaterThan(0));
+    expect(fade.opacity, lessThan(1));
+    final slide = tester.widget<Transform>(
+      find.byKey(const Key('detailRouteSlide')),
+    );
+    expect(slide.transform.getTranslation().y, greaterThan(0));
+
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Opacity>(find.byKey(const Key('detailRouteFade'))).opacity,
+      1,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('opens as a page on the download branch and pops back', (
@@ -234,10 +332,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DownloadPage), findsOneWidget);
 
-    router.push(
-      '/download/project/mod/sodium?versions=1',
-      extra: _project,
-    );
+    router.push('/download/project/mod/sodium?versions=1', extra: _project);
     await tester.pumpAndSettle();
 
     expect(find.byType(ResourceDetailPage), findsOneWidget);

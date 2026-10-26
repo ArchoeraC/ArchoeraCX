@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../pages/accounts_page.dart';
@@ -11,6 +12,7 @@ import '../pages/resource_detail_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/wiki_page.dart';
 import '../services/core/resources/resource_models.dart';
+import '../theme/tokens.dart';
 import '../widgets/common/app_navigator.dart';
 import '../widgets/common/page_surface.dart';
 import 'shell.dart';
@@ -72,15 +74,19 @@ GoRouter buildAppRouter({String? initialLocation}) {
                   GoRoute(
                     path: 'project/:kind/:projectId',
                     name: 'download-project',
-                    builder: (context, state) {
+                    pageBuilder: (context, state) {
                       final extra = state.extra;
-                      return AppPageSurface(
-                        child: ResourceDetailPage(
-                          kind: state.pathParameters['kind'] ?? 'mod',
-                          projectId: state.pathParameters['projectId'] ?? '',
-                          project: extra is ResourceProject ? extra : null,
-                          focusVersions:
-                              state.uri.queryParameters['versions'] == '1',
+                      return _fadeSlidePage(
+                        context,
+                        state,
+                        AppPageSurface(
+                          child: ResourceDetailPage(
+                            kind: state.pathParameters['kind'] ?? 'mod',
+                            projectId: state.pathParameters['projectId'] ?? '',
+                            project: extra is ResourceProject ? extra : null,
+                            focusVersions:
+                                state.uri.queryParameters['versions'] == '1',
+                          ),
                         ),
                       );
                     },
@@ -130,5 +136,57 @@ GoRouter buildAppRouter({String? initialLocation}) {
         ],
       ),
     ],
+  );
+}
+
+/// Detail pages slide up by 8px and fade in, matching the design system's
+/// page transition instead of the platform's default route animation.
+///
+/// Durations come from [AppTokens], which already collapse to zero when the
+/// user enables "reduce motion"; the system accessibility flag is honoured the
+/// same way. Only opacity and a paint transform animate, so the layout is
+/// computed once and the page does not move its siblings.
+Page<void> _fadeSlidePage(
+  BuildContext context,
+  GoRouterState state,
+  Widget child,
+) {
+  final tokens = Theme.of(context).extension<AppTokens>();
+  final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  final duration = reduceMotion
+      ? Duration.zero
+      : tokens?.normal ?? const Duration(milliseconds: 180);
+  final reverseDuration = reduceMotion
+      ? Duration.zero
+      : tokens?.fast ?? const Duration(milliseconds: 120);
+
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: duration,
+    reverseTransitionDuration: reverseDuration,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (duration == Duration.zero) return child;
+      return AnimatedBuilder(
+        animation: animation,
+        child: child,
+        builder: (context, child) {
+          final value = animation.value.clamp(0.0, 1.0);
+          final curve = animation.status == AnimationStatus.reverse
+              ? Curves.easeInCubic
+              : Curves.easeOutCubic;
+          final progress = curve.transform(value);
+          return Opacity(
+            key: const Key('detailRouteFade'),
+            opacity: progress,
+            child: Transform.translate(
+              key: const Key('detailRouteSlide'),
+              offset: Offset(0, 8 * (1 - progress)),
+              child: child,
+            ),
+          );
+        },
+      );
+    },
   );
 }

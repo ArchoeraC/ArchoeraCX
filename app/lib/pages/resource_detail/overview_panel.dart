@@ -1,6 +1,11 @@
 part of '../resource_detail_page.dart';
 
 /// Project overview: identity, statistics, gallery and the full description.
+///
+/// Page-level grouping follows the design system's flat sections: no filled
+/// card, no shadow, one hairline rule below. The project page uses the full
+/// content width, so wrapping these blocks in beveled panels made it read like
+/// a dialog floating inside the download page.
 class _ProjectOverview extends StatelessWidget {
   const _ProjectOverview({
     required this.project,
@@ -24,8 +29,8 @@ class _ProjectOverview extends StatelessWidget {
     final body = project.body?.trim() ?? '';
     final gallery = project.gallery;
 
-    return AppPanel(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return AppSection(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

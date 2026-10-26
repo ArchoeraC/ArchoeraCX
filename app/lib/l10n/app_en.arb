@@ -353,6 +353,20 @@
   "downloadInstall": "Install",
   "downloadInstalled": "Installed",
   "downloadSelectVersion": "Select version",
+  "downloadInstallTarget": "Install to",
+  "downloadInstallSelected": "Install selected version",
+  "downloadInstalling": "Installing…",
+  "downloadSelectedVersion": "Selected: {version}",
+  "@downloadSelectedVersion": {
+    "description": "Footer summary of the version the user picked on a project page.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadVersionPick": "Pick a version below to install.",
+  "downloadVersionIncompatible": "This version does not match the target instance. Switch instances or pick another build.",
   "downloadNoVersions": "No compatible versions.",
   "downloadResult": "Result: {status}",
   "downloadQueued": "“{name}” queued. Track it in Tasks or the queue strip below.",
