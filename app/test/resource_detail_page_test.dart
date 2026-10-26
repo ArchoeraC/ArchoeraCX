@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/app/router.dart';
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
@@ -8,27 +10,28 @@ import 'package:archoera_cx/services/core/resources/resource_models.dart';
 import 'package:archoera_cx/stores/instances.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
+import 'package:archoera_cx/utils/app_paths.dart';
 import 'package:archoera_cx/widgets/common/toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _fabric = GameInstance(
+final _fabric = GameInstance(
   id: 'fabric-1.21.1',
   name: '1.21.1 · Fabric',
   gameVersion: '1.21.1',
   loader: GameLoader.fabric,
   loaderVersion: '0.16.5',
-  rootPath: '/tmp/archoera-instance',
+  rootPath: joinPath(Directory.systemTemp.path, 'archoera-instance'),
 );
 
-const _vanilla = GameInstance(
+final _vanilla = GameInstance(
   id: 'vanilla-1.21.1',
   name: '1.21.1 · Vanilla',
   gameVersion: '1.21.1',
   loader: GameLoader.vanilla,
-  rootPath: '/tmp/archoera-vanilla',
+  rootPath: joinPath(Directory.systemTemp.path, 'archoera-vanilla'),
 );
 
 const _project = ResourceProject(
@@ -46,6 +49,15 @@ const _project = ResourceProject(
   gameVersions: ['1.21.1', '1.20.1'],
   gallery: [ResourceGalleryImage(url: '')],
   body: '## Features\n\nA **fast** renderer.',
+);
+
+const _projectWithoutVersions = ResourceProject(
+  id: 'sodium',
+  slug: 'sodium',
+  name: 'Sodium',
+  summary: 'A modern rendering engine for Minecraft.',
+  kind: 'mod',
+  loaders: ['fabric'],
 );
 
 final _versions = <ResourceVersion>[
@@ -88,23 +100,28 @@ void main() {
   Future<ProviderContainer> pumpPage(
     WidgetTester tester, {
     Size size = const Size(1280, 900),
-    GameInstance? instance = _fabric,
+    GameInstance? instance,
+    bool noInstance = false,
     bool focusVersions = false,
     List<ResourceVersion>? versions,
     List<(String?, String?)>? requests,
+    PickDownloadDirectory? pickDirectory,
+    ResourceProject? project,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    final targetInstance = noInstance ? null : (instance ?? _fabric);
     final container = ProviderContainer(
       overrides: [
         coreClientProvider.overrideWithValue(null),
-        selectedInstanceProvider.overrideWithValue(instance),
+        selectedInstanceProvider.overrideWithValue(targetInstance),
       ],
     );
     addTearDown(container.dispose);
+    final detailProject = project ?? _project;
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -118,10 +135,11 @@ void main() {
             child: Scaffold(
               body: ResourceDetailPage(
                 kind: 'mod',
-                projectId: _project.id,
-                project: _project,
+                projectId: detailProject.id,
+                project: detailProject,
                 focusVersions: focusVersions,
-                projectLoader: (_) async => _project,
+                projectLoader: (_) async => detailProject,
+                pickDirectory: pickDirectory,
                 versionsLoader: (_, {gameVersion, loader}) async {
                   requests?.add((gameVersion, loader));
                   return versions ?? _versions;
@@ -261,13 +279,96 @@ void main() {
     tester,
   ) async {
     final requests = <(String?, String?)>[];
-    await pumpPage(tester, instance: null, requests: requests);
+    await pumpPage(tester, noInstance: true, requests: requests);
 
     // A deep link used to send gameVersion=null and fail before any version
     // could be chosen. The project's newest game version is a usable default.
     expect(requests.single, ('1.21.1', 'fabric'));
     expect(find.text('Sodium 0.6.0'), findsOneWidget);
     expect(find.byKey(const Key('installSelectedVersion')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('waits for both facets before asking for downloads', (
+    tester,
+  ) async {
+    final requests = <(String?, String?)>[];
+    await pumpPage(
+      tester,
+      noInstance: true,
+      project: _projectWithoutVersions,
+      requests: requests,
+    );
+
+    expect(requests, isEmpty);
+    expect(
+      find.text(
+        'Select a game version and loader first; compatible downloads are listed here.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('can install into a custom folder', (tester) async {
+    final custom = Directory.systemTemp.createTempSync('archoera-custom');
+    addTearDown(() {
+      if (custom.existsSync()) custom.deleteSync(recursive: true);
+    });
+    var picked = 0;
+    await pumpPage(
+      tester,
+      pickDirectory: () async {
+        picked++;
+        return custom.path;
+      },
+    );
+
+    await tester.tap(find.byKey(const Key('versionDestinationMode')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A custom folder').last);
+    await tester.pumpAndSettle();
+
+    expect(picked, 1);
+    expect(find.text(custom.path), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('explains that a new instance will be created', (tester) async {
+    await pumpPage(tester);
+
+    await tester.tap(find.byKey(const Key('versionDestinationMode')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A new instance').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'A new instance matching the selected game version and loader is created when you install.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the create-instance dialog for the new target', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+
+    await tester.tap(find.byKey(const Key('versionDestinationMode')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A new instance').last);
+    await tester.pumpAndSettle();
+
+    final install = find.byKey(const Key('installSelectedVersion'));
+    await tester.ensureVisible(install);
+    await tester.tap(install);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create instance'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 

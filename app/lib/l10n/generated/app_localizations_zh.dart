@@ -581,6 +581,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadInstallTarget => '安装到';
 
   @override
+  String get downloadTargetExisting => '现有实例';
+
+  @override
+  String get downloadTargetNew => '新建实例';
+
+  @override
+  String get downloadTargetDirectory => '自定义目录';
+
+  @override
+  String get downloadTargetNewHint => '安装时创建与所选游戏版本、加载器匹配的新实例。';
+
+  @override
+  String get downloadTargetDirectoryHint => '选择任意目录，下载文件会写入对应的内容子目录。';
+
+  @override
+  String get downloadDirectoryNotSelected => '尚未选择目录。';
+
+  @override
+  String get downloadVersionFacetsHint => '先选择游戏版本与加载器，再在这里列出可用的下载方案。';
+
+  @override
   String get downloadInstallSelected => '安装所选版本';
 
   @override

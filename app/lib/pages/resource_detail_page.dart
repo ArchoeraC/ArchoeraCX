@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ import '../widgets/common/app_progress_bar.dart';
 import '../widgets/common/app_section.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/download/resource_common.dart';
+import '../widgets/instances/create_instance_dialog.dart';
 
 part 'resource_detail/overview_panel.dart';
 part 'resource_detail/version_panel.dart';
@@ -44,8 +46,11 @@ typedef ResourceVersionsLoader = Future<List<ResourceVersion>> Function(
   String? loader,
 });
 
-/// Loader slugs the download target can actually install into.
-const _installableLoaders = <String>{'fabric', 'forge', 'neoforge', 'quilt'};
+/// Where a non-modpack download lands.
+enum _InstallTargetMode { instance, newInstance, directory }
+
+/// Opens a native folder picker for the custom download directory.
+typedef PickDownloadDirectory = Future<String?> Function();
 
 /// Full-page provider project: overview, gallery, description and the list of
 /// compatible versions.
@@ -61,6 +66,7 @@ class ResourceDetailPage extends ConsumerStatefulWidget {
     this.focusVersions = false,
     this.projectLoader,
     this.versionsLoader,
+    this.pickDirectory,
   });
 
   /// `mod`, `shader`, `resourcepack` or `modpack`.
@@ -78,6 +84,9 @@ class ResourceDetailPage extends ConsumerStatefulWidget {
   /// Test seams, matching the Java page's injectable scan callback.
   final ResourceProjectLoader? projectLoader;
   final ResourceVersionsLoader? versionsLoader;
+
+  /// Test seam for the "download to a directory" destination.
+  final PickDownloadDirectory? pickDirectory;
 
   @override
   ConsumerState<ResourceDetailPage> createState() => _ResourceDetailPageState();
@@ -106,6 +115,10 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
   String? _gameVersion;
   String? _loader;
 
+  /// Destination for the install. Modpacks always create their own instance.
+  _InstallTargetMode _targetMode = _InstallTargetMode.instance;
+  String? _customRoot;
+
   bool _started = false;
   bool _versionsStarted = false;
   bool _focusedVersions = false;
@@ -121,6 +134,11 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
     _versionsTarget = _targetKey(instance);
     _gameVersion = _defaultGameVersion(instance);
     _loader = _defaultLoader(instance);
+    if (widget.kind != 'modpack') {
+      _targetMode = instance == null
+          ? _InstallTargetMode.newInstance
+          : _InstallTargetMode.instance;
+    }
     _loadProject();
     _maybeLoadVersions();
   }
@@ -130,9 +148,20 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
   /// a request the module would reject for a missing `gameVersion`.
   void _maybeLoadVersions() {
     if (_versionsStarted) return;
-    if (widget.kind != 'modpack' && _gameVersion == null) return;
+    if (!_facetsReady) return;
     _versionsStarted = true;
     _loadVersions();
+  }
+
+  /// The version/loader facets that must be known before asking the module
+  /// for download plans. Modpacks carry their own facets in the pack metadata.
+  bool get _facetsReady {
+    if (widget.kind == 'modpack') return true;
+    if (_gameVersion == null || _gameVersion!.isEmpty) return false;
+    if (widget.kind == 'mod' && (_loader == null || _loader!.isEmpty)) {
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -271,10 +300,10 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
     final project = _detail ?? widget.project;
     final loaders = project?.loaders ?? const <String>[];
     for (final loader in loaders) {
-      final slug = loader.trim().toLowerCase();
-      if (_installableLoaders.contains(slug)) return slug;
+      final slug = gameLoaderForSlug(loader)?.installSlug;
+      if (slug != null) return slug;
     }
-    return 'fabric';
+    return GameLoader.fabric.installSlug!;
   }
 
   String _pickSelectedVersion(List<ResourceVersion> versions) {
@@ -368,71 +397,207 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
     }
   }
 
+  String _destinationLabel(AppLocalizations l10n, GameInstance? instance) {
+    if (widget.kind == 'modpack') return l10n.packTargetNewInstance;
+    return switch (_targetMode) {
+      _InstallTargetMode.instance => resourceInstallTarget(
+        l10n,
+        kind: widget.kind,
+        instance: instance,
+      ),
+      _InstallTargetMode.newInstance => l10n.packTargetNewInstance,
+      _InstallTargetMode.directory =>
+        _customRoot?.trim().isNotEmpty == true
+            ? _customRoot!.trim()
+            : l10n.downloadTargetDirectoryHint,
+    };
+  }
+
   String? _installHint(
     AppLocalizations l10n,
     GameInstance? instance,
     ResourceVersion? version,
   ) {
-    if (widget.kind == 'modpack' || instance == null || version == null) {
-      return null;
-    }
-    if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
-      return l10n.resourceNeedsLoader;
-    }
-    if (!_versionMatchesTarget(version, instance)) {
-      return l10n.downloadVersionIncompatible;
+    if (widget.kind == 'modpack' || version == null) return null;
+    if (!_facetsReady) return l10n.downloadVersionFacetsHint;
+
+    switch (_targetMode) {
+      case _InstallTargetMode.instance:
+        if (instance == null) return l10n.selectInstance;
+        if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
+          return l10n.resourceNeedsLoader;
+        }
+        if (!_versionMatchesTarget(version, instance)) {
+          return l10n.downloadVersionIncompatible;
+        }
+      case _InstallTargetMode.newInstance:
+        return null;
+      case _InstallTargetMode.directory:
+        if (_customRoot?.trim().isNotEmpty != true) {
+          return l10n.downloadDirectoryNotSelected;
+        }
     }
     return null;
+  }
+
+  GameLoader _newInstanceLoader() {
+    final mapped = gameLoaderForSlug(_loader);
+    if (mapped != null) return mapped;
+    if (widget.kind == 'shader') return GameLoader.fabric;
+    return ref.read(selectedInstanceProvider)?.loader ?? GameLoader.vanilla;
+  }
+
+  Future<String?> _pickCustomRoot() async {
+    final l10n = AppLocalizations.of(context);
+    final picker = widget.pickDirectory;
+    final selected = picker != null
+        ? await picker()
+        : await getDirectoryPath(confirmButtonText: l10n.settingsChooseFolder);
+    if (!mounted) return null;
+    final path = selected?.trim();
+    if (path == null || path.isEmpty) return null;
+    setState(() => _customRoot = path);
+    return path;
+  }
+
+  Future<String?> _ensureCustomRoot() async {
+    final current = _customRoot?.trim();
+    if (current != null && current.isNotEmpty) return current;
+    return _pickCustomRoot();
   }
 
   Future<void> _install(ResourceVersion version) async {
     final project = _detail ?? widget.project;
     if (project == null) return;
     final l10n = AppLocalizations.of(context);
-    final instance = ref.read(selectedInstanceProvider);
 
-    if (widget.kind != 'modpack') {
-      if (instance == null) {
-        _notify(l10n.selectInstance, type: ToastType.warning);
-        return;
-      }
-      if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
-        _notify(l10n.resourceNeedsLoader, type: ToastType.warning);
-        return;
-      }
-      if (!_versionMatchesTarget(version, instance)) {
-        _notify(l10n.downloadVersionIncompatible, type: ToastType.warning);
-        return;
-      }
-      if (instance.rootPath.isEmpty) {
-        _notify(l10n.selectInstance, type: ToastType.warning);
-        return;
-      }
+    if (widget.kind == 'modpack') {
+      await _queueModpack(project, version, l10n);
+      return;
     }
 
+    if (!_facetsReady) {
+      _notify(l10n.downloadVersionFacetsHint, type: ToastType.warning);
+      return;
+    }
+
+    switch (_targetMode) {
+      case _InstallTargetMode.instance:
+        final instance = ref.read(selectedInstanceProvider);
+        if (instance == null) {
+          _notify(l10n.selectInstance, type: ToastType.warning);
+          return;
+        }
+        if (widget.kind == 'mod' && instance.loader == GameLoader.vanilla) {
+          _notify(l10n.resourceNeedsLoader, type: ToastType.warning);
+          return;
+        }
+        if (!_versionMatchesTarget(version, instance)) {
+          _notify(l10n.downloadVersionIncompatible, type: ToastType.warning);
+          return;
+        }
+        if (instance.rootPath.isEmpty) {
+          _notify(l10n.selectInstance, type: ToastType.warning);
+          return;
+        }
+        await _queueResource(
+          project,
+          version,
+          l10n,
+          gameVersion: instance.gameVersion,
+          rootPath: instance.rootPath,
+          loader: instance.loader == GameLoader.vanilla
+              ? null
+              : loaderSlug(instance.loader),
+        );
+      case _InstallTargetMode.newInstance:
+        final created = await showCreateInstanceDialog(
+          context,
+          initialVersion: _gameVersion,
+          initialLoader: _newInstanceLoader(),
+        );
+        if (created == null || !mounted) return;
+        if (!_versionMatchesTarget(version, created)) {
+          _notify(l10n.downloadVersionIncompatible, type: ToastType.warning);
+          return;
+        }
+        await _queueResource(
+          project,
+          version,
+          l10n,
+          gameVersion: created.gameVersion,
+          rootPath: created.rootPath,
+          loader: created.loader == GameLoader.vanilla
+              ? null
+              : loaderSlug(created.loader),
+        );
+        if (!mounted) return;
+        ref.read(selectedInstanceIdProvider.notifier).select(created.id);
+        setState(() => _targetMode = _InstallTargetMode.instance);
+      case _InstallTargetMode.directory:
+        final root = await _ensureCustomRoot();
+        if (root == null || !mounted) return;
+        await _queueResource(
+          project,
+          version,
+          l10n,
+          gameVersion: _gameVersion!,
+          rootPath: root,
+          loader: _loader,
+        );
+    }
+  }
+
+  Future<void> _queueModpack(
+    ResourceProject project,
+    ResourceVersion version,
+    AppLocalizations l10n,
+  ) async {
     setState(() => _preparing.add(version.id));
     try {
-      final downloads = ref.read(downloadsProvider.notifier);
-      if (widget.kind == 'modpack') {
-        await downloads.installModpackFromModrinth(
-          projectId: project.id,
-          versionId: version.id,
-          label: project.name,
-          successMessage: l10n.packInstallDone,
-          failureMessage: l10n.packInstallFailed,
-          cancelledMessage: l10n.downloadCancelled(project.name),
-        );
-      } else {
-        await downloads.installResource(
-          project: project,
-          version: version,
-          instance: instance!,
-          kind: widget.kind,
-          successMessage: l10n.downloadFinished(project.name),
-          failureMessage: l10n.downloadFailed(project.name),
-          cancelledMessage: l10n.downloadCancelled(project.name),
-        );
-      }
+      await ref
+          .read(downloadsProvider.notifier)
+          .installModpackFromModrinth(
+            projectId: project.id,
+            versionId: version.id,
+            label: project.name,
+            successMessage: l10n.packInstallDone,
+            failureMessage: l10n.packInstallFailed,
+            cancelledMessage: l10n.downloadCancelled(project.name),
+          );
+      if (!mounted) return;
+      _notify(l10n.downloadQueued(project.name), type: ToastType.success);
+    } catch (error) {
+      if (!mounted) return;
+      _notify(error.toString(), type: ToastType.error);
+    } finally {
+      if (mounted) setState(() => _preparing.remove(version.id));
+    }
+  }
+
+  Future<void> _queueResource(
+    ResourceProject project,
+    ResourceVersion version,
+    AppLocalizations l10n, {
+    required String gameVersion,
+    required String rootPath,
+    String? loader,
+  }) async {
+    setState(() => _preparing.add(version.id));
+    try {
+      await ref
+          .read(downloadsProvider.notifier)
+          .installResource(
+            project: project,
+            version: version,
+            kind: widget.kind,
+            gameVersion: gameVersion,
+            rootPath: rootPath,
+            loader: loader,
+            successMessage: l10n.downloadFinished(project.name),
+            failureMessage: l10n.downloadFailed(project.name),
+            cancelledMessage: l10n.downloadCancelled(project.name),
+          );
       if (!mounted) return;
       _notify(l10n.downloadQueued(project.name), type: ToastType.success);
     } catch (error) {
@@ -487,13 +652,8 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
   ) {
     final values = <String>[];
     void add(String? candidate) {
-      final value = candidate?.trim().toLowerCase();
-      if (value == null ||
-          value.isEmpty ||
-          !_installableLoaders.contains(value) ||
-          values.contains(value)) {
-        return;
-      }
+      final value = gameLoaderForSlug(candidate)?.installSlug;
+      if (value == null || values.contains(value)) return;
       values.add(value);
     }
 
@@ -599,6 +759,17 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
                         : const <String>[],
                     loader: _loader,
                     onLoaderChanged: _selectLoader,
+                    destinationEnabled: widget.kind != 'modpack',
+                    targetMode: _targetMode,
+                    onTargetModeChanged: (mode) async {
+                      setState(() => _targetMode = mode);
+                      if (mode == _InstallTargetMode.directory &&
+                          _customRoot?.trim().isNotEmpty != true) {
+                        await _pickCustomRoot();
+                      }
+                    },
+                    customRoot: _customRoot,
+                    onPickDirectory: _pickCustomRoot,
                     instances: widget.kind == 'modpack'
                         ? const <GameInstance>[]
                         : instances,
@@ -606,11 +777,8 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
                     onTargetChanged: (id) {
                       ref.read(selectedInstanceIdProvider.notifier).select(id);
                     },
-                    target: resourceInstallTarget(
-                      l10n,
-                      kind: widget.kind,
-                      instance: instance,
-                    ),
+                    target: _destinationLabel(l10n, instance),
+                    facetsReady: _facetsReady,
                     installHint: _installHint(l10n, instance, selected),
                     installing:
                         selected != null && _preparing.contains(selected.id),

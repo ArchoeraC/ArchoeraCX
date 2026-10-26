@@ -1136,6 +1136,48 @@ abstract class AppLocalizations {
   /// **'Install to'**
   String get downloadInstallTarget;
 
+  /// No description provided for @downloadTargetExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'An existing instance'**
+  String get downloadTargetExisting;
+
+  /// No description provided for @downloadTargetNew.
+  ///
+  /// In en, this message translates to:
+  /// **'A new instance'**
+  String get downloadTargetNew;
+
+  /// No description provided for @downloadTargetDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'A custom folder'**
+  String get downloadTargetDirectory;
+
+  /// No description provided for @downloadTargetNewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A new instance matching the selected game version and loader is created when you install.'**
+  String get downloadTargetNewHint;
+
+  /// No description provided for @downloadTargetDirectoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a folder; the download is written to the matching content subfolder.'**
+  String get downloadTargetDirectoryHint;
+
+  /// No description provided for @downloadDirectoryNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No folder chosen yet.'**
+  String get downloadDirectoryNotSelected;
+
+  /// No description provided for @downloadVersionFacetsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a game version and loader first; compatible downloads are listed here.'**
+  String get downloadVersionFacetsHint;
+
   /// No description provided for @downloadInstallSelected.
   ///
   /// In en, this message translates to:

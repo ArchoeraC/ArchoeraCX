@@ -16,6 +16,28 @@ enum GameLoader {
   const GameLoader(this.defaultVersion);
 
   final String defaultVersion;
+
+  /// Provider loader slug for this family, or null for vanilla.
+  ///
+  /// Keep the mapping next to the enum so downloads, filters and the project
+  /// page cannot drift apart.
+  String? get installSlug => switch (this) {
+    GameLoader.vanilla => null,
+    GameLoader.fabric => 'fabric',
+    GameLoader.quilt => 'quilt',
+    GameLoader.forge => 'forge',
+    GameLoader.neoforge => 'neoforge',
+  };
+}
+
+/// Maps a provider loader slug back to the enum, or null when unsupported.
+GameLoader? gameLoaderForSlug(String? slug) {
+  final value = slug?.trim().toLowerCase();
+  if (value == null || value.isEmpty) return null;
+  for (final loader in GameLoader.values) {
+    if (loader.installSlug == value) return loader;
+  }
+  return null;
 }
 
 /// Per-instance launch overrides.

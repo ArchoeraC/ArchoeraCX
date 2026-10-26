@@ -19,17 +19,29 @@ import '../../utils/app_paths.dart';
 Future<GameInstance?> showCreateInstanceDialog(
   BuildContext context, {
   String? initialVersion,
+  GameLoader? initialLoader,
 }) {
   return showDialog<GameInstance>(
     context: context,
-    builder: (context) => CreateInstanceDialog(initialVersion: initialVersion),
+    builder: (context) => CreateInstanceDialog(
+      initialVersion: initialVersion,
+      initialLoader: initialLoader,
+    ),
   );
 }
 
 class CreateInstanceDialog extends ConsumerStatefulWidget {
-  const CreateInstanceDialog({super.key, this.initialVersion});
+  const CreateInstanceDialog({
+    super.key,
+    this.initialVersion,
+    this.initialLoader,
+  });
 
   final String? initialVersion;
+
+  /// Preselects the loader when the dialog is opened from a download page
+  /// whose facet picker already resolved the target.
+  final GameLoader? initialLoader;
 
   @override
   ConsumerState<CreateInstanceDialog> createState() =>
@@ -49,8 +61,8 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
   final _nameController = TextEditingController();
   final _rootController = TextEditingController();
   late String _gameVersion;
-  GameLoader _loader = GameLoader.fabric;
-  String _loaderVersion = GameLoader.fabric.defaultVersion;
+  late GameLoader _loader;
+  late String _loaderVersion;
   List<LoaderVersionInfo> _loaderVersions = const [];
   bool _loadingVersions = false;
   String? _versionError;
@@ -68,6 +80,8 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
     _gameVersion = requested == null || requested.isEmpty
         ? _baseGameVersions.first
         : requested;
+    _loader = widget.initialLoader ?? GameLoader.fabric;
+    _loaderVersion = _loader.defaultVersion;
     _nameController.addListener(_onNameChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadLoaderVersions();

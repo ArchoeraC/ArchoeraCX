@@ -606,6 +606,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadInstallTarget => 'Install to';
 
   @override
+  String get downloadTargetExisting => 'An existing instance';
+
+  @override
+  String get downloadTargetNew => 'A new instance';
+
+  @override
+  String get downloadTargetDirectory => 'A custom folder';
+
+  @override
+  String get downloadTargetNewHint =>
+      'A new instance matching the selected game version and loader is created when you install.';
+
+  @override
+  String get downloadTargetDirectoryHint =>
+      'Choose a folder; the download is written to the matching content subfolder.';
+
+  @override
+  String get downloadDirectoryNotSelected => 'No folder chosen yet.';
+
+  @override
+  String get downloadVersionFacetsHint =>
+      'Select a game version and loader first; compatible downloads are listed here.';
+
+  @override
   String get downloadInstallSelected => 'Install selected version';
 
   @override

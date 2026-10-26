@@ -38,13 +38,10 @@ final activeDownloadsProvider = Provider<List<TaskUpdate>>((ref) {
 });
 
 /// Loader facet Modrinth expects for an instance.
-String loaderSlug(GameLoader loader) => switch (loader) {
-  GameLoader.fabric => 'fabric',
-  GameLoader.forge => 'forge',
-  GameLoader.neoforge => 'neoforge',
-  GameLoader.quilt => 'quilt',
-  _ => 'fabric',
-};
+///
+/// Vanilla instances have no loader slug; the catalogue uses Fabric as its
+/// browse default, matching the download page's fallback.
+String loaderSlug(GameLoader loader) => loader.installSlug ?? 'fabric';
 
 /// Starts installs in the background.
 ///
@@ -169,26 +166,33 @@ class DownloadsNotifier extends Notifier<void> {
     );
   }
 
-  /// Mod, resource pack or shader into [instance] (dependencies included).
+  /// Mod, resource pack or shader into [rootPath] (dependencies included).
+  ///
+  /// The target is expressed as facets plus a root instead of a
+  /// [GameInstance]: the project page can install into an existing instance,
+  /// a freshly created one, or a plain directory the user picked. C# builds
+  /// the plan from the same `resource.plan` call for all three cases.
   Future<void> installResource({
     required ResourceProject project,
     required ResourceVersion version,
-    required GameInstance instance,
     required String kind,
+    required String gameVersion,
+    required String rootPath,
     required String successMessage,
     required String failureMessage,
     required String cancelledMessage,
+    String? loader,
   }) async {
     final client = _client();
     final plan = await client.planModrinthDownload(
       projectId: project.id,
       versionId: version.id,
       kind: kind,
-      gameVersion: instance.gameVersion,
-      loader: loaderSlug(instance.loader),
+      gameVersion: gameVersion,
+      loader: loader,
       shaderLoader: kind == 'shader' ? 'iris' : null,
       includeDependencies: true,
-      root: instance.rootPath,
+      root: rootPath,
     );
 
     _detach(

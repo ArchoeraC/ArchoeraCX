@@ -24,10 +24,16 @@ class _VersionPanel extends StatefulWidget {
     required this.loaders,
     required this.loader,
     required this.onLoaderChanged,
+    required this.destinationEnabled,
+    required this.targetMode,
+    required this.onTargetModeChanged,
+    required this.customRoot,
+    required this.onPickDirectory,
     required this.instances,
     required this.targetInstanceId,
     required this.onTargetChanged,
     required this.target,
+    required this.facetsReady,
     required this.installHint,
     required this.installing,
     required this.onInstall,
@@ -52,6 +58,13 @@ class _VersionPanel extends StatefulWidget {
   final String? loader;
   final ValueChanged<String> onLoaderChanged;
 
+  /// False for modpacks, whose version creates the instance by itself.
+  final bool destinationEnabled;
+  final _InstallTargetMode targetMode;
+  final ValueChanged<_InstallTargetMode> onTargetModeChanged;
+  final String? customRoot;
+  final Future<String?> Function() onPickDirectory;
+
   /// Instances the install can target; empty for modpacks.
   final List<GameInstance> instances;
   final String? targetInstanceId;
@@ -59,6 +72,9 @@ class _VersionPanel extends StatefulWidget {
 
   /// Human-readable target, or the "select an instance" hint.
   final String target;
+
+  /// Both facets are known, so the version request can run.
+  final bool facetsReady;
   final String? installHint;
   final bool installing;
   final VoidCallback? onInstall;
@@ -116,14 +132,18 @@ class _VersionPanelState extends State<_VersionPanel> {
             widget.target,
             style: textTheme.bodySmall?.copyWith(color: tokens.textTertiary),
           ),
-          if (widget.instances.isNotEmpty) ...[
+          if (widget.destinationEnabled) ...[
             const SizedBox(height: AppSpacing.sm),
-            _TargetField(
+            _DestinationField(
               key: const Key('versionTargetField'),
               l10n: l10n,
+              mode: widget.targetMode,
+              onModeChanged: widget.onTargetModeChanged,
               instances: widget.instances,
-              value: widget.targetInstanceId,
-              onChanged: widget.onTargetChanged,
+              targetInstanceId: widget.targetInstanceId,
+              onTargetChanged: widget.onTargetChanged,
+              customRoot: widget.customRoot,
+              onPickDirectory: widget.onPickDirectory,
             ),
           ],
           if (widget.gameVersions.isNotEmpty || widget.loaders.isNotEmpty) ...[
@@ -154,7 +174,18 @@ class _VersionPanelState extends State<_VersionPanel> {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          if (widget.loading)
+          if (!widget.facetsReady)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: Text(
+                l10n.downloadVersionFacetsHint,
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall?.copyWith(
+                  color: tokens.textSecondary,
+                ),
+              ),
+            )
+          else if (widget.loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
               child: Center(
@@ -212,11 +243,123 @@ class _VersionPanelState extends State<_VersionPanel> {
   }
 }
 
-/// Instance picker: the version facets follow this target, and the install
-/// plan is built against it.
-class _TargetField extends StatelessWidget {
-  const _TargetField({
+/// Destination picker: an existing instance, a new one, or a plain folder.
+class _DestinationField extends StatelessWidget {
+  const _DestinationField({
     super.key,
+    required this.l10n,
+    required this.mode,
+    required this.onModeChanged,
+    required this.instances,
+    required this.targetInstanceId,
+    required this.onTargetChanged,
+    required this.customRoot,
+    required this.onPickDirectory,
+  });
+
+  final AppLocalizations l10n;
+  final _InstallTargetMode mode;
+  final ValueChanged<_InstallTargetMode> onModeChanged;
+  final List<GameInstance> instances;
+  final String? targetInstanceId;
+  final ValueChanged<String> onTargetChanged;
+  final String? customRoot;
+  final Future<String?> Function() onPickDirectory;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(AppIcons.instances, size: 16, color: tokens.textTertiary),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              l10n.downloadInstallTarget,
+              style: textTheme.labelMedium?.copyWith(
+                color: tokens.textSecondary,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppDropdown<_InstallTargetMode>(
+                key: const Key('versionDestinationMode'),
+                value: mode,
+                isExpanded: true,
+                items: [
+                  DropdownMenuItem(
+                    value: _InstallTargetMode.instance,
+                    child: Text(l10n.downloadTargetExisting),
+                  ),
+                  DropdownMenuItem(
+                    value: _InstallTargetMode.newInstance,
+                    child: Text(l10n.downloadTargetNew),
+                  ),
+                  DropdownMenuItem(
+                    value: _InstallTargetMode.directory,
+                    child: Text(l10n.downloadTargetDirectory),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) onModeChanged(value);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        switch (mode) {
+          _InstallTargetMode.instance => _InstancePicker(
+            l10n: l10n,
+            instances: instances,
+            value: targetInstanceId,
+            onChanged: onTargetChanged,
+          ),
+          _InstallTargetMode.newInstance => Text(
+            l10n.downloadTargetNewHint,
+            style: textTheme.bodySmall?.copyWith(
+              color: tokens.textTertiary,
+              height: 1.45,
+            ),
+          ),
+          _InstallTargetMode.directory => Row(
+            children: [
+              Expanded(
+                child: Text(
+                  customRoot?.trim().isNotEmpty == true
+                      ? customRoot!.trim()
+                      : l10n.downloadDirectoryNotSelected,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: customRoot?.trim().isNotEmpty == true
+                        ? tokens.textSecondary
+                        : tokens.textTertiary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await onPickDirectory();
+                },
+                icon: const Icon(AppIcons.folder, size: 16),
+                label: Text(l10n.settingsChooseFolder),
+              ),
+            ],
+          ),
+        },
+      ],
+    );
+  }
+}
+
+class _InstancePicker extends StatelessWidget {
+  const _InstancePicker({
     required this.l10n,
     required this.instances,
     required this.value,
@@ -230,41 +373,25 @@ class _TargetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Row(
-      children: [
-        Icon(AppIcons.instances, size: 16, color: tokens.textTertiary),
-        const SizedBox(width: AppSpacing.xs),
-        Text(
-          l10n.downloadInstallTarget,
-          style: textTheme.labelMedium?.copyWith(color: tokens.textSecondary),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: AppDropdown<String>(
-            value: value,
-            isExpanded: true,
-            hint: Text(l10n.selectInstance),
-            items: [
-              for (final instance in instances)
-                DropdownMenuItem(
-                  value: instance.id,
-                  child: Text(
-                    '${instance.name} · ${instance.gameVersion} · '
-                    '${instance.loaderLabelFor(l10n)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-            ],
-            onChanged: (id) {
-              if (id != null) onChanged(id);
-            },
+    return AppDropdown<String>(
+      value: value,
+      isExpanded: true,
+      hint: Text(l10n.selectInstance),
+      items: [
+        for (final instance in instances)
+          DropdownMenuItem(
+            value: instance.id,
+            child: Text(
+              '${instance.name} · ${instance.gameVersion} · '
+              '${instance.loaderLabelFor(l10n)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-        ),
       ],
+      onChanged: (id) {
+        if (id != null) onChanged(id);
+      },
     );
   }
 }
@@ -528,15 +655,8 @@ class _InstallFooter extends StatelessWidget {
   }
 }
 
-String _loaderLabel(AppLocalizations l10n, String slug) {
-  return switch (slug.trim().toLowerCase()) {
-    'fabric' => l10n.loaderFabric,
-    'quilt' => l10n.loaderQuilt,
-    'forge' => l10n.loaderForge,
-    'neoforge' => l10n.loaderNeoForge,
-    _ => slug,
-  };
-}
+String _loaderLabel(AppLocalizations l10n, String slug) =>
+    gameLoaderForSlug(slug)?.labelFor(l10n) ?? slug;
 
 class _VersionLoadError extends StatelessWidget {
   const _VersionLoadError({required this.message, required this.onRetry});
