@@ -53,6 +53,12 @@ const char* platform_name();
 /// does not expose them (or the read fails); callers then omit the percentage.
 CpuTimes read_cpu_times();
 
+/// Returns [path] when it is an existing directory, otherwise its nearest
+/// existing ancestor (normally the volume root). Empty when no ancestor can be
+/// reached. Callers use it to report the volume that will hold a path which may
+/// not exist yet, such as the default instance root on a fresh install.
+std::string status_volume_path(const std::string& path);
+
 /// Samples everything except CPU usage. Never throws; unknown metrics stay
 /// unset so the UI can hide them instead of showing a fake zero.
 SystemStatus sample_system_status(const std::string& disk_path);

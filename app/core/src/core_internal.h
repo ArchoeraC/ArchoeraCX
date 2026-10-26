@@ -78,7 +78,7 @@ constexpr const char* kMsgOpenUrlInvalid = "system.openUrl requires http(s)";
 constexpr const char* kMsgOpenPathInvalid =
     "system.openPath requires an absolute existing directory";
 constexpr const char* kMsgStatusPathInvalid =
-    "system.status requires an absolute existing directory";
+    "system.status requires an absolute path";
 constexpr const char* kMsgNotifyNeedsPayload =
     "system.notify requires a title or body";
 constexpr const char* kMsgNotifyTooLarge =

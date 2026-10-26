@@ -105,8 +105,12 @@ SystemStatus sample_system_status(const std::string& disk_path) {
         static_cast<long long>(memory.ullAvailPhys / 1024 / 1024);
   }
 
-  const std::wstring wide_path =
-      widen(disk_path.empty() ? std::string(".") : disk_path);
+  // A missing instance root must not hide the whole panel: query its nearest
+  // existing ancestor instead (the default root is created with the first
+  // instance).
+  const std::string probe =
+      disk_path.empty() ? std::string(".") : status_volume_path(disk_path);
+  const std::wstring wide_path = widen(probe);
   ULARGE_INTEGER free_available{};
   ULARGE_INTEGER total{};
   ULARGE_INTEGER total_free{};

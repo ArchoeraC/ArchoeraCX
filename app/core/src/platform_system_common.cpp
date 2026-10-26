@@ -62,7 +62,7 @@ bool is_safe_external_url(const std::string& url) {
   return true;
 }
 
-bool is_safe_directory_path(const std::string& path) {
+bool is_safe_absolute_path(const std::string& path) {
   // 4096 is the usual PATH_MAX; anything longer cannot name a real directory
   // on the platforms we support.
   if (path.empty() || path.size() > 4096) {
@@ -73,7 +73,11 @@ bool is_safe_directory_path(const std::string& path) {
       return false;
     }
   }
-  if (!is_absolute_path(path)) {
+  return is_absolute_path(path);
+}
+
+bool is_safe_directory_path(const std::string& path) {
+  if (!is_safe_absolute_path(path)) {
     return false;
   }
 

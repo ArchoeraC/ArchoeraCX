@@ -97,7 +97,9 @@ bool read_disk(const std::string& path,
                long long* total_bytes,
                long long* free_bytes) {
   if (total_bytes == nullptr || free_bytes == nullptr) return false;
-  const std::string target = path.empty() ? "/" : path;
+  const std::string target =
+      path.empty() ? std::string("/") : status_volume_path(path);
+  if (target.empty()) return false;
   struct statvfs info {};
   if (statvfs(target.c_str(), &info) != 0) return false;
   const auto block_size = static_cast<long long>(info.f_frsize);

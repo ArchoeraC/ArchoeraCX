@@ -2409,7 +2409,7 @@ public interface IDownloadProvider {
 | `system.log.export` | C++ | 导出诊断日志 |
 | `system.memory` | C# | 上报物理总内存/可用内存 |
 | `system.identity` | C# | 构建来源标记：编译期 client_id 的域分隔 SHA-256、`channel`（official/custom/unconfigured）；**原始 id 不跨 ABI** |
-| `system.status` | C++ | 机器负载快照（异步任务）：CPU 采样/核数/负载、内存、指定路径所在磁盘、启动器进程与系统运行时长；平台 API 在 `platform_status_*`，未知值写 null |
+| `system.status` | C++ | 机器负载快照（异步任务）：CPU 采样/核数/负载、内存、指定路径所在磁盘、启动器进程与系统运行时长；`path` 只是卷提示，可以尚不存在（取最近存在的祖先目录），平台 API 在 `platform_status_*`，未知值写 null |
 | `system.status.watch` | C++ | 启动原生采样线程，按 `intervalMs`（默认 5000，范围 1000–60000）推送 `system.status` 域事件；条件变量等待，不做 Dart 轮询 |
 | `system.status.unwatch` | C++ | 停止采样线程并 join |
 | `system.gpu` | C++ | 显示适配器快照：`platform`、`gpus[]`（`vendor`/`name`/`discrete`/`driverLoaded`）、`primaryVendor`、`hybrid`；Linux 读 `/sys/class/drm`，Windows 走 `EnumDisplayDevicesW`，macOS 返回空列表（系统自行切换）；进程内缓存，不做轮询 |

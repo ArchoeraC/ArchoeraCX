@@ -106,10 +106,12 @@ SystemStatus sample_system_status(const std::string& disk_path) {
   }
 
   struct statfs info {};
-  const std::string target = disk_path.empty() ? "/" : disk_path;
-  if (statfs(target.c_str(), &info) == 0 && info.f_bsize > 0) {
+  const std::string target =
+      disk_path.empty() ? std::string("/") : status_volume_path(disk_path);
+  if (!target.empty() && statfs(target.c_str(), &info) == 0 &&
+      info.f_bsize > 0) {
     status.disk_known = true;
-    status.disk_path = target;
+    status.disk_path = disk_path.empty() ? target : disk_path;
     status.disk_total_bytes =
         static_cast<long long>(info.f_blocks) * info.f_bsize;
     status.disk_free_bytes =

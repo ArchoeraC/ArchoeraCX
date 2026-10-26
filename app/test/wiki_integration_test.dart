@@ -72,6 +72,21 @@ void main() {
       expect(status.diskPath, isNotNull);
       expect(status.launcherWorkingSetMb, greaterThan(0));
 
+      // A fresh install has no instance root yet: the path is only a volume
+      // hint, so the native sampler must use its nearest existing ancestor
+      // instead of failing the whole panel.
+      final missingRoot = Directory(
+        '${Directory.current.path}${Platform.pathSeparator}'
+        'archoera-status-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      final missingStatus = await client.getSystemStatus(
+        path: missingRoot.path,
+      );
+      expect(missingStatus, isNotNull);
+      expect(missingStatus!.cores, greaterThan(0));
+      expect(missingStatus.diskPath, missingRoot.path);
+      expect(missingStatus.diskTotalBytes, isNotNull);
+
       // The core pushes domain events every interval; Dart only drains them.
       final pushed = client.events
           .where(

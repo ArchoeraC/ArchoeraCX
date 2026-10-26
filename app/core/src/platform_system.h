@@ -33,6 +33,12 @@ bool send_system_notification(const std::string& title,
 // characters may leave the process.
 bool is_safe_external_url(const std::string& url);
 
+// Shared validation for paths used only to select a volume: an absolute,
+// bounded, control-character free path. The target may not exist yet, so a
+// fresh install can still sample the volume that will hold new instances. Not
+// for open/reveal, which must reject files and missing paths.
+bool is_safe_absolute_path(const std::string& path);
+
 // Shared validation used by every backend: only an existing absolute directory
 // with a bounded, control-character free path may be handed to the OS.
 bool is_safe_directory_path(const std::string& path);

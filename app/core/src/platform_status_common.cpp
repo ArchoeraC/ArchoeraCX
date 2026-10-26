@@ -5,7 +5,19 @@
 
 #include "platform_status.h"
 
+#include <filesystem>
+#include <string>
+#include <system_error>
+
 namespace archoera {
+namespace {
+
+std::string path_to_utf8(const std::filesystem::path& path) {
+  const std::u8string value = path.u8string();
+  return std::string(reinterpret_cast<const char*>(value.data()), value.size());
+}
+
+}  // namespace
 
 const char* platform_name() {
 #if defined(_WIN32)
@@ -17,6 +29,29 @@ const char* platform_name() {
 #else
   return "unknown";
 #endif
+}
+
+std::string status_volume_path(const std::string& path) {
+  if (path.empty()) return {};
+  try {
+    std::error_code code;
+    std::filesystem::path candidate(std::u8string(path.begin(), path.end()));
+    while (!candidate.empty()) {
+      if (std::filesystem::is_directory(candidate, code) && !code) {
+        return path_to_utf8(candidate);
+      }
+      code.clear();
+      const std::filesystem::path parent = candidate.parent_path();
+      if (parent.empty() || parent == candidate) {
+        break;
+      }
+      candidate = parent;
+    }
+  } catch (...) {
+    // Path conversion is platform-dependent; an unreadable hint only hides the
+    // disk row.
+  }
+  return {};
 }
 
 bool cpu_usage_percent(const CpuTimes& previous,

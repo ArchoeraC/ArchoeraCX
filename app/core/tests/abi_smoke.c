@@ -13,8 +13,17 @@
 
 #if defined(_WIN32)
 #  include <windows.h>
+/*
+ * A fully qualified path that does not exist (the default instance root is
+ * created with the first instance). Backslashes are doubled because this is
+ * embedded in JSON.
+ */
+static const char kMissingStatusPath[] =
+    "{\"path\":\"C:\\\\archoera-cx\\\\no-such-directory\"}";
 #else
 #  include <time.h>
+static const char kMissingStatusPath[] =
+    "{\"path\":\"/archoera-cx/no-such-directory\"}";
 #endif
 
 /*
@@ -240,11 +249,53 @@ int main(void) {
     CHECK(strstr(json, "\"disk\":") != NULL);
     CHECK(strstr(json, "\"process\":") != NULL);
     archoera_release(core, status_task);
+  }
 
-    /* The push watcher is core-owned and can be stopped again. */
+  /* A missing instance root is a volume hint, not an error: the sampler uses
+   * the nearest existing ancestor so the panel still works on a fresh host. */
+  {
+    uint64_t missing_task = 0;
+    CHECK(archoera_call(core, "system.status", kMissingStatusPath,
+                        &missing_task, &err) == ARCHOERA_OK);
+    CHECK(missing_task != 0);
+    int found = 0;
+    for (int attempt = 0; attempt < 200 && !found; ++attempt) {
+      count = archoera_poll(core, events, 64);
+      if (count < 0) {
+        break;
+      }
+      for (int index = 0; index < count; ++index) {
+        if (events[index].task_id == missing_task &&
+            events[index].state == ARCHOERA_TASK_COMPLETED) {
+          found = 1;
+        }
+      }
+      if (!found) {
+        sleep_millis(10);
+      }
+    }
+    CHECK(found);
+    len = 0;
+    CHECK(archoera_result(core, missing_task, NULL, 0, &len, &err) ==
+          ARCHOERA_OK);
+    json = (char*)malloc(len);
+    CHECK(json != NULL);
+    CHECK(archoera_result(core, missing_task, json, len, &len, &err) ==
+          ARCHOERA_OK);
+    /* The nearest existing ancestor supplied the volume row. */
+    CHECK(strstr(json, "\"disk\":{") != NULL);
+    CHECK(strstr(json, "\"totalBytes\":null") == NULL);
+    free(json);
+    json = NULL;
+    archoera_release(core, missing_task);
+  }
+
+  {
+    /* The push watcher is core-owned and can be stopped again. It accepts the
+     * same volume hint, including a root that does not exist yet. */
     uint64_t watch_task = 0;
     CHECK(archoera_call(core, "system.status.watch",
-                        "{\"intervalMs\":1000}", &watch_task, &err) ==
+                        kMissingStatusPath, &watch_task, &err) ==
           ARCHOERA_OK);
     CHECK(watch_task != 0);
     archoera_release(core, watch_task);

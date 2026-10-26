@@ -329,7 +329,9 @@ archoera_status handle_system_status(archoera_core& core,
                                      archoera_error* err) {
   std::string path;
   extract_json_string(params, "path", &path);
-  if (!path.empty() && !is_safe_directory_path(path)) {
+  // The path is only a volume hint: it may point at an instance root that does
+  // not exist on a fresh install. Existence is resolved by the sampler.
+  if (!path.empty() && !is_safe_absolute_path(path)) {
     set_error(err, ARCHOERA_E_INVALID, kMsgStatusPathInvalid);
     return ARCHOERA_E_INVALID;
   }
@@ -354,7 +356,7 @@ archoera_status handle_system_status_watch(archoera_core& core,
 
   std::string path;
   extract_json_string(params, "path", &path);
-  if (!path.empty() && !is_safe_directory_path(path)) {
+  if (!path.empty() && !is_safe_absolute_path(path)) {
     set_error(err, ARCHOERA_E_INVALID, kMsgStatusPathInvalid);
     return ARCHOERA_E_INVALID;
   }
