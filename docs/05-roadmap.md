@@ -5,18 +5,18 @@
 
 ---
 
-## 当前状态（2026-10-21）
+## 当前状态（2026-10-27）
 
 | 阶段 | 状态 | 已完成 |
 |---|---|---|
 | P0 | 完成 | 选型、许可证、架构、构建骨架 |
 | P1 | 部分完成 | C++ 核心、模块/方法注册表、事件泵、C# AOT、Java 扫描、Forge/NeoForge 生成物、Rust 计划执行器 |
 | P2 | 部分完成 | Flutter AppShell、实例/设置/下载页、CoreClient |
-| P3 | 部分完成 | Microsoft Device Code、XBL/XSTS/Minecraft、离线账户；凭据保险库已接入（crypto/file），待 Minecraft client_id 审核 |
+| P3 | 部分完成 | Microsoft Authorization Code + PKCE（Device Code fallback）、XBL/XSTS/Minecraft、离线账户；凭据保险库已接入（crypto/file），待 Minecraft client_id 审核 |
 | P4 | 部分完成 | Forge/NeoForge 计划、生成物校验/修复、实例内安装 UI |
-| P5 | 部分完成 | 实例 SQLite、Modrinth；整合包未完成；CurseForge 待配置 API 访问 |
+| P5 | 部分完成 | 实例 SQLite、Modrinth、整合包导入/安装；CurseForge 待配置 API 访问 |
 | P6 | 进行中 | 设计令牌、主题、i18n、账户/实例 UI |
-| P7 | 未开始 | 更新器、签名、安装包、正式发布 |
+| P7 | 进行中 | 更新器、平台签名、正式发布；安装包已由 CI 产出 |
 
 ---
 
@@ -24,10 +24,10 @@
 
 | 阶段 | 主题 | 产出 | 预估 |
 |---|---|---|---|
-| P0 | 选型与文档 | 本仓库文档、参考项目清单、许可证结论 | 已完成 |
+| P0 | 选型与文档 | 本仓库文档、许可证结论、架构决策 | 已完成 |
 | P1 | ABI + 枢纽骨架 | C++ 枢纽、C#/Rust 模块、垂直切片跑通 | 4–5 周 |
 | P2 | FFI 接线 + UI 壳 | Flutter 通过 ABI 装原版并启动 | 3–4 周 |
-| P3 | 账户 | 微软登录 / 离线 / 第三方 | 2–3 周 |
+| P3 | 账户 | 微软登录 / 离线 / 第三方（未接入） | 2–3 周 |
 | P4 | 加载器 | Fabric / Quilt / Forge / NeoForge | 4–6 周 |
 | P5 | 实例与资源 | 多实例、Mod 管理、整合包 | 6–8 周 |
 | P6 | 体验与打磨 | 主题、动效、3D 皮肤、托盘、i18n | 持续 |
@@ -40,7 +40,7 @@
 **产出**
 
 - `README.md` + `docs/README.md` + 当前架构/认证/发行/UI 文档
-- 参考项目克隆清单与许可证矩阵
+- 许可证结论与第三方依赖边界
 - 架构决策（AGPL-3.0-only / Flutter / C++ 枢纽 / C ABI）的结论
 
 **验收**
@@ -62,7 +62,7 @@
 
 **范围**
 
-- 实现依据：`docs/08`（合并 / 安装 / 下载 / 搜索 / 崩溃）
+- 实现依据：`docs/08-technical-research/`（合并 / 安装 / 下载 / 搜索 / 崩溃）
 - `archoera_abi.h` v1：init/poll/call/cancel/shutdown + 版本握手
 - `archoera_core`（C++）：MethodRegistry、ModuleRegistry、TaskRegistry、EventPump、日志、崩溃处理器
 - `archoera_cs`（C# NativeAOT）：版本清单、rules 求值、Java 探测、实例最小模型、SQLite、**API 客户端**
@@ -124,11 +124,11 @@
 
 **范围**
 
-- Microsoft OAuth 2.0 device code flow（自有 Entra 应用）
+- Microsoft OAuth 2.0 authorization code + PKCE（loopback；Device Code 作为 fallback，自有 Entra 应用）
 - Xbox Live → XSTS → Minecraft Services → profile
-- refresh token 持久化（凭据保险库：OS 安全存储 crypto / file 降级）
+- refresh token 持久化（凭据保险库：crypto/file encrypted-file 模式）
 - 离线账户（明确提示仅离线/局域网）
-- 第三方认证：`authlib-injector` 以独立 agent 调用
+- 第三方认证：`authlib-injector` 以独立 agent 调用（当前未接入）
 - 多账户切换、token 失效自动刷新、登出清理
 
 **验收**
@@ -141,7 +141,7 @@
 | 4 | token 失效时给出明确引导，不静默失败 |
 | 5 | 离线账户启动不请求网络认证 |
 
-**风险**：微软接口变更、地区风控、设备码体验差 → 提供"浏览器回调"备选；错误文案可读。
+**风险**：微软接口变更、地区风控、浏览器回调/设备码体验 → 保留 Device Code fallback；错误文案可读。
 
 ---
 
@@ -263,7 +263,7 @@
 | 两套 HTTP 行为不一致 | 中 | 高 | 指定唯一 owner |
 | 微软认证接口变动 | 高 | 低 | 抽象 `IAuthProvider`；错误可诊断 |
 | 加载器安装碎片化 | 高 | 高 | 每个加载器独立适配层 + 集成测试 |
-| 许可证返工 | 高 | 低 | 已定 AGPL-3.0-only；CI 白名单（第三方 copyleft 需审批，避免影响未来闭源） |
+| 许可证返工 | 高 | 低 | 已定 AGPL-3.0-only；许可证白名单（待接入 CI）；第三方 copyleft 需审批 |
 | UI 性能（大列表/日志） | 中 | 高 | 虚拟滚动 + 进度节流 + 基准测试 |
 | 磁盘/权限问题 | 中 | 高 | 原子写、路径规范化、降级策略 |
 | 竞品功能覆盖压力 | 中 | 高 | 先做"稳定 + 快 + 好看"，不追功能数量 |

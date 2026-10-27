@@ -75,7 +75,7 @@ https://resources.download.minecraft.net/<hash[0:2]>/<hash>
 ## 2. 微软登录链路
 
 ```
-MSA OAuth (device code)
+MSA OAuth (authorization code + PKCE；device code 为 fallback)
   → Xbox Live (XBL)
     → XSTS
       → Minecraft Services (login_with_xbox)
@@ -97,29 +97,29 @@ MSA OAuth (device code)
 - 桌面应用是**公共客户端**，不要内嵌 client secret。
 - 必须注册**自己的** Entra 应用；不要复用 Mojang/其他启动器的 client id。
 - **Entra 应用注册后还需向 Minecraft 提交 client_id 审核**（`https://aka.ms/mce-reviewappid`；旧入口 `AppRegInfo`）。未获准可能 OAuth/XBL/XSTS 全通过，但 `login_with_xbox` 返回 `403 Invalid app registration`。
-- refresh token 存 OS 凭据库；`offline_access` 才拿得到。
+- refresh token 存本地加密凭据库（当前 encrypted-file 模式）；`offline_access` 才拿得到。
 - 常见 XSTS 错误：无 Xbox 账户、儿童账户未获家长同意、地区限制 —— 要给**人话提示**，不是抛 HTTP 码。
 
-### 2.1 重定向方案（已定）
+### 2.1 登录重定向方案
 
 | 方案 | 用途 | 结论 |
 |---|---|---|
-| **Device Code Flow** | 默认微软登录 | **首选**；没有 redirect URI，无需本地 HTTP 监听；适合桌面/无浏览器回调场景 |
-| **Loopback + auth code + PKCE** | 设备码不可用/用户要求浏览器登录时的备选 | 注册 `http://localhost/callback`；运行时 `http://localhost:<ephemeral>/callback`；PKCE S256 + state；仅绑定 `127.0.0.1`，校验 loopback Host，短超时，回调后立即关闭监听 |
+| **Authorization Code + PKCE** | 默认微软登录 | **首选**；系统浏览器 + loopback 回调（默认 `http://localhost:53682/callback`，仅绑定 `127.0.0.1`），PKCE S256 + state，回调后立即关闭监听 |
+| **Device Code Flow** | 无法绑定 loopback / 无浏览器回调时的备选 | 保留；没有 redirect URI，设备码只在内存中 |
 | 自定义协议 `archoeracx://oauth/callback` | 深链/商店场景 | **不作为微软 OAuth 主方案**；仅在其他平台能力明确需要时作为次要入口 |
 | authlib-injector | 第三方 Yggdrasil | 不是 OAuth 浏览器回调；走 `/authserver/*` + `-javaagent` |
 
 - Entra 对 `http://localhost` 的端口匹配是宽松的；`http://127.0.0.1` 通常需改应用 manifest 才能加入。
 - 不要在 URL 查询参数里长期保留 token；授权码换 token 后立即结束回调。
-- 公共客户端禁止 client secret；token 只进 OS 凭据库，日志/诊断包脱敏。
+- 公共客户端禁止 client secret；token 只进本地加密凭据库，日志/诊断包脱敏。
 
 ---
 
-## 3. 第三方认证（authlib-injector）
+## 3. 第三方认证（authlib-injector；当前未接入）
 
-- 以 `-javaagent:authlib-injector.jar=<API 根地址>` 注入，可加 `-Dauthlibinjector.yggdrasil.prefetched=<base64>` 预取元数据。
+- 规划中的接入方式：以 `-javaagent:authlib-injector.jar=<API 根地址>` 注入，可加 `-Dauthlibinjector.yggdrasil.prefetched=<base64>` 预取元数据。
 - 需要实现/对接的 Yggdrasil 端点：`/authserver/authenticate`、`/authserver/refresh`、`/sessionserver/session/minecraft/profile/<uuid>`。
-- 许可证 **AGPL-3.0**：作为独立 jar 分发时，提供其源码获取方式即可（链接官方仓库通常足够）。
+- 许可证 **AGPL-3.0**：作为独立 jar 分发时，提供对应源码或有效的书面要约；仅给上游链接不一定是充分的合规方式。
 - 不要修改游戏 jar；不要绕过正版验证做在线服务。
 
 ---
@@ -282,7 +282,7 @@ params: {
 
 **安全与合规**
 
-- `User-Agent` 统一格式，例如 `ArchoeraCX/0.0.1+1 (contact@example.com)`。
+- `User-Agent` 统一格式，例如 `ArchoeraCX/0.0.1+1 (+https://github.com/BetaStudio2/ArchoeraCX)`。
 - 不在客户端做全量抓取/镜像；遵守各平台速率与条款。
 
 **更新检查**
@@ -352,9 +352,9 @@ params: {
 | 对象 | 要做 | 不要做 |
 |---|---|---|
 | Mojang | 从官方源下载游戏文件；展示免责声明 | 分发游戏本体/assets；使用官方 Logo 做图标 |
-| Microsoft | 自有 Entra 应用；device code；安全存储 token | 复用他人 client id；内嵌 client secret |
+| Microsoft | 自有 Entra 应用；authorization code + PKCE（device code fallback）；安全存储 token | 复用他人 client id；内嵌 client secret |
 | Modrinth | 设置 UA，遵守限速，标注来源 | 把 CDN 当自己的存储对外分发 |
-| authlib-injector | 保留 AGPL 声明与源码链接 | 修改后闭源分发 |
+| authlib-injector | 保留 AGPL 声明，并提供对应源码或有效书面要约 | 修改后闭源分发 |
 | Java | 用 Temurin/Zulu 并遵守其条款 | 打包 Oracle JDK |
 | 字体/图标 | 使用 OFL/MIT/ISC 资源并署名 | 使用商业字体（如 DINPro）或未授权素材 |
 

@@ -19,7 +19,7 @@ Microsoft Authorization Code + PKCE
 
 - **Entra 应用**：公共客户端，不创建 client secret。
 - **Minecraft Services**：还必须单独审核 `login_with_xbox` 使用的 client_id。
-- **token 不跨 C ABI**：device code、access token、refresh token 只存在于 C#。
+- **token 不跨 C ABI**：authorization code、PKCE verifier、device code、access token、refresh token 只存在于 C#。
 - **失败不落账户**：只有完整链路成功后才写账户元数据和凭据。
 
 ## 2. client_id 配置
@@ -254,11 +254,11 @@ archoera-vault                凭证保险库（crypto/file 免密模式）
 logs/account.log              脱敏诊断日志
 ```
 
-- device code 只在内存中。
+- authorization code、PKCE verifier 与 device code 只在内存中。
 - access/refresh token 不写日志、不跨 ABI、不进入 UI 模型。
 - 失败登录不会写入账户文件。
 - 旧 `accounts.credentials.json` 在首次使用时迁移进保险库并删除；生产构建需包含 `archoera-vault`（CI 已构建并检查）。
-- 多账户切换和 refresh 单飞尚未完整实现。
+- 并发 refresh 的 single-flight 去重尚未实现；多账户切换通过 `account.select`，切换时取消旧刷新。
 - 发布版账户策略：账户元数据里必须有一条带 UUID 的 Microsoft 账户，并且该账户在凭据保险库中必须有可用凭据；token 过期时会先刷新并重新校验 entitlement，才允许添加/选择离线账户或开始离线启动。仅伪造 `accounts.json` 元数据不会解锁。
 - 离线启动也有 C# 硬门槛，不依赖 Dart 传入的 `requirePremium`，也没有公开的跳过开关。
 
@@ -274,7 +274,7 @@ logs/account.log              脱敏诊断日志
 
 | 文件 | 作用 |
 |---|---|
-| `app/modules/business/Archoera.Infrastructure/Accounts/MicrosoftAuthClient.cs` | Device Code、refresh、XBL/XSTS/Minecraft、profile/certificates |
+| `app/modules/business/Archoera.Infrastructure/Accounts/MicrosoftAuthClient.cs` | Authorization Code + PKCE、Device Code、refresh、XBL/XSTS/Minecraft、profile/certificates |
 | `.../AccountModuleService.cs` | `account.*` 方法、待处理 flow、账户写入、脱敏日志 |
 | `.../JsonAccountStore.cs` | 元数据/凭据分离存储 |
 | `app/lib/pages/accounts_page.dart` | 账户页、设备码弹窗、离线账户 |
@@ -315,8 +315,8 @@ logs/account.log              脱敏诊断日志
 
 已知限制：
 
-- 只实现 Device Code；loopback + PKCE 尚未实现。
-- 审核提交文本见 [`docs/legal/minecraft-app-review.md`](legal/minecraft-app-review.md)；不要提交与实现不一致的 authorization-code/sessionserver 描述。
+- 主流程是 Authorization Code + PKCE（loopback，默认端口 53682）；Device Code 保留为无法绑定 loopback 时的 fallback。两者均已实现，UI 默认使用 `authorization_code`。
+- 审核提交文本与申请材料属内部文档，不随公开仓库发布；公开仓库只保留实现事实（本文）。
 - 真实登录/在线启动仍受 Minecraft Services client ID 审核阻塞。
 - 证书保存在保险库，但当前没有注入 JVM 参数；如果后续版本需要安全聊天/证书消费，需单独接线。
 - 在线启动会把 access token 放入 JVM 参数；这与官方启动器一样会出现在进程列表中，日志不记录 token。

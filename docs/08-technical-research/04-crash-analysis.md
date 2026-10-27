@@ -343,10 +343,10 @@ score = base(blocker 80 / crash 70 / degraded 40 / info 10)
 |---|---|---|---|
 | HMCL | `CrashReportAnalyzer` 约 60 条扁平正则 + 命名捕获；扫描「控制台 + latest.log」；按规则去重，多条提示「多个原因」；无命中用栈帧关键字 + 包名黑名单；`#@!@#` 定位报告；导出 zip 只收启动后修改的文件；崩溃窗展示启动器/实例/内存/Java/OS。**[事实-源码]** | 规则表、崩溃标记、导出过滤、信息面板 | 无评分/上下文门控；整篇扫描易误报（#2691）**[事实-issue]** |
 | Prism | 日志页上传；`Confirm Upload` 提示检查个人信息，默认 No；上传前 `anonymizeLog`；mclo.gs 超 25000 行首尾截断；支持 4 种 paste 服务。**[事实-源码]** | 同意交互、截断、上传前匿名化 | 匿名化仅 7 条（目录、Session ID、refresh token、device code），覆盖不足；无规则诊断 |
-| LauncherX | 崩溃窗口分 `ModCaused/BlockCaused/EntityCaused/LoaderExceptionModCrash/Other`；读 `latest.log` + `crash-reports`；日志分 `LauncherLog/VerboseLog/Crashes/GameLog`；多组脱敏正则。**[事实-逆向报告 3.11/5.3]** | 原因分类的 UI 表达、日志分层 | 未见评分与规则外置（**[推断]**）；闭源，仅行为参考 |
+| LauncherX | 崩溃窗口分 `ModCaused/BlockCaused/EntityCaused/LoaderExceptionModCrash/Other`；读 `latest.log` + `crash-reports`；日志分 `LauncherLog/VerboseLog/Crashes/GameLog`；多组脱敏正则。**[事实-公开行为观察]** | 原因分类的 UI 表达、日志分层 | 未见评分与规则外置（**[推断]**）；闭源，仅行为参考 |
 
 > 证据位置：HMCL `HMCLCore/.../game/CrashReportAnalyzer.java`、`HMCL/.../ui/GameCrashWindow.java`；Prism `launcher/ui/GuiUtil.cpp`、`launcher/net/PasteUpload.cpp`、`launcher/logs/AnonymizeLog.cpp`；Oracle《Troubleshooting Guide》Fatal Error Log。
-> 许可证：Prism 与 HMCL 均为 GPL-3.0；本项目闭源，**只读设计、独立实现**，不复制代码、正则表或文案。
+> 许可证：Prism 与 HMCL 均为 GPL-3.0；本项目为 AGPL-3.0-only，**只读设计、独立实现**，不复制代码、正则表或文案。
 
 ## 9. 落地
 

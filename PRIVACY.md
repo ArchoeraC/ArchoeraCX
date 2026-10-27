@@ -1,8 +1,8 @@
 # ArchoeraCX Privacy Policy
 
-**Last updated:** 2026-10-21  
-**Status:** draft for the current development/review build. The contact and
-operator details marked `[TODO]` must be completed before public distribution.
+**Last updated:** 2026-10-27
+**Status:** draft for the current development build. Formal operator and contact
+details must be confirmed before a store or commercial release.
 
 ArchoeraCX is a third-party desktop launcher for Minecraft: Java Edition. It is
 not an official Minecraft product and is not affiliated with Mojang Studios or
@@ -13,8 +13,8 @@ device.
 
 - Project: ArchoeraCX
 - Source/homepage: https://github.com/BetaStudio2/ArchoeraCX
-- Privacy contact: `[TODO: privacy contact email]`
-- Operator/legal entity: `[TODO: legal entity, if any]`
+- Privacy contact: open an issue at https://github.com/BetaStudio2/ArchoeraCX/issues (do not include tokens, credentials or other sensitive data)
+- Operator/legal entity: the individual maintainer of the ArchoeraCX repository; no separate legal entity is declared for this development build
 
 ## 2. Scope
 
@@ -43,8 +43,8 @@ When the user signs in with a Microsoft account, the launcher processes:
 - player certificates returned by Minecraft Services, when available.
 
 The launcher does **not** ask for or store the user's Microsoft password. The
-Microsoft device code exists only in memory during sign-in and is not written to
-disk.
+authorization code, PKCE verifier and device code (fallback) exist only in
+memory during sign-in and are not written to disk.
 
 ### 3.2 Local/offline account data
 
@@ -68,7 +68,7 @@ does not operate a server that receives or stores account tokens.
 To apply the regional account and download policy, the launcher makes a coarse
 region request to Cloudflare's `cdn-cgi/trace` endpoint and reads only the
 two-letter country code. If that request fails, it falls back to the system
-region, locale and timezone (including the Windows country/region GeoID). The
+region and timezone (including the Windows country/region GeoID). The
 IP address is necessarily transmitted for the Cloudflare request but is not
 stored by the launcher; only the coarse region result is cached in memory. The
 result decides whether mainland-China download restrictions apply and whether
@@ -85,9 +85,10 @@ Diagnostic logs are written locally for troubleshooting and may contain error
 codes, local paths and account display names. They are not uploaded by the
 launcher.
 
-The current build does not perform a background update check. If an update
-check or optional diagnostic upload is added later, it will be opt-in or
-clearly disclosed, and will be described in an updated version of this policy.
+The current build only performs an update check when the user asks; it does not
+download or run updates automatically. If an automatic update check or optional
+diagnostic upload is added later, it will be opt-in or clearly disclosed, and
+will be described in an updated version of this policy.
 
 ### 3.6 Images and caches
 
@@ -114,8 +115,9 @@ consent for optional processing by removing the relevant account or local data.
 
 - Account metadata is stored in the launcher's local data directory.
 - Microsoft refresh tokens and Minecraft session tokens are stored in an
-  encrypted local credential vault. The vault uses OS secure storage where
-  available and a user-only local key file as a fallback.
+  encrypted local credential vault. The vault is an encrypted file protected
+  by a user-only local key file; OS credential-store integration is not
+  enabled in this build.
 - Tokens are not uploaded to ArchoeraCX servers, are not written to logs, are
   not exposed to the UI model and do not cross the native module ABI.
 - Diagnostic logs are local and may contain error codes, file paths and account
@@ -188,7 +190,7 @@ processing. Because account credentials are stored locally, users can also
 remove them directly through the launcher's account management or by deleting
 the local data directory.
 
-Contact: `[TODO: privacy contact email]`.
+Contact: open an issue at <https://github.com/BetaStudio2/ArchoeraCX/issues>.
 
 ## 11. Changes
 

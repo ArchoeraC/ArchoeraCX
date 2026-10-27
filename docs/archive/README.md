@@ -9,7 +9,6 @@
 |---|---|---|---|---|
 | [`ui-tech-selection.md`](ui-tech-selection.md) | `docs/01-tech-selection.md` | 选型对比稿 · 2026-10 | UI 已定为 Flutter，对比仅作决策依据 | [`../10-architecture-design.md`](../10-architecture-design.md)、[`../11-ui-design-system.md`](../11-ui-design-system.md) |
 | [`ffi-architecture.md`](ffi-architecture.md) | `docs/02-architecture.md` | 架构设计稿 v1 | ABI、模块协议与存储重写后由现行架构取代 | [`../10-architecture-design.md`](../10-architecture-design.md) |
-| [`reference-projects.md`](reference-projects.md) | `docs/03-reference-projects.md` | 参考项目清单 | 许可证分级并入许可证文档，具体克隆清单已过时 | [`../04-licensing.md`](../04-licensing.md) |
 | [`polyglot-core-ffi.md`](polyglot-core-ffi.md) | `docs/07-polyglot-core.md` | FFI 契约稿 | 契约已落在 `app/contracts/`，正文由现行 ABI 章节取代 | [`../10-architecture-design.md`](../10-architecture-design.md) §6–§7 |
 
 ## 维护规则

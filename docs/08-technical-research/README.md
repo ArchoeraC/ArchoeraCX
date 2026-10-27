@@ -12,15 +12,17 @@ Microsoft / Minecraft 认证已单独整理到 [`../authentication.md`](../authe
 | [04-crash-analysis.md](04-crash-analysis.md) | 崩溃日志、crash-report、规则引擎 |
 | [05-download-engine.md](05-download-engine.md) | 下载并发、Range、原子落盘、去重 |
 | [06-modpack-install.md](06-modpack-install.md) | 整合包格式、overrides、Zip 安全 |
-| [07-compliance-gate.md](07-compliance-gate.md) | 发行通道、合规门控、同意与审计 |
 | [08-java-scan.md](08-java-scan.md) | Java 候选发现、版本探测、手动回退 |
 | [09-forge-generated-artifacts.md](09-forge-generated-artifacts.md) | Forge/NeoForge 生成物清单、校验、修复 |
 | [10-download-sources.md](10-download-sources.md) | 下载源矩阵、镜像、`DownloadPlan` 边界 |
 | [11-loader-install-strategy.md](11-loader-install-strategy.md) | 加载器无 Java 边界与安装策略 |
 | [12-download-scheduling-principles.md](12-download-scheduling-principles.md) | FDM/aria2 的分段与调度原理（只读） |
 | [13-transport-protocol-fallback.md](13-transport-protocol-fallback.md) | 地址族/TLS/HTTP 版本/代理的多协议回退 |
-| [14-security-audit-2026-10.md](14-security-audit-2026-10.md) | 依赖 CVE 与代码安全审查（2026-10） |
 | [15-launch-parameter-parity.md](15-launch-parameter-parity.md) | 启动参数与 Prism 的差距（只读） |
+
+> 合规门控的内部决策记录与安全审查报告不随公开仓库发布；公开行为以
+> [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md)
+> 与 [`../SECURITY.md`](../../SECURITY.md) 为准。
 
 ## 使用约束
 

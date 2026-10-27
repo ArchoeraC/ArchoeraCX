@@ -1,77 +1,74 @@
 # 09 · 开源、分发与下载策略
 
-> 前提：项目采用 **AGPL-3.0-only（强 copyleft + 网络条款）**，许可证全文见仓库根目录 `LICENSE`；不接受外部代码贡献。
-> 这决定下载功能的定位：**代码里的门控只是默认值，真正的控制点是你发布的构建、签名与商标。**
-> 本文给发行与下载能力的落地方案；法律问题请咨询律师，本文不构成法律意见。
+> 前提：项目采用 **AGPL-3.0-only**（强 copyleft + 网络条款），许可证全文见仓库根目录 `LICENSE`；不接受外部代码贡献。
+> 当前只有**一个发行版**：下载能力在编译期保留，运行期按网络地区与本地风险确认决定是否启用。
+> 本文描述工程事实与发行约束，不构成法律意见；发行地区、平台条款与版权问题应由执业律师按实际情况复核。
 
 ---
 
-## 0. 先确认：AGPL-3.0-only 到底意味着什么
+## 0. AGPL-3.0-only 的含义
 
 | 事实 | 含义 |
 |---|---|
-| OSI / SPDX `AGPL-3.0` | 公认的开源许可证，强 copyleft |
+| OSI / SPDX `AGPL-3.0-only` | 公认的开源许可证，强 copyleft |
 | 分发二进制 | 必须提供完整对应源码（§6） |
 | 网络服务（§13） | 修改版让用户远程交互时，须向这些用户提供源码 |
 | 整体作品 | 链接/组合的代码通常也要 AGPL；插件/独立进程边界要谨慎 |
 | 专利 | 明确授权（§11） |
-| 商标 | **不授权**；名字/Logo 仍归你（需自行注册/主张） |
+| 商标 | **不授权**；名字/Logo 仍归项目方（需自行注册/主张） |
 | 闭源 fork | 不允许；fork 必须继续 AGPL |
 | 撤回 | 已发布版本的授权不可撤回 |
-| 外部贡献 | 当前**不接受**；否则未来闭源需要 CLA |
+| 外部贡献 | 当前**不接受**；见 `CONTRIBUTING.md` |
 
-**AGPL 防的是"拿走代码闭源"，不防"fork 删掉某个功能"。**
-fork 仍然可以移除下载门控——但它必须继续以 AGPL 公开源码。**功能是否保留，许可证管不了。**
-
-> 不做企业用户、不做 App Store、不做闭源商业授权，是选择 AGPL 的前提；三者任一改变，都应重新评估。
+AGPL 不要求 fork 保留功能；fork 可以移除下载门控，但必须继续以 AGPL 公开源码。
 
 ---
 
 ## 1. 下载功能的定位：默认值，不是 DRM
 
-在闭源方案里，门控还能算"一道门"；开源之后，它只是：
+下载门控的作用是：
 
 1. **对普通用户的默认保护**（不误触、不静默出网）；
-2. **知情同意的载体**（读了声明、留下记录）；
-3. **官方构建的合规姿态**（`official-cn` 默认关闭内容下载；`official-global` 默认仅官方必需，L2 需确认）。
+2. **知情同意的载体**（用户显式接受风险后留下本地记录）；
+3. **官方构建的合规姿态**（中国大陆网络默认关闭内容下载）。
 
-它挡不住 fork、改配置、重编译。**不要把它宣传成"技术强制"，也不要把责任推给开关。**
+它挡不住 fork、改配置、重编译。**不要把它宣传成“技术强制”，也不要把责任推给开关。**
 
 真正的控制点只有四个：
 
 | 控制点 | 能做什么 |
 |---|---|
-| 官方二进制 | 你签名的构建默认 L0/L1；用户信任的是这个 |
-| 代码签名 / 校验和 | 防止被篡改的"官方版" |
+| 官方二进制 | 项目控制的构建默认遵守地区策略 |
+| 代码签名 / 校验和 | 发行前用于防篡改；当前 CI 尚未产出平台签名 |
 | 商标 / 名称 | 阻止 fork 冒充官方（AGPL 不授权商标） |
-| 官方下载页 / 更新通道 | 只分发你认可的构建 |
+| 官方下载页 / 更新通道 | 只分发项目认可的构建 |
 
 ---
 
-## 2. 推荐架构：Provider + Policy + Plan
+## 2. 架构：Provider + Policy + Plan
 
 ```
 ┌──────────────────────────────────────────────┐
 │ C# Core                                      │
 │  ├─ IDownloadProvider（每源一个实现）         │
-│  ├─ DownloadPolicy（渠道/等级/同意）          │
+│  ├─ DownloadPolicy（地区 + 本地风险确认）      │
 │  └─ PlanBuilder → DownloadPlan（不含密钥）    │
 └───────────────────┬──────────────────────────┘
-                    │ 签名/校验后的 Plan
+                    │ 校验后的 Plan
 ┌───────────────────▼──────────────────────────┐
 │ Rust archoera_dl                             │
 │  只执行：URL + hash + dest + 并发/校验/落盘    │
 └──────────────────────────────────────────────┘
 ```
 
-### 2.1 核心仓库里"有什么 / 没有什么"
+### 2.1 核心仓库里“有什么 / 没有什么”
 
 | 有 | 没有 |
 |---|---|
 | Provider 接口、策略引擎、Plan 结构 | 任何游戏文件、assets、libraries |
 | Mojang / Fabric / Quilt / Modrinth 官方接口实现 | 自建游戏文件镜像 |
 | Forge/NeoForge installer 下载与 processors 调度 | 任何 API key / 凭据 |
-| Java runtime 下载（Mojang / Adoptium） | 打包的 Oracle JDK |
+| Java runtime 下载（Mojang；Adoptium 可选，尚未接入） | 打包的 Oracle JDK |
 | 校验、断点、原子落盘（Rust） | 遥测端点、用户追踪 |
 
 > 仓库与构建产物不含任何凭据；CurseForge 在 API 访问配置前不可用。
@@ -80,133 +77,64 @@ fork 仍然可以移除下载门控——但它必须继续以 AGPL 公开源码
 
 | Provider | 需要 key | 默认 | 约束 |
 |---|---|---|---|
-| Mojang（版本/资源/库/Java） | 否 | L1 允许 | 只连官方域名；不自建镜像；遵守 EULA |
-| Fabric / Quilt Meta | 否 | L1 允许 | 设置可识别 UA；遵守速率 |
-| Forge / NeoForge Maven | 否 | L1 允许 | 只取 installer/库；processors 需本地 Java |
-| Modrinth | 否 | L2（需确认） | UA、速率、CDN 直链、hash 校验 |
+| Mojang（版本/资源/库/Java） | 否 | 允许 | 只连官方域名；不自建镜像；遵守 EULA |
+| Fabric / Quilt Meta | 否 | 允许 | 设置可识别 UA；遵守速率 |
+| Forge / NeoForge Maven | 否 | 允许 | 只取 installer/库；processors 需本地 Java |
+| Modrinth | 否 | 允许（中国大陆需本地确认） | UA、速率、CDN 直链、hash 校验 |
 | CurseForge | 是 | API 访问配置前不可用 | 在线与 zip 导入都需要 API key；不发起请求 |
-| Java Runtime | 否 | L1 允许 | Mojang runtime / Adoptium；不打包 Oracle |
-| authlib-injector | 否 | L2 | AGPL 独立分发，附源码链接 |
-| 启动器自更新 | 否 | 官方渠道 | 只信自己的签名通道 |
+| Java Runtime | 否 | 允许 | Mojang runtime 已接入；Adoptium 为可选源（尚未接入）；不打包 Oracle |
+| authlib-injector | 否 | 未启用 | 需完成服务条款、隐私与实名复核后再接入 |
+| 启动器更新检查 | 否 | 允许 | 只查询 GitHub Release，不自动下载或执行 |
 
-### 2.3 策略求值顺序
+### 2.3 当前策略求值（已实现）
 
-```
-channel (official-cn / official-global / dev)
-  ∩ distributionPolicy（构建期常量，可签名）
-  ∩ userConfig（只降不升）
-  ∩ consent（声明版本/哈希）
-  = effectiveLevel
-```
+```text
+ARCHOERACX_REGION（开发覆盖）
+  → Cloudflare trace 的两位国家码
+  → 系统时区 / 区域 / Windows GeoID
+  = region（CN / GLOBAL）
 
-- **构建期策略优先**：`official-cn` 构建即使配置写 `all` 也不生效。
-- 运行期配置默认只能降低；升权（global L2 / cn L1）必须走应用内三步确认（见 `08/07-compliance-gate.md`）。
-- Plan 生成前求值；Rust 不重新解释策略，只执行带能力标记的计划。
-- 计划里带 `source`、`termsUrl`、`provider`，UI 能展示"从哪来、受什么条款约束"。
-
-### 2.4 多文件确认（`official-cn` 开发者模式）
-
-> 本节的双文件模式用于 `official-cn` 从 L0 升到 L1；`official-global` 默认 L1，不需要该文件；其 L2 走应用内三步确认。
-
-**目的**：把"改一个开关"变成"两次独立确认"，提高误触成本，并让支持人员能诊断用户卡在哪一步。
-**不是安全边界**：脚本可以同时写两个文件，fork 也可以删掉检查。它挡的是"随手点一下"，不是"有意破解"。
-
-**推荐形态：配置 + 意图声明，分开两个位置。**
-
-| 文件 | 位置 | 内容 | 谁写 |
-|---|---|---|---|
-| A. `compliance.json` | 用户配置目录 | `downloadLevel`、`developerMode: true` | **用户手写** |
-| B. `DEVELOPER_ACK.txt` | **安装目录**（与 A 不同） | 一行：`ENABLE-DOWNLOADS <noticeVersion> <noticeSha256 前 16 位>` | **用户手写** |
-
-```
-A 通过（schema/枚举/布尔严格）
-  + B 存在且短语/版本/哈希匹配打包声明
-  = 才出现「开启开发者模式」入口
-  → 三步同意（滚动到底 / 勾选 / 输入短语）
-  → 写 consent + 审计
+region == CN  → 默认禁用下载
+                  └─ 本地 compliance.json 通过 → 启用
+region != CN  → 默认启用
 ```
 
-**为什么是这两个文件**
+- 地区判定只读取粗粒度国家码，不保存 IP；请求失败回退系统时区/区域/Windows GeoID。
+- `download.policy` 返回当前状态；资源、版本、加载器、整合包等 C# 方法在入口统一检查，未启用返回 `DOWNLOAD_DISABLED`。
+- 中国大陆网络默认隐藏 Download 导航与首页下载快捷入口；直接访问 `/download` 仍显示配置说明。
+- 登录、实例管理、本地启动与本地 Mod 管理不受下载门控影响。
+- 该判定不是 VPN/代理安全边界，也不能替代账号服务端的真实校验。
 
-- A 是机器可读配置，B 是人类可读的"我知道我在做什么"；
-- 分处两个目录：备份、同步、便携拷贝时不容易一起被带走；
-- B 的内容绑定**声明版本与哈希**：声明更新后，旧 B 自动失效，必须重读；
-- 支持时能逐项告诉用户"A 的第 3 个字段错了"或"B 的哈希是旧版本"。
+### 2.4 本地风险确认（中国大陆网络）
 
-**实现规则**
-
-1. 应用**永不创建 B**，也**永不写 `developerMode: true`**；只有降权写权限。
-2. 文件编码 UTF-8（允许无 BOM / 有 BOM，但统一处理）；换行 LF/CRLF 都接受；前后空白 trim。
-3. 校验逐项返回：`A_MISSING / A_SCHEMA / A_VALUE / B_MISSING / B_PHRASE / B_VERSION / B_HASH`，不要只报"配置无效"。
-4. 变更检测：`FileSystemWatcher` + 300ms 防抖，只提示"检测到变更，点击重新验证"，**不自动启用**。
-5. 便携模式：路径按 `--portable` 解析，文档写清；多用户机器上 A 在用户目录、B 在安装目录，天然区分。
-6. 权限：B 不可写（只读）时更佳，但不强制；不要要求管理员权限，否则会教用户"以管理员运行"。
-7. 测试：只改 A、只改 B、两者版本不一致、B 哈希旧、A 写 `"true"` 字符串、BOM/CRLF、只读目录、便携模式。
-
-**反模式（不要做）**
-
-| 反模式 | 问题 |
-|---|---|
-| 随机文件名/二进制文件/注册表键 | 支持噩梦，且像恶意软件；不增加真实安全性 |
-| 要求改 N（>2）个文件 | 只是更烦；脚本一样能写；用户会去找"一键包" |
-| 应用自动生成 B 模板 | 等于一键解锁，违背初衷 |
-| 文件名/格式不公开 | 用户无法完成，客服成本爆炸； obscurity ≠ security |
-| 把"已开启"只存在应用可写的文件里 | 应用可能自己打开；也容易被误改 |
-| 用文件数量当"合规证据" | 证据是 consent 记录与审计链，不是文件数 |
-
-> 一句话：**两个文件、公开文档、逐项诊断、绑定声明哈希。** 这比"藏 5 个开关"有效得多，也体面得多。
-
----
-
-
-### 2.5 当前运行时地区策略：中国大陆网络默认禁用下载 + 手动配置解锁
-
-ArchoeraCX 使用单一发行版，不再通过 `ARCHOERACX_CHINA_BUILD` 分割安装包。
-C# 在启动和下载策略检查时通过 Cloudflare trace 的两位国家码判断粗粒度网络地区；
-请求失败时回退系统地区/语言/时区或 Windows GeoID。
-
-- 中国大陆网络默认禁用下载，但保留实现能力，方便自用/开发者在明确接受风险后解锁；
-- 默认隐藏 Download 导航/首页下载快捷入口；直接访问 `/download` 仍会显示配置说明；
-- 默认所有下载相关 C# 方法返回 `DOWNLOAD_DISABLED`；
-- 用户必须在本地数据根目录创建 `compliance.json`，并手动加入：
-
-```json
-{
-  "schemaVersion": 1,
-  "developerMode": true,
-  "acceptRisk": true,
-  "downloadLevel": "L2",
-  "acknowledgement": "ENABLE-DOWNLOADS 1"
-}
-```
-
-字段说明：
+当前实现只使用**一个用户手写的文件**：`<data>/compliance.json`。应用**永不创建、永不修改**该文件，也不会把它当作“合规认证”。
 
 | 字段 | 要求 |
 |---|---|
 | `schemaVersion` | 必须为 `1` |
-| `developerMode` | 必须为 `true` |
-| `acceptRisk` | 必须为 `true`，表示用户已知悉并接受下载/使用第三方内容的风险 |
-| `downloadLevel` | 当前只接受 `"L2"`（本项目下载页使用 Modrinth 等第三方内容） |
+| `developerMode` | 必须为 JSON `true` |
+| `acceptRisk` | 必须为 JSON `true`，表示用户已知悉并接受下载/使用第三方内容的风险 |
+| `downloadLevel` | 当前只接受 `"L2"` |
 | `acknowledgement` | 必须精确为 `ENABLE-DOWNLOADS 1` |
 
-- 修改配置文件后重启应用（或直接打开 `/download` 点击“重新检查配置”）；C# 只读取本地文件，不自动创建/修改它；
-- C++/C# 方法保留，以便配置后使用；策略在业务层拒绝，Dart 不再用编译期常量硬拦截；
-- 非中国大陆网络默认 `enabled=true`，不要求该文件；
-- 本地登录、实例管理、本地启动和本地 Mod 管理始终可用。
+- 字段缺失或类型不符时返回 `CONSENT_REQUIRED` / `CONSENT_INVALID`；应用内 `/download` 页会列出缺失字段。
+- 修改后重启应用，或在 `/download` 页点击“重新检查配置”。
+- 非中国大陆网络不需要该文件。
+- 当前**没有**独立的 `consent.json`、审计链或双文件 `DEVELOPER_ACK.txt`；如后续加入，它们只增加摩擦与留痕，不改变“不是 DRM”的性质。
 
-构建命令：
+> 这是运行期地区判断和风险门槛，不是法律合规认证；VPN/代理、IP 数据库误差都可能影响结果。
+> 解锁后用户仍需自行承担第三方内容、平台条款和版权风险。
 
-```bash
-cd app
-ARCHOERACX_MICROSOFT_CLIENT_ID=<GUID> ./tool/build-cs.sh
-flutter build linux --release
-```
+### 2.5 构建与发布渠道
 
-`./tool/build-cn.sh` 仅为旧脚本兼容而保留，产物与普通构建相同。
-
-这是运行期地区判断和风险门槛，不是法律合规认证；VPN/代理、IP 数据库误差都可能
-影响结果。解锁后用户仍需自行承担第三方内容、平台条款和版权风险。
+- **单一发行版**：不存在 `official-cn` / `official-global` 两套二进制；`app/tool/build-cn.sh` 仅为旧命令兼容保留，产物与普通构建相同。
+- 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
+- 发布由 `.github/workflows/build-all.yml` 在 Linux/macOS/Windows 三个 runner 原生构建；推送 `v*` tag 后才汇总三端产物发版。
+- Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
+- CurseForge 在 API 访问配置前不可用：在线接口与其整合包 zip 导入都依赖 API key。`resource.*`/`modpack.install` 对 `provider=curseforge` 在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。
+- Release 附件应包含源码归档（tag）、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。
+- Windows 产物形态：便携 `.zip`（解压即用，`data/` 在 exe 旁）与 Inno Setup 安装器两种。不提供单文件 exe——Flutter Windows runner 必须旁加载 `flutter_windows.dll`、引擎数据、AOT 快照与原生模块侧车文件，单文件只能靠自解压引导器实现，暂不引入；便携 zip 即本项目的 Windows 便携形态。
+- 不发布带有未审核 Microsoft client ID 的公共构建；若审核未完成，发布说明必须明确在线登录/在线启动的不可用状态。
 
 ### 2.6 当前 GitHub-only 开发版声明
 
@@ -218,41 +146,22 @@ flutter build linux --release
 - 不承诺稳定性、兼容性或数据安全；
 - 不接受外部代码贡献。
 
-GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对应的 AGPL 源码获取方式。
+---
 
-### 2.7 发布渠道与构建期密钥
+## 3. 能力与默认行为
 
-- 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
-- 发布由 `.github/workflows/build-all.yml` 在 Linux/macOS/Windows 三个 runner 原生构建；推送 `v*` tag 后才汇总三端产物发版。
-- Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
-- CurseForge 在 API 访问配置前不可用：在线接口与其整合包 zip 导入都依赖 API key。`resource.*`/`modpack.install` 对 `provider=curseforge` 在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。
-- Release 附件应包含源码 tag、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。
-- 不发布带有未审核 Microsoft client ID 的公共构建；若审核未完成，发布说明必须明确在线登录/在线启动的不可用状态。
+下表描述**同一发行版**在不同地区与配置下的默认行为，不代表不同的二进制：
 
-## 3. 发行通道矩阵
-
-以下矩阵描述产品策略层级，不代表不同二进制；当前所有通道共用同一发行版，
-由运行期地区结果和本地声明决定默认 gate。
-
-| 能力 | official-cn（L0） | official-global（L1/L2） | dev（L2） |
+| 能力 | 中国大陆（未配置 `compliance.json`） | 非中国大陆 | 本地启动 |
 |---|---|---|---|
-| 版本清单/搜索（只读元数据） | ✓ | ✓ | ✓ |
-| 原版游戏文件 | ✗（引导官网） | ✓ | ✓ |
-| 加载器 / processors | ✗（引导手动） | ✓ | ✓ |
-| Mod / 整合包 / 资源包 / 光影 | ✗ | ✓（L2 需确认） | ✓ |
-| Java 运行时 | ✗（提示手动安装） | ✓ | ✓ |
-| 启动器自更新 | 仅提示 + 官网 | ✓（签名通道） | ✓ |
-| 遥测 / 日志上传 | ✗ | opt-in，默认 ✗ | ✗ |
-
-> **默认构建为 `official-cn`（L0）**：默认禁用内容下载，只读元数据可用。`official-global` 作为单独构建保留（L1/L2）。
-> `official-cn` 不是"藏起来"，而是**明确告知**：本构建不提供在线获取游戏/第三方内容的能力；用户可自行准备文件后导入。
-> `L0` 默认允许只读元数据（版本清单/搜索）；若发行地区/法务要求绝对零出站，构建 `L0-Z` 严格模式（见 `08-technical-research/07-compliance-gate.md` §2.1）。
-
-**构建期实现**：
-- 同一代码库，`DistributionChannel` 编译期常量；
-- `official-cn` 的 provider 注册表在 DI 阶段为空（或返回 `LOCKED`），不是靠 UI 灰按钮；`official-global` 保留 L2 注册，但默认 L1、L2 需确认。
-- CI 断言：`official-cn` 构建产物中不存在 L2 `ContentProvider` 的注册符号 / 不包含 L2 端点字符串；`official-global` 的 L2 受 ComplianceGate 控制。
-- 开发/CI 旁路用 `#if DEBUG` 或独立 flavor，产物不进发布渠道。
+| 版本清单 / 搜索 / 详情（只读元数据） | ✓ | ✓ | ✓ |
+| 原版游戏文件 | ✗ | ✓ | — |
+| 加载器 / processors | ✗ | ✓ | — |
+| Mod / 整合包 / 资源包 / 光影 | ✗ | ✓ | — |
+| Java 运行时 | ✗ | ✓ | — |
+| 启动器更新检查 | 仅提示，不自动下载 | 仅提示，不自动下载 | — |
+| 遥测 / 日志上传 | ✗ | ✗ | — |
+| 登录 / 实例管理 / 本地启动 / 本地 Mod | ✓ | ✓ | ✓ |
 
 ---
 
@@ -261,7 +170,7 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 ### 4.1 密钥
 
 - CurseForge 在 API 访问配置前不可用；接入实现必须持有 API key，仓库与发布物不保存该凭据。
-- Microsoft client ID 只在构建期注入；账户 token 的存储见 §2.7 与凭据保险库设计。
+- Microsoft client ID 只在构建期注入；账户 token 的存储见 `authentication.md` 与凭据保险库设计。
 
 ### 4.2 镜像
 
@@ -274,90 +183,73 @@ GitHub Release 仍应提供源码标签、SHA-256、第三方许可清单和对�
 
 - 下载内容只落到实例目录，**不自动执行**除游戏/加载器/Java 之外的二进制。
 - 加载器 installer/processors 视为受信任但高风险：来源限定官方 Maven，校验 hash。
-- 自更新只信自己的签名；不要用"服务端下发 hash"当唯一校验。
-- 发布 SBOM 与第三方许可清单。
+- 更新检查只读 GitHub Release 元数据；不自动下载或执行。
+- 发布时应提供 SBOM 与第三方许可清单；当前 CI 尚未自动生成。
 
 ---
 
-## 5. 分发物清单（你给别人的东西）
+## 5. 分发物清单
 
 | 项 | 要求 |
 |---|---|
-| 安装包 | 代码签名（Windows Authenticode / macOS arm64 notarization）；SHA-256 公布 |
-| 版本说明 | 明确渠道（cn/global/dev）与默认下载等级 |
-| 许可 | 根目录 `LICENSE`（AGPL-3.0 全文）+ `THIRD-PARTY-NOTICES`；MIT/Apache 代码仍保留原许可 |
-| 免责声明 | "非官方 Minecraft 产品"；不提供游戏本体；不保证可用性 |
-| 隐私 | 若收集任何数据：单独政策 + opt-in |
+| 安装包 | 发布要求：代码签名（Windows Authenticode / macOS arm64 notarization）与 SHA-256；当前 CI 尚未产出平台签名 |
+| 版本说明 | 明确默认地区策略与下载门控状态 |
+| 许可 | 根目录 `LICENSE`（AGPL-3.0 全文）+ `THIRD-PARTY-NOTICES.md`；MIT/Apache 代码仍保留原许可 |
+| 免责声明 | “非官方 Minecraft 产品”；不提供游戏本体；不保证可用性 |
+| 隐私 | 单独政策；不默认上传日志或遥测 |
 | 商标 | 名称/Logo 使用政策；fork 必须改名（AGPL 不授权商标） |
 | 支持 | 只支持官方构建；fork 问题不受理 |
 
-**关于第三方代码**：AGPL-3.0 项目可以包含 MIT/BSD/Apache-2.0 代码，但那些文件仍受原许可约束（保留版权与 NOTICE）。**GPL-3.0 可按 §13 并入，但该部分仍是 GPL；第三方 AGPL 代码也保留其许可**——如果未来想把新版本闭源，必须替换这些部分。
+**关于第三方代码**：AGPL-3.0 项目可以包含 MIT/BSD/Apache-2.0 代码，但那些文件仍受原许可约束（保留版权与 NOTICE）。GPLv3 代码可按 GPLv3 §13 与 AGPLv3 组合，但相关部分仍受 GPL 约束；本项目不并入。分发 `authlib-injector` 时需提供对应源码或有效的书面要约，不能只给上游链接。
 
 ---
 
-## 6. Fork 与"别人拿去乱来"
+## 6. Fork 与“别人拿去乱来”
 
-AGPL 允许 fork 关闭门控、甚至捆绑恶意软件；fork 必须继续以 AGPL 公开源码，但**功能可以被移除**。你能做的：
+AGPL 允许 fork 关闭门控、甚至捆绑恶意软件；fork 必须继续以 AGPL 公开源码，但**功能可以被移除**。能做的：
 
 1. **商标**：注册名称/Logo；fork 必须改名（在 README/关于页写明）。
-2. **签名**：官方构建签名；用户可校验。
-3. **官方渠道**：只从官网/GitHub Release 下载；公布校验和。
-4. **声明**：README 写明"fork 非官方，不代表本项目立场，不提供支持"。
-5. **不要**在代码里放"只有官方能开"的假安全机制（密钥会泄漏，反而误导用户）。
+2. **签名**：发行前为官方构建提供平台签名；当前尚未落地，用户可先核对 SHA-256。
+3. **官方渠道**：只从 GitHub Release 下载；公布校验和。
+4. **声明**：README 写明“fork 非官方，不代表本项目立场，不提供支持”。
+5. **不要**在代码里放“只有官方能开”的假安全机制（密钥会泄漏，反而误导用户）。
 
-> 法律上，fork 的行为由 fork 作者负责；但如果你把名字借给它，风险会回到你身上。商标与签名是最低成本的隔离。
-
----
-
-## 6.5 关源预案（如果以后要闭源）
-
-- **仓库随时可以转私有**；但已发布的 AGPL 版本仍然有效，接收者可以继续使用 / fork。
-- **未来版本可以闭源**，前提是你拥有那一版的全部版权：
-  - 当前：**不接受外部贡献**，版权 100% 自有；
-  - 将来：若开放 PR，必须第一天就上 CLA（授予重许可权）；DCO 不够。
-- 闭源版若包含第三方 AGPL/GPL 代码，仍须遵守其许可；做不到就重写/替换。
-- 关源前做版权审计（git 历史 + SBOM），并保留旧版本源码归档。
-
-详见 `04-licensing.md` §4「保留关源能力」。
+> 法律上，fork 的行为由 fork 作者负责；如果把名字借给它，风险会回到项目方。商标与签名是最低成本的隔离。
 
 ---
 
-## 7. 发行通道决策
+### 6.5 许可证变更边界
 
-**默认发行通道：`official-cn`（L0）。**
-
-- 不提供游戏本体/资源/加载器/第三方内容的在线获取；
-- 只读元数据（版本清单/搜索）可用；若需要绝对零出站，构建 `L0-Z`；
-- 不默认上传日志；
-- 明确提示用户自行准备合法来源的文件；
-- 不宣称"符合法律法规"——只陈述"本构建默认不提供在线下载"，具体合规请律师确认。
-
-**`official-global` 作为单独构建保留（L1/L2）**：
-
-- 默认 L1：官方版本清单/游戏文件/加载器/Java runtime/自更新可用；
-- L2（Mod/整合包/资源包/光影/第三方 API）需应用内确认；
-- 遥测/日志上传默认关闭。
-
-**不要**照抄 HMCL 的 IP/时区判定（隐私、误伤、VPN 均不可靠）；地区应由**发行渠道**决定，而不是探测用户。
+已发布的 AGPL 版本不可撤回；接收者可以继续使用和 fork。未来版本若包含第三方 AGPL/GPL 代码，仍须遵守其许可。
 
 ---
 
-## 8. 一页决策清单
+## 7. 发行模型
 
-- [ ] 确认使用 AGPL-3.0-only，并接受"分发/网络服务必须开源、功能仍可被 fork 移除"
-- [ ] `LICENSE` = AGPL-3.0 全文；`THIRD-PARTY-NOTICES` 覆盖 MIT/Apache 依赖
+- 单一发行版，不维护 `official-cn` / `official-global` 两套二进制。
+- 中国大陆网络默认关闭内容下载，由本地 `compliance.json` 显式启用；非中国大陆默认启用。
+- 地区判定只读取粗粒度国家码，不保存 IP；请求失败回退系统时区/区域/Windows GeoID。
+- 门控只用于降低误触与默认风险，不宣称“合规认证”或“防破解”。
+- 发行控制点在官方构建、校验和、商标与发布渠道，不在源码里的开关。
+
+---
+
+## 8. 上线前检查表
+
+- [ ] 确认使用 AGPL-3.0-only，并接受“分发必须开源、功能仍可被 fork 移除”
+- [ ] `LICENSE` = AGPL-3.0-only 全文；`THIRD-PARTY-NOTICES.md` 覆盖 MIT/Apache 依赖
 - [ ] 核心仓库不含游戏文件、镜像、API key、遥测端点
 - [ ] Provider 接口 + 策略引擎 + Plan 契约落地
-- [ ] `official-cn` / `official-global` / `dev` 三通道的编译期开关
-- [ ] CI 断言 `official-cn` 构建不含 L2 端点/注册
-- [ ] 官方构建签名 + 校验和 + 官方下载页
+- [ ] 单一发行版的地区默认行为与 `download.policy` 一致
+- [ ] `compliance.json` 只读、应用不自动创建或修改
+- [ ] 官方构建签名 + 校验和 + GitHub Release 说明
 - [ ] 商标/名称政策 + fork 声明
-- [ ] 默认 `official-cn`（L0）；`official-global` 单独构建默认 L1；L2 需三步同意；审计可导出
 - [ ] 发布前律师复核（发行地区、未成年人、隐私、平台条款）
 
 ---
 
-## 9. 我的建议（一句话）
+## 9. 摘要
 
-**把下载做成"可插拔 Provider + 构建期策略 + 默认分级（cn L0 / global L1）"，而不是核心内置能力；**
-**用官方构建、签名和商标来控制"你发布的东西"，而不是幻想用开源代码里的开关去控制别人。**
+- 下载能力由 C# 的 Provider/Policy 与 Rust 的 `DownloadPlan` 执行器组成。
+- 中国大陆默认关闭内容下载，非中国大陆默认启用；本地 `compliance.json` 只做风险确认。
+- 发行控制点是官方构建、校验和、商标与发布渠道。

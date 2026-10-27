@@ -92,6 +92,8 @@ pwsh packaging/windows/package.ps1 `
   -Version 0.0.1+1 -Arch x64 -Installer
 ```
 
+Windows 的便携形态就是解压即用的 zip：runner 依赖旁加载的 `flutter_windows.dll`、引擎数据与原生模块侧车文件，Flutter 工具链不支持链接成单个 exe，故不做单文件打包（见 `09-distribution-and-download-policy.md` §2.7）。
+
 只给 `package.sh` 传 `<bundle> <version> [arch]`（不带格式）时仍生成便携 tar.gz，兼容旧命令。`all` 是本机便捷入口（tar.gz + deb + AppImage）；CI 按发行版拆分 job，rpm / Arch / Deepin 在各自容器内从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu job 上传的原始 bundle。每个包同时写入 `BUILD-INFO.txt` 与 `.sha256`。
 
 CI 的发行矩阵：
@@ -234,7 +236,7 @@ logs/account.log              脱敏的账户诊断日志
 - 发布包只从 GitHub CI 构建：[`.github/workflows/build-all.yml`](../.github/workflows/build-all.yml) 按发行版拆分 job，Ubuntu / Deepin / Fedora / Arch 各自在对应环境从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu 原始 bundle；macOS 与 Windows 是独立 job，各自完成构建和打包；推送 `v*` tag 后汇总全部产物、生成 `SHA256SUMS` 并发布；
 - 构建期凭据只通过 CI secret / MSBuild 属性注入，不进入仓库；当前注入的是 Microsoft client ID。tag 构建会校验 secret 的 GUID 形状，并在打包前用 `system.identity` 断言编译期 id 已生效且为官方 id；
 
-发行通道、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
+发行模型、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
 
 
 ## 图标字体

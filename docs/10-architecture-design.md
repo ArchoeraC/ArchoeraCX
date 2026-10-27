@@ -1,14 +1,15 @@
 # 10 · 架构设计总纲（完整版）
 
-> **状态**：Draft v1 · 2026-10-20
+> **状态**：Draft v1 · 2026-10-20（2026-10-27 修订）
 > **适用范围**：ArchoeraCX 0.x – 1.x
-> **规范性**：本文是架构的 **单一事实来源（SSOT）**。与 `02` / `07` / `08` / `09` 冲突时，以本文为准：
-> `02` 保留 5 分钟摘要，`07` 保留 ABI 草案与踩坑记录，`08` 保留技术预研证据，`09` 保留发行与下载策略。
+> **规范性**：本文是架构的 **单一事实来源（SSOT）**。与专题文档冲突时，以本文为准：
+> `08-technical-research/` 保留技术预研证据，`09-distribution-and-download-policy.md` 保留发行与下载策略，
+> `archive/polyglot-core-ffi.md` 保留 ABI 草案与踩坑记录。
 >
 > **标记约定**
-> - **[已定]**：已做决策，实现不得随意偏离；变更需新增 ADR。
+> - **[已定]**：已确认的架构约定，实现不得随意偏离；变更需新增 ADR。
 > - **[待验证]**：设计成立，但必须用真实样本/基准确认。
-> - **[待决策]**：产品/商业问题，架构只预留接口，不替你做决定。
+> - **[开放]**：产品/商业问题，架构只预留接口，由产品决策。
 >
 > **阅读顺序**：§1 → §2 → §3 → §6 → §7 → §8/§9/§10 → §11/§12 → 其余按需。
 
@@ -57,11 +58,11 @@
 
 | 文档 | 关系 |
 |---|---|
-| [`08-technical-research/`](08-technical-research/) | 版本合并、加载器、搜索、崩溃、下载、整合包、合规的预研证据 |
-| [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md) | 发行通道、Provider/Policy/Plan、密钥与镜像策略 |
+| [`08-technical-research/`](08-technical-research/) | 版本合并、加载器、搜索、崩溃、下载、整合包的预研证据 |
+| [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md) | 发行模型、Provider/Policy/Plan、密钥与镜像策略 |
 | [`06-ecosystem-apis.md`](06-ecosystem-apis.md) | 外部接口索引与字段说明 |
 | [`05-roadmap.md`](05-roadmap.md) | 阶段、验收标准与排期 |
-| [`authentication.md`](authentication.md) | Microsoft Device Code、XBL/XSTS、Minecraft client_id 审核 |
+| [`authentication.md`](authentication.md) | Microsoft Authorization Code + PKCE（Device Code fallback）、XBL/XSTS、Minecraft client_id 审核 |
 
 ---
 
@@ -88,14 +89,14 @@
 | 可恢复 | SQLite 损坏、实例目录被手改 | 从 `instance.json`/磁盘重建索引，不删除用户数据 |
 | 安全 | 恶意整合包、脏镜像、token 泄漏 | 路径逃逸/zip bomb/日志泄漏全部有明确拒绝点 |
 | 可移植 | Windows 10/11 x64、Linux x64、macOS arm64 | 三平台同一 ABI；平台差异集中在 C++/C# |
-| 合规 | 不同发行渠道 | 构建期裁剪 + 运行期默认分级（cn L0 / global L1）+ 审计，不靠 UI 灰按钮 |
+| 合规 | 中国大陆网络 | 单一发行版 + 运行期地区默认 + 本地风险确认；不改 UI 灰按钮 |
 | 可观测 | 用户报障 | 一键导出日志、模块版本、任务快照、minidump |
 
 ### 1.3 硬约束
 
 | 约束 | 内容 | 后果 |
 |---|---|---|
-| 许可证 | **AGPL-3.0-only**，不接受外部代码贡献 | 分发/网络服务需提供源码；未来可闭源新版本但不可撤回旧版本 |
+| 许可证 | **AGPL-3.0-only**，不接受外部代码贡献 | 分发/网络服务需提供源码；已发布版本不可撤回 |
 | UI | **Flutter / Dart** | 双运行时；平台插件债；UI 不得含业务 |
 | 对外边界 | **唯一 C ABI，C++ 枢纽** | Dart 只加载 `archoera_core` 一个库 |
 | 业务核心 | **C# / .NET 10 / NativeAOT** | 无托管调试器；业务必须放纯类库 |
@@ -124,7 +125,7 @@
 6. **UI 线程永不阻塞**：所有可能阻塞的调用都是“投递任务 + 事件回调”。
 7. **路径与哈希在 owner 校验**：谁写文件谁负责规范化；不能只靠上层。
 8. **SQLite 单写者**：C# 是唯一写入方；Rust/Flutter 不写库。
-9. **策略在构建期，默认值在运行期**：发行通道是编译期常量；运行期只能降权。
+9. **策略在 C#，执行在 Rust**：下载门控由 C# 按地区与本地风险确认求值；Rust 只执行计划，不重新解释策略。
 10. **可观测性是功能**：taskId、阶段、错误码、模块版本、诊断包从第一天就有。
 11. **先证据后实现**：协议没有权威规范时，样本与快照测试就是规范。
 12. **失败必须可恢复**：任何写操作都要能回答“中断后留下什么、怎么回滚”。
@@ -148,7 +149,7 @@
 
 | 编号 | 决策 | 状态 | 理由与后果 |
 |---|---|---|---|
-| A1 | 分发采用 **AGPL-3.0-only**，不接受外部贡献 | 已定 | 强 copyleft + 网络条款；版权集中，未来可闭源新版本；App Store 不可用 |
+| A1 | 分发采用 **AGPL-3.0-only**，不接受外部贡献 | 已定 | 强 copyleft + 网络条款；App Store 不适用 |
 | A2 | UI 采用 **Flutter** | 已定 | 表现力/动效/跨端一致；接受双运行时与插件债 |
 | A3 | 对外边界为 **C ABI + C++ 枢纽** | 已定 | ABI 稳定、可换 UI、事件汇聚；代价是崩溃不隔离 |
 | A4 | 业务核心为 **C# NativeAOT 共享库** | 已定 | 团队熟悉、生态成熟、SQLite/注册表/HTTP 方便 |
@@ -166,11 +167,11 @@
 | A16 | **不做运行时插件系统** | 已定 | NativeAOT 动态加载受限；插件会破坏安全与合规边界 |
 | A17 | **更新器是独立进程** | 已定 | 替换自身文件时不能占用自己；失败可回滚 |
 | A18 | **支持 attach/detach 热重启** | 已定 | Flutter 热重启不卸载原生库；任务继续，UI 重连后拉快照 |
-| A19 | **合规门控 + capability** | 已定 | 构建期通道 + 运行期默认分级（cn L0 / global L1）+ 同意/审计；capability 只防进程内绕过，不是 DRM |
-| A20 | **发行通道是编译期常量** | 已定 | `official-cn` / `official-global` / `dev`；`official-cn` 裁剪 L2 注册，`official-global` 保留 L2 但默认需确认 |
+| A19 | **下载门控以运行期地区策略为准** | 已定 | 单一发行版；中国大陆默认禁用，需本地 `compliance.json`；不是 DRM |
+| A20 | **不做编译期发行通道** | 已定 | 不维护 `official-cn` / `official-global` 两套二进制；旧设计已移除 |
 | A21 | **遥测默认关闭** | 已定 | 任何上传必须 opt-in；崩溃转储默认本地 |
 | A22 | **契约版本化** | 已定 | ABI、JSON schema、DB migration、模块版本各自独立演进 |
-| A23 | **默认发行通道为 `official-cn`（L0）** | 已定 | 主发行版采用 cn 构建，默认禁用内容下载；`official-global` 作为单独构建（L1/L2）保留；通道仍是编译期常量 |
+| A23 | **门控只是默认值与风险确认** | 已定 | 不宣称合规认证/防破解；fork 可以移除；控制点在签名、商标与发布渠道 |
 | A24 | **macOS 仅支持 Apple Silicon（arm64）** | 已定 | 降低构建/签名/测试矩阵；x64 Mac 暂不支持，下载页与关于页明确标注 |
 
 **被否决的方案（存档）**
@@ -193,7 +194,7 @@
 |---|---|---|
 | 用户 | 安装、启动、管理实例/账户/Mod | UI |
 | Mojang launchermeta / resources / libraries | 版本清单、版本 JSON、资源、库、Java runtime | HTTPS |
-| Microsoft Entra / Xbox Live / Minecraft Services | 正版登录、档案、拥有验证 | OAuth 2.0 device code + HTTPS |
+| Microsoft Entra / Xbox Live / Minecraft Services | 正版登录、档案、拥有验证 | OAuth 2.0 authorization code + PKCE（Device Code fallback）+ HTTPS |
 | Fabric / Quilt Meta | 加载器 profile | HTTPS |
 | Forge / NeoForge Maven | installer、库、processor 产物 | HTTPS |
 | Modrinth | 搜索、详情、版本、下载 | HTTPS API |
@@ -253,7 +254,7 @@
 ┌───────▼────────────────────────┐   ┌─────────▼───────────────┐
 │ archoera_cs (C# NativeAOT)     │   │ archoera_dl (Rust)      │
 │ 实例/Java/版本/账户/安装/启动   │   │ 下载/校验/分片/断点/去重 │
-│ API/搜索/Mod/整合包/崩溃/合规   │   │ 只认 DownloadPlan        │
+│ API/搜索/Mod/整合包/崩溃       │   │ 只认 DownloadPlan        │
 └───────┬────────────────────────┘   └─────────┬───────────────┘
         │                                      │
         ▼                                      ▼
@@ -378,7 +379,7 @@ ArchoeraCX/
 ### 4.4 分支与发布
 
 - 主干开发；发布走 `release/x.y` 分支 + tag。
-- 每个 tag 产出：源码归档、SBOM、第三方许可、三平台安装包、SHA-256。
+- 每个 tag 产出：源码归档、三平台安装包、SHA-256；SBOM 与第三方许可清单当前需手工生成。
 - 契约变更必须同时更新 schema、文档、契约测试；否则 CI 失败。
 
 ---
@@ -423,12 +424,12 @@ ArchoeraCX/
 ```
 1. 进程启动（Flutter 已加载 archoera_core）
 2. archoera_init(config_json)
-   a. 解析配置：dataDir/cacheDir/logDir/moduleDir/channel/locale/safeMode
+   a. 解析配置：dataDir/cacheDir/logDir/moduleDir/locale/safeMode
    b. 初始化日志（先写启动日志）
    c. 安装崩溃处理器（Crashpad + signal/SEH）
    d. 初始化平台服务（单实例、深链）
    e. 加载并握手 archoera_cs（关键模块）
-   f. C# 打开 SQLite、迁移、加载设置/合规状态
+   f. C# 打开 SQLite、迁移、加载设置与地区/下载门控状态
    g. 加载并握手 archoera_dl（非关键，失败降级）
    h. 恢复未完成任务（可选；默认只标记，不自动重跑）
    i. 返回 core 句柄；UI 可交互
@@ -614,16 +615,16 @@ Flutter 热重启
 ```
 内置默认值
   < 安装目录 policy（机器级，只降权）
-  < 用户 config.json（可手改）
+  < 用户 settings.json（可手改）
   < 实例 instance.json（实例级）
   < 本次启动参数/环境（仅 Debug/CI，发布版不提供升权开关）
 ```
 
-- `config.json` 用 JSON Schema 校验；未知字段保留并警告。
+- `settings.json` 用 JSON Schema 校验；未知字段保留并警告。
 - 实例级覆盖只写 `instance.json` 的 `overrides`（§11.2）；启动时由 C# `InstanceOverrides.ApplyTo` 合并到全局设置，缺省/`null` 回落全局。
-- 合规配置独立：`compliance.json`（用户手写）+ `state/consent.json`（应用写）+ `audit/*.jsonl`。
+- 合规配置独立：`compliance.json`（用户手写，应用只读）；当前没有 `state/consent.json` 或 `audit/*.jsonl`。
 - 配置写入原子化：`.tmp` → fsync → rename；保留 `.bak`。
-- 任何“升权”配置（下载等级）只让 UI 出现确认入口，不直接生效。
+- 下载门控只决定是否允许发起下载；应用不会自动创建或修改 `compliance.json`，也不会自动升权。
 
 ### 5.14 平台服务
 
@@ -661,7 +662,7 @@ Flutter 热重启
 
 ## 6. 对外 ABI（v1）
 
-> 本节是 **规范性文本**。`docs/07` §3 的早期草案与本节目冲突时，以本节为准。
+> 本节是 **规范性文本**。`docs/archive/polyglot-core-ffi.md` §3 的早期草案与本节目冲突时，以本节为准。
 > 头文件最终落在 `contracts/abi/archoera_abi.h`；本文与头文件必须同步。
 
 ### 6.1 设计原则
@@ -704,7 +705,7 @@ typedef enum {
   ARCHOERA_E_INTERNAL    = 8,
   ARCHOERA_E_BUFFER      = 9,   /* 缓冲区不足；out_len 回填所需长度 */
   ARCHOERA_E_BUSY        = 10,  /* 同一资源被占用/任务在跑 */
-  ARCHOERA_E_POLICY      = 11   /* 合规/渠道策略拒绝 */
+  ARCHOERA_E_POLICY      = 11   /* 下载门控拒绝 */
 } archoera_status;
 
 typedef struct {
@@ -728,7 +729,7 @@ typedef enum {
   ARCHOERA_EV_TASK_STATE    = 1,
   ARCHOERA_EV_TASK_PROGRESS = 2,
   ARCHOERA_EV_LOG           = 3,
-  ARCHOERA_EV_DOMAIN        = 4,   /* 实例/账户/下载/合规等领域事件 */
+  ARCHOERA_EV_DOMAIN        = 4,   /* 实例/账户/下载等领域事件 */
   ARCHOERA_EV_MODULE        = 5    /* 模块加载/握手/降级 */
 } archoera_event_type;
 
@@ -831,7 +832,7 @@ archoera_status archoera_module_info(archoera_core* core,
 | `E_INTERNAL` | 未分类异常 | 导出诊断 |
 | `E_BUFFER` | 两段式缓冲区不足 | 扩容重试 |
 | `E_BUSY` | 同一资源已有任务 | 等待/取消旧任务 |
-| `E_POLICY` | 合规/渠道拒绝 | 说明面板 |
+| `E_POLICY` | 下载门控拒绝 | 说明面板 |
 
 ### 6.4 任务与结果
 
@@ -1012,11 +1013,9 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
   "dataDir": "/home/u/.local/share/archoera",
   "cacheDir": "/home/u/.cache/archoera",
   "logDir": "/home/u/.cache/archoera/logs",
-  "channel": "official-global",
   "locale": "zh-Hans",
   "safeMode": false,
   "proxy": { "mode": "system", "url": null, "noProxy": [] },
-  "capabilityKey": "<base64 32 bytes；进程级随机，不落盘/不记日志>",
   "limits": { "maxLogBytes": 8388608, "maxJsonBytes": 67108864 }
 }
 ```
@@ -1039,7 +1038,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 | 7 | `CAP_MODPACK` | 整合包 |
 | 8 | `CAP_LAUNCH` | 启动/日志 |
 | 9 | `CAP_DOWNLOAD` | 下载 |
-| 10 | `CAP_COMPLIANCE` | 合规门控 |
+| 10 | `CAP_POLICY` | 下载门控 |
 | 11 | `CAP_CRASH` | 崩溃分析 |
 
 - 握手时校验：关键能力缺失 → 启动失败；可选能力缺失 → 降级。
@@ -1052,7 +1051,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
   "name": "archoera_cs",
   "version": "0.0.1+1",
   "abiVersion": 1,
-  "capabilities": ["instance", "java", "version", "account", "resource", "mod", "modpack", "launch", "compliance", "crash"],
+  "capabilities": ["instance", "java", "version", "account", "resource", "mod", "modpack", "launch", "policy", "crash"],
   "methods": ["instance.list", "java.scan", "version.install", "launch.start"],
   "build": { "commit": "abc1234", "date": "2026-10-20T12:00:00Z" }
 }
@@ -1123,10 +1122,10 @@ Exports ──▶ Application ──▶ Domain
 | `ModpackService` | 格式探测、解析、导入/导出 | 实例 + SQLite |
 | `LoaderService` | Fabric/Quilt/Forge/NeoForge 安装 | 共享库/版本 |
 | `CrashService` | 收集日志/崩溃报告、规则匹配 | `crash_reports` |
-| `ComplianceService` | 门控求值、同意、审计、capability | `state/consent`/`audit`；`compliance.json` 只读（仅降权写） |
+| `DownloadPolicy` | 地区判定、本地风险确认、`download.policy` | `<data>/compliance.json`（只读） |
 | `StorageService` | SQLite 连接/迁移/事务/备份 | `archoera.db` |
 | `HttpService` | 每 provider 的 HttpClient、代理、UA、重试 | 无 |
-| `SettingsService` | 配置读写、schema 校验 | `config.json`/`settings` |
+| `SettingsService` | 配置读写、schema 校验 | `settings.json`/`settings` |
 | `DiagnosticsService` | 诊断包、模块信息、日志导出 | 无（只读） |
 
 ### 8.3 领域模型
@@ -1217,7 +1216,7 @@ public sealed record LaunchPlan(
    - JVM/game 参数（rules + ${} 展开）
    - 账户占位符（token 只在 C# 内拼进 argv）
    - logging.client 配置（Log4Shell）：必须使用版本 JSON 提供的配置，不自行拼 `-Dlog4j.configurationFile`
-   - authlib-injector（可选）
+   - authlib-injector（可选；当前未接入）
 4. 预检：Java 版本、生成物 manifest（含未列出的 `PATCHED`）、文件存在/hash、磁盘、内存、路径长度
    - 生成物缺失/损坏 → 先自动 `loader.repair`（从最早缺失 processor 重跑）；未通过前不 spawn JVM
 5. spawn JVM：argv 数组、无 shell、清空 JAVA_TOOL_OPTIONS/_JAVA_OPTIONS/CLASSPATH
@@ -1245,21 +1244,21 @@ JavaLocator
 - 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；设置页 Java 分区提供 `/settings/java` 子页入口，子页平铺展示全部扫描结果（带搜索与自定义路径管理）。
 - 托管运行时：`java.runtime.plan` 生成的计划由 `download.execute` 执行，默认根为 `<dataRoot>/runtime`；`java.scan` 与自动选择都会附带该根，装完即可被发现。
 - 手动路径：`java.scan {roots, executables, includeDefaults}`；默认扫描为空时 UI 提示“选择目录搜索”，仍为空再提示“选择 JDK 目录 / java 可执行文件”；用户选择后用 `includeDefaults:false` 验证，路径持久化并随扫描带上。
-- 安装：Mojang runtime 优先；Adoptium 作为可选源；校验 SHA-256/签名；不打包 Oracle JDK。
+- 安装：Mojang runtime 优先并已接入；Adoptium 作为可选源（尚未接入）；校验 SHA-256/签名；不打包 Oracle JDK。
 - 选择：`majorVersion` 必须匹配；Forge/NeoForge processors 用同一 JRE；不匹配时预检失败，不进入 processor。
 
 ### 8.8 账户与认证
 
 | 类型 | 流程 | 存储 |
 |---|---|---|
-| 微软 | device code → XBL → XSTS → Minecraft Services → profile；可回退 auth code + loopback | refresh token 进 OS 凭据库；元数据进 SQLite |
+| 微软 | authorization code + PKCE → XBL → XSTS → Minecraft Services → profile；无法绑定 loopback 时回退 device code | refresh token 进本地加密凭据库（encrypted-file 模式）；元数据进 SQLite |
 | 离线 | 名称 + 可选 UUID；仅离线/局域网提示 | SQLite；不请求网络 |
-| 第三方 | authlib-injector + Yggdrasil；`-javaagent` | 元数据 + 凭据库 |
+| 第三方 | authlib-injector + Yggdrasil；`-javaagent`（当前未接入） | 元数据 + 凭据库 |
 
 - 公共客户端，不内嵌 client secret；自有 Entra 应用。
-- OAuth 重定向：默认 **Microsoft Device Code Flow（无 redirect URI）**；浏览器备选用 **loopback + auth code + PKCE**（注册 `http://localhost/callback`，运行时 `http://localhost:<ephemeral>/callback`，仅绑定 `127.0.0.1`，校验 state/Host，短超时）。自定义协议不作为微软登录主方案。
+- OAuth 重定向：默认 **authorization code + PKCE（loopback）**；无法绑定 loopback 时回退 **Device Code Flow**（无 redirect URI）。自定义协议不作为微软登录主方案。
 - Entra 注册之外还需向 Minecraft 提交自有 client_id 审核（`aka.ms/mce-reviewappid`）；未获准时 `login_with_xbox` 会返回 `403 Invalid app registration`。
-- token 刷新单飞（single-flight）；多账户切换取消旧刷新。
+- token 刷新 single-flight 尚未实现；多账户切换通过 `account.select`，切换时取消旧刷新。
 - 日志/崩溃/诊断包脱敏：Bearer、token、邮箱、UUID、路径、IP。
 - 失败给“人话”：无 Xbox 账户、儿童账户未同意、地区限制、需要重新登录。
 
@@ -1297,13 +1296,14 @@ JavaLocator
 - 退出码不可靠；以 crash-report/`#@!@# Game crashed!`/`hs_err` 为准。
 - 诊断包：脱敏日志尾部 + 规则结果 + 模块版本 + 任务快照；上传需 opt-in。
 
-### 8.13 合规门控
+### 8.13 下载门控
 
-- 唯一求值点：`ComplianceService.Evaluate()`；生成下载计划前必须通过。
-- L0/L0-Z/L1/L2；构建期通道 + 机器策略 + 用户配置 + 同意；只能降不能升。
-- capability：`HMAC-SHA256(进程随机 key, planId|level|exp|nonce)`；Rust 验签后才落盘。
-- 审计 JSONL 哈希链；同意记录；撤回 `gateEpoch++`。
-- 详细规则见 `08/07-compliance-gate.md` 与 `09`。
+- 唯一求值点：`DownloadPolicy.ReadAsync()`；资源、版本、加载器、整合包等 C# 方法在入口调用 `EnsureEnabledAsync()`。
+- 地区：`ARCHOERACX_REGION` 覆盖 → Cloudflare trace 国家码 → 系统时区/区域/Windows GeoID；只缓存粗粒度结果，不保存 IP。
+- 中国大陆网络默认禁用；需要用户手写 `<data>/compliance.json`（`schemaVersion`、`developerMode`、`acceptRisk`、`downloadLevel=L2`、`acknowledgement`），应用只读，不创建也不修改。
+- 非中国大陆网络默认启用；本地登录、实例管理、本地启动与本地 Mod 不受影响。
+- 当前没有构建期通道、`consent.json`、审计 JSONL 或 capability 令牌；旧设计已移除，不要按旧稿实现。
+- 细节见 `09-distribution-and-download-policy.md`。
 
 ### 8.14 SQLite 与存储
 
@@ -1316,9 +1316,9 @@ JavaLocator
 
 ### 8.15 配置与密钥
 
-- `config.json`：应用设置（主题、语言、下载限速、代理、Java 路径、日志级别）。
-- `settings` 表：内部/可查询设置；与 `config.json` 的权威关系：用户可编辑项以 `config.json` 为准，运行态以 DB 为准。
-- 凭据：Windows Credential Manager/DPAPI、macOS Keychain、Linux libsecret；无可用后端时 Windows 用 DPAPI 加密文件、Unix 用 0600 文件，并明确警告。
+- `settings.json`：应用设置（主题、语言、下载限速、代理、Java 路径、日志级别）。
+- `settings` 表：内部/可查询设置；与 `settings.json` 的权威关系：用户可编辑项以 `settings.json` 为准，运行态以 DB 为准。
+- 凭据：当前使用 `archoera-vault` 的 encrypted-file 模式（用户目录下 `secret.key`，权限 0600）；OS 凭据库（DPAPI/Keychain/libsecret）后端尚未接入。
 - CurseForge：API 访问配置前不可用；在线/zip 请求在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE`。实现必须经 API-key 凭据门控。
 
 ### 8.16 AOT 约束清单
@@ -1347,7 +1347,7 @@ JavaLocator
 | `PAGINATION_LIMIT` | CF 深分页 | `E_UNSUPPORTED` |
 | `DISTRIBUTION_DENIED` | 作者禁转 | `E_POLICY` |
 | `HASH_MISMATCH` / `DISK_FULL` / `FILE_LOCKED` | 下载/磁盘 | `E_DISK` |
-| `DOWNLOAD_DISABLED` / `CONSENT_REQUIRED` / `CONSENT_STALE` | 合规 | `E_POLICY` |
+| `DOWNLOAD_DISABLED` / `CONSENT_REQUIRED` / `CONSENT_INVALID` | 下载门控 | `E_POLICY` |
 | `CONFIG_INVALID` / `SCHEMA_UNSUPPORTED` | 配置 | `E_INVALID` / `E_UNSUPPORTED` |
 | `INTERNAL` | 未分类 | `E_INTERNAL` |
 
@@ -1618,7 +1618,7 @@ void _drain() {
 ### 10.4 状态管理
 
 - **Riverpod**（`Notifier`/`AsyncNotifier`）；按页面/领域分 provider。
-- 全局：`coreClientProvider`、`eventPumpProvider`、`settingsProvider`、`complianceProvider`。
+- 全局：`coreClientProvider`、`eventPumpProvider`、`settingsProvider`、`downloadPolicyProvider`。
 - 页面：`instancesProvider`、`instanceDetailProvider(id)`、`downloadsProvider`、`accountsProvider`。
 - 规则：
   - provider 不直接读文件/网络；
@@ -1633,7 +1633,7 @@ void _drain() {
 | 首页 | 实例列表/最近游玩/快速启动 | 列表、搜索、分组、创建 |
 | 实例 | 详情/版本/Mod/资源包/光影/日志/设置 | 启停、加载器安装、Mod 启停/删除、打开目录、修复 |
 | 下载 | 版本列表/全局 Mod/整合包/资源搜索/项目详情页 | 过滤、分页、详情与兼容版本、安装队列 |
-| 账户 | 账户列表/登录/皮肤 | device code、离线、第三方 |
+| 账户 | 账户列表/登录/皮肤 | Microsoft 登录、离线、第三方 |
 | 下载中心 | 队列/速度/限速/镜像 | 暂停/继续/取消/重试 |
 | 设置 | 外观/存储/Java/关于 | 配置、诊断 |
 | 诊断 | 崩溃报告/日志/模块信息 | 复制/导出/上传（opt-in） |
@@ -1718,18 +1718,14 @@ void _drain() {
 
 | 用途 | Windows | Linux | macOS |
 |---|---|---|---|
-| 配置 | `%APPDATA%\ArchoeraCX` | `~/.config/archoeracx` | `~/Library/Application Support/ArchoeraCX` |
-| 缓存/日志/崩溃 | `%LOCALAPPDATA%\ArchoeraCX` | `~/.cache/archoeracx` | `~/Library/Caches/ArchoeraCX` |
-| 游戏数据 | 用户可选，默认 `%APPDATA%\.archoera` | `~/.local/share/archoera` | `~/Library/Application Support/archoera` |
+| 数据根（`settings.json`、账户、DB、`compliance.json`、实例） | `%APPDATA%\ArchoeraCX` | `$XDG_DATA_HOME/archoera-cx` 或 `~/.local/share/archoera-cx` | `~/Library/Application Support/ArchoeraCX` |
+| 游戏实例 | 默认 `<data>/instances`，可在设置中指定多个根 | 同左 | 同左 |
 
 ```
-<config>/
-├─ config.json
-├─ compliance.json              # 用户手写
-├─ state/consent.json           # 应用写
-└─ audit/compliance-YYYYMM.jsonl
-
 <data>/
+├─ settings.json
+├─ accounts.json
+├─ compliance.json              # 用户手写，应用只读
 ├─ archoera.db
 ├─ instances/
 │  ├─ <id>/
@@ -1918,7 +1914,7 @@ CREATE TABLE accounts (
   authlib_url      TEXT,
   skin_url         TEXT,
   is_default       INTEGER NOT NULL DEFAULT 0,
-  token_ref        TEXT,                      -- 指向 OS 凭据库，不存 token
+  token_ref        TEXT,                      -- 指向本地加密凭据库，不存 token
   token_expires_at TEXT,
   created_at       TEXT NOT NULL,
   last_used_at     TEXT
@@ -2120,7 +2116,7 @@ crashes/
 Flutter main
   └─ CoreClient.load() → archoera_init(config)
       ├─ 日志/崩溃/配置
-      ├─ C# init：SQLite 迁移、设置、合规、HTTP
+      ├─ C# init：SQLite 迁移、设置、地区/下载门控、HTTP
       ├─ Rust init：tokio、代理、内容库
       └─ 返回 core
   └─ set_wakeup + attach(0)
@@ -2172,7 +2168,7 @@ C# → 微软 devicecode → { userCode, verificationUri, expiresIn }
 UI: 展示代码/链接（可复制）
 UI → account.login.microsoft.poll（按 interval）
 C#: token → XBL → XSTS → MC login → profile
-C#: refresh token 写 OS 凭据库；账户写 SQLite
+C#: refresh token 写本地加密凭据库；账户写 SQLite
 C# → UI: Account
 ```
 
@@ -2292,22 +2288,20 @@ C#: GET api.github.com/repos/BetaStudio2/ArchoeraCX/releases/latest
 - 签名：Ed25519 manifest + Windows Authenticode/macOS notarization。
 - 不更新正在运行的游戏；提示先退出。
 
-### 12.10 合规门控
+### 12.10 下载门控
 
 ```
-UI → compliance.state
-C#: 读 compliance.json/state/consent → 机器策略 → 有效等级
-下载请求 → C#: 生成计划前求值
-  ├─ 拒绝 → DOWNLOAD_DISABLED/CONSENT_REQUIRED
-  └─ 通过 → capability(HMAC) + DownloadPlan
-core → Rust: submit(plan, capability)
-Rust: 验签 → 下载
-撤回 → gateEpoch++ → 取消在途任务
+UI → download.policy
+C#: 地区判定 → （CN）读取 compliance.json → enabled / reason
+下载请求 → C#: 生成计划前 EnsureEnabledAsync
+  ├─ 拒绝 → DOWNLOAD_DISABLED / CONSENT_REQUIRED / CONSENT_INVALID
+  └─ 通过 → DownloadPlan
+C# → Rust: 执行计划
 ```
 
-- L0 = 不下载内容，但允许只读元数据；L0-Z = 零出站严格构建（回环除外）。
-- 开发者模式：双文件 + 三步同意 + 审计；应用永不写 `developerMode: true`。
-- capability 只防 Dart/脚本绕过 C#，不是抗逆向。
+- 中国大陆默认禁用，非中国大陆默认启用。
+- 应用永不写 `developerMode: true`，也不会自动创建 `compliance.json`。
+- 当前没有 `consent.json`、审计链或 capability 令牌；旧设计已移除。
 
 ---
 
@@ -2377,7 +2371,7 @@ public interface IDownloadProvider {
 }
 ```
 
-- Provider 注册表由发行通道决定；`official-cn` 在 DI 阶段不注册 L2 provider。
+- Provider 注册表由 C# DI 固定注册；不存在按发行通道裁剪。中国大陆的下载限制由 `DownloadPolicy` 在方法入口统一执行。
 - `IResourceProvider` 让 Modrinth 与 CurseForge 作为独立实现接入。CurseForge Provider 在 API 访问（API key）配置前不可用；请求在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE`。
 - CurseForge：在 API 访问配置前不可用；实现必须使用独立的 API-key 凭据，不与 Modrinth 共用状态。
 - Modrinth/CF 的字段差异在 Provider 内映射；UI 只消费统一 DTO。
@@ -2467,7 +2461,7 @@ public interface IDownloadProvider {
 | `account.list` | C# | 账户列表 |
 | `account.current` | C# | 当前账户（无则 null） |
 | `account.select` | C# | 设为默认 |
-| `account.login.microsoft.start` | C# | device code |
+| `account.login.microsoft.start` | C# | `flow=authorization_code`（默认，loopback + PKCE）或 `flow=device_code` |
 | `account.login.microsoft.poll` | C# | 轮询完成 |
 | `account.login.microsoft.cancel` | C# | 取消轮询 |
 | `account.login.offline` | C# | 离线账户 |
@@ -2508,11 +2502,7 @@ public interface IDownloadProvider {
 | `download.resume` | Rust | 继续 |
 | `download.cancel` | Rust | 取消 |
 | `download.snapshot` | Rust | 分页快照 |
-| `compliance.state` | C# | 当前等级/原因 |
-| `compliance.evaluate` | C# | 求值（不改变状态） |
-| `compliance.accept` | C# | 三步同意 |
-| `compliance.revoke` | C# | 撤回 |
-| `compliance.openConfigDir` | C# | 打开配置目录 |
+| `download.policy` | C# | 当前地区与风险确认状态：`enabled`、`reason`、`configPath`、`noticeVersion`、`downloadLevel`、`missingFields` |
 | `cache.stats` | C# | 缓存占用 |
 | `cache.clear` | C# | 按类型清理 |
 | `update.check` | C# | 检查启动器更新：参数 `{}`，返回 `current`、`latest`（去 `v` 前缀）、`hasUpdate`、`url`、`name`、`publishedAt`、`notes`（≤4000 字符）；数据源 `https://api.github.com/repos/BetaStudio2/ArchoeraCX/releases/latest`（仅发布 pre-release 时该端点返回 404，此时回退 `GET /releases?per_page=1` 取最新一条；列表为空视为已是当前版本），带 User-Agent 与 `Accept: application/vnd.github+json`，10 秒超时；按 `major.minor.patch` 比较（忽略 `+build`/`-pre`），网络或解析失败返回 `E_NETWORK`/`E_INVALID`；只检查不自动安装 |
@@ -2629,7 +2619,6 @@ public interface IDownloadProvider {
   "schemaVersion": 1,
   "params": {
     "plan": { "schemaVersion": 1, "planId": "8f2c...", "files": [] },
-    "capability": "base64-hmac",
     "pauseOnMetered": false
   }
 }
@@ -2660,7 +2649,7 @@ public interface IDownloadProvider {
 | Mojang 资源 | `https://resources.download.minecraft.net/<xx>/<hash>` | Rust 下载 |
 | Mojang 库 | `https://libraries.minecraft.net/` | 允许镜像回退 |
 | Mojang Java | java-runtime manifest | 以 `javaVersion.component` 为准 |
-| 微软 device code | `https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode` | 公共客户端 |
+| 微软 authorization code / device code | `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize` / `.../devicecode` / `.../token` | 公共客户端 |
 | Xbox Live | `https://user.auth.xboxlive.com/user/authenticate` | `RpsTicket=d=<token>` |
 | XSTS | `https://xsts.auth.xboxlive.com/xsts/authorize` | 返回 UHS/XSTS |
 | Minecraft Services | `https://api.minecraftservices.com/` | login/profile/entitlements |
@@ -2700,14 +2689,14 @@ public interface IDownloadProvider {
 | 恶意 loader/processor | Forge/NeoForge installer | 官方 Maven + hash；argv 数组；无 shell | installer 自身漏洞 |
 | 命令注入 | Java/processors | `ArgumentList`；清空危险环境变量；无 shell | 子进程自身行为 |
 | DLL 劫持 | Windows 加载 | 应用目录绝对路径；`LoadLibraryEx` 安全搜索 | 本地写权限 |
-| Token 泄漏 | 日志/崩溃/UI | OS 凭据库；脱敏；不跨 ABI 传 token | 内存转储 |
+| Token 泄漏 | 日志/崩溃/UI | 本地加密凭据库；脱敏；不跨 ABI 传 token | 内存转储 |
 | 更新劫持 | 自更新 | Ed25519 manifest + 平台签名；分阶段替换 | 签名私钥失窃 |
 | 远程策略滥用 | kill switch | 只降不升；签名；字段白名单；可离线 | 服务端失陷 |
 | 恶意镜像 | 下载 | HTTPS + hash + 白名单；失败回退官方 | 镜像拒绝服务 |
 | Log4Shell | 1.7–1.18 启动 | 使用版本 JSON 的 `logging.client`；不自行拼配置 | 版本 JSON 缺失 |
 | SQL 注入 | 本地 DB | 参数化查询；不拼接 SQL | — |
 | JSON DoS | API/配置/计划 | 深度/大小/条目上限 | — |
-| 供应链 | 依赖 | 锁文件、SBOM、许可证白名单、CI 审计 | 上游投毒 |
+| 供应链 | 依赖 | 锁文件、SBOM、许可证白名单、CI 审计（待接入） | 上游投毒 |
 
 ### 14.2 边界控制
 
@@ -2725,17 +2714,17 @@ public interface IDownloadProvider {
 ### 14.3 密钥与凭据
 
 - 微软 refresh token、第三方认证 token：`archoera-vault` 凭据保险库；DB/元数据只存引用。
-- 保险库优先使用 OS 安全存储（DPAPI / Keychain / libsecret）；无桌面钥匙串时降级到 0600 `secret.key` 的 encrypted-file 模式，不写明文。
-- 旧 `accounts.credentials.json` 首次访问时迁移到保险库并删除；不把密钥写进 `config.json` 或日志。
+- 保险库当前使用 encrypted-file 模式（用户目录下 `secret.key`，权限 0600），不写明文；OS 凭据库后端尚未接入。
+- 旧 `accounts.credentials.json` 首次访问时迁移到保险库并删除；不把密钥写进 `settings.json` 或日志。
 - 日志脱敏顺序：Bearer/Authorization → token 字段 → 邮箱 → UUID → 路径 → IP。
 - 崩溃转储默认本地；上传前提示可能含内存内容；不自动上传。
 
 ### 14.4 更新与供应链
 
-- 更新 manifest 用 Ed25519 签名；公钥编译进二进制；签名失败整份丢弃。
-- Windows Authenticode/Trusted Signing；macOS Developer ID + notarization；Linux SHA-256 + 包签名。
-- 分阶段更新：下载 → 验签 → 关闭主程序 → 替换 → 失败回滚。
-- SBOM + `THIRD-PARTY-NOTICES`；CI 许可证白名单；不引入 GPL/AGPL 代码（除独立进程的 authlib-injector）。
+- 更新器目标：Ed25519 签名 manifest，公钥编译进二进制，签名失败整份丢弃；当前更新器尚未接入。
+- 发布签名目标：Windows Authenticode/Trusted Signing、macOS Developer ID + notarization、Linux SHA-256 + 包签名；当前 CI 尚未产出平台签名。
+- 更新器目标：下载 → 验签 → 关闭主程序 → 替换 → 失败回滚。
+- SBOM + `THIRD-PARTY-NOTICES` 为发布要求；CI 许可证白名单尚未接入；不引入 GPL/AGPL 代码（除独立进程的 authlib-injector）。
 
 ### 14.5 本地数据
 
@@ -2748,92 +2737,77 @@ public interface IDownloadProvider {
 
 ## 15. 合规与发行架构
 
-### 15.1 发行通道
+### 15.1 发行模型
 
-| 能力 | `official-cn`（L0） | `official-global`（L1/L2） | `dev`（L2） |
-|---|---|---|---|
-| 版本清单/搜索（只读元数据） | ✓ | ✓ | ✓ |
-| 原版游戏文件 | ✗（引导官网） | ✓ | ✓ |
-| 加载器/processors | ✗（引导手动） | ✓ | ✓ |
-| Mod/整合包/资源包/光影 | ✗ | ✓（L2 需确认） | ✓ |
-| Java runtime | ✗（提示手动） | ✓ | ✓ |
-| 启动器自更新 | 仅提示 + 官网 | ✓（签名通道） | ✓ |
-| 遥测/日志上传 | ✗ | opt-in，默认 ✗ | ✗ |
-
-- **默认构建为 `official-cn`（L0）**；`official-global` 作为单独构建保留。
-- 通道是**编译期常量**；`official-cn` consumer 构建在 DI 阶段不注册 L2 provider，`official-global` 保留 L2 注册但默认 L1/需确认。
-- CI 断言：`official-cn` 产物不含 L2 端点字符串/注册符号；`official-global` 的 L2 受 ComplianceGate 控制。
-- `official-cn` 默认 L0（允许只读元数据），需要绝对零出站时使用 `L0-Z` 严格构建；`official-global` 默认 L1（官方必需内容），L2 需确认。
-- 不通过 IP/时区探测地区；地区由发行渠道决定。
+- **单一发行版**：不维护 `official-cn` / `official-global` 两套二进制；`app/tool/build-cn.sh` 仅为旧命令兼容保留。
+- 下载能力在编译期保留；运行期由**地区**与**本地风险确认**决定是否启用。
+- 中国大陆网络默认禁用内容下载；非中国大陆默认启用。
+- 地区判定：`ARCHOERACX_REGION` 覆盖 → Cloudflare trace 国家码 → 系统时区/区域/Windows GeoID；只缓存粗粒度结果，不保存 IP。
+- 门控不是 DRM，也不宣称“合规认证”；fork 可以移除它，AGPL 不要求保留功能。
 
 ### 15.2 Provider + Policy + Plan
 
 ```
-C# ComplianceGate.Evaluate()
-  → defaultLevel = channel 默认（cn disabled / global official / dev all）
-  → requested = userConfig.downloadLevel ?? defaultLevel
-  → 升到 L2 时检查 consent；cn 升到 L1 时检查 developerMode/ACK/consent
-  → effectiveLevel = min(requested, channelMax, machinePolicy, remotePolicy)
-  → 通过后生成 DownloadPlan + capability
-  → Rust 验 capability 后下载
+C# DownloadPolicy.ReadAsync()
+  → 地区（CN / GLOBAL）
+  → CN：读取 <data>/compliance.json 并校验
+  → 通过后生成 DownloadPlan
+  → Rust 只执行 URL + hash + dest + 并发/校验/落盘
 ```
 
-- `disabled < official < all`；机器/远程策略只能降低，用户请求受 `channelMax` 限制。
-- C# HTTP 层按用途分类 `metadata/content/telemetry`：`content` 必须过门控，`telemetry` 默认禁止；不按 URL 白名单（镜像换域名不应绕过策略）。
+- 资源、版本、加载器、整合包等 C# 方法在入口调用 `EnsureEnabledAsync()`；未启用返回 `DOWNLOAD_DISABLED`。
 - Plan 带 `provider/source/termsUrl`，UI 能展示来源与条款。
-- Rust 不重新解释策略；只执行带能力的计划。
+- Rust 不重新解释策略；策略只在 C# 求值一次。
 
-### 15.3 L0/L0-Z/L1/L2 定义
+### 15.3 默认行为
 
-| 等级 | 含义 | 出站 |
+| 能力 | 中国大陆（未配置 `compliance.json`） | 非中国大陆 |
 |---|---|---|
-| L0 | 不下载内容；只读元数据允许 | 版本清单/搜索/详情；不下载游戏/加载器/Mod/Java；远程图片用本地占位 |
-| L0-Z | 严格零出站（可选构建） | 进程不发起任何出站连接（回环除外） |
-| L1 | 仅官方必需 | Mojang/微软/加载器官方源/Java runtime/自更新 |
-| L2 | 全部 | Mod/整合包/资源包/光影/第三方 API |
+| 版本清单/搜索/详情（只读元数据） | ✓ | ✓ |
+| 原版游戏文件 | ✗ | ✓ |
+| 加载器/processors | ✗ | ✓ |
+| Mod/整合包/资源包/光影 | ✗ | ✓ |
+| Java runtime | ✗ | ✓ |
+| 启动器更新检查 | ✓（只检查，不自动下载） | ✓（只检查） |
+| 遥测/日志上传 | ✗ | ✗ |
 
-- 默认：`official-cn` L0；`official-global` L1；`dev` L2（仅开发构建）。
-- 通道上限：`official-cn` 最高 L1（official，不提供 L2）；`official-global` 最高 L2；`dev` 最高 L2。
-- 任何消费构建的 `L1→L2` 都需应用内第二次确认；`official-cn` 从 L0 升到 L1 需开发者模式 + 声明。
-- 若发行地区/法务要求，构建 `L0-Z`；CI 用 network namespace/防火墙断言零出站，不信日志。
-- 不受门控：启动已有实例、离线账户、本地扫描/启停、日志、崩溃本地解析、导入本地整合包。
+- 不受门控：登录、实例管理、本地启动、本地 Mod 扫描/启停、日志查看、崩溃本地解析、导入本地整合包。
 - 门控不能把启动器变成砖头。
 
-### 15.4 同意、审计、capability
+### 15.4 本地风险确认
 
-- 双文件：`official-cn` 使用 `compliance.json`（用户手写）+ `DEVELOPER_ACK.txt`（安装目录，用户手写）；`official-global` 默认 L1，不需要 ACK。
-- 应用永不创建 ACK，永不写 `developerMode: true`；只有降权写接口。
-- 三步同意：阅读页 → 勾选 → 输入短语；`official-cn` 升 L1、所有消费构建升 L2 都走此流程；拒绝路径同等视觉权重。
-- 审计 JSONL 哈希链；记录 `noticeVersion/noticeSha256/acceptedAt/method/channel/appVersion`。
-- capability = `base64url(payload || HMAC-SHA256(进程随机 key, payload))`，payload 含 `planId/level/exp/nonce`；Rust 解析并验签；只防进程内绕过。
-- 进程 key 由 C++ 启动时生成，随模块 init 配置传给 C#/Rust；不落盘、不进日志；C++ 不参与策略判断。
-- 撤回：`gateEpoch++`；取消在途任务并清理 `.part`/`.part.meta`。
+- 文件：`<data>/compliance.json`，**用户手写**；应用只读，不创建也不修改。
+- 字段：`schemaVersion=1`、`developerMode=true`、`acceptRisk=true`、`downloadLevel="L2"`、`acknowledgement="ENABLE-DOWNLOADS 1"`。
+- 缺失/类型不符返回 `CONSENT_REQUIRED` / `CONSENT_INVALID`；业务方法返回 `DOWNLOAD_DISABLED`。
+- 非中国大陆网络不需要该文件。
+- 当前没有 `state/consent.json`、审计 JSONL、`DEVELOPER_ACK.txt` 或 capability 令牌；旧设计已移除，不要按旧稿实现。
 
-### 15.5 构建期断言
+### 15.5 构建与发布检查（目标）
 
-| 断言 | 方式 |
+| 检查 | 方式 |
 |---|---|
-| consumer 不含 L2 provider | DI 注册表为空/链接裁剪；符号扫描 |
-| consumer 不含 L2 端点字符串 | `strings`/二进制扫描 |
-| 不含 debug 升权符号 | `#if DEBUG`；Release 符号检查 |
-| 许可证白名单 | `dotnet list package --include-transitive` + `cargo deny` + `flutter pub deps` |
-| SBOM | CycloneDX/syft |
+| Microsoft client ID 只在构建期注入 | GitHub Actions secret / `-p:MicrosoftClientId`；`system.identity` 校验摘要 |
+| 许可证白名单（待接入） | `dotnet list package --include-transitive` + `cargo deny` + `flutter pub deps` |
+| SBOM（待接入） | CycloneDX/syft |
+| 不含游戏本体/资源/库 | 仓库与发布物检查 |
+| 不含 API key / 凭据 | 仓库扫描；CurseForge 在配置前不可用 |
 
 ### 15.6 AGPL 义务
 
 - 分发二进制时提供完整对应源码（含构建脚本）；网络服务按 **AGPL §13** 向用户提供源码获取方式。
-- 根目录 `LICENSE`、`THIRD-PARTY-NOTICES.md`、`NOTICE`（Apache 依赖）。
-- `authlib-injector` 作为独立 jar/`-javaagent` 分发时，附其 AGPL 声明与源码链接。
+- 根目录 `LICENSE`、`THIRD-PARTY-NOTICES.md`；依赖自带 `NOTICE` 时一并保留。
+- `authlib-injector` 作为独立 jar/`-javaagent` 分发时，附其 AGPL 声明，并提供对应源码或有效书面要约。
 - 不接受外部代码贡献；未来开放 PR 前必须上 CLA。
 - 商标/名称/Logo 单独政策；fork 必须改名。
 
 ### 15.7 发布物检查
 
-- 安装包签名 + SHA-256 公布。
+- 安装包 SHA-256 公布；平台签名待接入。
 - 关于页/下载页展示免责声明与源码获取方式。
-- 不含游戏本体/assets/libraries、B/C 档代码或资产。
+- 不含游戏本体/assets/libraries、第三方不兼容许可证代码或资产。
 - 隐私政策（若收集任何数据）、遥测 opt-in。
 - 第三方许可页面可离线查看。
+
 
 ---
 
@@ -2922,7 +2896,7 @@ diagnostics-<timestamp>.zip
 
 ### 17.4 关于页
 
-- 应用版本/构建号/commit；ABI/模块版本；发行通道；许可证/源码获取方式；更新检查；诊断导出；免责声明。
+- 应用版本/构建号/commit；ABI/模块版本；默认地区策略；许可证/源码获取方式；更新检查；诊断导出；免责声明。
 
 ---
 
@@ -2959,7 +2933,7 @@ diagnostics-<timestamp>.zip
 | 8 | 取消/退出 | 2s 内停止；`.part.meta` 完整 |
 | 9 | 崩溃注入 | minidump + 下次启动可见 |
 | 10 | 热重启 | 任务继续；UI 快照正确 |
-| 11 | 合规 L0-Z | 零出站（防火墙断言） |
+| 11 | 下载门控 | 中国大陆默认禁用；`compliance.json` 解锁；非中国大陆默认启用 |
 | 12 | 账户 token | 日志/诊断无明文 |
 
 ### 18.3 CI 矩阵
@@ -2971,16 +2945,16 @@ diagnostics-<timestamp>.zip
 | macOS 14/15 | arm64 | ABI/集成/E2E/签名冒烟 |
 | Linux | arm64（可选） | 构建/单测 |
 
-- 每次 PR：lint、单测、契约、许可证扫描。
-- 每次 tag：三平台完整构建、E2E、SBOM、安装包、校验和。
+- 每次 PR：lint、单测、契约。
+- 每次 tag：三平台完整构建、E2E、安装包、校验和；SBOM 当前手工生成。
 
 ### 18.4 发布门禁
 
 - P1/P2 验收表全绿；
 - 无 P0/P1 缺陷；
 - 崩溃率/启动失败率基线达标；
-- 许可证/SBOM/免责声明齐全；
-- 安装包签名验证通过；
+- 许可证/第三方声明/免责声明齐全；SBOM 待生成。
+- 安装包 SHA-256 校验通过（平台签名待接入）。
 - 回滚演练成功。
 
 ---
@@ -3056,8 +3030,8 @@ ArchoeraCX/
 ### 19.6 发布流程
 
 1. 冻结代码/契约；更新版本号与 CHANGELOG。
-2. CI 三平台构建 + 测试 + 安全扫描。
-3. 生成 SBOM/第三方许可；签名；计算 SHA-256。
+2. CI 三平台构建 + 测试。
+3. 生成 SBOM/第三方许可（当前手工）；计算 SHA-256；平台签名待接入。
 4. 冒烟安装/启动/卸载；回滚演练。
 5. 发布源码归档、安装包、校验和、免责声明。
 6. 更新通道灰度（可用签名 manifest 控制）。
@@ -3107,7 +3081,7 @@ ArchoeraCX/
 - Java 探测等子进程必须显式设置有效 `WorkingDirectory`，避免子进程继承已删除的 CWD。
 - 数据目录仍优先使用 `ARCHOERACX_DATA_DIR`，否则按 Windows `%APPDATA%`、macOS `Application Support`、Linux XDG/`~/.local/share` 解析。
 
-**当前进度（2026-10-26）**：C++ `system.ping` / `system.pingAsync` + wake 驱动 `EventPump`、`ModuleRegistry` / `MethodRegistry` / `system.modules`、C# `BusinessModuleRegistry`、NativeAOT `java.scan`、`version.list`、`loader.check`/`plan`/`verify`/`repair`、`launch.start` 均已在 Linux x64 跑通。`launch.start` 支持离线账户与在线账户：自动选择匹配游戏版本的 Java（也可在设置中手动指定并写入 `settings.json`），内存、GC 预设、JVM 参数和附加游戏参数持久化，构建 classpath/参数、提取 natives 并启动 JVM；进程状态/停止/日志流尚未接线。Modrinth 模组安装会递归安装 required 依赖（深度 8、环检测）。Java 扫描按 `java.home` 去重并扩展 SDKMAN/asdf/mise/.jdks 等用户目录。设置支持多个实例根（`instancesRoots`，首项为默认）并提供 `instance.sync` 采纳已存在的实例目录。Flutter 实例 UI 支持创建/选择/删除/搜索、多根目录与自定义目录选择；页面切换：首页切换用旧页快照覆盖，其他页面之间上浮淡入，切回首页收回；快照等比绘制避免底栏高度变化导致形变；实例“更多”支持 Forge/NeoForge 加载器安装、Mod 启停/删除与 quick/full 依赖检查；下载页提供版本列表、全局 Mod 搜索、项目详情整页（概览/画廊/描述与兼容版本列表，宽窗双栏、窄窗单列）与排序/分页；Mod/资源包/光影结果带图标，详情通过 `resource.project` 获取 Modrinth 画廊。实例创建与 Forge/NeoForge 安装弹窗通过 `loader.versions` 列出全部加载器版本，可选择旧版。Forge/NeoForge 安装前通过 `java.select` 解析 Java，下载后调用 `loader.repair` 执行 processors 并校验输出。Microsoft Authorization Code + PKCE（loopback）登录链、重排后的账户页、离线账户、刷新和凭据文件已接入；账户页采用当前账户 Hero + 单账户列表，设置页采用分区导航 + 平铺设置组，启动分区编辑游戏参数/命令/包装环境，高级分区集中编辑窗口、性能、Java/内存/GC/JVM 与原生库默认值，并展示系统总内存、可用内存和启动后预计占用；下载任务通过模块 ABI v2 上报进度，右上角任务中心可查看/取消；实例创建支持 `versions/` 版本隔离，原版下载优先官方源、失败回退 BMCLAPI，跨类型依赖按项目类型补全；发布版必须先存在已验证的微软账户，才允许添加/选择离线账户并启动；单一发行版按运行期 IP/系统地区判断，中国大陆网络默认返回 DISABLED，需手动配置 compliance.json 后重检解锁；真实 Entra client_id 已申请，Minecraft Services 审核材料已准备；在线启动已接入凭据刷新、accessToken/clientId/xuid/userType=msa。773 个 C# 测试、245 个 Flutter 测试（另 13 个跳过）通过；Fabric/Quilt 通过整合包流程以 profile JSON 安装，正式 C++ DownloadManager/Rust module、完整 LaunchPlan/进程管理、凭据保险库已接入（crypto/file），CurseForge 在 API 访问配置前不可用（`PROVIDER_UNAVAILABLE`：在线接口与 zip 导入都需要 API key，调用在发起 HTTP 前被拒绝）。
+**实现状态**：核心 ABI、模块注册表、事件泵、C# 业务模块、Rust 下载计划执行器与 Flutter AppShell 已接入；具体完成度以 README、路线图和测试结果为准。
 
 **P1 完成定义**
 
@@ -3144,35 +3118,24 @@ ArchoeraCX/
 | 整合包恶意路径 | 高 | 中 | 自写解压器 + 恶意样本库 + 预算 |
 | 磁盘/文件锁 | 中 | 高 | 原子写、重试、明确错误码、预检 |
 | 微软认证变更 | 高 | 低 | `IAuthProvider` 抽象；错误可诊断 |
-| 许可证返工 | 高 | 低 | AGPL 已定；CI 白名单；不复制 B/C 档代码 |
+| 许可证返工 | 高 | 低 | AGPL 已定；许可证白名单（待接入 CI）；不复制不兼容许可证代码 |
 | 包体/内存超标 | 中 | 高 | AOT 裁剪、按需加载、基线回归 |
 | 热重启事件丢失 | 中 | 中 | seq + snapshot + 全量刷新兜底 |
-| 合规门控被误解为 DRM | 中 | 中 | 文档/UI 明说；不宣称技术强制 |
+| 下载门控被误解为 DRM | 中 | 中 | 文档/UI 明说；不宣称技术强制 |
 
-### 21.2 已定补充决策（2026-10-20）
+### 21.2 补充约定（2026-10-20）
 
-| # | 决策 | 结论 |
+| # | 约定 | 内容 |
 |---|---|---|
-| D1 | 默认发行通道 | **`official-cn`（L0）**；`official-global` 作为单独构建保留（L1/L2） |
+| D1 | 发行模型 | **单一发行版 + 运行期地区门控**；中国大陆默认禁用下载，非中国大陆默认启用；不维护 `official-cn` / `official-global` 两套二进制 |
 | D2 | macOS 架构 | **仅 Apple Silicon arm64**；不做 x64/universal，下载页明确标注 |
-| D3 | 微软 OAuth 重定向 | **默认 Device Code Flow（无 redirect URI）**；浏览器备选用 **loopback + auth code + PKCE**（`http://localhost:<ephemeral>/callback`）；自定义协议不作为主方案 |
+| D3 | 微软 OAuth 重定向 | **默认 authorization code + PKCE（loopback）**；Device Code 作为无法绑定 loopback 时的 fallback；自定义协议不作为主方案 |
 | D4 | SQLite 归属 | **只由 C# 持有**；Flutter 不引入数据库插件/不直接读 SQLite；C++ 只路由。各平台随 C# 模块分发 SQLitePCLRaw `e_sqlite3` 并按绝对路径加载，不使用宿主 `libsqlite3` |
-| D5 | 账户凭据 | device code/access/refresh token **不跨 ABI、不写日志**；C# `VaultCredentialStore` 经 `archoera-vault` 加密存储，旧 `accounts.credentials.json` 首次迁移后删除 |
+| D5 | 账户凭据 | authorization code/access/refresh token **不跨 ABI、不写日志**；C# `VaultCredentialStore` 经 `archoera-vault` 加密存储，旧 `accounts.credentials.json` 首次迁移后删除 |
 
-### 21.3 待决策
+### 21.3 开放问题
 
-| # | 问题 | 影响 | 建议 |
-|---|---|---|---|
-| D3 | Windows/Linux ARM64 | 构建矩阵 | 先 x64；有需求再加 |
-| D4 | CurseForge | 合规/体验 | API 访问配置前不可用；在线与 zip 导入都依赖 API key，接入必须由凭据门控 |
-| D5 | 遥测/崩溃上传 | 隐私/排障 | 默认关闭；opt-in；可预览 |
-| D6 | 自动更新默认开关 | 安全/体验 | 默认提示更新，不静默 |
-| D7 | Riverpod 版本升级/代码生成策略 | UI 维护 | 锁定大版本；PoC 通过后再启用代码生成 |
-| D8 | 3D 皮肤方案 | 体验/包体 | 预渲染优先；WebView 备选 |
-| D9 | OptiFine 支持 | 条款/需求 | 手动导入优先 |
-| D10 | 是否保留 Rust（下载压测后） | 维护成本 | P1 后按数据决定；ABI 不变 |
-| D11 | ABI v1 冻结时间 | 兼容性 | P1 结束前冻结；之后只加可选字段 |
-| D12 | 多窗口/独立日志窗 | UI 复杂度 | 单窗口 + 内嵌面板 |
+产品/商业取舍不在架构文档中维护；需要跟踪时在仓库 Issue 中记录。
 
 ---
 
@@ -3185,8 +3148,8 @@ ArchoeraCX/
 | 有效版本（EffectiveVersion） | 合并 `inheritsFrom` 链、rules/args 保留后的版本模型 |
 | 下载计划（DownloadPlan） | C# 生成的只读文件清单；Rust 只执行 |
 | 效果（Effect） | C# 返回给 C++ 的“请执行下载”指令；完成后回调 C# |
-| capability | C# 签发的短期下载许可；Rust 验签 |
-| L0/L0-Z/L1/L2 | 内容下载等级；L0 允许只读元数据，L0-Z 零出站 |
+| 下载门控 | C# `DownloadPolicy`：地区判定 + `compliance.json` 只读校验 |
+| 地区判定 | `ARCHOERACX_REGION` → Cloudflare trace 国家码 → 系统时区/区域/GeoID |
 | 共享库 | `shared/{libraries,assets,versions}` |
 | 内容库 | `downloads/objects`，按 hash 去重 |
 | 实例 | 一个游戏目录 + `instance.json` + 加载器/账户/设置 |
@@ -3213,7 +3176,6 @@ contracts/
 - `docs/08-technical-research/04-crash-analysis.md` — 崩溃分析
 - `docs/08-technical-research/05-download-engine.md` — 下载引擎
 - `docs/08-technical-research/06-modpack-install.md` — 整合包/解压安全
-- `docs/08-technical-research/07-compliance-gate.md` — 合规开关
 - `docs/09-distribution-and-download-policy.md` — 发行/下载策略
 - `docs/06-ecosystem-apis.md` — 外部接口
 - `docs/05-roadmap.md` — 阶段/验收
@@ -3225,16 +3187,16 @@ contracts/
 | 1 | `07` 顶部仍写“C 管网络传输” | 改为“Rust 管文件下载；C 网络层已取消” |
 | 2 | `07` ABI 草案写“task_id=0 表示同步完成” | 统一为“task_id 恒 > 0；同步完成也产生 Completed 事件” |
 | 3 | `04` 检查表写“AGPL 源码获取（当前不适用）” | 改为“当前必须做” |
-| 4 | `05` P0 产出只写 `docs/01–07` | 更新为 `docs/01–10` |
+| 4 | `05` P0 产出只写旧编号文档 | 更新为当前 `docs/` 目录结构 |
 | 5 | `02` 写“失败回退 C# 下载器”“ModuleHost 卸载模块” | 改为“禁用下载，不做第二套下载器”“加载后不卸载” |
 | 6 | `03` 把 authlib-injector 说成“独立进程” | 改为“独立 jar / `-javaagent`” |
-| 7 | `09`/`08-07` 的 L0 与“零出站”定义冲突 | 引入 `L0-Z` 严格构建；L0 允许只读元数据 |
+| 7 | `09` 的等级定义与实现冲突 | 统一为单一发行版 + 运行期地区门控（见 §15） |
 | 8 | `07`/`08-05` 的 `post.extract_natives` 与“C# 解压”冲突 | Rust v1 不解压；`extract_natives` 由 C# 执行 |
 | 9 | 更新器下载归 C++，与“C++ 不实现 HTTP”冲突 | 更新器改为独立 Rust 可执行文件 |
 | 10 | 示例版本 1.21.4 未说明是否最新 | 标注为固定测试基线；记录 2026-10-20 清单最新 release 为 26.3 |
 | 11 | `README` 文档索引缺少 10、顺序不自然 | 增加 10 并调整顺序 |
 | 12 | `07` 把 C# 模块写成可加载 C#/Rust/C | 去掉已取消的 C |
-| 13 | 默认发行通道未定 | 定为 `official-cn`（L0）；`official-global` 单独构建（L1/L2） |
+| 13 | 默认发行通道未定 | 定为单一发行版 + 运行期地区门控（见 §15） |
 | 14 | macOS 架构未定 | 仅支持 Apple Silicon arm64 |
 
 ### 22.5 变更记录

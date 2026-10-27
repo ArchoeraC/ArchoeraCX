@@ -238,7 +238,7 @@ ATLauncher `loaders/forge/Processor.java` 用 `URLClassLoader` + `Method.invoke`
 
 ---
 
-## 6. 我们的推荐
+## 6. 实现建议
 
 ### 6.1 每种加载器的路径（决策表）
 

@@ -11,11 +11,11 @@
 
 ---
 
-ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，桌面为主（Linux / Windows / macOS）。UI 用 Flutter，C++ 作为唯一枢纽，业务 / API / SQLite 由 C# NativeAOT 持有，下载交给 Rust；全程进程内 FFI，无 Node 进程、无本地监听端口。
+ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，桌面为主（Linux / Windows / macOS）。UI 用 Flutter，C++ 作为唯一枢纽，业务 / API / SQLite 由 C# NativeAOT 持有，下载交给 Rust；全程进程内 FFI，无 Node 进程；除 OAuth 登录期间短暂的 `127.0.0.1` loopback 回调外，不监听端口。
 
 - 实例管理（SQLite 索引 + `instance.json` 权威元数据）与原版安装 / 启动、Java 自动扫描
 - 加载器 Fabric / Quilt / Forge / NeoForge 安装与修复；Modrinth 与本地 `.mrpack` 整合包
-- Microsoft 登录（Authorization Code + PKCE，loopback）与离线启动
+- Microsoft 登录（Authorization Code + PKCE，loopback）与离线账户启动（发布版需先通过正版账户验证）
 - Rust `DownloadPlan` 执行器：hash 校验、原子落盘、分片续传、进度与取消
 - AppShell + 明暗主题、系统主题色、中英文 i18n，安装与下载统一走后台任务
 
@@ -51,7 +51,7 @@ Microsoft 登录需在构建 C# 模块时注入 client ID（`export ARCHOERACX_M
 - [构建、运行与测试](docs/12-build-and-test.md) —— 环境 / 逐模块构建 / 测试 / 数据目录
 - [架构设计](docs/10-architecture-design.md) —— ABI、模块协议、任务与事件、存储、安全
 - [Microsoft / Minecraft 认证](docs/authentication.md) —— OAuth、XBL / XSTS、client_id 审核
-- [发行与下载策略](docs/09-distribution-and-download-policy.md) —— 通道、Provider、`DownloadPlan`、镜像
+- [发行与下载策略](docs/09-distribution-and-download-policy.md) —— 发行模型、Provider、`DownloadPlan`、镜像
 - [路线图](docs/05-roadmap.md) —— 阶段目标与验收标准
 
 ## 许可证

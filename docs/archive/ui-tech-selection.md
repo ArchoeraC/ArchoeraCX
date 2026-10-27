@@ -127,9 +127,9 @@ Flutter 空壳 ~30–45 MB，加上 .NET NativeAOT 核心 20–60 MB，安装包
 **优势**
 
 - 单语言单运行时，核心逻辑直接 in-process 调用，**没有 IPC**。
-- MIT；NativeAOT 已被商业启动器验证（LauncherX 即 Avalonia 12 + .NET 10 + NativeAOT）。
+- MIT；NativeAOT 已被商业启动器验证（Avalonia + .NET + NativeAOT 的组合已有实际产品）。
 - `FluentAvalonia` 提供 Mica/Acrylic、Fluent 控件；窗口/托盘/单实例生态成熟。
-- XAML 的样式/模板系统适合做"主题令牌"（参考 LauncherX 的 ThemeX 思路）。
+- XAML 的样式/模板系统适合做"主题令牌"（参考通用的主题令牌思路）。
 - 可直接嵌 OpenGL（Silk.NET / OpenTK）做 3D 皮肤。
 
 **劣势**

@@ -2,7 +2,7 @@
 
 **Project:** ArchoeraCX  
 **Project license:** AGPL-3.0-only, see [`LICENSE`](LICENSE).  
-**Release channel:** GitHub pre-releases only.  
+**Release channel:** GitHub Releases only.
 **Inventory date:** 2026-10-23
 
 This file is an inventory of third-party components used by the ArchoeraCX desktop build. It does not replace the full license text shipped by each upstream package. Before publishing a GitHub Release, include this file, `app/assets/fonts/OFL.txt`, `app/assets/licenses/Tabler-Icons-MIT.txt`, and the loader-icon license files in the release archive.

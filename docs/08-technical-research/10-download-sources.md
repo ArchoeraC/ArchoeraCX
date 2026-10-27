@@ -5,7 +5,7 @@
 > 标记：**[事实]** 官方文档/源码/实测；**[推断]** 基于协议与实现的判断；**[未验证]** 需要真实样本/实机确认。
 > 说明：表格为压缩索引，未逐格重复标记；关键结论与风险项在正文/§7 标注。表格字段若来自官方文档或本次实测，按 [事实] 处理；带「可能/需确认」的按 [推断]/[未验证]。
 > 实测日期 **2026-10-21**。配套：[05-download-engine.md](05-download-engine.md)（Rust 执行器）、[06-modpack-install.md](06-modpack-install.md)（整合包）、[03-mod-search.md](03-mod-search.md)（搜索/更新）、[09-forge-generated-artifacts.md](09-forge-generated-artifacts.md)（生成物）。
-> 发行/合规策略以 [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md) 与 [`07-compliance-gate.md`](07-compliance-gate.md) 为准；本文只谈技术源与计划字段。
+> 发行/合规策略以 [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md) 为准；本文只谈技术源与计划字段。
 >
 > **实现状态（2026-10-25）**：Rust `DownloadPlan` 执行器 MVP、C# `DownloadPlan` 契约、Modrinth provider、Mojang 原版计划、Forge/NeoForge installer/依赖计划、Mojang Java runtime 计划均已落地；CurseForge 源在 API 访问配置前不可用（unavailable until API access is configured；`PROVIDER_UNAVAILABLE`：在线接口与 zip 导入都需要 API key）；计划尚未提交到 Rust 执行器。
 
@@ -21,7 +21,7 @@
 | 4 | **每个文件必须带 hash 和 size**；镜像只提供字节，不提供信任。镜像 hash 不匹配直接丢弃并回退官方。 | [事实] 05 §3、09 政策 §4.2 |
 | 5 | **协议 JSON 没有 hash 的（Fabric/Quilt profile）不能当不可变文件**；按 TTL/ETag 缓存，合并结果由 C# 记录来源与抓取时间。 | [事实] 02 §1、06 §4；[推断] 缓存策略 |
 | 6 | **失败要分类**：403 可能是鉴权、配额、签名 URL 过期或作者禁转；429 才是明确限流；`DISTRIBUTION_DENIED` 不可重试、不可换第三方镜像。 | [事实] 03 §2.4 |
-| 7 | **CurseForge 源在 API 访问配置前不可用**（`PROVIDER_UNAVAILABLE`）；`official-cn` L0 不提供内容下载。 | [事实] 03 §2.4、09 政策 §4.1 |
+| 7 | **CurseForge 源在 API 访问配置前不可用**（`PROVIDER_UNAVAILABLE`）；单一发行版在中国大陆网络默认不提供内容下载。 | [事实] 03 §2.4、09 政策 §2.3 |
 | 8 | **Java runtime 不只一个 URL**：Mojang `all.json` 按平台/组件给 manifest，再按文件下载；必须校验每文件 SHA-1/size，保留 executable 位。 | [事实] 本次实测 `all.json` + `java-runtime-delta` manifest |
 
 **一句话**：下载源不是 URL 列表，而是「来源 + 鉴权 + 哈希 + 条款 + 失败语义」的组合；Rust 只执行，C# 负责选择与解释。
@@ -56,7 +56,7 @@
 | **BMCLAPI（镜像）** | `https://bmclapi2.bangbang93.com/` | 无 key | 仅镜像官方游戏/加载器文件 | 不生成 | **必须官方 hash** | 社区维护；遵守说明；失败回退官方；不镜像 Modrinth/CF 内容 |
 | **用户自定义镜像** | 用户填根地址 | 由用户配置 | 仅官方 artifact | 不生成 | 官方 hash 白名单 | 需白名单 + hash；不得用于 CF/Modrinth 内容 |
 
-**发行通道**：`official-cn`（L0）只读元数据，不下载内容；`official-global`（L1）允许官方必需内容，L2 的 Mod/整合包/资源包/光影需应用内确认；`dev`（L2）用于开发。源矩阵中的「可用」不等于当前构建默认允许。**[事实]** 见 [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md)。
+**发行模型**：当前只有**一个发行版**。中国大陆网络默认禁用内容下载，用户需在本地数据根创建 `compliance.json` 并显式接受风险后才启用；非中国大陆默认启用。源矩阵中的「可用」不等于当前地区默认允许。**[事实]** 见 [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md)。
 
 ### 1.3 下载 vs 生成 vs 用户提供
 
@@ -156,7 +156,7 @@ GET https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader}/profile/json
 | 详情/版本 | `/project/{id}`、`/project/{id}/version`、`/version/{id}` |
 | 批量 hash | `POST /version_files`、`POST /version_files/update` |
 | 文件 | `files[].url`（CDN/白名单）、`hashes.sha1/sha512`、`size`、`filename`、`primary` |
-| UA | 必须可识别应用，如 `ArchoeraCX/0.0.1+1 (contact@example.com)`；不要伪装 okhttp |
+| UA | 必须可识别应用，如 `ArchoeraCX/0.0.1+1 (+https://github.com/BetaStudio2/ArchoeraCX)`；不要伪装 okhttp |
 | 限流 | **300 请求/分钟/IP**；响应头 `X-Ratelimit-Limit/Remaining/Reset`；429 读 `Retry-After` |
 | 缓存 | 搜索 60s、详情 10min、版本 5min、标签 24h、更新检查 6h；有 ETag 用条件请求，没有就 TTL |
 | 镜像 | **不镜像**；CDN 直链；下载必须校验 SHA-1/SHA-512 |
@@ -272,7 +272,7 @@ accept(version, target):
 
 ### 3.5 当前状态
 
-CurseForge 源在 API 访问配置前不可用：在线接口与整合包 zip 导入都依赖 API key。`provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。`official-cn` L0 不注册内容 provider；`official-global` 默认 L1，L2 需确认。**[事实]**
+CurseForge 源在 API 访问配置前不可用：在线接口与整合包 zip 导入都依赖 API key。`provider=curseforge` 返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。中国大陆网络默认禁用内容下载，需本地 `compliance.json` 显式启用；非中国大陆默认启用。**[事实]**
 
 ### 3.6 源选择伪代码
 
@@ -302,7 +302,7 @@ resolve(request):
 ### 4.1 职责
 
 ```
-C# Provider/Resolver/Compliance
+C# Provider/Resolver/DownloadPolicy
   → 选择源、解析版本/依赖、求值策略、生成 URL/mirrors/hash/dest
   → DownloadPlan（纯数据）
 Rust archoera_dl
@@ -460,7 +460,7 @@ Rust archoera_dl
 | **版本级不兼容** | 解析器 | gameVersion/loader 不匹配 | 不安装；`NO_COMPATIBLE_BUILD` | 「该文件不支持 1.21.1/NeoForge」 |
 | **CF 分页超限** | CF | `index+pageSize>10000` | `PAGINATION_LIMIT`；收窄筛选 | 「结果太多，请加筛选条件」 |
 | **离线且无缓存** | 全部 | 网络不可用 + cache miss | `OFFLINE_CACHE_MISS`；不阻塞已有实例启动 | 「离线，且没有缓存」 |
-| **合规拒绝** | 门控 | L0/L2/同意缺失 | `DOWNLOAD_DISABLED`/`CONSENT_REQUIRED`；不生成计划 | 「当前构建/设置不允许下载」 |
+| **合规拒绝** | 门控 | L2/风险确认缺失 | `DOWNLOAD_DISABLED`/`CONSENT_REQUIRED`；不生成计划 | 「当前地区/设置不允许下载」 |
 | **磁盘满/权限** | 本地 | ENOSPC/EACCES | 停止写入；不清空已有文件 | 「磁盘空间不足/无权限」 |
 | **Java 组件不可用** | Mojang/Adoptium | 平台/架构无该组件 | `JAVA_COMPONENT_UNAVAILABLE`；让用户选手动 JDK | 「该平台没有匹配的 Java，请手动选择」 |
 | **生成物缺失** | Forge/NeoForge | `-client.jar` 等缺失 | 不是下载失败；走 09 的 `loader.repair` | 「加载器文件不完整，正在修复」 |
