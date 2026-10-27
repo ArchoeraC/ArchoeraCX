@@ -218,6 +218,37 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('scrolls the version list without moving the overview', (
+    tester,
+  ) async {
+    final many = [
+      for (var index = 1; index <= 45; index++)
+        ResourceVersion(
+          id: 'version-$index',
+          projectId: _project.id,
+          name: 'Build $index',
+          versionNumber: '1.0.$index',
+          versionType: 'release',
+        ),
+    ];
+
+    await pumpPage(tester, versions: many);
+
+    final overview = tester.getTopLeft(find.text('Screenshots'));
+    final firstVersion = tester.getTopLeft(find.text('Build 1'));
+
+    await tester.drag(find.text('Build 1'), const Offset(0, -300));
+    await tester.pumpAndSettle();
+
+    // The versions column scrolled on its own; the overview stayed put.
+    expect(
+      tester.getTopLeft(find.text('Build 1')).dy,
+      lessThan(firstVersion.dy),
+    );
+    expect(tester.getTopLeft(find.text('Screenshots')), overview);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('keeps the install target visible and refuses a vanilla mod', (
     tester,
   ) async {

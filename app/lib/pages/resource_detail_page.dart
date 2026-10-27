@@ -95,6 +95,8 @@ class ResourceDetailPage extends ConsumerStatefulWidget {
 class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
   final _versionsKey = GlobalKey();
   final _scroll = ScrollController();
+  final _overviewScroll = ScrollController();
+  final _versionsScroll = ScrollController();
   final Set<String> _preparing = <String>{};
 
   ResourceProject? _detail;
@@ -167,6 +169,8 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
   @override
   void dispose() {
     _scroll.dispose();
+    _overviewScroll.dispose();
+    _versionsScroll.dispose();
     super.dispose();
   }
 
@@ -697,121 +701,168 @@ class _ResourceDetailPageState extends ConsumerState<ResourceDetailPage> {
       _loadVersions();
     });
 
-    return SingleChildScrollView(
-      controller: _scroll,
-      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppPageHeader(
-            leading: IconButton.filledTonal(
-              onPressed: _goBack,
-              tooltip: l10n.back,
-              icon: const Icon(AppIcons.back, size: 18),
-            ),
-            title: project?.name ?? l10n.downloadTitle,
-            subtitle: summary == null || summary.isEmpty ? null : summary,
-          ),
-          if (_detailLoading || _versionsLoading) ...[
-            const SizedBox(height: AppSpacing.md),
-            const AppProgressBar(height: 3),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          if (project == null)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xl),
-              child: AppEmptyState(
-                icon: AppIcons.offline,
-                title: l10n.downloadProjectLoadFailed,
-                message: _detailError ?? l10n.commonCoreNotConnected,
-                primaryAction: FilledButton(
-                  onPressed: _loadProject,
-                  child: Text(l10n.refresh),
-                ),
-              ),
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final overview = _ProjectOverview(
-                  project: project,
-                  error: _detailError,
-                  onRetry: _loadProject,
-                );
-                final versions = KeyedSubtree(
-                  key: _versionsKey,
-                  child: _VersionPanel(
-                    versions: _versions,
-                    loading: _versionsLoading,
-                    error: _versionsError,
-                    preparing: _preparing,
-                    selected: selected,
-                    onSelect: (version) {
-                      setState(() => _selectedVersionId = version.id);
-                    },
-                    gameVersions: widget.kind == 'modpack'
-                        ? const <String>[]
-                        : _gameVersionOptions(project, instance),
-                    gameVersion: _gameVersion,
-                    onGameVersionChanged: _selectGameVersion,
-                    loaders: widget.kind == 'mod'
-                        ? _loaderOptions(project, instance)
-                        : const <String>[],
-                    loader: _loader,
-                    onLoaderChanged: _selectLoader,
-                    destinationEnabled: widget.kind != 'modpack',
-                    targetMode: _targetMode,
-                    onTargetModeChanged: (mode) async {
-                      setState(() => _targetMode = mode);
-                      if (mode == _InstallTargetMode.directory &&
-                          _customRoot?.trim().isNotEmpty != true) {
-                        await _pickCustomRoot();
-                      }
-                    },
-                    customRoot: _customRoot,
-                    onPickDirectory: _pickCustomRoot,
-                    instances: widget.kind == 'modpack'
-                        ? const <GameInstance>[]
-                        : instances,
-                    targetInstanceId: instance?.id,
-                    onTargetChanged: (id) {
-                      ref.read(selectedInstanceIdProvider.notifier).select(id);
-                    },
-                    target: _destinationLabel(l10n, instance),
-                    facetsReady: _facetsReady,
-                    installHint: _installHint(l10n, instance, selected),
-                    installing:
-                        selected != null && _preparing.contains(selected.id),
-                    onInstall: selected == null
-                        ? null
-                        : () => _install(selected),
-                    onRetry: _loadVersions,
-                  ),
-                );
+    final header = AppPageHeader(
+      leading: IconButton.filledTonal(
+        onPressed: _goBack,
+        tooltip: l10n.back,
+        icon: const Icon(AppIcons.back, size: 18),
+      ),
+      title: project?.name ?? l10n.downloadTitle,
+      subtitle: summary == null || summary.isEmpty ? null : summary,
+    );
 
-                if (constraints.maxWidth < 1040) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      overview,
-                      const SizedBox(height: AppSpacing.lg),
-                      versions,
-                    ],
-                  );
-                }
-                return Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Side by side only once both columns fit: from there the header stays
+        // pinned and each pane scrolls on its own, so browsing versions never
+        // drags the overview along. Narrow windows keep one shared scroll.
+        if (project != null && constraints.maxWidth >= 1040) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              header,
+              if (_detailLoading || _versionsLoading) ...[
+                const SizedBox(height: AppSpacing.md),
+                const AppProgressBar(height: 3),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              Expanded(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: overview),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: _overviewScroll,
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                        child: _overviewPane(project),
+                      ),
+                    ),
                     const SizedBox(width: AppSpacing.xl),
                     Container(width: 1, color: context.tokens.border),
                     const SizedBox(width: AppSpacing.xl),
-                    SizedBox(width: 440, child: versions),
+                    SizedBox(
+                      width: 440,
+                      child: SingleChildScrollView(
+                        controller: _versionsScroll,
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                        child: _versionsPane(
+                          project: project,
+                          selected: selected,
+                          instance: instance,
+                          instances: instances,
+                          l10n: l10n,
+                        ),
+                      ),
+                    ),
                   ],
-                );
-              },
-            ),
-        ],
+                ),
+              ),
+            ],
+          );
+        }
+        return SingleChildScrollView(
+          controller: _scroll,
+          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              header,
+              if (_detailLoading || _versionsLoading) ...[
+                const SizedBox(height: AppSpacing.md),
+                const AppProgressBar(height: 3),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              if (project == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xl),
+                  child: AppEmptyState(
+                    icon: AppIcons.offline,
+                    title: l10n.downloadProjectLoadFailed,
+                    message: _detailError ?? l10n.commonCoreNotConnected,
+                    primaryAction: FilledButton(
+                      onPressed: _loadProject,
+                      child: Text(l10n.refresh),
+                    ),
+                  ),
+                )
+              else ...[
+                _overviewPane(project),
+                const SizedBox(height: AppSpacing.lg),
+                _versionsPane(
+                  project: project,
+                  selected: selected,
+                  instance: instance,
+                  instances: instances,
+                  l10n: l10n,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _overviewPane(ResourceProject project) {
+    return _ProjectOverview(
+      project: project,
+      error: _detailError,
+      onRetry: _loadProject,
+    );
+  }
+
+  Widget _versionsPane({
+    required ResourceProject project,
+    required ResourceVersion? selected,
+    required GameInstance? instance,
+    required List<GameInstance> instances,
+    required AppLocalizations l10n,
+  }) {
+    return KeyedSubtree(
+      key: _versionsKey,
+      child: _VersionPanel(
+        versions: _versions,
+        loading: _versionsLoading,
+        error: _versionsError,
+        preparing: _preparing,
+        selected: selected,
+        onSelect: (version) {
+          setState(() => _selectedVersionId = version.id);
+        },
+        gameVersions: widget.kind == 'modpack'
+            ? const <String>[]
+            : _gameVersionOptions(project, instance),
+        gameVersion: _gameVersion,
+        onGameVersionChanged: _selectGameVersion,
+        loaders: widget.kind == 'mod'
+            ? _loaderOptions(project, instance)
+            : const <String>[],
+        loader: _loader,
+        onLoaderChanged: _selectLoader,
+        destinationEnabled: widget.kind != 'modpack',
+        targetMode: _targetMode,
+        onTargetModeChanged: (mode) async {
+          setState(() => _targetMode = mode);
+          if (mode == _InstallTargetMode.directory &&
+              _customRoot?.trim().isNotEmpty != true) {
+            await _pickCustomRoot();
+          }
+        },
+        customRoot: _customRoot,
+        onPickDirectory: _pickCustomRoot,
+        instances: widget.kind == 'modpack'
+            ? const <GameInstance>[]
+            : instances,
+        targetInstanceId: instance?.id,
+        onTargetChanged: (id) {
+          ref.read(selectedInstanceIdProvider.notifier).select(id);
+        },
+        target: _destinationLabel(l10n, instance),
+        facetsReady: _facetsReady,
+        installHint: _installHint(l10n, instance, selected),
+        installing: selected != null && _preparing.contains(selected.id),
+        onInstall: selected == null ? null : () => _install(selected),
+        onRetry: _loadVersions,
       ),
     );
   }
