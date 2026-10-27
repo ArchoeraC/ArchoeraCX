@@ -93,7 +93,7 @@ jobs:
       linux_flatpak: ${{ steps.select.outputs.linux_flatpak }}
       linux_nix: ${{ steps.select.outputs.linux_nix }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - id: select
         shell: bash
@@ -170,7 +170,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/build-macos
         with:
           client_id: ${{ secrets.ARCHOERACX_MICROSOFT_CLIENT_ID }}
@@ -208,7 +208,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/build-windows
         with:
           client_id: ${{ secrets.ARCHOERACX_MICROSOFT_CLIENT_ID }}
@@ -258,7 +258,7 @@ jobs:
             build-essential binutils clang cmake ninja-build pkg-config patchelf file \
             libgtk-3-dev libdbus-1-dev liblzma-dev libdrm-dev libglu1-mesa-dev \
             libx11-dev libxi-dev musl-tools python3 zlib1g-dev
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/build-linux
         with:
           client_id: ${{ secrets.ARCHOERACX_MICROSOFT_CLIENT_ID }}
@@ -321,7 +321,7 @@ jobs:
             patchelf file git curl wget xz-utils unzip zip jq \
             libgtk-3-dev libdbus-1-dev liblzma-dev libdrm-dev libglu1-mesa-dev \
             libx11-dev libxi-dev libicu-dev libssl-dev musl-tools python3 zlib1g-dev sudo
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Git safe directory
         run: git config --global --add safe.directory '*'
       - uses: ./.github/actions/build-linux
@@ -365,7 +365,7 @@ jobs:
             zlib-devel gtk3-devel dbus-devel xz-devel libdrm-devel mesa-libGL-devel \
             libX11-devel libXi-devel libstdc++-devel libicu openssl-libs \
             musl-gcc musl-devel python3 rpm-build coreutils sed gawk jq
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Git safe directory
         run: git config --global --add safe.directory '*'
       - uses: ./.github/actions/build-linux
@@ -407,7 +407,7 @@ jobs:
             git curl wget tar xz zstd unzip zip which findutils file libarchive \
             clang cmake ninja pkgconf patchelf binutils zlib gtk3 dbus xz \
             libdrm mesa libx11 libxi musl python jq
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Git safe directory
         run: git config --global --add safe.directory '*'
       - uses: ./.github/actions/build-linux
@@ -452,7 +452,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install AppImage tooling
         shell: bash
         run: |
@@ -503,7 +503,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Flatpak
         run: |
           sudo apt-get update
@@ -536,7 +536,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: DeterminateSystems/nix-installer-action@e50d5f73bfe71c2dd0aa4218de8f4afa59f8f81d # v16
         with:
           extra-conf: |
@@ -602,7 +602,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Reject tags that are not on main
         env:
           GH_TOKEN: ${{ github.token }}
