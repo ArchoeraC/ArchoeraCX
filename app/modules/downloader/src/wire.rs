@@ -195,6 +195,15 @@ pub(crate) async fn stream_body(
             written,
         ));
     }
+    // `tokio::fs::File` copies a write into an internal buffer and finishes it
+    // on the blocking pool, so a completed `write_all` does not mean the bytes
+    // are in the file yet. Both callers verify the `.part` from a fresh handle
+    // (digest, fsync, rename) right after this returns, so the last buffered
+    // write has to land first — otherwise the digest can read an empty or
+    // short file and fail with a bogus `HASH_MISMATCH`.
+    if let Err(err) = target.flush().await {
+        return Err(SourceFailure::after(err, written));
+    }
     Ok(written)
 }
 

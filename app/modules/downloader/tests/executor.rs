@@ -387,7 +387,13 @@ async fn downloads_three_files_with_mirror_fallback_and_progress() {
     .await
     .expect("execute");
 
-    assert_eq!(result.status.as_str(), "completed");
+    assert_eq!(
+        result.status.as_str(),
+        "completed",
+        "{:?} requests={:?}",
+        result.failed,
+        server.requests()
+    );
     assert_eq!(result.ok, 3);
     assert_eq!(result.skipped, 0);
     assert!(result.failed.is_empty(), "{:?}", result.failed);
@@ -480,7 +486,13 @@ async fn verify_existing_hash_redownloads_corrupt_same_size_file() {
     let result = execute_plan(request, CancellationToken::new(), None)
         .await
         .expect("execute");
-    assert_eq!(result.status.as_str(), "completed");
+    assert_eq!(
+        result.status.as_str(),
+        "completed",
+        "{:?} requests={:?}",
+        result.failed,
+        server.requests()
+    );
     assert_eq!(result.ok, 1);
     assert_eq!(read(&dest), body);
 
@@ -500,6 +512,44 @@ async fn verify_existing_hash_redownloads_corrupt_same_size_file() {
     .await
     .expect("execute");
     assert_eq!(second.skipped, 1);
+}
+
+/// The digest is computed from the finished `.part` after the body loop, so
+/// every byte handed to `stream_body` must already be in the file when it
+/// returns. tokio's `File` finishes the last write on the blocking pool, so a
+/// missing flush shows up as a spurious `HASH_MISMATCH`; many small files in
+/// one plan widen the window enough to catch that regression.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn writes_reach_disk_before_the_digest_is_verified() {
+    const FILES: usize = 64;
+
+    let temp = TempDir::new().expect("tempdir");
+    let mut routes = HashMap::new();
+    let mut bodies = Vec::with_capacity(FILES);
+    for index in 0..FILES {
+        let body = format!("payload-{index}-{}", "x".repeat(64 * 1024)).into_bytes();
+        routes.insert(format!("/tiny{index}"), Route::ok(body.clone()));
+        bodies.push(body);
+    }
+    let server = TestServer::start(routes);
+
+    let files: Vec<FileSpec> = bodies
+        .iter()
+        .enumerate()
+        .map(|(index, body)| {
+            let dest = format!("tiny/{index}.bin");
+            file(server.url(&format!("/tiny{index}")), body, &dest)
+        })
+        .collect();
+    let result = execute_plan(plan(temp.path(), files), CancellationToken::new(), None)
+        .await
+        .expect("execute");
+
+    assert_eq!(result.status.as_str(), "completed", "{:?}", result.failed);
+    assert_eq!(result.ok, FILES as u64);
+    for (index, body) in bodies.iter().enumerate() {
+        assert_eq!(read(&temp.path().join(format!("tiny/{index}.bin"))), *body);
+    }
 }
 
 #[tokio::test]

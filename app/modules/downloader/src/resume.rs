@@ -80,10 +80,16 @@ pub(crate) async fn save_resume(part: &Path, meta: &ResumeMeta) {
     let Ok(mut file) = crate::parts::open_sidecar(&temporary, true, true).await else {
         return;
     };
-    if tokio::io::AsyncWriteExt::write_all(&mut file, &bytes)
-        .await
-        .is_ok()
-    {
+    let written = tokio::io::AsyncWriteExt::write_all(&mut file, &bytes).await;
+    // The rename publishes the sidecar to whoever reads it next (a resumed run
+    // in this process or another one), and `tokio::fs::File` completes a write
+    // on the blocking pool after returning from `write_all`. Flush waits for
+    // that write so the rename cannot publish a short or empty `.meta`.
+    let published = match written {
+        Ok(()) => tokio::io::AsyncWriteExt::flush(&mut file).await,
+        Err(err) => Err(err),
+    };
+    if published.is_ok() {
         drop(file);
         let _ = tokio::fs::rename(&temporary, &path).await;
     }
