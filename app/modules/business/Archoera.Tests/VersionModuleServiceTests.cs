@@ -117,6 +117,62 @@ public sealed class VersionModuleServiceTests
         }
     }
 
+    [Fact]
+    public async Task Commit_writes_the_profile_into_the_instance_folder()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-version-commit",
+            Guid.NewGuid().ToString("N"));
+        var gameRoot = Path.Combine(directory, "minecraft");
+        var instanceRoot = Path.Combine(gameRoot, "versions", "island");
+        Directory.CreateDirectory(instanceRoot);
+        try
+        {
+            var region = new RegionPolicy(regionOverride: RegionPolicy.Global);
+            var service = new VersionModuleService(
+                new CountingMojangClient(),
+                enableDownloads: true,
+                new DownloadPolicy(gameRoot, region),
+                new JsonAppSettingsStore(gameRoot),
+                region);
+            var profilePath = Path.Combine(instanceRoot, "island.json");
+
+            var result = await service.HandleAsync(
+                "version.commit",
+                JsonSerializer.Serialize(new
+                {
+                    root = instanceRoot,
+                    versionId = MojangTestData.VersionId,
+                    versionJson = """{"id":"1.21.1","mainClass":"net.minecraft.client.main.Main"}""",
+                    profilePath,
+                }),
+                CancellationToken.None);
+
+            using var document = JsonDocument.Parse(result);
+            Assert.True(
+                document.RootElement.GetProperty("ok").GetBoolean(),
+                Encoding.UTF8.GetString(result));
+            Assert.True(File.Exists(profilePath));
+            Assert.False(File.Exists(Path.Combine(
+                gameRoot,
+                "versions",
+                MojangTestData.VersionId,
+                $"{MojangTestData.VersionId}.json")));
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch (IOException)
+            {
+                // Best effort on platforms with transient file handles.
+            }
+        }
+    }
+
     private sealed class CountingMojangClient : IMojangMetadataClient
     {
         private static readonly string VersionJson = $$"""

@@ -554,7 +554,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loaderShareFilesHint =>
-      '同一加载器版本的所有实例共用游戏目录下的一份 libraries/versions；取消勾选则只装进本实例。';
+      '同一加载器版本的所有实例共用游戏目录下的一份 libraries；合并后的启动 profile 始终放在本实例。取消勾选则 library 也只装进本实例。';
 
   @override
   String get searchDownload => '搜索资源';
@@ -854,7 +854,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShareLoaderFilesDesc =>
-      'Forge/NeoForge 的库与合并后的加载器 profile 只装一份在游戏目录，同版本的实例共用；取消勾选则每个实例各存一份。';
+      'Forge/NeoForge 的库与 processors 产物只装一份在游戏目录，同版本的实例共用；合并后的启动 profile 始终放在各实例自己的文件夹。取消勾选则库也只装进本实例。';
 
   @override
   String get settingsSectionGameArgs => '附加游戏参数';

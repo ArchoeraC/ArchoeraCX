@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Archoera.Application.Loaders;
+using Archoera.Domain.Downloads;
 
 namespace Archoera.Infrastructure.Loaders;
 
@@ -140,6 +141,70 @@ internal static class LoaderPaths
         }
 
         return candidate.StartsWith(baseWithSeparator, comparison);
+    }
+
+    /// <summary>
+    /// Absolute launch profile owned by an instance folder:
+    /// <c>&lt;instance&gt;/&lt;instance&gt;.json</c>. The instance folder name
+    /// doubles as the profile id, matching the layout PCL and classic
+    /// <c>versions/</c> instances use.
+    /// </summary>
+    public static string InstanceProfilePath(string instanceRoot)
+    {
+        var root = Path.TrimEndingDirectorySeparator(
+            Path.GetFullPath(instanceRoot));
+        var profileId = Path.GetFileName(root);
+        if (string.IsNullOrWhiteSpace(profileId) ||
+            !DownloadPlanPaths.IsPlainFileName(profileId))
+        {
+            throw new ArgumentException(
+                $"instance folder '{profileId}' is not a safe profile name",
+                nameof(instanceRoot));
+        }
+
+        return Path.Combine(root, $"{profileId}.json");
+    }
+
+    /// <summary>
+    /// Validates a profile path sent across the ABI: it must stay inside the
+    /// install root and name exactly the instance folder it belongs to.
+    /// </summary>
+    public static bool TryResolveInstanceProfilePath(
+        string installRoot,
+        string? profilePath,
+        out string fullPath)
+    {
+        fullPath = string.Empty;
+        if (string.IsNullOrWhiteSpace(profilePath) ||
+            !Path.IsPathFullyQualified(profilePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            fullPath = Path.GetFullPath(profilePath);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+
+        var directory = Path.GetDirectoryName(fullPath) ?? string.Empty;
+        var profileId = Path.GetFileName(
+            Path.TrimEndingDirectorySeparator(directory));
+        return directory.Length > 0 &&
+               IsWithin(installRoot, fullPath) &&
+               string.Equals(
+                   Path.GetExtension(fullPath),
+                   ".json",
+                   StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(
+                   Path.GetFileNameWithoutExtension(fullPath),
+                   profileId,
+                   StringComparison.Ordinal) &&
+               DownloadPlanPaths.IsPlainFileName(profileId);
     }
 
     public static bool TryRelativeWithin(string baseFull, string candidateFull, out string relative)

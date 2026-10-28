@@ -165,6 +165,19 @@ public sealed class LoaderModuleService : IModuleMethodHandler
             var loaderRoot = LaunchPaths.ResolveLoaderRoot(
                 fullInstanceRoot,
                 shareLoaderFiles);
+            // The merged launch profile belongs to the instance folder, not to
+            // a shared versions/<loader-id> folder: PCL-style instances keep
+            // their profile next to mods/configs, while only libraries and
+            // processor output are shared by loader build.
+            string instanceProfilePath;
+            try
+            {
+                instanceProfilePath = LoaderPaths.InstanceProfilePath(fullInstanceRoot);
+            }
+            catch (ArgumentException exception)
+            {
+                return ModuleJson.Error("E_INVALID", exception.Message);
+            }
 
             // Fabric/Quilt are profile-only loaders: no installer and no
             // processors, so they can be installed directly from the profile
@@ -193,6 +206,7 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                     writer.WriteBoolean("requiresJava", false);
                     writer.WriteString("kind", profilePlan.LoaderKind);
                     writer.WriteString("installRoot", loaderRoot);
+                    writer.WriteString("profilePath", instanceProfilePath);
                     writer.WriteBoolean("shareLoaderFiles", shareLoaderFiles);
                 });
             }
@@ -256,6 +270,7 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 // Callers commit and repair against this root so the loader
                 // files land where the plan put them.
                 writer.WriteString("installRoot", loaderRoot);
+                writer.WriteString("profilePath", instanceProfilePath);
                 writer.WriteBoolean("shareLoaderFiles", shareLoaderFiles);
             });
         }
@@ -302,11 +317,12 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         {
             using var document = JsonDocument.Parse(paramsJson ?? "{}");
             var root = document.RootElement;
-            var instanceRoot = ReadString(root, "root");
+            var installRootText = ReadString(root, "root");
             var versionId = ReadString(root, "versionId");
             var versionJson = ReadString(root, "versionJson");
-            if (string.IsNullOrWhiteSpace(instanceRoot) ||
-                !Path.IsPathFullyQualified(instanceRoot) ||
+            var profilePathText = ReadString(root, "profilePath");
+            if (string.IsNullOrWhiteSpace(installRootText) ||
+                !Path.IsPathFullyQualified(installRootText) ||
                 string.IsNullOrWhiteSpace(versionId) ||
                 versionId.IndexOfAny(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) >= 0 ||
                 string.IsNullOrWhiteSpace(versionJson))
@@ -316,15 +332,45 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                     "loader.commit requires root, versionId and versionJson"));
             }
 
-            var versionDirectory = Path.Combine(instanceRoot, "versions", versionId);
-            Directory.CreateDirectory(versionDirectory);
-            var versionPath = Path.Combine(versionDirectory, $"{versionId}.json");
-            var temporary = versionPath + ".tmp";
-            File.WriteAllText(
-                temporary,
-                versionJson,
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            File.Move(temporary, versionPath, overwrite: true);
+            var installRoot = Path.GetFullPath(installRootText);
+            string versionPath;
+            if (profilePathText is not null)
+            {
+                // Instance-owned profile (`<instance>/<instance>.json`). The
+                // shared install root still owns libraries and processor
+                // output, so the path has to stay inside it and name exactly
+                // the instance folder it belongs to.
+                if (!LoaderPaths.TryResolveInstanceProfilePath(
+                        installRoot,
+                        profilePathText,
+                        out var profilePath))
+                {
+                    return Task.FromResult(ModuleJson.Error(
+                        "E_INVALID",
+                        "profilePath must be <instance>/<instance>.json inside root"));
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(profilePath)!);
+                WriteAtomically(profilePath, versionJson);
+                versionPath = profilePath;
+            }
+            else
+            {
+                // Compatibility path for callers that only know the install
+                // root: keep writing a shared versions/<id>/<id>.json profile.
+                if (!DownloadPlanPaths.IsPlainFileName(versionId))
+                {
+                    return Task.FromResult(ModuleJson.Error(
+                        "E_INVALID",
+                        "versionId is not a plain file name"));
+                }
+
+                var versionDirectory = Path.Combine(installRoot, "versions", versionId);
+                Directory.CreateDirectory(versionDirectory);
+                versionPath = Path.Combine(versionDirectory, $"{versionId}.json");
+                WriteAtomically(versionPath, versionJson);
+            }
+
             return Task.FromResult(BuildEnvelope(writer =>
             {
                 writer.WriteString("versionId", versionId);
@@ -336,6 +382,16 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         {
             return Task.FromResult(ModuleJson.Error("LOADER_COMMIT_FAILED", exception.Message));
         }
+    }
+
+    private static void WriteAtomically(string path, string text)
+    {
+        var temporary = path + ".tmp";
+        File.WriteAllText(
+            temporary,
+            text,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.Move(temporary, path, overwrite: true);
     }
 
     private static byte[] BuildEnvelope(Action<Utf8JsonWriter> data)

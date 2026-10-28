@@ -156,6 +156,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
         root: instance.rootPath,
         versionId: plan.versionId,
         versionJson: plan.versionJson,
+        profilePath: plan.profilePath,
         label: instance.gameVersion,
       );
     }

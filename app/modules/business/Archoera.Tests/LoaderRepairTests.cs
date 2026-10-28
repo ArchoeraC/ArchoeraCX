@@ -249,7 +249,7 @@ public sealed class LoaderRepairTests
               {
                 "id": "{{versionId}}",
                 "type": "release",
-                "mainClass": "net.minecraft.client.main.Main",
+                "mainClass": "cpw.mods.bootstraplauncher.BootstrapLauncher",
                 "libraries": []
               }
               """);

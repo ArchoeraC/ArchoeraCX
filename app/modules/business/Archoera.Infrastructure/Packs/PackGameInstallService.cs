@@ -257,24 +257,27 @@ public sealed class PackGameInstallService
             loaderVersion);
     }
 
-    /// <summary>Writes the committed version JSON under <c>versions/&lt;id&gt;/</c>.</summary>
-    public static string CommitVersionJson(
+    /// <summary>
+    /// Writes the merged launch profile into the instance folder as
+    /// <c>&lt;instance&gt;/&lt;instance&gt;.json</c>. Libraries and processor
+    /// output stay in the install root; the launch profile does not, so every
+    /// instance owns its own version entry instead of appearing as a shared
+    /// <c>versions/&lt;loader-id&gt;</c> instance.
+    /// </summary>
+    public static string CommitInstanceProfile(
         string instanceRoot,
-        string versionId,
-        string versionJson,
-        bool? shareLoaderFiles = true)
+        string versionJson)
     {
-        if (!DownloadPlanPaths.IsPlainFileName(versionId))
+        string path;
+        try
         {
-            throw new PackException(
-                PackErrorCode.Invalid,
-                $"version id '{versionId}' is not a safe file name");
+            path = LoaderPaths.InstanceProfilePath(instanceRoot);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new PackException(PackErrorCode.Invalid, exception.Message);
         }
 
-        var installRoot = LaunchPaths.ResolveLoaderRoot(instanceRoot, shareLoaderFiles);
-        var directory = Path.Combine(installRoot, "versions", versionId);
-        Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, $"{versionId}.json");
         var temporary = path + ".tmp";
         File.WriteAllText(
             temporary,

@@ -68,6 +68,12 @@ public sealed class PackGameInstallServiceTests
             Assert.Equal("fabric-loader-0.19.3-1.20.1", result.VersionId);
             Assert.Equal("fabric", result.LoaderKind);
             Assert.DoesNotContain("inheritsFrom", result.VersionJson);
+            using (var merged = JsonDocument.Parse(result.VersionJson))
+            {
+                Assert.Equal(
+                    "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                    merged.RootElement.GetProperty("mainClass").GetString());
+            }
             var destinations = result.Plan.Files.Select(file => file.Dest).ToHashSet();
             Assert.Contains(
                 "versions/fabric-loader-0.19.3-1.20.1/" +
@@ -347,12 +353,17 @@ public sealed class PackGameInstallServiceTests
             Assert.Equal("1.20.1-forge-47.2.0", outcome.VersionId);
             Assert.Equal(1, runner.Calls);
             Assert.Equal(1, repairer.Calls);
+            // The merged profile lives in the instance folder; the loader id
+            // only names the loader build and must not create a versions/
+            // entry that looks like another instance.
             var versionPath = Path.Combine(
                 root,
-                "versions",
-                outcome.VersionId,
-                $"{outcome.VersionId}.json");
+                $"{Path.GetFileName(root)}.json");
             Assert.True(File.Exists(versionPath));
+            Assert.False(Directory.Exists(Path.Combine(
+                root,
+                "versions",
+                outcome.VersionId)));
             Assert.DoesNotContain(
                 "inheritsFrom",
                 await File.ReadAllTextAsync(versionPath));
@@ -406,14 +417,19 @@ public sealed class PackGameInstallServiceTests
 
             Assert.Equal("1.20.1", result.VersionId);
             Assert.Equal(1, runner.Calls);
-            // New instances are isolated under versions/<name>, so the shared
-            // versions/ directory lives at the install root.
+            // New instances are isolated under versions/<name>, so the plan
+            // writes the client jar at the shared install root while the
+            // merged profile stays in the instance folder.
             Assert.Contains(
                 $"{Path.DirectorySeparatorChar}versions{Path.DirectorySeparatorChar}",
                 created.RootPath);
             var installRoot = Archoera.Infrastructure.Launch.LaunchPaths
                 .ResolveInstallRoot(created.RootPath);
-            Assert.True(File.Exists(Path.Combine(
+            var profile = Path.Combine(
+                created.RootPath,
+                $"{Path.GetFileName(created.RootPath)}.json");
+            Assert.True(File.Exists(profile));
+            Assert.False(File.Exists(Path.Combine(
                 installRoot,
                 "versions",
                 "1.20.1",

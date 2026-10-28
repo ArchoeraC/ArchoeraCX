@@ -321,11 +321,9 @@ public sealed partial class PackInstallService
                 throw DownloadIncomplete(gameDownload, "game/loader");
             }
 
-            PackGameInstallService.CommitVersionJson(
+            PackGameInstallService.CommitInstanceProfile(
                 instance.RootPath,
-                versionId,
-                versionJson,
-                shareLoaderFiles);
+                versionJson);
         }
 
         var overridePaths = contents.Overrides

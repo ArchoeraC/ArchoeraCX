@@ -7,6 +7,7 @@ using Archoera.Application.Mojang;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Mojang;
 using Archoera.Infrastructure.Launch;
+using Archoera.Infrastructure.Loaders;
 using Archoera.Infrastructure.Downloads;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Settings;
@@ -59,6 +60,17 @@ public sealed class VersionModuleService : IModuleMethodHandler
             var root = ReadRequired(document.RootElement, "root");
             var versionId = ReadRequired(document.RootElement, "versionId");
             var installRoot = LaunchPaths.ResolveInstallRoot(root);
+            // The launch profile belongs to the instance folder; the jar and
+            // libraries still land in the shared install root.
+            string profilePath;
+            try
+            {
+                profilePath = LoaderPaths.InstanceProfilePath(root);
+            }
+            catch (ArgumentException exception)
+            {
+                return ModuleJson.Error("E_INVALID", exception.Message);
+            }
             var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
             // Fetch the version document once and build from it. Asking the
             // plan service for the parsed version and then fetching the same
@@ -84,6 +96,7 @@ public sealed class VersionModuleService : IModuleMethodHandler
             {
                 writer.WriteString("versionId", versionId);
                 writer.WriteString("installRoot", installRoot);
+                writer.WriteString("profilePath", profilePath);
                 writer.WriteString("versionJson", Encoding.UTF8.GetString(versionJson));
                 writer.WritePropertyName("plan");
                 planDocument.RootElement.WriteTo(writer);
@@ -105,15 +118,34 @@ public sealed class VersionModuleService : IModuleMethodHandler
             var root = ReadRequired(document.RootElement, "root");
             var versionId = ReadRequired(document.RootElement, "versionId");
             var versionJson = ReadRequired(document.RootElement, "versionJson");
+            var profilePathText = ReadOptional(document.RootElement, "profilePath");
             if (!DownloadPlanPaths.IsPlainFileName(versionId))
             {
                 return ModuleJson.Error("E_INVALID", "versionId is not a plain file name");
             }
 
             var installRoot = LaunchPaths.ResolveInstallRoot(root);
-            var versionDirectory = Path.Combine(installRoot, "versions", versionId);
-            Directory.CreateDirectory(versionDirectory);
-            var path = Path.Combine(versionDirectory, $"{versionId}.json");
+            string path;
+            if (profilePathText is not null)
+            {
+                if (!LoaderPaths.TryResolveInstanceProfilePath(
+                        installRoot,
+                        profilePathText,
+                        out path))
+                {
+                    return ModuleJson.Error(
+                        "E_INVALID",
+                        "profilePath must be <instance>/<instance>.json inside root");
+                }
+            }
+            else
+            {
+                var versionDirectory = Path.Combine(installRoot, "versions", versionId);
+                Directory.CreateDirectory(versionDirectory);
+                path = Path.Combine(versionDirectory, $"{versionId}.json");
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var temporary = path + ".tmp";
             File.WriteAllText(
                 temporary,
@@ -129,7 +161,7 @@ public sealed class VersionModuleService : IModuleMethodHandler
         }
         catch (Exception exception) when (
             exception is IOException or JsonException or ArgumentException or
-            UnauthorizedAccessException)
+            NotSupportedException or UnauthorizedAccessException)
         {
             return ModuleJson.Error("VERSION_COMMIT_FAILED", exception.Message);
         }
@@ -146,6 +178,13 @@ public sealed class VersionModuleService : IModuleMethodHandler
 
         return element.GetString()!.Trim();
     }
+
+    private static string? ReadOptional(JsonElement root, string name)
+        => root.TryGetProperty(name, out var element) &&
+           element.ValueKind == JsonValueKind.String &&
+           !string.IsNullOrWhiteSpace(element.GetString())
+            ? element.GetString()!.Trim()
+            : null;
 
     public async Task<byte[]> HandleAsync(
         string method,

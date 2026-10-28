@@ -107,6 +107,8 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         DateTimeOffset? lastPlayedAt,
         InstanceOverrides? overrides = null,
         bool setOverrides = false,
+        string? loader = null,
+        string? loaderVersion = null,
         CancellationToken cancellationToken = default)
     {
         var cleanId = ValidateId(id);
@@ -124,9 +126,21 @@ public sealed class JsonInstanceRepository : IInstanceRepository
             if (fromFile is not null) current = current with { Overrides = fromFile.Overrides };
         }
 
+        var nextLoader = loader is null ? current.Loader : ValidateLoader(loader);
+        var nextLoaderVersion = loaderVersion is null
+            ? loader is null ? current.LoaderVersion : string.Empty
+            : string.IsNullOrWhiteSpace(loaderVersion)
+                ? string.Empty
+                : LoaderVersionText.Normalize(
+                    nextLoader,
+                    current.GameVersion,
+                    loaderVersion);
+
         var updated = current with
         {
             Name = name is null ? current.Name : ValidateName(name),
+            Loader = nextLoader,
+            LoaderVersion = nextLoaderVersion,
             Favorite = favorite ?? current.Favorite,
             LastPlayedAt = lastPlayedAt ?? current.LastPlayedAt,
             Overrides = setOverrides ? NormalizeOverrides(overrides) : current.Overrides,

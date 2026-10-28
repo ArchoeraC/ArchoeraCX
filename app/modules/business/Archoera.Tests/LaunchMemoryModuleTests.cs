@@ -175,6 +175,8 @@ public sealed class LaunchMemoryModuleTests
             DateTimeOffset? lastPlayedAt,
             InstanceOverrides? overrides = null,
             bool setOverrides = false,
+            string? loader = null,
+            string? loaderVersion = null,
             CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 

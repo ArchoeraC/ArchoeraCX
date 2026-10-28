@@ -59,7 +59,7 @@ public sealed class LaunchVersionResolutionTests
                 Directory.CreateDirectory(directory);
                 File.WriteAllText(
                     Path.Combine(directory, $"{id}.json"),
-                    MinimalVersionJson(id));
+                    id == "1.21.1" ? MinimalVersionJson(id) : ForgeProfileJson(id));
             }
 
             var instance = new GameInstanceRecord(
@@ -79,6 +79,61 @@ public sealed class LaunchVersionResolutionTests
             var version = LaunchModuleService.LoadVersion(instance, paths);
 
             Assert.Equal("1.21.1-forge-47.2.0", version.Id);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Instance_owned_profile_wins_over_a_legacy_shared_loader_profile()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var instanceRoot = Path.Combine(gameRoot, "versions", "AutumnTown");
+            Directory.CreateDirectory(instanceRoot);
+            var loaderId = "1.21.1-forge-47.2.0";
+            File.WriteAllText(
+                Path.Combine(instanceRoot, "AutumnTown.json"),
+                ForgeProfileJson(loaderId));
+
+            // Layout left by an older build: the merged profile also sits in
+            // the shared versions folder. The instance folder must win.
+            var shared = Path.Combine(gameRoot, "versions", loaderId);
+            Directory.CreateDirectory(shared);
+            File.WriteAllText(
+                Path.Combine(shared, $"{loaderId}.json"),
+                ForgeProfileJson(loaderId));
+            File.WriteAllText(
+                Path.Combine(shared, $"{loaderId}.jar"),
+                "client");
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "AutumnTown",
+                "1.21.1",
+                "forge",
+                "47.2.0",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+            var paths = LaunchPaths.Resolve(instanceRoot);
+            Directory.CreateDirectory(Path.Combine(gameRoot, "assets", "indexes"));
+            File.WriteAllText(
+                Path.Combine(gameRoot, "assets", "indexes", "5.json"),
+                "{\"objects\":{}}");
+
+            var version = LaunchModuleService.LoadVersion(instance, paths);
+
+            Assert.Equal(loaderId, version.Id);
+            // The merged profile is instance-owned but still finds the client
+            // jar the plan wrote under the shared versions folder.
+            Assert.True(LaunchPlanBuilder.CheckFiles(version, paths).Ok);
         }
         finally
         {
@@ -158,7 +213,7 @@ public sealed class LaunchVersionResolutionTests
             var standard = Path.Combine(gameRoot, "versions", "1.21.1-neoforge");
             Directory.CreateDirectory(standard);
             var standardJson = Path.Combine(standard, "1.21.1-neoforge.json");
-            File.WriteAllText(standardJson, MinimalVersionJson("1.21.1-neoforge"));
+            File.WriteAllText(standardJson, NeoForgeProfileJson("1.21.1-neoforge"));
             File.SetLastWriteTimeUtc(standardJson, DateTime.UtcNow.AddHours(-2));
 
             // A real modpack folder with a newer profile; its name also
@@ -265,7 +320,7 @@ public sealed class LaunchVersionResolutionTests
             Directory.CreateDirectory(other);
             File.WriteAllText(
                 Path.Combine(other, "fabric-loader-0.18.4-1.21.8.json"),
-                MinimalVersionJson("fabric-loader-0.18.4-1.21.8"));
+                FabricProfileJson("fabric-loader-0.18.4-1.21.8", "0.18.4"));
 
             var instanceRoot = Path.Combine(gameRoot, "versions", "1.20.4");
             var instance = new GameInstanceRecord(
@@ -295,6 +350,189 @@ public sealed class LaunchVersionResolutionTests
     }
 
     [Fact]
+    public void Vanilla_profile_named_like_a_fabric_build_does_not_launch_vanilla()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var instanceRoot = Path.Combine(gameRoot, "versions", "AutumnTown");
+            Directory.CreateDirectory(instanceRoot);
+            // PCL-style name: the id names the game and loader build, but the
+            // profile itself is the plain vanilla document.
+            File.WriteAllText(
+                Path.Combine(instanceRoot, "AutumnTown.json"),
+                MinimalVersionJson("1.20.1-Fabric 0.16.9"));
+
+            var loaderId = "fabric-loader-0.16.9-1.20.4";
+            var loaderDirectory = Path.Combine(gameRoot, "versions", loaderId);
+            Directory.CreateDirectory(loaderDirectory);
+            File.WriteAllText(
+                Path.Combine(loaderDirectory, $"{loaderId}.json"),
+                FabricProfileJson(loaderId));
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "AutumnTown",
+                "1.20.4",
+                "fabric",
+                "0.16.9",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var version = LaunchModuleService.LoadVersion(
+                instance,
+                LaunchPaths.Resolve(instanceRoot));
+
+            Assert.Equal(loaderId, version.Id);
+            Assert.Equal(
+                "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                version.MainClass);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Renamed_vanilla_profile_does_not_make_a_fabric_instance_launch_vanilla()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var instanceRoot = Path.Combine(gameRoot, "versions", "AutumnTown");
+            Directory.CreateDirectory(instanceRoot);
+            // A copied/renamed vanilla profile: its id is the folder name, not
+            // the game version, so an id-only check treated it as a loader
+            // profile and launched the unmodded game.
+            File.WriteAllText(
+                Path.Combine(instanceRoot, "AutumnTown.json"),
+                MinimalVersionJson("AutumnTown"));
+
+            var loaderId = "fabric-loader-0.16.9-1.20.4";
+            var loaderDirectory = Path.Combine(gameRoot, "versions", loaderId);
+            Directory.CreateDirectory(loaderDirectory);
+            File.WriteAllText(
+                Path.Combine(loaderDirectory, $"{loaderId}.json"),
+                FabricProfileJson(loaderId));
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "AutumnTown",
+                "1.20.4",
+                "fabric",
+                "0.16.9",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var version = LaunchModuleService.LoadVersion(
+                instance,
+                LaunchPaths.Resolve(instanceRoot));
+
+            Assert.Equal(loaderId, version.Id);
+            Assert.Equal(
+                "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                version.MainClass);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Renamed_vanilla_profile_without_a_fabric_install_is_not_installed()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var instanceRoot = Path.Combine(gameRoot, "versions", "AutumnTown");
+            Directory.CreateDirectory(instanceRoot);
+            File.WriteAllText(
+                Path.Combine(instanceRoot, "AutumnTown.json"),
+                MinimalVersionJson("AutumnTown"));
+
+            var vanilla = Path.Combine(gameRoot, "versions", "1.20.4");
+            Directory.CreateDirectory(vanilla);
+            File.WriteAllText(
+                Path.Combine(vanilla, "1.20.4.json"),
+                MinimalVersionJson("1.20.4"));
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "AutumnTown",
+                "1.20.4",
+                "fabric",
+                "0.16.9",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var exception = Assert.Throws<LaunchException>(
+                () => LaunchModuleService.LoadVersion(
+                    instance,
+                    LaunchPaths.Resolve(instanceRoot)));
+
+            Assert.Equal("LOADER_NOT_INSTALLED", exception.Code);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Renamed_merged_fabric_profile_is_still_a_loader_profile()
+    {
+        var gameRoot = CreateTempDirectory();
+        try
+        {
+            var instanceRoot = Path.Combine(gameRoot, "versions", "AutumnTown");
+            Directory.CreateDirectory(instanceRoot);
+            File.WriteAllText(
+                Path.Combine(instanceRoot, "AutumnTown.json"),
+                FabricProfileJson("AutumnTown"));
+
+            var instance = new GameInstanceRecord(
+                "id",
+                "AutumnTown",
+                "1.20.4",
+                "fabric",
+                "0.16.9",
+                instanceRoot,
+                0,
+                false,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                null);
+
+            var version = LaunchModuleService.LoadVersion(
+                instance,
+                LaunchPaths.Resolve(instanceRoot));
+
+            Assert.Equal("AutumnTown", version.Id);
+            Assert.Equal(
+                "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                version.MainClass);
+        }
+        finally
+        {
+            Directory.Delete(gameRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Loader_profile_without_listed_libraries_is_still_a_loader_profile()
     {
         var gameRoot = CreateTempDirectory();
@@ -304,7 +542,7 @@ public sealed class LaunchVersionResolutionTests
             Directory.CreateDirectory(versionDirectory);
             File.WriteAllText(
                 Path.Combine(versionDirectory, "1.21.1-neoforge-21.1.264.json"),
-                MinimalVersionJson("1.21.1-neoforge-21.1.264"));
+                NeoForgeProfileJson("1.21.1-neoforge-21.1.264"));
             var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.1-neoforge-21.1.264");
             Directory.CreateDirectory(instanceRoot);
 
@@ -350,7 +588,7 @@ public sealed class LaunchVersionResolutionTests
             Directory.CreateDirectory(loader);
             File.WriteAllText(
                 Path.Combine(loader, "neoforge-21.1.264.json"),
-                MinimalVersionJson("neoforge-21.1.264"));
+                NeoForgeProfileJson("neoforge-21.1.264"));
 
             var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.1-neoforge-21.1.264");
             Directory.CreateDirectory(instanceRoot);
@@ -395,7 +633,7 @@ public sealed class LaunchVersionResolutionTests
             Directory.CreateDirectory(loader);
             File.WriteAllText(
                 Path.Combine(loader, "1.21.8-forge-58.1.26.json"),
-                MinimalVersionJson("1.21.8-forge-58.1.26"));
+                ForgeProfileJson("1.21.8-forge-58.1.26"));
 
             var instanceRoot = Path.Combine(gameRoot, "versions", "1.21.8-forgetest");
             Directory.CreateDirectory(instanceRoot);
@@ -440,7 +678,7 @@ public sealed class LaunchVersionResolutionTests
             Directory.CreateDirectory(other);
             File.WriteAllText(
                 Path.Combine(other, "neoforge-21.1.248.json"),
-                MinimalVersionJson("neoforge-21.1.248"));
+                NeoForgeProfileJson("neoforge-21.1.248"));
 
             var instanceRoot = Path.Combine(gameRoot, "versions", "pack");
             Directory.CreateDirectory(instanceRoot);
@@ -542,7 +780,7 @@ public sealed class LaunchVersionResolutionTests
                 var directory = Path.Combine(gameRoot, "versions", id);
                 Directory.CreateDirectory(directory);
                 var json = Path.Combine(directory, $"{id}.json");
-                File.WriteAllText(json, MinimalVersionJson(id));
+                File.WriteAllText(json, NeoForgeProfileJson(id));
                 File.SetLastWriteTimeUtc(json, DateTime.UtcNow);
             }
 
@@ -624,6 +862,34 @@ public sealed class LaunchVersionResolutionTests
             Directory.Delete(gameRoot, recursive: true);
         }
     }
+
+    private static string FabricProfileJson(string id, string loaderVersion = "0.16.9")
+        => JsonSerializer.Serialize(new
+        {
+            id,
+            type = "release",
+            mainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient",
+            libraries = new[]
+            {
+                new { name = $"net.fabricmc:fabric-loader:{loaderVersion}" },
+            },
+        });
+
+    private static string ForgeProfileJson(string id)
+        => JsonSerializer.Serialize(new
+        {
+            id,
+            type = "release",
+            mainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher",
+        });
+
+    private static string NeoForgeProfileJson(string id)
+        => JsonSerializer.Serialize(new
+        {
+            id,
+            type = "release",
+            mainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher",
+        });
 
     private static string MinimalVersionJson(string id)
         => JsonSerializer.Serialize(new

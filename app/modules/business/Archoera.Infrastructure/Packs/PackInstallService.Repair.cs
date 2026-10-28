@@ -369,11 +369,9 @@ public sealed partial class PackInstallService
             throw DownloadIncomplete(download, "game/loader");
         }
 
-        PackGameInstallService.CommitVersionJson(
+        PackGameInstallService.CommitInstanceProfile(
             instance.RootPath,
-            game.VersionId,
-            game.VersionJson,
-            shareLoaderFiles: null);
+            game.VersionJson);
         return new PackRepairResult(instance, game.VersionId);
     }
 
@@ -499,11 +497,9 @@ public sealed partial class PackInstallService
                 string.Join("; ", repair.Details.Take(4)));
         }
 
-        PackGameInstallService.CommitVersionJson(
+        PackGameInstallService.CommitInstanceProfile(
             instance.RootPath,
-            forge.VersionId,
-            forge.VersionJson,
-            shareLoaderFiles);
+            forge.VersionJson);
 
         return new ForgeInstallOutcome(forge.VersionId, forge.VersionJson);
     }

@@ -75,6 +75,8 @@ public sealed class InstancePlayHistoryTests
             DateTimeOffset? lastPlayedAt,
             InstanceOverrides? overrides = null,
             bool setOverrides = false,
+            string? loader = null,
+            string? loaderVersion = null,
             CancellationToken cancellationToken = default)
         {
             if (Throw) throw new IOException("registry is busy");

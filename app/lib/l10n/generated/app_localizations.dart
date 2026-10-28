@@ -1085,7 +1085,7 @@ abstract class AppLocalizations {
   /// No description provided for @loaderShareFilesHint.
   ///
   /// In en, this message translates to:
-  /// **'Reuses one libraries/versions copy in the game folder for every instance of this loader build. Untick to keep them inside this instance.'**
+  /// **'Reuses one libraries copy in the game folder for every instance of this loader build; the merged launch profile always stays in this instance. Untick to keep the libraries inside this instance.'**
   String get loaderShareFilesHint;
 
   /// No description provided for @searchDownload.
@@ -1631,7 +1631,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsShareLoaderFilesDesc.
   ///
   /// In en, this message translates to:
-  /// **'Forge/NeoForge libraries and the merged loader profile are installed once in the game folder and reused by every instance of that loader build. Untick to keep them inside each instance.'**
+  /// **'Forge/NeoForge libraries and processor output are installed once in the game folder and reused by every instance of that loader build. Each instance keeps its merged launch profile in its own folder. Untick to keep the libraries inside each instance.'**
   String get settingsShareLoaderFilesDesc;
 
   /// No description provided for @settingsSectionGameArgs.

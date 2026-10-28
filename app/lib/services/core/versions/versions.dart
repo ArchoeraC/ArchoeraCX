@@ -64,25 +64,35 @@ mixin CoreClientVersions on CoreTransport {
       versionId: id,
       versionJson: versionJson,
       installRoot: installRoot,
+      profilePath: asString(data['profilePath']) ?? '',
     );
   }
 
-  /// Write a downloaded vanilla version JSON into the install root.
+  /// Write a downloaded vanilla version profile into the instance folder.
+  ///
+  /// [profilePath] is the absolute `<instance>/<instance>.json` returned by
+  /// [planVanillaInstall]. When omitted the legacy shared
+  /// `<root>/versions/<id>/<id>.json` layout is used.
   Future<void> commitVanillaVersion({
     required String root,
     required String versionId,
     required String versionJson,
+    String? profilePath,
     void Function(int done, int total)? onProgress,
     String? label,
   }) async {
     const methodName = 'version.commit';
+    final params = <String, Object?>{
+      'root': root,
+      'versionId': versionId,
+      'versionJson': versionJson,
+    };
+    if (profilePath != null && profilePath.isNotEmpty) {
+      params['profilePath'] = profilePath;
+    }
     final jsonText = await runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{
-        'root': root,
-        'versionId': versionId,
-        'versionJson': versionJson,
-      }),
+      paramsJson: jsonEncode(params),
       onProgress: onProgress,
       label: label,
     );

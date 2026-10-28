@@ -109,26 +109,36 @@ mixin CoreClientLoader on CoreTransport {
       requiresJava: data['requiresJava'] == true,
       installerPath: asString(data['installerPath']),
       installRoot: asString(data['installRoot']) ?? root,
+      profilePath: asString(data['profilePath']) ?? '',
       shareLoaderFiles: data['shareLoaderFiles'] != false,
     );
   }
 
-  /// Write the merged version JSON into `<root>/versions/<id>/<id>.json`.
+  /// Write the merged launch profile into the instance folder.
+  ///
+  /// [profilePath] is the absolute `<instance>/<instance>.json` returned by
+  /// [planLoaderInstall]. When omitted the legacy shared
+  /// `<root>/versions/<id>/<id>.json` layout is used.
   Future<LoaderCommitResult> commitLoaderVersion({
     required String root,
     required String versionId,
     required String versionJson,
+    String? profilePath,
     void Function(int done, int total)? onProgress,
     String? label,
   }) async {
     const methodName = 'loader.commit';
+    final params = <String, Object?>{
+      'root': root,
+      'versionId': versionId,
+      'versionJson': versionJson,
+    };
+    if (profilePath != null && profilePath.isNotEmpty) {
+      params['profilePath'] = profilePath;
+    }
     final jsonText = await runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{
-        'root': root,
-        'versionId': versionId,
-        'versionJson': versionJson,
-      }),
+      paramsJson: jsonEncode(params),
       onProgress: onProgress,
       label: label,
     );

@@ -215,6 +215,12 @@ internal static class LoaderProfileIdentity
             library.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase) ||
             library.Name.Contains("quilt", StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>True when the profile carries Forge/NeoForge launch arguments.</summary>
+    public static bool HasLoaderArguments(MojangVersion version)
+        => ArgumentValue(version, "--fml.neoForgeVersion") is not null ||
+           ArgumentValue(version, "--fml.forgeVersion") is not null ||
+           ArgumentValue(version, "--fml.mcVersion") is not null;
+
     private static bool IsFamilyToken(string token, string loader)
     {
         if (string.Equals(token, loader, StringComparison.OrdinalIgnoreCase)) return true;

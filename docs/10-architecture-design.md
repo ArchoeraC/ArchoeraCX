@@ -1434,7 +1434,7 @@ JavaLocator
 
 1. 读取 `modrinth.index.json`（`formatVersion=1`、`game=minecraft`），校验依赖、路径、哈希、大小、`env`；拒绝绝对路径、`..`、`.archoera/`、`versions/`/`libraries/`/`assets/` 等启动器保留根、Windows 保留名与重复路径。
 2. 按 `dependencies` 新建实例；`minecraft` 必填，`fabric-loader`/`quilt-loader` 走 profile JSON + 版本合并，Forge/NeoForge 暂未接入自动安装。
-3. 先构建原版 + 加载器计划并由 Rust 执行，再提交合并后的 `versions/<id>/<id>.json`。
+3. 先构建原版 + 加载器计划并由 Rust 执行，再提交合并后的实例 profile `<instance>/<instance>.json`；库与 processor 产物仍落在共享根。
 4. 解压 `overrides/` 与 `client-overrides/`（客户端）或 `server-overrides/`（服务端）：拒绝 symlink entry、路径逃逸、超限条目/总量；`client-overrides` 覆盖同名 `overrides`。
 5. 以解压出的相对路径为排除集生成索引文件 `DownloadPlan`；包内自带文件优先，即使索引声明同一路径也不再下载。解压与索引下载并发执行。
 6. 成功后写 `.archoera/pack.json` 记录来源、包版本、加载器与文件计数；它只是溯源信息，不是 SQLite 权威索引。
@@ -1825,6 +1825,7 @@ void _drain() {
 ```
 
 - `instance.update` 新增可选 `overrides` 对象，语义是 **merge patch**：键缺省 = 不改变，显式 `null` = 清除，有值 = 设置；`instance.list` / `instance.create` / `instance.update` 返回的实例对象**始终**带 `overrides`（无覆盖为 `{}`）。
+- `loader.plan` / `loader.commit` / `loader.repair` 成功后，客户端调用 `instance.update` 同步 `loader` / `loaderVersion`；否则实例卡片、依赖检查和启动预检会继续读旧加载器版本。
 - 全局 `settings.json`（schema 15）另有 `wrapperCommand`（string ≤ 4096）、`environment`（object ≤ 64 项）、`preLoadCommand` / `preLaunchCommand` / `postExitCommand`（string ≤ 4096）、`maximized`（与 `fullscreen` 互斥）、`enableGameMode` / `enableMangoHud` / `useZink`（Linux 预设），以及仅用于高级原生库的 `developerMode` + `nativeGlfwPath` / `nativeOpenALPath` / `nativeSdlPath`。开发者模式与下载合规的开发者模式无关。启动环境合并顺序：自动优化（dGPU）→ 性能预设 → 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
 - 启动时 C# 用 `InstanceOverrides.ApplyTo(AppSettings)` 把实例覆盖合到全局设置，再选 Java、构建 LaunchPlan。
 - SQLite 只做索引，**不存** `overrides`；权威源仍是 `<instance root>/.archoera/instance.json`。
@@ -1857,7 +1858,7 @@ void _drain() {
 |---|---|---|
 | libraries | `shared/libraries/` | 所有实例共享；Forge processor 产物按版本落位 |
 | assets | `shared/assets/` | `objects/xx/hash` + `indexes/`；legacy/virtual 支持 |
-| versions | `shared/versions/<id>/` | 版本 JSON/jar；加载器 profile 合并结果不放这里 |
+| versions | `shared/versions/<id>/` | 版本 JSON/jar；加载器合并 profile 不放这里，始终写实例根 `<instance>/<instance>.json` |
 | 内容库 | `downloads/objects/<algo>/<xx>/<hash>` | hash 校验后写入；硬链接/复制到实例 |
 | 实例 gameDir | `instances/<id>/.minecraft/` | Mod/配置/存档；不共享 |
 
@@ -2196,7 +2197,7 @@ loader.install { instanceId, kind, version }
 C#: Fabric/Quilt → meta profile → merge → 下载库
 C#: Forge/NeoForge → installer → install_profile → 下载库/processor
 C#: 有 Java → 跑 processors；无 Java → PendingProcessors
-C#: 合并 version.json → 校验 outputs → 写实例组件
+C#: 合并 version.json → 校验 outputs → 写实例根 <instance>/<instance>.json
 ```
 
 - Fabric/Quilt 不需要 Java；Forge 1.13+ / NeoForge 需要。
@@ -2214,7 +2215,7 @@ C#: 按依赖创建实例
     vanilla/Fabric/Quilt: profile → 合并版本 → 下载计划
     Forge/NeoForge: 下载并校验 installer（sidecar/SHA-1）→ 组合计划
 Rust: 下载原版 + 加载器库 + installer
-C#: Forge/NeoForge 选择 Java → 运行 processors → 写回合并版 versions/<id>/<id>.json
+C#: Forge/NeoForge 选择 Java → 运行 processors → 写回实例根 <instance>/<instance>.json
 C#: 并发执行 overrides 解压 + 索引文件 DownloadPlan
 Rust: 下载索引文件（排除包内自带路径）
 C#: 写 .archoera/pack.json → 注册 → 事件
@@ -2234,8 +2235,9 @@ C#: 写 .archoera/pack.json → 注册 → 事件
 ```
 launch.prepare: 账户就绪 + CheckFiles（全部库 + 原生 classifier/client jar/asset index/逐条 asset object）+ CheckLoaderArtifacts（NeoForge 生成物）
 launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合并、加载器未安装（LOADER_NOT_INSTALLED）
-  加载器 profile 解析：先按安装器 id 精确查找（Forge `<game>-forge-<ver>`、NeoForge `neoforge-<ver>`、
-    Fabric/Quilt `*-loader-<ver>-<game>`，位于 installRoot/versions 下），再回退扫描；
+  加载器 profile 解析：新安装的实例先读 `<实例>/<文件夹>.json`；没有时再按安装器 id 精确查找
+    （Forge `<game>-forge-<ver>`、NeoForge `neoforge-<ver>`、Fabric/Quilt `*-loader-<ver>-<game>`，
+    位于 installRoot/versions 下；兼容旧布局与其他启动器），再回退扫描；
     加载器实例绝不允许回退到原版 profile 启动（会静默跑成原版），必须报 LOADER_NOT_INSTALLED 并安装
   → 本地修复优先（不联网、不校验下载策略）：
       缺失/未合并 version JSON：从 versions/ 下匹配游戏+加载器+加载器版本的标准 profile
@@ -2250,6 +2252,7 @@ launch.start: CheckFiles / CheckLoaderArtifacts 失败、profile 缺失/未合�
 ```
 
 - `CheckFiles` 是启动前的快速全量扫描：只做存在性检查（不读大文件、不算哈希），一次报告缺失数量与第一个路径；原生库按 `downloads.classifiers` 的本机 classifier 检查，不再漏掉 `lwjgl-*-natives-linux.jar` 之类的文件。原生目录每次启动重新解压，避免旧的残缺 natives 目录让游戏报 `Failed to locate library`。
+- 判断原版 profile 不能只看 id：复制/重命名后的加载器 profile 可能保留 `<实例文件夹>` 作为 id，PCL 风格的 `<游戏版本>-Fabric <版本>` 也可能是纯原版 JSON。没有加载器 library、`--fml.*` 参数或加载器 mainClass 时按原版处理，宁可报 `LOADER_NOT_INSTALLED` 也不静默启动原版。
 - 缺失的普通库、原生 classifier、client jar、asset index 与 asset object 会先在本实例、已配置的游戏根以及其它实例目录中查找同相对路径的文件；用版本 JSON/资源索引里的 SHA-1 与大小校验后原子复制到目标位置。只补缺失文件，不覆盖已存在但可能损坏的文件（交给下载修复校验替换）。
 - NeoForge 的合并版 profile 不把 `neoforge-*-client.jar` / `-universal.jar` 列入 `libraries`；预检按 Maven 约定检查这两个生成物。存在时直接启动，**不因实例缺少 installer 而触发下载/processor 修复**（从其它启动器导入的实例可直接运行）。Forge 的合并版 profile 已列出这些 jar，由 `CheckFiles` 覆盖。
 - 自动修复只尝试一次；失败返回 `AUTO_REPAIR_FAILED`，下载被策略禁用返回 `AUTO_REPAIR_BLOCKED`。
@@ -2422,7 +2425,7 @@ public interface IDownloadProvider {
 | `instance.list` | C# | 实例列表/分组/搜索 |
 | `instance.get` | C# | 详情 |
 | `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离） |
-| `instance.update` | C# | 名称/收藏/最后游玩/内存/Java/参数；`name` 仅改元数据与 `instance.json`，不移动实例目录；`overrides` 走 merge patch（缺省不改、`null` 清除），返回实例始终带 `overrides` |
+| `instance.update` | C# | 名称/收藏/最后游玩/加载器版本/内存/Java/参数；`name` 仅改元数据与 `instance.json`，不移动实例目录；`loader` + `loaderVersion` 用于安装/升级加载器后同步实例元数据；`overrides` 走 merge patch（缺省不改、`null` 清除），返回实例始终带 `overrides` |
 | `instance.delete` | C# | 移除索引；`deleteFiles: true` 时同时删除实例目录（需 `.archoera/instance.json` 标记，且不与实例根或其它实例重叠，否则保留并在 `filesSkippedReason` 返回原因） |
 | `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |
 | `instance.mods.list` | C# | 列出实例 `mods/` 中的 jar 与 `.disabled` 文件 |
@@ -2443,8 +2446,8 @@ public interface IDownloadProvider {
 | `version.manifest` | C# | 版本清单（缓存） |
 | `version.refresh` | C# | 强制刷新 |
 | `version.list` | C# | Mojang 版本清单；正式版/快照过滤（已接） |
-| `version.plan` | C# | 原版 client/libraries/assets 计划；`versions/` 下实例自动使用共享根 |
-| `version.commit` | C# | 写回原版版本 JSON |
+| `version.plan` | C# | 原版 client/libraries/assets 计划；`versions/` 下实例自动使用共享根，并返回实例根 profile 路径 |
+| `version.commit` | C# | 原子写入实例根 `<instance>/<instance>.json`（旧调用方仍可写 `versions/<id>`） |
 | `version.get` | C# | 单个版本 JSON |
 | `version.effective` | C# | 合并后的有效版本 |
 | `version.install` | C# | 安装原版/创建实例 |
@@ -2455,7 +2458,7 @@ public interface IDownloadProvider {
 | `loader.versions` | C# | 按游戏版本列出 Fabric/Quilt/Forge/NeoForge 加载器版本；中国大陆网络镜像优先（Fabric 用 fabric-meta、Forge 用 per-game JSON、NeoForge 用 Maven 镜像），其他地区官方优先失败回退，结果缓存 10 分钟 |
 | `loader.check` | C# | 从实例安装目录定位 installer 后执行 quick/full 校验 |
 | `loader.plan` | C# | Forge/NeoForge 从本地 installer 生成原版 + 加载器依赖 + installer 组合计划；Fabric/Quilt 从 profile JSON 生成原版 + 加载器计划（无 installer/processors） |
-| `loader.commit` | C# | 原子写入合并后的 `versions/<id>/<id>.json` |
+| `loader.commit` | C# | 原子写入实例根 `<instance>/<instance>.json` |
 | `loader.repair` | C# | 从最早缺失 processor 重跑；写回校验结果（processors 需要 JVM） |
 | `loader.autoRepair` | C# | 按实例补全下载；Forge/NeoForge 重跑 processors；提交合并版（依赖检查 UI） |
 | `account.list` | C# | 账户列表 |

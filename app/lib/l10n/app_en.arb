@@ -344,7 +344,7 @@
   "@loaderShareFiles": {
     "description": "Checkbox in the Forge/NeoForge install dialog; overrides the global preference for this install only."
   },
-  "loaderShareFilesHint": "Reuses one libraries/versions copy in the game folder for every instance of this loader build. Untick to keep them inside this instance.",
+  "loaderShareFilesHint": "Reuses one libraries copy in the game folder for every instance of this loader build; the merged launch profile always stays in this instance. Untick to keep the libraries inside this instance.",
   "@loaderShareFilesHint": {},
   "searchDownload": "Search resources",
   "downloadSearchAction": "Search",
@@ -608,7 +608,7 @@
     "description": "File picker type group label for native libraries."
   },
   "settingsShareLoaderFiles": "Share loader files",
-  "settingsShareLoaderFilesDesc": "Forge/NeoForge libraries and the merged loader profile are installed once in the game folder and reused by every instance of that loader build. Untick to keep them inside each instance.",
+  "settingsShareLoaderFilesDesc": "Forge/NeoForge libraries and processor output are installed once in the game folder and reused by every instance of that loader build. Each instance keeps its merged launch profile in its own folder. Untick to keep the libraries inside each instance.",
   "@settingsShareLoaderFiles": {
     "description": "Global default for the Forge/NeoForge install dialog checkbox."
   },

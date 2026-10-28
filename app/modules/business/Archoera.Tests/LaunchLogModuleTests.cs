@@ -458,6 +458,8 @@ public sealed class LaunchLogModuleTests
             DateTimeOffset? lastPlayedAt,
             Archoera.Domain.Instances.InstanceOverrides? overrides = null,
             bool setOverrides = false,
+            string? loader = null,
+            string? loaderVersion = null,
             CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 

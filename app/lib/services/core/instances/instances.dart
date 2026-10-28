@@ -102,6 +102,8 @@ mixin CoreClientInstances on CoreTransport {
     String? name,
     bool? favorite,
     DateTime? lastPlayedAt,
+    String? loader,
+    String? loaderVersion,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'instance.update';
@@ -112,6 +114,8 @@ mixin CoreClientInstances on CoreTransport {
         'name': ?name,
         'favorite': ?favorite,
         'lastPlayedAt': ?lastPlayedAt?.toUtc().toIso8601String(),
+        'loader': ?loader,
+        'loaderVersion': ?loaderVersion,
       }),
       onProgress: onProgress,
     );

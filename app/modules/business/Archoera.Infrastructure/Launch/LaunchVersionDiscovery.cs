@@ -270,19 +270,28 @@ internal static class LaunchVersionDiscovery
     }
 
     /// <summary>
-    /// True when a profile is just the vanilla game profile for this instance,
-    /// i.e. it carries the game version id and none of the loader's libraries.
+    /// True when a profile is not a loader profile for this instance. Loader
+    /// libraries, loader arguments or a loader main class decide; the id alone
+    /// is not enough because a copied/renamed merged profile can keep
+    /// <c>id = &lt;instance folder&gt;</c>, while a vanilla profile saved under a
+    /// PCL-style name (<c>1.20.1-Fabric 0.16.9</c>) names a loader build in its
+    /// id without containing any loader code.
     /// </summary>
     private static bool IsVanillaBase(MojangVersion version, GameInstanceRecord instance)
     {
-        if (!string.Equals(version.Id, instance.GameVersion, StringComparison.OrdinalIgnoreCase))
+        if (LoaderProfileIdentity.HasLoaderLibraries(version)) return false;
+        if (IsVanillaMainClass(version) &&
+            !LoaderProfileIdentity.HasLoaderArguments(version))
         {
-            return false;
+            return true;
         }
 
-        return !version.Libraries.Any(library =>
-            library.Name.Contains(instance.Loader, StringComparison.OrdinalIgnoreCase));
+        return !LoaderProfileIdentity.Matches(instance, version);
     }
+
+    private static bool IsVanillaMainClass(MojangVersion version)
+        => version.MainClass?.Trim() is { Length: > 0 } main &&
+           main.StartsWith("net.minecraft.client.", StringComparison.OrdinalIgnoreCase);
 
     private static void EnsureMerged(MojangVersion version)
     {

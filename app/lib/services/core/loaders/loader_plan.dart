@@ -7,6 +7,7 @@ class LoaderPlanResult {
     required this.requiresJava,
     this.installerPath,
     this.installRoot = '',
+    this.profilePath = '',
     this.shareLoaderFiles = true,
   });
 
@@ -21,13 +22,17 @@ class LoaderPlanResult {
   /// Instance-relative installer file written by the plan.
   final String? installerPath;
 
-  /// Root that owns `libraries/` and `versions/<id>/` for this install: the
-  /// shared game root, or the instance directory when the user turned sharing
-  /// off. Commit and repair must target this root.
+  /// Root that owns `libraries/` and the loader's download cache for this
+  /// install: the shared game root, or the instance directory when the user
+  /// turned sharing off. Commit and repair must target this root.
   final String installRoot;
 
-  /// True when the files are shared with other instances of the same loader
-  /// build.
+  /// Absolute path of the instance-owned `<instance>.json`. The merged
+  /// profile is written here, never to the shared `versions/` folder.
+  final String profilePath;
+
+  /// True when libraries and processor output are shared with other instances
+  /// of the same loader build. The launch profile is always per-instance.
   final bool shareLoaderFiles;
 }
 

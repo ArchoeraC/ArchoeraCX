@@ -151,10 +151,15 @@ void main() {
         root: isolated.path,
         versionId: isolatedPlan.versionId,
         versionJson: isolatedPlan.versionJson,
+        profilePath: isolatedPlan.profilePath,
+      );
+      expect(
+        File('${isolated.path}/island.json').existsSync(),
+        isTrue,
       );
       expect(
         File('${gameRoot.path}/versions/1.21.1/1.21.1.json').existsSync(),
-        isTrue,
+        isFalse,
       );
     },
     skip: enabled && core.existsSync() && module.existsSync()

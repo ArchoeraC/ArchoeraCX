@@ -70,6 +70,7 @@ public sealed partial class InstanceModuleService
         try
         {
             CopyInstanceTree(source.RootPath, created.RootPath, cancellationToken);
+            RenameInstanceProfile(source.RootPath, created.RootPath);
         }
         catch
         {
@@ -148,6 +149,33 @@ public sealed partial class InstanceModuleService
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Gives the copied instance its own launch profile. The merged profile is
+    /// named after the instance folder, so a plain tree copy would leave the
+    /// target without a profile the launcher can find and would force a
+    /// download repair on first launch.
+    /// </summary>
+    private static void RenameInstanceProfile(string sourceRoot, string targetRoot)
+    {
+        var sourceName = Path.GetFileName(
+            Path.TrimEndingDirectorySeparator(sourceRoot));
+        var targetName = Path.GetFileName(
+            Path.TrimEndingDirectorySeparator(targetRoot));
+        if (sourceName.Length == 0 ||
+            targetName.Length == 0 ||
+            string.Equals(sourceName, targetName, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var copiedProfile = Path.Combine(targetRoot, $"{sourceName}.json");
+        if (!File.Exists(copiedProfile)) return;
+        File.Move(
+            copiedProfile,
+            Path.Combine(targetRoot, $"{targetName}.json"),
+            overwrite: true);
     }
 
     /// <summary>

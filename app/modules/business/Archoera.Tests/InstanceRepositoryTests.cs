@@ -183,6 +183,92 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
+    public async Task Update_can_replace_the_loader_build()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            var root = Path.Combine(directory, "loader-instance");
+            var sqlite = new SqliteInstanceRepository(dataRoot, settings);
+            var created = await sqlite.CreateAsync(
+                "Loader Instance",
+                "1.21.1",
+                "neoforge",
+                "21.1.235",
+                root);
+
+            var updated = await sqlite.UpdateAsync(
+                created.Id,
+                name: null,
+                favorite: null,
+                lastPlayedAt: null,
+                loader: "neoforge",
+                loaderVersion: "21.1.248");
+            Assert.NotNull(updated);
+            Assert.Equal("21.1.248", updated!.LoaderVersion);
+
+            using (var metadata = JsonDocument.Parse(await File.ReadAllTextAsync(
+                       Path.Combine(root, ".archoera", "instance.json"))))
+            {
+                Assert.Equal(
+                    "21.1.248",
+                    metadata.RootElement.GetProperty("loaderVersion").GetString());
+            }
+
+            var reopened = await new SqliteInstanceRepository(dataRoot, settings)
+                .ListAsync();
+            Assert.Equal("21.1.248", Assert.Single(reopened).LoaderVersion);
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Json_repository_also_replaces_the_loader_build()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            var root = Path.Combine(directory, "json-loader-instance");
+            var repository = new JsonInstanceRepository(dataRoot, settings);
+            var created = await repository.CreateAsync(
+                "Json Loader Instance",
+                "1.21.1",
+                "fabric",
+                "0.19.5",
+                root);
+
+            var updated = await repository.UpdateAsync(
+                created.Id,
+                name: null,
+                favorite: null,
+                lastPlayedAt: null,
+                loader: "fabric",
+                loaderVersion: "0.19.6");
+            Assert.Equal("0.19.6", updated!.LoaderVersion);
+
+            var reopened = await new JsonInstanceRepository(dataRoot, settings)
+                .ListAsync();
+            Assert.Equal("0.19.6", Assert.Single(reopened).LoaderVersion);
+            using var metadata = JsonDocument.Parse(await File.ReadAllTextAsync(
+                Path.Combine(root, ".archoera", "instance.json")));
+            Assert.Equal(
+                "0.19.6",
+                metadata.RootElement.GetProperty("loaderVersion").GetString());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Sync_recounts_mods_instead_of_trusting_a_stale_instance_file()
     {
         var directory = TempDirectory();

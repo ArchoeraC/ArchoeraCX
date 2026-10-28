@@ -110,6 +110,7 @@ class DownloadsNotifier extends Notifier<void> {
             root: instance.rootPath,
             versionId: plan.versionId,
             versionJson: plan.versionJson,
+            profilePath: plan.profilePath,
             label: instance.gameVersion,
           );
         }
@@ -156,6 +157,7 @@ class DownloadsNotifier extends Notifier<void> {
           root: plan.installRoot.isEmpty ? instance.rootPath : plan.installRoot,
           versionId: plan.versionId,
           versionJson: plan.versionJson,
+          profilePath: plan.profilePath,
           label: instance.gameVersion,
         );
         await ref.read(instancesProvider.notifier).reload();
@@ -354,6 +356,7 @@ class DownloadsNotifier extends Notifier<void> {
           root: installRoot,
           versionId: plan.versionId,
           versionJson: plan.versionJson,
+          profilePath: plan.profilePath,
           label: label,
         );
         if (plan.requiresJava) {
@@ -374,6 +377,13 @@ class DownloadsNotifier extends Notifier<void> {
             throw StateError(detail ?? 'Loader processor repair failed.');
           }
         }
+        // The profile now belongs to this loader build; keep the instance card,
+        // dependency check and launch preflight from reading the old version.
+        await client.updateInstance(
+          id: instance.id,
+          loader: kind,
+          loaderVersion: loaderVersion,
+        );
         await ref.read(instancesProvider.notifier).reload();
       },
       successMessage: successMessage,

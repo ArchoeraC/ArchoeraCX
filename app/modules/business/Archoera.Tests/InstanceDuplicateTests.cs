@@ -351,6 +351,51 @@ public sealed class InstanceDuplicateTests
         }
     }
 
+    [Fact]
+    public async Task Duplicate_renames_the_instance_owned_launch_profile()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            var repository = new SqliteInstanceRepository(dataRoot, settings);
+            var sourceRoot = Path.Combine(directory, "game", "source");
+            var source = await repository.CreateAsync(
+                "Profiled",
+                "1.21.1",
+                "forge",
+                "47.2.0",
+                sourceRoot);
+            Write(
+                sourceRoot,
+                "source.json",
+                """{"id":"1.21.1-forge-47.2.0","mainClass":"cpw.mods.bootstraplauncher.BootstrapLauncher"}""");
+
+            var service = new InstanceModuleService(repository, settings);
+            using var document = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "instance.duplicate",
+                    $$"""{"id":"{{source.Id}}","name":"Profiled Copy"}""",
+                    CancellationToken.None));
+
+            Assert.True(document.RootElement.GetProperty("ok").GetBoolean());
+            var copyRoot = document.RootElement
+                .GetProperty("data")
+                .GetProperty("instance")
+                .GetProperty("rootPath")
+                .GetString()!;
+            var targetName = Path.GetFileName(
+                Path.TrimEndingDirectorySeparator(copyRoot));
+            Assert.True(File.Exists(Path.Combine(copyRoot, $"{targetName}.json")));
+            Assert.False(File.Exists(Path.Combine(copyRoot, "source.json")));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
     private static void AssertError(JsonDocument document, string messagePart)
     {
         Assert.False(document.RootElement.GetProperty("ok").GetBoolean());

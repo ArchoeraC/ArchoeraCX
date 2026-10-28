@@ -98,7 +98,7 @@ loader.plan
       requiresJava  bool
   → DownloadPlan → Rust 下载
 loader.commit
-  → 写 versions/<id>/<id>.json
+  → 写实例根 <instance>/<instance>.json（库/processor 产物仍在共享根）
 loader.check
   → quick/full 校验生成物
 loader.repair

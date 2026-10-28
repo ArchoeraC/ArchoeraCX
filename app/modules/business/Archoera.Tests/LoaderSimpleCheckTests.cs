@@ -6,6 +6,83 @@ namespace Archoera.Tests;
 public sealed class LoaderSimpleCheckTests
 {
     [Fact]
+    public async Task Commit_writes_an_instance_profile_and_rejects_escapes()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-loader-commit",
+            Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(directory, "minecraft");
+        var instanceRoot = Path.Combine(root, "versions", "AutumnTown");
+        Directory.CreateDirectory(instanceRoot);
+        try
+        {
+            var service = new LoaderModuleService();
+            var profilePath = Path.Combine(instanceRoot, "AutumnTown.json");
+            var parameters = $$"""
+                               {
+                                 "root": "{{root.Replace("\\", "\\\\")}}",
+                                 "versionId": "neoforge-21.1.176",
+                                 "versionJson": "{\"id\":\"neoforge-21.1.176\"}",
+                                 "profilePath": "{{profilePath.Replace("\\", "\\\\")}}"
+                               }
+                               """;
+
+            var result = await service.HandleAsync(
+                "loader.commit",
+                parameters,
+                CancellationToken.None);
+            using (var document = JsonDocument.Parse(result))
+            {
+                Assert.True(document.RootElement.GetProperty("ok").GetBoolean());
+                Assert.Equal(
+                    Path.GetFullPath(profilePath),
+                    document.RootElement
+                        .GetProperty("data")
+                        .GetProperty("versionPath")
+                        .GetString());
+            }
+            Assert.True(File.Exists(profilePath));
+            Assert.False(Directory.Exists(Path.Combine(
+                root,
+                "versions",
+                "neoforge-21.1.176")));
+
+            var escape = $$"""
+                           {
+                             "root": "{{root.Replace("\\", "\\\\")}}",
+                             "versionId": "neoforge-21.1.176",
+                             "versionJson": "{\"id\":\"neoforge-21.1.176\"}",
+                             "profilePath": "{{Path.Combine(instanceRoot, "Other.json").Replace("\\", "\\\\")}}"
+                           }
+                           """;
+            var rejected = await service.HandleAsync(
+                "loader.commit",
+                escape,
+                CancellationToken.None);
+            using var rejectedDocument = JsonDocument.Parse(rejected);
+            Assert.False(rejectedDocument.RootElement.GetProperty("ok").GetBoolean());
+            Assert.Equal(
+                "E_INVALID",
+                rejectedDocument.RootElement
+                    .GetProperty("error")
+                    .GetProperty("code")
+                    .GetString());
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch
+            {
+                // best effort
+            }
+        }
+    }
+
+    [Fact]
     public async Task Loader_check_reports_launch_files_for_vanilla()
     {
         var directory = Path.Combine(

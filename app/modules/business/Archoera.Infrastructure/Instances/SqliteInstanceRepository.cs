@@ -145,6 +145,8 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         DateTimeOffset? lastPlayedAt,
         InstanceOverrides? overrides = null,
         bool setOverrides = false,
+        string? loader = null,
+        string? loaderVersion = null,
         CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
@@ -157,10 +159,21 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         var fromFile = await ReadInstanceFileAsync(record.RootPath, cancellationToken)
             .ConfigureAwait(false);
         var current = record with { Overrides = fromFile?.Overrides };
+        var nextLoader = loader is null ? current.Loader : ValidateLoader(loader);
+        var nextLoaderVersion = loaderVersion is null
+            ? loader is null ? current.LoaderVersion : string.Empty
+            : string.IsNullOrWhiteSpace(loaderVersion)
+                ? string.Empty
+                : LoaderVersionText.Normalize(
+                    nextLoader,
+                    current.GameVersion,
+                    loaderVersion);
 
         var updated = current with
         {
             Name = name is null ? current.Name : ValidateName(name),
+            Loader = nextLoader,
+            LoaderVersion = nextLoaderVersion,
             Favorite = favorite ?? current.Favorite,
             LastPlayedAt = lastPlayedAt ?? current.LastPlayedAt,
             Overrides = setOverrides ? NormalizeOverrides(overrides) : current.Overrides,
@@ -171,12 +184,14 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         await using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE instances
-            SET name = $name, pinned = $pinned, updated_at = $updated,
-                last_played_at = $played
+            SET name = $name, loader_kind = $loader, loader_version = $loaderVersion,
+                pinned = $pinned, updated_at = $updated, last_played_at = $played
             WHERE id = $id
             """;
         command.Parameters.AddWithValue("$id", updated.Id);
         command.Parameters.AddWithValue("$name", updated.Name);
+        command.Parameters.AddWithValue("$loader", updated.Loader);
+        command.Parameters.AddWithValue("$loaderVersion", updated.LoaderVersion);
         command.Parameters.AddWithValue("$pinned", updated.Favorite ? 1 : 0);
         command.Parameters.AddWithValue("$updated", updated.UpdatedAt.ToString("O"));
         command.Parameters.AddWithValue(

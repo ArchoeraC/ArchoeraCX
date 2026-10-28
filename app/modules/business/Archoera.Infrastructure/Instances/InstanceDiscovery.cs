@@ -32,21 +32,22 @@ internal static class InstanceDiscovery
     /// <c>1.21.1-forge-52.0.1</c> (or <c>forge-52.0.1</c> on older installers),
     /// NeoForge writes <c>neoforge-21.1.176</c>, Fabric
     /// <c>fabric-loader-0.16.9-1.21.1</c> and Quilt
-    /// <c>quilt-loader-0.9.1-1.21.1</c>. Those folders hold a launch profile
-    /// shared by every instance of that loader build, so they sit in
-    /// <c>versions/</c> next to real instances without being one. Matches the
-    /// hyphenated ids only; PCL's <c>1.21.1-Forge_52.0.1</c> layout is a real
-    /// instance and stays.
+    /// <c>quilt-loader-0.9.1-1.21.1</c>. Earlier builds committed the merged
+    /// launch profile to one of those folders at the install root; new installs
+    /// keep it in the instance folder, but the filter stays for legacy layouts
+    /// and other launchers. Matches the hyphenated ids only; PCL's
+    /// <c>1.21.1-Forge_52.0.1</c> layout is a real instance and stays.
     /// </summary>
     private static readonly Regex LoaderProfileId = new(
         @"^(?:(?:\d[^/\\]*-)?(?:forge|neoforge)|fabric-loader|quilt-loader)-\d",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>
-    /// True when <paramref name="directory"/> is a shared loader profile rather
-    /// than an instance folder: the name is an installer version id and the
-    /// folder carries no instance data of its own. A profile that gained mods,
-    /// configs or <c>.archoera/instance.json</c> is treated as an instance.
+    /// True when <paramref name="directory"/> is a legacy shared loader
+    /// profile rather than an instance folder: the name is an installer
+    /// version id and the folder carries no instance data of its own. A
+    /// profile that gained mods, configs or <c>.archoera/instance.json</c> is
+    /// treated as an instance.
     /// </summary>
     internal static bool IsLoaderProfileDirectory(string directory)
     {
@@ -129,10 +130,13 @@ internal static class InstanceDiscovery
 
         foreach (var directory in SafeDirectories(Path.Combine(rootFull, "versions")))
         {
-            // Installing a loader commits its profile to versions/<id> so every
-            // instance of that loader build can launch from it. That folder is
-            // not an instance: listing it produced a "neoforge-21.1.176" entry
-            // with an unknown game version right after a pack install.
+            // Older builds committed the merged loader profile to
+            // versions/<loader-id> so every instance of that loader build could
+            // launch from it. That folder is not an instance: listing it
+            // produced a "neoforge-21.1.176" entry with an unknown game version
+            // right after a pack install. New installs keep the profile inside
+            // the instance folder, but the filter still matters for layouts
+            // left on disk by earlier versions and by other launchers.
             if (IsLoaderProfileDirectory(directory)) continue;
             Add(directory);
         }

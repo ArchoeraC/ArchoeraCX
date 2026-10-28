@@ -31,8 +31,9 @@ internal sealed record LaunchPaths(
     }
 
     /// <summary>
-    /// Root that owns the loader's <c>libraries/</c> and
-    /// <c>versions/&lt;loader-id&gt;/</c>.
+    /// Root that owns the loader's <c>libraries/</c>, processor output and
+    /// shared client jar. The merged launch profile is per-instance and lives
+    /// in the instance folder regardless of this choice.
     /// </summary>
     /// <param name="instanceRoot">The instance's game directory.</param>
     /// <param name="shareLoaderFiles">

@@ -20,6 +20,8 @@ public interface IInstanceRepository
         DateTimeOffset? lastPlayedAt,
         InstanceOverrides? overrides = null,
         bool setOverrides = false,
+        string? loader = null,
+        string? loaderVersion = null,
         CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
     Task<InstanceSyncReport> SyncAsync(

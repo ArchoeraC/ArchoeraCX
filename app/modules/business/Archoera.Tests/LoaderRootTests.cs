@@ -113,42 +113,45 @@ public sealed class LoaderRootTests
     }
 
     [Fact]
-    public void Commit_writes_the_version_json_to_the_chosen_root()
+    public void Commit_writes_the_profile_into_the_instance_folder()
     {
         var directory = TempDirectory();
         try
         {
             var gameRoot = Path.Combine(directory, "minecraft");
             var instanceRoot = Path.Combine(gameRoot, "versions", "AutumnTown");
-            Directory.CreateDirectory(instanceRoot);
+            Directory.CreateDirectory(Path.Combine(instanceRoot, ".archoera"));
+            File.WriteAllText(
+                Path.Combine(instanceRoot, ".archoera", "instance.json"),
+                """
+                {"id":"autumn","name":"AutumnTown","gameVersion":"1.21.1",
+                 "loader":"neoforge","loaderVersion":"21.1.176"}
+                """);
 
-            var shared = PackGameInstallService.CommitVersionJson(
+            var profile = PackGameInstallService.CommitInstanceProfile(
                 instanceRoot,
-                "neoforge-21.1.176",
-                """{"id":"neoforge-21.1.176"}""",
-                shareLoaderFiles: true);
-            Assert.Equal(
-                Path.GetFullPath(Path.Combine(
-                    gameRoot,
-                    "versions",
-                    "neoforge-21.1.176",
-                    "neoforge-21.1.176.json")),
-                shared);
-            Assert.True(File.Exists(shared));
+                """
+                {"id":"neoforge-21.1.176","mainClass":"cpw.mods.bootstraplauncher.BootstrapLauncher",
+                 "libraries":[{"name":"net.neoforged:neoforge:21.1.176"}]}
+                """);
 
-            var isolated = PackGameInstallService.CommitVersionJson(
-                instanceRoot,
-                "neoforge-21.1.176",
-                """{"id":"neoforge-21.1.176"}""",
-                shareLoaderFiles: false);
             Assert.Equal(
-                Path.GetFullPath(Path.Combine(
-                    instanceRoot,
-                    "versions",
-                    "neoforge-21.1.176",
-                    "neoforge-21.1.176.json")),
-                isolated);
-            Assert.True(File.Exists(isolated));
+                Path.GetFullPath(Path.Combine(instanceRoot, "AutumnTown.json")),
+                profile);
+            Assert.True(File.Exists(profile));
+
+            // The shared install root owns libraries, but must not gain a
+            // loader-named version folder that discovery could mistake for an
+            // extra instance.
+            Assert.False(Directory.Exists(Path.Combine(
+                gameRoot,
+                "versions",
+                "neoforge-21.1.176")));
+
+            var discovered = Assert.Single(
+                Archoera.Infrastructure.Instances.InstanceDiscovery.Discover(gameRoot));
+            Assert.Equal("AutumnTown", discovered.Name);
+            Assert.Equal("neoforge", discovered.Loader);
         }
         finally
         {

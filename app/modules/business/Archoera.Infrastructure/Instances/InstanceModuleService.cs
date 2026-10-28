@@ -183,6 +183,8 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
         var root = document.RootElement;
         var id = ReadString(root, "id") ?? throw new ArgumentException("id is required");
         var name = ReadString(root, "name");
+        var loader = ReadString(root, "loader");
+        var loaderVersion = ReadString(root, "loaderVersion");
         bool? favorite = root.TryGetProperty("favorite", out var favoriteElement) &&
                          favoriteElement.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? favoriteElement.GetBoolean()
@@ -216,7 +218,8 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
             mergedOverrides = ApplyOverridesPatch(current.Overrides, overridesElement);
         }
 
-        if (name is null && favorite is null && lastPlayed is null && !overridesPresent)
+        if (name is null && favorite is null && lastPlayed is null &&
+            loader is null && loaderVersion is null && !overridesPresent)
         {
             throw new ArgumentException("instance.update requires at least one field");
         }
@@ -229,6 +232,8 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
                 lastPlayed,
                 mergedOverrides,
                 overridesPresent,
+                loader,
+                loaderVersion,
                 cancellationToken)
             .ConfigureAwait(false)
             ?? throw new ArgumentException("instance not found");
