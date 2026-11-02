@@ -11,6 +11,7 @@ ArchoeraCX 的公开文档。实现以代码和契约为准；文档与代码冲
 | [认证与 Minecraft 审核](authentication.md) | Microsoft Authorization Code + PKCE（Device Code fallback）、XBL/XSTS、Minecraft client_id 白名单 |
 | [详细架构](10-architecture-design.md) | ABI、模块协议、任务/事件、存储、流程、安全、测试 |
 | [UI 设计系统](11-ui-design-system.md) | 设计令牌、AppShell、页面结构、动效与资产边界 |
+| [网页介绍](../site/README.md) | 静态宣传页、预览方式、截图生成与资产边界 |
 
 ## 产品与工程
 
