@@ -126,8 +126,11 @@ GoRouter buildAppRouter({String? initialLocation}) {
                   GoRoute(
                     path: 'java',
                     name: 'settings-java',
-                    builder: (context, state) =>
-                        const AppPageSurface(child: JavaPage()),
+                    pageBuilder: (context, state) => _fadeSlidePage(
+                      context,
+                      state,
+                      const AppPageSurface(child: JavaPage()),
+                    ),
                   ),
                 ],
               ),
