@@ -80,7 +80,7 @@ void main() {
     await tester.tap(find.text('Reset appearance'));
     await tester.pumpAndSettle();
 
-    expect(container.read(appearanceProvider).themeMode, ThemeMode.system);
+    expect(container.read(appearanceProvider).themeMode, ThemeMode.dark);
     expect(container.read(appearanceProvider).accentMode, AccentMode.system);
     expect(tester.takeException(), isNull);
 

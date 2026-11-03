@@ -20,19 +20,12 @@ import '../widgets/common/app_panel.dart';
 /// The caller exits the process when the result is false.
 Future<bool> runElevationGate(ProcessElevation elevation) async {
   final locale = await resolveStartupLocale();
-  final brightness =
-      WidgetsBinding.instance.platformDispatcher.platformBrightness;
   final decision = Completer<bool>();
 
   runApp(
-    _ElevationGateApp(
-      elevation: elevation,
-      locale: locale,
-      brightness: brightness,
-      onDecision: (proceed) {
-        if (!decision.isCompleted) decision.complete(proceed);
-      },
-    ),
+    _ElevationGateApp(elevation: elevation, locale: locale, onDecision: (proceed) {
+      if (!decision.isCompleted) decision.complete(proceed);
+    }),
   );
 
   return decision.future;
@@ -42,24 +35,23 @@ class _ElevationGateApp extends StatelessWidget {
   const _ElevationGateApp({
     required this.elevation,
     required this.locale,
-    required this.brightness,
     required this.onDecision,
   });
 
   final ProcessElevation elevation;
   final Locale locale;
-  final Brightness brightness;
   final ValueChanged<bool> onDecision;
 
   @override
   Widget build(BuildContext context) {
+    // The gate always runs dark: it may appear in a dark room right after
+    // `sudo`, and a full-white first frame reads as a flashbang. Neutral dark
+    // surfaces keep the warning visible without the luminance jump.
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context).appName,
-      theme: AppTheme.lightWith(),
+      theme: AppTheme.darkWith(),
       darkTheme: AppTheme.darkWith(),
-      themeMode: brightness == Brightness.dark
-          ? ThemeMode.dark
-          : ThemeMode.light,
+      themeMode: ThemeMode.dark,
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

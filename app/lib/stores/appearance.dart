@@ -23,7 +23,7 @@ enum UiDensity { compact, standard, comfortable }
 @immutable
 class AppearanceSettings {
   const AppearanceSettings({
-    this.themeMode = ThemeMode.system,
+    this.themeMode = ThemeMode.dark,
     this.accentMode = AccentMode.system,
     this.accentColor = AppTokens.brandAccent,
     this.globalTint = false,
@@ -81,8 +81,11 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
       final prefs = await SharedPreferences.getInstance();
       final mode = switch (prefs.getString(_themeModeKey)) {
         'light' => ThemeMode.light,
-        'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
+        'system' => ThemeMode.system,
+        // Dark is the default: a white launcher flashing up in a dark room
+        // reads as a flashbang, and users who never chose a mode get the
+        // calmer surface.
+        _ => ThemeMode.dark,
       };
       final accentMode = prefs.getString(_accentModeKey) == 'custom'
           ? AccentMode.custom
