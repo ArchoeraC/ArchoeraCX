@@ -11,13 +11,13 @@
 
 ---
 
-ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**，桌面为主（Linux / Windows / macOS）。UI 用 Flutter，C++ 作为唯一枢纽，业务 / API / SQLite 由 C# NativeAOT 持有，下载交给 Rust；全程进程内 FFI，无 Node 进程；除 OAuth 登录期间短暂的 `127.0.0.1` loopback 回调外，不监听端口。
+ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**
 
-- 实例管理（SQLite 索引 + `instance.json` 权威元数据）与原版安装 / 启动、Java 自动扫描
+- 实例管理与原版安装 / 启动、Java 自动扫描
 - 加载器 Fabric / Quilt / Forge / NeoForge 安装与修复；Modrinth 与本地 `.mrpack` 整合包
-- Microsoft 登录（Authorization Code + PKCE，loopback）与离线账户启动（发布版需先通过正版账户验证）
-- Rust `DownloadPlan` 执行器：hash 校验、原子落盘、分片续传、进度与取消
-- AppShell + 明暗主题、系统主题色、中英文 i18n，安装与下载统一走后台任务
+- Microsoft 登录与离线账户启动
+- Rust 执行器：hash 校验、原子落盘、分片续传、进度与取消
+- AppShell + 明暗主题
 
 > **内容源**：当前接入 Modrinth 与本地 `.mrpack`。CurseForge 源在配置 API 访问前不可用：CF 的在线接口与其整合包 zip 导入都依赖 CurseForge API key，未配置前不发起请求。见 [发行与下载策略](docs/09-distribution-and-download-policy.md)。
 
