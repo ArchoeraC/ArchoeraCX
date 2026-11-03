@@ -30,7 +30,7 @@ public sealed class UnusedDependencyTests
             var stale = WriteLib(root, "com/example/stale/1.0/stale-1.0.jar", 7);
 
             var report = UnusedDependencyScanner.Plan(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
             Assert.Equal(UnusedDependencyScanner.StatusScanned, scanned.Status);
             Assert.Null(scanned.Reason);
@@ -56,19 +56,19 @@ public sealed class UnusedDependencyTests
     }
 
     [Fact]
-    public async Task Native_classifiers_count_as_used_for_the_running_platform()
+    public async Task Native_classifiers_count_as_used_for_the_scanned_platform()
     {
         var directory = TempDirectory();
         try
         {
-            var root = BuildRoot(directory);
+            var root = BuildRoot(directory, withNatives: true);
             WriteLib(root, "com/example/used-natives/1.0/used-natives-1.0-natives-linux.jar", 5);
 
             var report = UnusedDependencyScanner.Plan(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
-            // natives-linux matches the host platform and is used; the
-            // windows classifier file has no consumer on this machine.
+            // The scan target is Linux, so the linux classifier is used and the
+            // windows classifier file has no consumer for that platform.
             Assert.NotNull(scanned.Libraries);
             Assert.Equal(1, scanned.Libraries!.FileCount);
             Assert.Contains(
@@ -92,7 +92,7 @@ public sealed class UnusedDependencyTests
             var used = WriteLib(root, "com/example/used-a/1.0/used-a-1.0.jar", 11);
 
             var report = UnusedDependencyScanner.Delete(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
             Assert.Equal(2, scanned.Libraries!.FileCount);
             Assert.Equal(15L, scanned.Libraries.TotalBytes);
@@ -123,7 +123,7 @@ public sealed class UnusedDependencyTests
             var stale = WriteObject(root, StaleHash, 9);
 
             var report = UnusedDependencyScanner.Plan(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
             var assets = scanned.Assets!;
             Assert.Equal(1, assets.FileCount);
@@ -148,7 +148,7 @@ public sealed class UnusedDependencyTests
             WriteObject(root, StaleHash, 9);
 
             var report = UnusedDependencyScanner.Plan(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
             Assert.NotNull(scanned.Libraries);
             Assert.Equal(2, scanned.Libraries!.FileCount);
@@ -183,7 +183,7 @@ public sealed class UnusedDependencyTests
             var orphan = WriteLib(root, "com/example/orphan/1.0/orphan-1.0.jar", 5);
 
             var report = UnusedDependencyScanner.Plan(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
             var libraries = scanned.Libraries!;
             Assert.Equal(1, libraries.FileCount);
@@ -212,7 +212,7 @@ public sealed class UnusedDependencyTests
             WriteLib(root, "com/example/orphan/1.0/orphan-1.0.jar", 5);
 
             var report = UnusedDependencyScanner.Plan(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
             Assert.Equal(UnusedDependencyScanner.StatusSkipped, scanned.Status);
             Assert.Equal(UnusedDependencyScanner.ReasonUnreadableProfile, scanned.Reason);
@@ -235,7 +235,7 @@ public sealed class UnusedDependencyTests
             Directory.CreateDirectory(Path.Combine(root, "libraries"));
 
             var report = UnusedDependencyScanner.Plan(
-                [root], MojangPlatform.Current(), CancellationToken.None);
+                [root], MojangPlatform.LinuxX64, CancellationToken.None);
             var scanned = Assert.Single(report.Roots);
             Assert.Equal(UnusedDependencyScanner.StatusSkipped, scanned.Status);
             Assert.Equal(UnusedDependencyScanner.ReasonNoInstances, scanned.Reason);
@@ -288,7 +288,7 @@ public sealed class UnusedDependencyTests
             // before any candidate can be proven unused.
             var report = UnusedDependencyScanner.Delete(
                 [root],
-                MojangPlatform.Current(),
+                MojangPlatform.LinuxX64,
                 CancellationToken.None,
                 maxEntries: 2);
 
@@ -305,20 +305,27 @@ public sealed class UnusedDependencyTests
     // ------------------------------------------------------------------
     // fixtures
 
-    /// <summary>A root with one instance, one legacy profile, libraries and assets.</summary>
-    private static string BuildRoot(string directory, bool withAssetIndex = true)
+    /// <summary>
+    /// A root with one instance, one legacy profile, libraries and assets.
+    /// Native classifiers are opt-in so the shared fixture stays independent
+    /// of the CI host platform.
+    /// </summary>
+    private static string BuildRoot(
+        string directory,
+        bool withAssetIndex = true,
+        bool withNatives = false)
     {
         var root = TempRoot(directory);
         var assetIndexId = withAssetIndex ? "test" : null;
+        var natives = withNatives
+            ? ",\"natives\":{\"linux\":\"natives-linux\",\"windows\":\"natives-windows\"}"
+            : string.Empty;
 
         WriteProfile(
             Path.Combine(root, "versions", "inst"),
             "inst",
-            """
-            {"name":"com.example:used-a:1.0"},
-            {"name":"com.example:used-natives:1.0",
-             "natives":{"linux":"natives-linux","windows":"natives-windows"}}
-            """,
+            "{\"name\":\"com.example:used-a:1.0\"},"
+            + "{\"name\":\"com.example:used-natives:1.0\"" + natives + "}",
             assetIndexId);
         Directory.CreateDirectory(Path.Combine(root, "versions", "inst", "mods"));
 
