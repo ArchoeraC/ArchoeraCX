@@ -97,7 +97,9 @@ class ResourceProjectThumb extends StatelessWidget {
         child: url == null || url.isEmpty
             ? ColoredBox(
                 color: tokens.surface2,
-                child: Icon(icon, color: tokens.accent, size: size * 0.44),
+                child: Center(
+                  child: Icon(icon, color: tokens.accent, size: size * 0.44),
+                ),
               )
             : AppNetworkImage(url: url, fallbackIcon: icon),
       ),

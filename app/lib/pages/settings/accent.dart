@@ -75,6 +75,7 @@ class _AccentSwatchRow extends StatelessWidget {
                     child: Container(
                       width: 26,
                       height: 26,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: tokens.surface2,
@@ -173,6 +174,7 @@ class _AccentSwatch extends StatelessWidget {
         child: Container(
           width: size,
           height: size,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,

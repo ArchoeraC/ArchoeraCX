@@ -176,6 +176,7 @@ class _AppearanceTile extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: tokens.accent.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(tokens.radiusM),
