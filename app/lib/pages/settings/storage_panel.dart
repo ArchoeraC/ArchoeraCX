@@ -59,7 +59,39 @@ extension _StoragePanelX on _SettingsPageState {
           ),
           onTap: () => _cleanPartialDownloads(context, ref, l10n),
         ),
+        _AppearanceTile(
+          icon: AppIcons.reset,
+          title: l10n.settingsUnusedDependencies,
+          subtitle: l10n.settingsUnusedDependenciesDesc,
+          trailing: Icon(
+            AppIcons.chevronRight,
+            size: 18,
+            color: context.tokens.textTertiary,
+          ),
+          onTap: () => _cleanUnusedDependencies(context, ref, l10n),
+        ),
       ],
+    );
+  }
+
+  /// Opens the unused-dependency stepper: scan, preview, typed confirmation
+  /// and the verified deletion. The dialog owns every stage so a slow scan
+  /// never leaves a stack of stacked dialogs behind.
+  Future<void> _cleanUnusedDependencies(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l10n,
+  ) async {
+    final client = ref.read(coreClientProvider);
+    if (client == null) {
+      _notify(context, l10n.commonCoreNotConnected, type: ToastType.error);
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) =>
+          _UnusedDependenciesDialog(client: client, l10n: l10n),
     );
   }
 
@@ -239,5 +271,357 @@ class _InstanceRootsEditor extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+/// Stepper dialog for the unused-dependency cleanup: scan, preview, typed
+/// confirmation and the verified deletion all live in one surface so a slow
+/// scan cannot stack dialogs behind each other.
+class _UnusedDependenciesDialog extends StatefulWidget {
+  const _UnusedDependenciesDialog({required this.client, required this.l10n});
+
+  final CoreClient client;
+  final AppLocalizations l10n;
+
+  @override
+  State<_UnusedDependenciesDialog> createState() =>
+      _UnusedDependenciesDialogState();
+}
+
+class _UnusedDependenciesDialogState extends State<_UnusedDependenciesDialog> {
+  static const _scanning = 'scanning';
+  static const _empty = 'empty';
+  static const _preview = 'preview';
+  static const _confirm = 'confirm';
+  static const _deleting = 'deleting';
+  static const _stageDone = 'done';
+  static const _stageError = 'error';
+
+  String _stage = _scanning;
+  UnusedDependencyPlan? _plan;
+  UnusedDependencyPlan? _result;
+  String? _error;
+  int _done = 0;
+  int _total = 0;
+  final TextEditingController _word = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scan();
+  }
+
+  @override
+  void dispose() {
+    _word.dispose();
+    super.dispose();
+  }
+
+  Future<void> _scan() async {
+    try {
+      final plan = await widget.client.planUnusedDependencies();
+      if (!mounted) return;
+      setState(() {
+        _plan = plan;
+        _stage = plan.totalFiles == 0 ? _empty : _preview;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$error';
+        _stage = _stageError;
+      });
+    }
+  }
+
+  Future<void> _delete() async {
+    setState(() {
+      _stage = _deleting;
+      _done = 0;
+      _total = _plan?.totalFiles ?? 0;
+    });
+    try {
+      final result = await widget.client.deleteUnusedDependencies(
+        onProgress: (done, total) {
+          if (!mounted) return;
+          setState(() {
+            _done = done;
+            _total = total;
+          });
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+        _stage = _stageDone;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$error';
+        _stage = _stageError;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    return AlertDialog(
+      icon: Icon(
+        AppIcons.warning,
+        color: _stage == _confirm || _stage == _deleting
+            ? context.tokens.danger
+            : context.tokens.accent,
+      ),
+      title: Text(l10n.settingsUnusedDependenciesTitle),
+      content: _content(context, l10n),
+      actions: _actions(context, l10n),
+    );
+  }
+
+  Widget? _content(BuildContext context, AppLocalizations l10n) {
+    switch (_stage) {
+      case _scanning:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: AppSpacing.md),
+            Text(l10n.settingsUnusedDependenciesScanning),
+          ],
+        );
+      case _empty:
+        return Text(l10n.settingsUnusedNone);
+      case _preview:
+        return _previewContent(context, l10n);
+      case _confirm:
+        return _confirmContent(l10n);
+      case _deleting:
+        return _progressContent();
+      case _stageDone:
+        return _doneContent(l10n);
+    }
+    return Text(_error ?? '');
+  }
+
+  Widget _previewContent(BuildContext context, AppLocalizations l10n) {
+    final plan = _plan!;
+    return SizedBox(
+      width: 420,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.settingsUnusedDependenciesNote,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final root in plan.roots) _rootBlock(context, l10n, root),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rootBlock(
+    BuildContext context,
+    AppLocalizations l10n,
+    UnusedDependencyRootPlan root,
+  ) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            root.root,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          if (root.skipped)
+            Text(
+              _skipText(l10n, root.reason),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: tokens.textTertiary),
+            )
+          else ...[
+            Text(
+              l10n.settingsUnusedInstances(root.instanceCount),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: tokens.textTertiary),
+            ),
+            if (root.libraries != null)
+              _groupLine(context, l10n.settingsUnusedLibraries, root.libraries!),
+            if (root.assets != null)
+              _groupLine(context, l10n.settingsUnusedAssets, root.assets!),
+            if (root.assets == null && root.libraries != null)
+              Text(
+                l10n.settingsUnusedAssetsSkipped,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: tokens.textTertiary),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _groupLine(
+    BuildContext context,
+    String label,
+    UnusedDependencyGroupPlan group,
+  ) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.sm),
+      child: Text(
+        '$label: ${group.files} · ${formatBytes(group.bytes)}',
+        style: Theme.of(context)
+            .textTheme
+            .bodyMedium
+            ?.copyWith(color: tokens.textPrimary),
+      ),
+    );
+  }
+
+  Widget _confirmContent(AppLocalizations l10n) {
+    final plan = _plan!;
+    final word = l10n.settingsUnusedConfirmWord;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.settingsUnusedConfirmBody(
+            plan.totalFiles,
+            formatBytes(plan.totalBytes),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _word,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: l10n.settingsUnusedConfirmHint(word),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+      ],
+    );
+  }
+
+  Widget _progressContent() {
+    final total = _total > 0 ? _total : 1;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppProgressBar(value: _done / total),
+        const SizedBox(height: AppSpacing.sm),
+        Text('$_done / $_total'),
+      ],
+    );
+  }
+
+  Widget _doneContent(AppLocalizations l10n) {
+    final result = _result!;
+    final skipped = result.roots.where((root) => root.skipped).toList();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.settingsUnusedDone(
+            result.totalFiles,
+            formatBytes(result.totalBytes),
+          ),
+        ),
+        for (final root in skipped)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: Text(
+              '${root.root}: ${_skipText(l10n, root.reason)}',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: context.tokens.textTertiary),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _skipText(AppLocalizations l10n, String? reason) => switch (reason) {
+        'missing' => l10n.settingsUnusedSkipMissing,
+        'no_instances' => l10n.settingsUnusedSkipNoInstances,
+        'unreadable_profile' => l10n.settingsUnusedSkipProfile,
+        _ => l10n.settingsUnusedSkipLimit,
+      };
+
+  List<Widget> _actions(BuildContext context, AppLocalizations l10n) {
+    final tokens = context.tokens;
+    switch (_stage) {
+      case _scanning:
+      case _deleting:
+        return const [];
+      case _empty:
+      case _stageDone:
+      case _stageError:
+        return [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonClose),
+          ),
+        ];
+      case _preview:
+        return [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => setState(() => _stage = _confirm),
+            child: Text(l10n.commonNext),
+          ),
+        ];
+      case _confirm:
+        final matches = _word.text.trim() == l10n.settingsUnusedConfirmWord;
+        return [
+          TextButton(
+            onPressed: () => setState(() => _stage = _preview),
+            child: Text(l10n.commonBack),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: tokens.danger,
+              foregroundColor: tokens.onAccent,
+            ),
+            onPressed: matches ? _delete : null,
+            child: Text(l10n.commonDelete),
+          ),
+        ];
+    }
+    return const [];
   }
 }

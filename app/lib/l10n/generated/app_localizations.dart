@@ -926,6 +926,18 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get commonSave;
 
+  /// No description provided for @commonNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get commonNext;
+
+  /// No description provided for @commonBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get commonBack;
+
   /// No description provided for @downloadTitle.
   ///
   /// In en, this message translates to:
@@ -2545,6 +2557,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No stale partial downloads found.'**
   String get settingsCleanPartialsNone;
+
+  /// No description provided for @settingsUnusedDependencies.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean unused dependencies'**
+  String get settingsUnusedDependencies;
+
+  /// No description provided for @settingsUnusedDependenciesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Scans shared game roots for libraries and asset files that no instance references.'**
+  String get settingsUnusedDependenciesDesc;
+
+  /// No description provided for @settingsUnusedDependenciesScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning…'**
+  String get settingsUnusedDependenciesScanning;
+
+  /// No description provided for @settingsUnusedDependenciesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unused dependencies'**
+  String get settingsUnusedDependenciesTitle;
+
+  /// No description provided for @settingsUnusedDependenciesNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Only files no version profile references are listed. Instance folders, version profiles and other launchers\' data are never touched. Deletion cannot be undone.'**
+  String get settingsUnusedDependenciesNote;
+
+  /// No description provided for @settingsUnusedLibraries.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared libraries'**
+  String get settingsUnusedLibraries;
+
+  /// No description provided for @settingsUnusedAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset files'**
+  String get settingsUnusedAssets;
+
+  /// No description provided for @settingsUnusedInstances.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} instances'**
+  String settingsUnusedInstances(int count);
+
+  /// No description provided for @settingsUnusedSkipMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Root missing; skipped.'**
+  String get settingsUnusedSkipMissing;
+
+  /// No description provided for @settingsUnusedSkipNoInstances.
+  ///
+  /// In en, this message translates to:
+  /// **'No instances found; skipped.'**
+  String get settingsUnusedSkipNoInstances;
+
+  /// No description provided for @settingsUnusedSkipProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'A version profile is unreadable; skipped to stay safe.'**
+  String get settingsUnusedSkipProfile;
+
+  /// No description provided for @settingsUnusedSkipLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan budget reached; skipped.'**
+  String get settingsUnusedSkipLimit;
+
+  /// No description provided for @settingsUnusedAssetsSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets skipped: a local asset index is unreadable.'**
+  String get settingsUnusedAssetsSkipped;
+
+  /// No description provided for @settingsUnusedConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm deletion'**
+  String get settingsUnusedConfirmTitle;
+
+  /// No description provided for @settingsUnusedConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete {count} files and free {size}? This cannot be undone.'**
+  String settingsUnusedConfirmBody(int count, String size);
+
+  /// No description provided for @settingsUnusedConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type \"{word}\" to confirm'**
+  String settingsUnusedConfirmHint(String word);
+
+  /// No description provided for @settingsUnusedConfirmWord.
+  ///
+  /// In en, this message translates to:
+  /// **'DELETE'**
+  String get settingsUnusedConfirmWord;
+
+  /// No description provided for @settingsUnusedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No unused dependencies found.'**
+  String get settingsUnusedNone;
+
+  /// No description provided for @settingsUnusedScanLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'The scan hit its entry budget; nothing was deleted.'**
+  String get settingsUnusedScanLimit;
+
+  /// No description provided for @settingsUnusedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} files, freed {size}.'**
+  String settingsUnusedDone(int count, String size);
+
+  /// No description provided for @settingsUnusedDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion finished with errors; some files could not be removed.'**
+  String get settingsUnusedDeleteFailed;
 
   /// No description provided for @settingsMotionDesc.
   ///
@@ -5950,7 +6088,7 @@ abstract class AppLocalizations {
   /// No description provided for @elevationBody.
   ///
   /// In en, this message translates to:
-  /// **'ArchoeraCX detected that this process is running as {kind}. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.'**
+  /// **'ArchoeraCX detected that this process is running as {kind}. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the ArchoeraCX nor Minecraft needs administrator rights. Relaunch with a normal user.'**
   String elevationBody(String kind);
 
   /// No description provided for @elevationContinue.

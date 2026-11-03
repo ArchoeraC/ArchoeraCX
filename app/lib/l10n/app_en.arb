@@ -330,6 +330,8 @@
   "commonCreate": "Create",
   "commonDelete": "Delete",
   "commonSave": "Save",
+  "commonNext": "Next",
+  "commonBack": "Back",
   "downloadTitle": "Download",
   "downloadSubtitle": "Versions, mods, packs, resource packs, and shaders.",
   "sourceLabel": "Source",
@@ -980,6 +982,61 @@
     }
   },
   "settingsCleanPartialsNone": "No stale partial downloads found.",
+  "settingsUnusedDependencies": "Clean unused dependencies",
+  "settingsUnusedDependenciesDesc": "Scans shared game roots for libraries and asset files that no instance references.",
+  "settingsUnusedDependenciesScanning": "Scanning…",
+  "settingsUnusedDependenciesTitle": "Unused dependencies",
+  "settingsUnusedDependenciesNote": "Only files no version profile references are listed. Instance folders, version profiles and other launchers' data are never touched. Deletion cannot be undone.",
+  "settingsUnusedLibraries": "Shared libraries",
+  "settingsUnusedAssets": "Asset files",
+  "settingsUnusedInstances": "{count} instances",
+  "@settingsUnusedInstances": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUnusedSkipMissing": "Root missing; skipped.",
+  "settingsUnusedSkipNoInstances": "No instances found; skipped.",
+  "settingsUnusedSkipProfile": "A version profile is unreadable; skipped to stay safe.",
+  "settingsUnusedSkipLimit": "Scan budget reached; skipped.",
+  "settingsUnusedAssetsSkipped": "Assets skipped: a local asset index is unreadable.",
+  "settingsUnusedConfirmTitle": "Confirm deletion",
+  "settingsUnusedConfirmBody": "Permanently delete {count} files and free {size}? This cannot be undone.",
+  "@settingsUnusedConfirmBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnusedConfirmHint": "Type \"{word}\" to confirm",
+  "@settingsUnusedConfirmHint": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnusedConfirmWord": "DELETE",
+  "settingsUnusedNone": "No unused dependencies found.",
+  "settingsUnusedScanLimit": "The scan hit its entry budget; nothing was deleted.",
+  "settingsUnusedDone": "Deleted {count} files, freed {size}.",
+  "@settingsUnusedDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnusedDeleteFailed": "Deletion finished with errors; some files could not be removed.",
   "settingsMotionDesc": "Limit page transitions and background effects.",
   "settingsDiagnostics": "Diagnostics",
   "settingsDiagnosticsDesc": "Logs, module versions, and crash reports.",
@@ -2852,7 +2909,7 @@
   "elevationTitleAgain": "Again?",
   "elevationTitleYourCall": "Fine, your call",
   "elevationTitleThinkTwice": "I'd think twice",
-  "elevationBody": "ArchoeraCX detected that this process is running as {kind}. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.",
+  "elevationBody": "ArchoeraCX detected that this process is running as {kind}. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the ArchoeraCX nor Minecraft needs administrator rights. Relaunch with a normal user.",
   "@elevationBody": {
     "placeholders": {
       "kind": { "type": "String" }

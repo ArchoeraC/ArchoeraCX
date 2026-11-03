@@ -501,6 +501,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonSave => 'Save';
 
   @override
+  String get commonNext => 'Next';
+
+  @override
+  String get commonBack => 'Back';
+
+  @override
   String get downloadTitle => 'Download';
 
   @override
@@ -1429,6 +1435,83 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsCleanPartialsNone => 'No stale partial downloads found.';
+
+  @override
+  String get settingsUnusedDependencies => 'Clean unused dependencies';
+
+  @override
+  String get settingsUnusedDependenciesDesc =>
+      'Scans shared game roots for libraries and asset files that no instance references.';
+
+  @override
+  String get settingsUnusedDependenciesScanning => 'Scanning…';
+
+  @override
+  String get settingsUnusedDependenciesTitle => 'Unused dependencies';
+
+  @override
+  String get settingsUnusedDependenciesNote =>
+      'Only files no version profile references are listed. Instance folders, version profiles and other launchers\' data are never touched. Deletion cannot be undone.';
+
+  @override
+  String get settingsUnusedLibraries => 'Shared libraries';
+
+  @override
+  String get settingsUnusedAssets => 'Asset files';
+
+  @override
+  String settingsUnusedInstances(int count) {
+    return '$count instances';
+  }
+
+  @override
+  String get settingsUnusedSkipMissing => 'Root missing; skipped.';
+
+  @override
+  String get settingsUnusedSkipNoInstances => 'No instances found; skipped.';
+
+  @override
+  String get settingsUnusedSkipProfile =>
+      'A version profile is unreadable; skipped to stay safe.';
+
+  @override
+  String get settingsUnusedSkipLimit => 'Scan budget reached; skipped.';
+
+  @override
+  String get settingsUnusedAssetsSkipped =>
+      'Assets skipped: a local asset index is unreadable.';
+
+  @override
+  String get settingsUnusedConfirmTitle => 'Confirm deletion';
+
+  @override
+  String settingsUnusedConfirmBody(int count, String size) {
+    return 'Permanently delete $count files and free $size? This cannot be undone.';
+  }
+
+  @override
+  String settingsUnusedConfirmHint(String word) {
+    return 'Type \"$word\" to confirm';
+  }
+
+  @override
+  String get settingsUnusedConfirmWord => 'DELETE';
+
+  @override
+  String get settingsUnusedNone => 'No unused dependencies found.';
+
+  @override
+  String get settingsUnusedScanLimit =>
+      'The scan hit its entry budget; nothing was deleted.';
+
+  @override
+  String settingsUnusedDone(int count, String size) {
+    return 'Deleted $count files, freed $size.';
+  }
+
+  @override
+  String get settingsUnusedDeleteFailed =>
+      'Deletion finished with errors; some files could not be removed.';
 
   @override
   String get settingsMotionDesc =>
@@ -3450,7 +3533,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String elevationBody(String kind) {
-    return 'ArchoeraCX detected that this process is running as $kind. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.';
+    return 'ArchoeraCX detected that this process is running as $kind. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the ArchoeraCX nor Minecraft needs administrator rights. Relaunch with a normal user.';
   }
 
   @override

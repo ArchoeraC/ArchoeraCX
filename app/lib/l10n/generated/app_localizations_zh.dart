@@ -479,6 +479,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonSave => '保存';
 
   @override
+  String get commonNext => '下一步';
+
+  @override
+  String get commonBack => '上一步';
+
+  @override
   String get downloadTitle => '下载';
 
   @override
@@ -1345,6 +1351,78 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsCleanPartialsNone => '没有需要清理的临时文件。';
+
+  @override
+  String get settingsUnusedDependencies => '清理无用依赖';
+
+  @override
+  String get settingsUnusedDependenciesDesc => '扫描共享游戏根里没有任何实例引用的库与资源文件。';
+
+  @override
+  String get settingsUnusedDependenciesScanning => '正在扫描…';
+
+  @override
+  String get settingsUnusedDependenciesTitle => '无用依赖';
+
+  @override
+  String get settingsUnusedDependenciesNote =>
+      '只列出没有任何版本档案引用的文件；实例目录、版本档案与其他启动器的数据永远不会被改动。删除后无法恢复。';
+
+  @override
+  String get settingsUnusedLibraries => '共享库';
+
+  @override
+  String get settingsUnusedAssets => '资源文件';
+
+  @override
+  String settingsUnusedInstances(int count) {
+    return '$count 个实例';
+  }
+
+  @override
+  String get settingsUnusedSkipMissing => '目录不存在，已跳过。';
+
+  @override
+  String get settingsUnusedSkipNoInstances => '未发现实例，已跳过。';
+
+  @override
+  String get settingsUnusedSkipProfile => '存在无法读取的版本档案，为安全起见已跳过。';
+
+  @override
+  String get settingsUnusedSkipLimit => '超出扫描上限，已跳过。';
+
+  @override
+  String get settingsUnusedAssetsSkipped => '资源文件已跳过：本地资源索引无法读取。';
+
+  @override
+  String get settingsUnusedConfirmTitle => '再次确认删除';
+
+  @override
+  String settingsUnusedConfirmBody(int count, String size) {
+    return '将永久删除 $count 个文件并释放 $size。此操作无法撤销。';
+  }
+
+  @override
+  String settingsUnusedConfirmHint(String word) {
+    return '输入“$word”以确认';
+  }
+
+  @override
+  String get settingsUnusedConfirmWord => '删除';
+
+  @override
+  String get settingsUnusedNone => '没有可清理的无用依赖。';
+
+  @override
+  String get settingsUnusedScanLimit => '扫描超出条目上限，未删除任何文件。';
+
+  @override
+  String settingsUnusedDone(int count, String size) {
+    return '已删除 $count 个文件，释放 $size。';
+  }
+
+  @override
+  String get settingsUnusedDeleteFailed => '删除完成，但部分文件未能移除。';
 
   @override
   String get settingsMotionDesc => '降低页面过渡与背景效果的强度。';
@@ -3248,7 +3326,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String elevationBody(String kind) {
-    return 'ArchoeraCX 检测到当前进程正以$kind权限运行。以超级管理员身份启动，实例、Mod 与游戏文件都会归该账户所有，下载或安装的恶意内容也会拥有更高的破坏力。\n\n启动器和 Minecraft 都不需要管理员权限。请用普通账户重新启动；只有在你清楚后果时才继续。';
+    return 'ArchoeraCX 检测到当前进程正以$kind权限运行。以超级管理员身份启动，实例、Mod 与游戏文件都会归该账户所有，下载或安装的恶意内容也会拥有更高的破坏力。\n\nArchoeraCX 和 Minecraft 都不会主动要求管理员权限。请使用普通账户重新启动。';
   }
 
   @override

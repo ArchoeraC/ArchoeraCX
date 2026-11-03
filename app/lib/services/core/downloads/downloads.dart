@@ -57,6 +57,30 @@ mixin CoreClientDownloads on CoreTransport {
     return PartialCleanupResult.fromNative(decoded['data']);
   }
 
+  /// Scans every configured instance root for libraries and asset objects no
+  /// instance's version JSON references. Read-only; the UI shows the report
+  /// before asking the user to confirm the deletion.
+  Future<UnusedDependencyPlan> planUnusedDependencies({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'maintenance.planUnusedDependencies';
+    final jsonText = await runAsync(methodName, onProgress: onProgress);
+    final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return UnusedDependencyPlan.fromNative(decoded['data']);
+  }
+
+  /// Deletes what a fresh scan proves unused. The scan runs again inside the
+  /// module, so a stale preview can never remove a file that became
+  /// referenced in between.
+  Future<UnusedDependencyPlan> deleteUnusedDependencies({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'maintenance.deleteUnusedDependencies';
+    final jsonText = await runAsync(methodName, onProgress: onProgress);
+    final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return UnusedDependencyPlan.fromNative(decoded['data']);
+  }
+
   /// Read coarse region policy (mainland China vs other regions).
   Future<RegionPolicyState> getRegionPolicy({
     void Function(int done, int total)? onProgress,

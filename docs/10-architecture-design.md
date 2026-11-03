@@ -2443,6 +2443,8 @@ public interface IDownloadProvider {
 | `instance.repair` | C# | 校验/重建有效版本/补文件 |
 | `instance.openFolder` | C#/C++ | 打开实例目录 |
 | `maintenance.cleanPartials` | C# | 清理未完成下载的临时文件：参数 `{olderThanDays?: int}`（默认 3，范围 1–365），返回 `deletedFiles` / `freedBytes` / `scannedFiles`；递归扫描配置的实例根（最多 20 万条目），匹配 `.part` / `.part.meta` / `.part.lock`，只删超过 `olderThanDays` 未修改的文件；同组存在 10 分钟内修改的 `.part.lock` 则跳过；跳过 symlink 与无权限项 |
+| `maintenance.planUnusedDependencies` | C# | 无用依赖扫描（只读）：对每个配置实例根，把 `versions/*/*.json` 与发现的实例档案（含根内 `inheritsFrom` 链）声明的库（artifact + 当前平台 natives classifier）与本地 `assets/indexes/<id>.json` 列出的对象哈希记为"使用中"，候选仅限共享根 `libraries/` 下的 `.jar`/`.pom` 与 `assets/objects/<2hex>/<hash>`；任一档案不可读即整根跳过（`unreadable_profile`）、无实例跳过（`no_instances`）、目录缺失跳过（`missing`）、条目超 20 万上限置 `limitReached`；返回 `{limitReached, totalFiles, totalBytes, roots:[{root,status,reason,instanceCount,libraries?,assets?}]}`，组形如 `{files,bytes,samples[≤60]}`（样本为游戏根相对路径）；无本地资源索引时该根 `assets` 为空（fail-closed） |
+| `maintenance.deleteUnusedDependencies` | C# | 执行删除：内部**先按只读预算完整重扫**，`limitReached` 则返回 `E_SCAN_LIMIT` 且不删任何文件；随后仅删除重扫证明无引用的候选，逐文件 try/catch，跳过 symlink，删除后向上修剪空目录（止于 `libraries/` 与 `assets/objects/`），按 128 个文件上报进度；返回与 plan 相同结构，组的 `files`/`bytes` 为实际删除数与释放字节 |
 | `java.scan` | C# | 扫描本机 Java |
 | `java.runtime.plan` | C# | 生成 Mojang 官方 Java 运行时下载计划：`{major}` 必填、`{root}` 可选（默认 `<dataRoot>`，计划内前缀为 `runtime/java-<major>/`），返回 `plan` / `component` / `version` / `fileCount` / `totalBytes`；落在 `runtime/java-<major>/`，`java.scan` 与自动选择都扫描该目录 |
 | `java.distributions` | C# | 返回 JDK 发行版注册表、当前 OS/arch、可选目标平台列表（linux/windows/macos × x64/aarch64，含 `current` 标记）与默认安装根；无网络请求 |

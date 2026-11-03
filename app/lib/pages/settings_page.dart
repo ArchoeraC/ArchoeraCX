@@ -17,6 +17,7 @@ import '../render/app_shaders.dart';
 import '../render/dissolve_mask.dart';
 import '../services/core/settings/app_settings.dart';
 import '../services/core/core_client.dart';
+import '../services/core/downloads/maintenance.dart';
 import '../services/core/system/system_memory.dart';
 import '../services/core/downloads/update_check.dart';
 import '../stores/account_policy.dart';

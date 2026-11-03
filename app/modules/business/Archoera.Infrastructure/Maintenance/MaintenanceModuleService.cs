@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Archoera.Application.Modules;
 using Archoera.Domain;
+using Archoera.Domain.Mojang;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Settings;
 
@@ -28,6 +29,8 @@ namespace Archoera.Infrastructure.Maintenance;
 public sealed class MaintenanceModuleService : IModuleMethodHandler
 {
     private const string CleanPartialsMethod = "maintenance.cleanPartials";
+    private const string PlanUnusedMethod = "maintenance.planUnusedDependencies";
+    private const string DeleteUnusedMethod = "maintenance.deleteUnusedDependencies";
 
     /// <summary>Upper bound of the requested age, in days.</summary>
     private const int MinOlderThanDays = 1;
@@ -53,7 +56,12 @@ public sealed class MaintenanceModuleService : IModuleMethodHandler
 
     private static StringComparer PathComparer => PathSemantics.Comparer;
 
-    private static readonly string[] SupportedMethods = [CleanPartialsMethod];
+    private static readonly string[] SupportedMethods =
+    [
+        CleanPartialsMethod,
+        PlanUnusedMethod,
+        DeleteUnusedMethod,
+    ];
 
     private readonly JsonAppSettingsStore _settings;
 
@@ -68,15 +76,29 @@ public sealed class MaintenanceModuleService : IModuleMethodHandler
         string? paramsJson,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(method, CleanPartialsMethod, StringComparison.Ordinal))
-        {
-            return ModuleJson.Error(
-                "E_UNSUPPORTED",
-                $"unsupported maintenance method '{method}'");
-        }
-
         try
         {
+            if (string.Equals(method, PlanUnusedMethod, StringComparison.Ordinal))
+            {
+                return await RunUnusedScanAsync(
+                    delete: false,
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            if (string.Equals(method, DeleteUnusedMethod, StringComparison.Ordinal))
+            {
+                return await RunUnusedScanAsync(
+                    delete: true,
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            if (!string.Equals(method, CleanPartialsMethod, StringComparison.Ordinal))
+            {
+                return ModuleJson.Error(
+                    "E_UNSUPPORTED",
+                    $"unsupported maintenance method '{method}'");
+            }
+
             var olderThanDays = ReadOlderThanDays(paramsJson);
             var appSettings = await _settings
                 .LoadAsync(cancellationToken)
@@ -107,6 +129,80 @@ public sealed class MaintenanceModuleService : IModuleMethodHandler
         {
             return ModuleJson.Error("E_INTERNAL", exception.Message);
         }
+    }
+
+    /// <summary>
+    /// Runs the unused-dependency scan (and, for the delete method, the
+    /// verified deletion) across every configured instance root and reports
+    /// the per-root outcome. The delete pass refuses to run when the scan hit
+    /// its entry budget: an incomplete report must never delete anything.
+    /// </summary>
+    private async Task<byte[]> RunUnusedScanAsync(
+        bool delete,
+        CancellationToken cancellationToken)
+    {
+        var appSettings = await _settings
+            .LoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var roots = appSettings.Roots;
+        var platform = MojangPlatform.Current();
+
+        if (delete)
+        {
+            var preview = UnusedDependencyScanner.Plan(roots, platform, cancellationToken);
+            if (preview.LimitReached)
+            {
+                return ModuleJson.Error(
+                    "E_SCAN_LIMIT",
+                    "the dependency scan hit its entry budget; nothing was deleted");
+            }
+        }
+
+        var report = delete
+            ? UnusedDependencyScanner.Delete(roots, platform, cancellationToken)
+            : UnusedDependencyScanner.Plan(roots, platform, cancellationToken);
+
+        return ModuleJson.Envelope(writer =>
+        {
+            writer.WriteBoolean("limitReached", report.LimitReached);
+            writer.WriteNumber("totalFiles", report.TotalFiles);
+            writer.WriteNumber("totalBytes", report.TotalBytes);
+            writer.WriteStartArray("roots");
+            foreach (var root in report.Roots)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("root", root.Root);
+                writer.WriteString("status", root.Status);
+                if (root.Reason is not null)
+                {
+                    writer.WriteString("reason", root.Reason);
+                }
+
+                writer.WriteNumber("instanceCount", root.InstanceCount);
+                WriteGroup(writer, "libraries", root.Libraries);
+                WriteGroup(writer, "assets", root.Assets);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+        });
+    }
+
+    private static void WriteGroup(Utf8JsonWriter writer, string name, UnusedDependencyGroup? group)
+    {
+        if (group is null) return;
+        writer.WritePropertyName(name);
+        writer.WriteStartObject();
+        writer.WriteNumber("files", group.FileCount);
+        writer.WriteNumber("bytes", group.TotalBytes);
+        writer.WriteStartArray("samples");
+        foreach (var sample in group.Samples)
+        {
+            writer.WriteStringValue(sample);
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
     }
 
     /// <summary>

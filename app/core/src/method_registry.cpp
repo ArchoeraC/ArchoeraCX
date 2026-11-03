@@ -80,6 +80,8 @@ constexpr MethodRoute kRoutes[] = {
     {"region.policy", &handle_module_method, kCsModule},
     {"update.check", &handle_module_method, kCsModule},
     {"maintenance.cleanPartials", &handle_module_method, kCsModule},
+    {"maintenance.planUnusedDependencies", &handle_module_method, kCsModule},
+    {"maintenance.deleteUnusedDependencies", &handle_module_method, kCsModule},
     {"modpack.inspect", &handle_module_method, kCsModule},
     {"modpack.install", &handle_module_method, kCsModule},
     {"modpack.installLocal", &handle_module_method, kCsModule},
