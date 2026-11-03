@@ -238,6 +238,11 @@ logs/account.log              脱敏的账户诊断日志
 
 发行模型、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。
 
+> [!CAUTION]
+> 如果您选择本地编译，您必须保证拥有一个合法的 Client_id才能够进行微软账户的登录！
+> 如果您选择本地编译，您必须保证拥有一个合法的 Client_id才能够进行微软账户的登录！
+> 如果您选择本地编译，您必须保证拥有一个合法的 Client_id才能够进行微软账户的登录！
+
 
 ## 图标字体
 
