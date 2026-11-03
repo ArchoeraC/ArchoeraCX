@@ -231,7 +231,7 @@ logs/account.log              脱敏的账户诊断日志
 
 当前为单一发行版：启动时按粗粒度 IP/系统地区判断是否处于中国大陆网络。
 
-- 中国大陆网络默认隐藏下载入口并禁用下载，可手动创建 `compliance.json` 解锁；
+- 中国大陆网络默认隐藏下载入口并禁用下载（如果您懂一些知识或者会向AI许愿，或许，这一点应该难不到您）；
 - 其他地区默认启用下载；
 - 发布包只从 GitHub CI 构建：[`.github/workflows/build-all.yml`](../.github/workflows/build-all.yml) 按发行版拆分 job，Ubuntu / Deepin / Fedora / Arch 各自在对应环境从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu 原始 bundle；macOS 与 Windows 是独立 job，各自完成构建和打包；推送 `v*` tag 后汇总全部产物、生成 `SHA256SUMS` 并发布；
 - 构建期凭据只通过 CI secret / MSBuild 属性注入，不进入仓库；当前注入的是 Microsoft client ID。tag 构建会校验 secret 的 GUID 形状，并在打包前用 `system.identity` 断言编译期 id 已生效且为官方 id；
