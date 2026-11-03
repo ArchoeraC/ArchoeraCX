@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ArchoeraCX · 开源 Minecraft: Java Edition 启动器</title>
+    <meta
+      name="description"
+      content="ArchoeraCX 是一个开源的跨平台 Minecraft: Java Edition 启动器。实例隔离、加载器安装、整合包导入与哈希校验下载；界面干净、克制、可长时间使用。"
+    />
+    <meta name="theme-color" content="#F7F8FB" />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ArchoeraCX · 开源 Minecraft 启动器" />
+    <meta
+      property="og:description"
+      content="把准备留在后台，把世界留在前台。实例、加载器、整合包与下载各有归属。"
+    />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:image" content="assets/shots/home-dark.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="assets/branding/archoera_icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/site.css" />
+    <script>
+      (function () {
+        var root = document.documentElement;
+        root.classList.add('js');
+
+        // Resolve the theme before the first paint. A saved choice wins; with
+        // no saved choice the OS preference decides, so the site follows the
+        // same light/dark setting as the launcher.
+        var stored = null;
+        try {
+          stored = window.localStorage.getItem('archoera.theme');
+        } catch (error) {
+          stored = null;
+        }
+        // A cookie mirrors the choice for browsers that drop localStorage
+        // between visits or block it in private windows.
+        if (stored !== 'light' && stored !== 'dark') {
+          var cookie = document.cookie.match(
+            /(?:^|; )archoera_theme=(light|dark)/
+          );
+          stored = cookie ? cookie[1] : null;
+        }
+        var dark =
+          stored === 'dark' ||
+          (stored !== 'light' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
+        root.setAttribute('data-theme', dark ? 'dark' : 'light');
+        var themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) themeMeta.setAttribute('content', dark ? '#10141B' : '#F7F8FB');
+        var schemeMeta = document.querySelector('meta[name="color-scheme"]');
+        if (schemeMeta) schemeMeta.setAttribute('content', dark ? 'dark' : 'light');
+
+        // The typewriter intro is an enhancement: without JS or with reduced
+        // motion the full headline is shown. The timeout is a failsafe so a
+        // broken script can never leave the hero hidden behind the intro.
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          root.classList.add('intro-pending');
+          window.setTimeout(function () {
+            root.classList.remove('intro-pending');
+          }, 6000);
+        }
+      })();
+    </script>
+    <noscript>
+      <style>
+        /* Without JS the theme switch and menu do nothing; show the nav and
+           hide only the controls that would be dead ends. */
+        .topbar__inner {
+          flex-wrap: wrap;
+          height: auto;
+          padding-block: 10px;
+          row-gap: 4px;
+        }
+        .topnav {
+          position: static;
+          display: flex;
+          flex-wrap: wrap;
+          order: 3;
+          width: 100%;
+          gap: 4px 20px;
+        }
+        .menu-button,
+        .theme-toggle,
+        .theme-switch,
+        .copy-button {
+          display: none !important;
+        }
+        @media (max-width: 900px) {
+          .topnav__github {
+            display: block !important;
+          }
+        }
+      </style>
+    </noscript>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+
+    <svg class="sprite" aria-hidden="true" width="0" height="0">
+      <symbol id="diamond-outline" viewBox="0 0 240 240">
+        <path
+          d="M120 8 232 120 120 232 8 120Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1"
+          vector-effect="non-scaling-stroke"
+        />
+        <path
+          d="M120 42 198 120 120 198 42 120Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1"
+          vector-effect="non-scaling-stroke"
+          stroke-dasharray="2 7"
+          opacity="0.55"
+        />
+      </symbol>
+      <symbol id="diamond-core" viewBox="0 0 240 240">
+        <path
+          d="M120 8 232 120 120 232 8 120Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1"
+          vector-effect="non-scaling-stroke"
+        />
+        <path
+          d="M120 42 198 120 120 198 42 120Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1"
+          vector-effect="non-scaling-stroke"
+          stroke-dasharray="2 7"
+          opacity="0.55"
+        />
+        <path d="M120 109 131 120 120 131 109 120Z" fill="#FFC24D" />
+      </symbol>
+    </svg>
+
+    <div class="intro" data-intro aria-hidden="true">
+      <span
+        class="intro__text"
+        data-intro-text
+        data-text="把准备留在后台，"
+      ></span>
+      <span class="intro__caret" data-intro-caret></span>
+    </div>
+
+    <header class="topbar" data-header>
+      <div class="container topbar__inner">
+        <a class="brand" href="#top" aria-label="ArchoeraCX 首页">
+          <img
+            class="brand__mark"
+            src="assets/branding/archoera_icon.svg"
+            width="28"
+            height="28"
+            alt=""
+          />
+          <span class="brand__name">ArchoeraCX</span>
+        </a>
+
+        <nav class="topnav" id="site-nav" aria-label="主导航">
+          <a href="#modules">能力</a>
+          <a href="#interface">界面</a>
+          <a href="#architecture">架构</a>
+          <a href="#build">构建</a>
+          <a
+            class="topnav__github"
+            href="https://github.com/BetaStudio2/ArchoeraCX"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+        </nav>
+
+        <div class="topbar__tools">
+          <span class="dev-badge mono">DEV 0.0.1</span>
+          <a
+            class="topbar__github"
+            href="https://github.com/BetaStudio2/ArchoeraCX"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+          <button
+            class="icon-button theme-toggle"
+            type="button"
+            data-theme-toggle
+            aria-label="当前浅色模式，切换到深色模式"
+            aria-pressed="false"
+          >
+            <svg
+              class="icon theme-toggle__moon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />
+            </svg>
+            <svg
+              class="icon theme-toggle__sun"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
+              />
+            </svg>
+          </button>
+          <button
+            class="icon-button menu-button"
+            type="button"
+            data-menu-toggle
+            aria-controls="site-nav"
+            aria-expanded="false"
+            aria-label="打开导航"
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <span class="topbar__progress" data-progress aria-hidden="true"></span>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="container hero__frame">
+          <div class="hero__grid" aria-hidden="true"></div>
+          <span class="vf vf--tl"></span>
+          <span class="vf vf--tr"></span>
+          <span class="vf vf--bl"></span>
+          <span class="vf vf--br"></span>
+
+          <div class="hero__meta">
+            <span class="mono">ARCHOERACX / MINECRAFT: JAVA EDITION</span>
+            <span class="mono">LINUX · WINDOWS · MACOS</span>
+          </div>
+
+          <div class="hero__head">
+            <h1>
+              <span class="sr-only">把准备留在后台，把世界留在前台。</span>
+              <span class="hero__line" aria-hidden="true"
+                ><span data-hero-line="1">把准备留在后台，</span></span
+              >
+              <span class="hero__line hero__line--accent" aria-hidden="true"
+                ><span data-hero-line="2">把世界留在前台。</span
+                ><span
+                  class="hero__caret"
+                  data-hero-caret
+                  aria-hidden="true"
+                ></span
+              ></span>
+            </h1>
+
+            <div class="hero__side">
+              <svg class="hero__mark" aria-hidden="true">
+                <use href="#diamond-core" />
+              </svg>
+              <p class="label">CORE / 0.0.1 DEV</p>
+              <p class="hero__lead">
+                ArchoeraCX 是一个开源的 Minecraft: Java Edition 启动器。
+                实例、加载器、整合包与下载各有归属；界面安静，启动只要一步。
+              </p>
+              <div class="hero__actions">
+                <a class="button button--primary" href="#architecture">
+                  看看它怎么工作
+                  <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 8h12M9 3l5 5-5 5" />
+                  </svg>
+                </a>
+                <a
+                  class="button button--outline"
+                  href="https://github.com/BetaStudio2/ArchoeraCX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub
+                  <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M6 3h7v7M13 3 5 11" />
+                  </svg>
+                </a>
+              </div>
+              <div class="hero__theme">
+                <span class="mono">THEME</span>
+                <div class="theme-switch" role="group" aria-label="切换站点主题">
+                  <button type="button" data-theme-choice="light" aria-pressed="false">
+                    浅色
+                  </button>
+                  <button type="button" data-theme-choice="dark" aria-pressed="true">
+                    深色
+                  </button>
+                </div>
+              </div>
+              <p class="hero__status mono">
+                AGPL-3.0-only <span aria-hidden="true">·</span> 无遥测
+                <span aria-hidden="true">·</span> 凭据留在本机
+              </p>
+            </div>
+          </div>
+
+          <div class="hero__window-wrap">
+            <div class="hero__spec" aria-hidden="true">
+              <span class="node"></span>
+              <p class="mono">1440 × 900</p>
+              <p class="mono">16:10 / PNG</p>
+              <p class="mono">RENDERED</p>
+            </div>
+
+            <figure class="hero__window">
+              <div class="hero__media">
+                <img
+                  class="theme-shot is-active"
+                  data-theme-shot="dark"
+                  src="assets/shots/home-dark.png"
+                  width="1440"
+                  height="900"
+                  alt="ArchoeraCX 深色主题主页：快速启动 1.21.4 Fabric 实例"
+                  fetchpriority="high"
+                  decoding="async"
+                />
+                <img
+                  class="theme-shot"
+                  data-theme-shot="light"
+                  src="assets/shots/home-light.png"
+                  width="1440"
+                  height="900"
+                  alt="ArchoeraCX 浅色主题主页：同一布局与同一套令牌"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="hero__glow" aria-hidden="true"></span>
+                <span class="hero__scan" aria-hidden="true"></span>
+              </div>
+              <figcaption class="hero__caption">
+                <span class="mono" data-theme-caption>主页 / 深色 · THEME</span>
+                <span class="mono">CAPTURE</span>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="modules">
+        <div class="container section__grid">
+          <div class="section__rail">
+            <span class="section__line"></span>
+            <span class="node"></span>
+            <span class="label">模块 / MODULES</span>
+          </div>
+          <div class="section__body">
+            <h2>六个职责，<br />六个边界。</h2>
+            <p class="section__lead">
+              每个模块只做一件事；失败时，也只影响一件事。
+              代码、契约和边界都放在明面上。
+            </p>
+
+            <div class="ledger">
+              <div class="ledger__head">
+                <span>CODE</span>
+                <span>职责</span>
+                <span>边界</span>
+              </div>
+              <article class="ledger__row">
+                <code>CORE</code>
+                <div>
+                  <h3>生命周期与路由</h3>
+                  <p>C++20 是唯一枢纽：窗口、页面、任务与事件都在这里发生。</p>
+                </div>
+                <span class="ledger__edge">NO BUSINESS</span>
+              </article>
+              <article class="ledger__row">
+                <code>INST</code>
+                <div>
+                  <h3>实例与覆盖</h3>
+                  <p>独立目录、复制与覆盖设置；SQLite 索引，instance.json 是权威元数据。</p>
+                </div>
+                <span class="ledger__edge">SQLITE / JSON</span>
+              </article>
+              <article class="ledger__row">
+                <code>LOAD</code>
+                <div>
+                  <h3>加载器安装</h3>
+                  <p>Fabric、Quilt、Forge、NeoForge 的安装、修复与版本选择。</p>
+                </div>
+                <span class="ledger__edge">INSTALLER</span>
+              </article>
+              <article class="ledger__row">
+                <code>PACK</code>
+                <div>
+                  <h3>整合包导入</h3>
+                  <p>Modrinth 与本地 .mrpack；zip-slip、符号链接、大小与条目上限都在解压前检查。</p>
+                </div>
+                <span class="ledger__edge">SAFE UNZIP</span>
+              </article>
+              <article class="ledger__row">
+                <code>NET</code>
+                <div>
+                  <h3>下载执行</h3>
+                  <p>DownloadPlan 交给 Rust：哈希、原子落盘、分片续传与取消。</p>
+                </div>
+                <span class="ledger__edge">HASHED</span>
+              </article>
+              <article class="ledger__row">
+                <code>ID</code>
+                <div>
+                  <h3>账户与凭据</h3>
+                  <p>Microsoft OAuth + PKCE；令牌留在本机保险库，不跨 ABI、不写日志。</p>
+                </div>
+                <span class="ledger__edge">NO TOKENS</span>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="interface">
+        <div class="container section__grid">
+          <div class="section__rail">
+            <span class="section__line"></span>
+            <span class="node"></span>
+            <span class="label">界面 / INTERFACE</span>
+          </div>
+          <div class="section__body">
+            <h2>界面是工具，<br />不是舞台。</h2>
+            <p class="section__lead">
+              层级来自留白和细线，动效只解释状态。明暗两套令牌，同一套布局。
+            </p>
+
+            <dl class="ui-facts">
+              <div>
+                <dt>THEMES</dt>
+                <dd>LIGHT + DARK</dd>
+              </div>
+              <div>
+                <dt>CONTRAST</dt>
+                <dd>≥ 4.5:1</dd>
+              </div>
+              <div>
+                <dt>MOTION</dt>
+                <dd>120–240 MS</dd>
+              </div>
+              <div>
+                <dt>SHAPE</dt>
+                <dd>2–6 PX + BEVEL</dd>
+              </div>
+            </dl>
+
+            <div class="contact">
+              <span class="contact__node node" aria-hidden="true"></span>
+
+              <figure class="contact__item">
+                <img
+                  src="assets/shots/instances-light.png"
+                  width="1000"
+                  height="700"
+                  alt="浅色主题的实例页：卡片展示加载器、版本、Mod 数量与最近游玩时间"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>
+                  <span>实例 / 浅色</span>
+                  <span class="mono">INSTANCES · LIGHT</span>
+                </figcaption>
+              </figure>
+
+              <figure class="contact__item">
+                <img
+                  src="assets/shots/settings-light.png"
+                  width="1000"
+                  height="700"
+                  alt="浅色主题的设置页：左侧分区导航与扁平设置组"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>
+                  <span>设置 / 浅色</span>
+                  <span class="mono">SETTINGS · LIGHT</span>
+                </figcaption>
+              </figure>
+
+              <figure class="contact__item">
+                <img
+                  src="assets/shots/instances-dark.png"
+                  width="1000"
+                  height="700"
+                  alt="深色主题的实例页：相同的布局与间距"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>
+                  <span>实例 / 深色</span>
+                  <span class="mono">INSTANCES · DARK</span>
+                </figcaption>
+              </figure>
+
+              <figure class="contact__item">
+                <img
+                  src="assets/shots/settings-dark.png"
+                  width="1000"
+                  height="700"
+                  alt="深色主题的设置页：主题、密度与通知选项"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>
+                  <span>设置 / 深色</span>
+                  <span class="mono">SETTINGS · DARK</span>
+                </figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="architecture">
+        <div class="container section__grid">
+          <div class="section__rail">
+            <span class="section__line"></span>
+            <span class="node"></span>
+            <span class="label">系统 / SYSTEM</span>
+          </div>
+          <div class="section__body">
+            <h2>四种语言，<br />一条边界。</h2>
+            <p class="section__lead">
+              Flutter 负责界面，C++20 是唯一枢纽，C# 独占业务与 SQLite，Rust 只执行下载计划。
+              全程进程内 FFI；除 OAuth 期间短暂的 loopback 回调外，不监听端口。
+            </p>
+
+            <div class="diagram">
+              <span class="vf vf--tl"></span>
+              <span class="vf vf--tr"></span>
+              <span class="vf vf--bl"></span>
+              <span class="vf vf--br"></span>
+              <div class="diagram__legend">
+                <span class="mono">SYSTEM MAP / IN-PROCESS</span>
+                <span class="mono">ARCHOERACX / 0.0.1</span>
+              </div>
+
+              <div class="diagram__map">
+                <article class="diagram__node diagram__node--ui">
+                  <span class="mono">UI / DART</span>
+                  <h3>Flutter</h3>
+                  <p>页面、主题、动效与窗口壳；只通过 CoreClient 调用核心。</p>
+                  <span class="diagram__tag mono">WINDOW SHELL</span>
+                </article>
+
+                <div class="diagram__link diagram__link--l1" aria-hidden="true">
+                  <span class="mono">FFI</span>
+                  <i></i>
+                </div>
+
+                <div class="diagram__hub">
+                  <svg class="diagram__art" aria-hidden="true">
+                    <use href="#diamond-outline" />
+                  </svg>
+                  <svg class="diagram__sweep" viewBox="0 0 240 240" aria-hidden="true">
+                    <path
+                      d="M120 8 232 120 120 232 8 120Z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-dasharray="34 700"
+                    />
+                  </svg>
+                  <span class="diagram__core" aria-hidden="true"></span>
+                  <div class="diagram__hub-label">
+                    <span class="mono">CORE</span>
+                    <strong>C++20</strong>
+                  </div>
+                </div>
+
+                <div class="diagram__link diagram__link--l2" aria-hidden="true">
+                  <span class="mono">PROTOCOL</span>
+                  <i></i>
+                </div>
+
+                <article class="diagram__node diagram__node--data">
+                  <span class="mono">DATA / C#</span>
+                  <h3>NativeAOT</h3>
+                  <p>API、业务规则与 SQLite；实例索引与 instance.json 的权威数据。</p>
+                  <span class="diagram__tag mono">SQLITE</span>
+                </article>
+
+                <div class="diagram__link diagram__link--d" aria-hidden="true">
+                  <span class="mono">DOWNLOADPLAN</span>
+                  <i></i>
+                </div>
+
+                <article class="diagram__node diagram__node--rust">
+                  <span class="mono">IO / RUST</span>
+                  <h3>下载器</h3>
+                  <p>校验哈希、原子写入、分片续传；不解压、不写 SQLite、不碰业务语义。</p>
+                  <span class="diagram__tag mono">CDYLIB</span>
+                </article>
+              </div>
+            </div>
+
+            <div class="arch-notes">
+              <article class="arch-note">
+                <span class="mono">EVENT</span>
+                <h3>唤醒驱动，而不是轮询</h3>
+                <p>核心收到任务事件后唤醒 Dart，由监听器批量 drain；界面不用 Timer.periodic 猜进度。</p>
+              </article>
+              <article class="arch-note">
+                <span class="mono">REGISTRY</span>
+                <h3>每个方法都有归属</h3>
+                <p>新方法同时登记到 C++ 与 C# 的注册表；未知调用返回 E_UNSUPPORTED，导出层不写分支。</p>
+              </article>
+              <article class="arch-note">
+                <span class="mono">INPUT</span>
+                <h3>外部输入先归一化</h3>
+                <p>拒绝 ..、绝对路径与符号链接逃逸；链接走 http/https 白名单；下载一律校验哈希。</p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--build" id="build">
+        <div class="container section__grid">
+          <div class="section__rail">
+            <span class="section__line"></span>
+            <span class="node"></span>
+            <span class="label">构建 / BUILD</span>
+          </div>
+          <div class="section__body">
+            <h2>从源码开始，<br />在自己的机器上。</h2>
+            <p class="section__lead">
+              当前是开发版。完整的依赖、逐模块构建与测试矩阵在构建文档里；
+              先在一个临时实例里试跑，再导入日常使用的世界。
+            </p>
+            <p class="build__note">
+              <strong>开发版提示</strong>
+              功能仍不完整，可能损坏实例或配置数据。请勿用于正式环境或重要实例。
+              <a
+                href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/docs/12-build-and-test.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >查看构建文档 ↗</a
+              >
+            </p>
+
+            <div class="build__grid">
+              <div class="build__links">
+                <a
+                  class="build__link"
+                  href="https://github.com/BetaStudio2/ArchoeraCX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >GitHub <span aria-hidden="true">↗</span></a
+                >
+                <a
+                  class="build__link"
+                  href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >文档 <span aria-hidden="true">↗</span></a
+                >
+                <a
+                  class="build__link"
+                  href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/PRIVACY.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >隐私 <span aria-hidden="true">↗</span></a
+                >
+              </div>
+
+              <div class="terminal">
+                <div class="terminal__bar">
+                  <span class="mono"><span class="node node--tiny"></span>BUILD / LINUX</span>
+                  <button class="copy-button" type="button" data-copy="build-commands">
+                    复制
+                  </button>
+                </div>
+                <pre id="build-commands"><code><span class="code-comment"># 1. 获取源码</span>
+git clone https://github.com/BetaStudio2/ArchoeraCX.git
+<span class="code-comment"># 2. 构建原生模块</span>
+cd ArchoeraCX/app
+./tool/build-native.sh
+<span class="code-comment"># 3. 准备并运行</span>
+flutter pub get &amp;&amp; flutter gen-l10n
+flutter run -d linux<span class="terminal__caret" aria-hidden="true"></span></code></pre>
+                <p class="terminal__note">
+                  <span class="terminal__warn"
+                    >Microsoft 登录需要构建时注入 client ID。</span
+                  >
+                  <span
+                    class="terminal__status"
+                    data-copy-status
+                    aria-live="polite"
+                  ></span>
+                </p>
+              </div>
+            </div>
+
+            <div class="platforms">
+              <div class="platform">
+                <span class="mono">LINUX</span>
+                <p>tar.gz · deb · rpm · Arch · AppImage · Flatpak · Nix</p>
+              </div>
+              <div class="platform">
+                <span class="mono">MACOS</span>
+                <p>tar.gz · dmg</p>
+              </div>
+              <div class="platform">
+                <span class="mono">WINDOWS</span>
+                <p>便携 zip · 安装器</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <svg class="site-footer__art" aria-hidden="true">
+        <use href="#diamond-core" />
+      </svg>
+      <div class="container site-footer__inner">
+        <div class="site-footer__top">
+          <div class="site-footer__brand">
+            <a class="brand" href="#top" aria-label="ArchoeraCX 首页">
+              <img
+                class="brand__mark"
+                src="assets/branding/archoera_icon.svg"
+                width="28"
+                height="28"
+                alt=""
+              />
+              <span class="brand__name">ArchoeraCX</span>
+            </a>
+            <p>开源、跨平台、面向 Minecraft: Java Edition 的混合架构启动器。</p>
+          </div>
+          <nav class="site-footer__nav" aria-label="页脚导航">
+            <a href="#modules">能力</a>
+            <a href="#interface">界面</a>
+            <a href="#architecture">架构</a>
+            <a href="#build">构建</a>
+          </nav>
+          <div class="site-footer__links">
+            <a
+              href="https://github.com/BetaStudio2/ArchoeraCX"
+              target="_blank"
+              rel="noopener noreferrer"
+              >GitHub <span aria-hidden="true">↗</span></a
+            >
+            <a
+              href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              >文档 <span aria-hidden="true">↗</span></a
+            >
+            <a
+              href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/PRIVACY.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              >隐私 <span aria-hidden="true">↗</span></a
+            >
+            <a
+              href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/CONTRIBUTING.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              >贡献说明 <span aria-hidden="true">↗</span></a
+            >
+            <a
+              href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/LICENSE"
+              target="_blank"
+              rel="noopener noreferrer"
+              >AGPL-3.0 <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </div>
+
+        <div class="site-footer__bottom">
+          <p>© 2026 ArchoeraCX · 代码以 AGPL-3.0-only 发布。</p>
+          <p>
+            与 Mojang Studios、Microsoft 无关联，不分发游戏本体或资源文件。
+            NOT AN OFFICIAL MINECRAFT PRODUCT.
+          </p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/site.js" defer></script>
+  </body>
+</html>

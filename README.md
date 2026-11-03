@@ -48,6 +48,7 @@ Microsoft 登录需在构建 C# 模块时注入 client ID（`export ARCHOERACX_M
 ## 文档
 
 - [文档索引](docs/README.md) —— 全部公开文档入口
+- [网页介绍](site/README.md) —— 静态宣传页、预览方式与界面截图生成
 - [构建、运行与测试](docs/12-build-and-test.md) —— 环境 / 逐模块构建 / 测试 / 数据目录
 - [架构设计](docs/10-architecture-design.md) —— ABI、模块协议、任务与事件、存储、安全
 - [Microsoft / Minecraft 认证](docs/authentication.md) —— OAuth、XBL / XSTS、client_id 审核
