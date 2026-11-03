@@ -3232,12 +3232,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get elevationTitle => '我知道你想干什么';
 
   @override
+  String get elevationTitleJustKnew => '我 就 知 道！';
+
+  @override
+  String get elevationTitleBegging => '我真求你了';
+
+  @override
   String elevationBody(String kind) {
     return 'ArchoeraCX 检测到当前进程正以$kind权限运行。以超级管理员身份启动，实例、Mod 与游戏文件都会归该账户所有，下载或安装的恶意内容也会拥有更高的破坏力。\n\n启动器和 Minecraft 都不需要管理员权限。请用普通账户重新启动；只有在你清楚后果时才继续。';
   }
 
   @override
   String get elevationContinue => '我知道我在干什么';
+
+  @override
+  String get elevationContinueBegging => '我也求你了';
+
+  @override
+  String get elevationContinueInsist => '我还是要继续';
 
   @override
   String get elevationExit => '退出';

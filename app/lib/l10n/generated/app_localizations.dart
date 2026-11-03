@@ -5917,6 +5917,18 @@ abstract class AppLocalizations {
   /// **'I know what you\'re trying to do'**
   String get elevationTitle;
 
+  /// No description provided for @elevationTitleJustKnew.
+  ///
+  /// In en, this message translates to:
+  /// **'I knew it!'**
+  String get elevationTitleJustKnew;
+
+  /// No description provided for @elevationTitleBegging.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m begging you'**
+  String get elevationTitleBegging;
+
   /// No description provided for @elevationBody.
   ///
   /// In en, this message translates to:
@@ -5928,6 +5940,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I know what I\'m doing'**
   String get elevationContinue;
+
+  /// No description provided for @elevationContinueBegging.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m begging you too'**
+  String get elevationContinueBegging;
+
+  /// No description provided for @elevationContinueInsist.
+  ///
+  /// In en, this message translates to:
+  /// **'I still want to continue'**
+  String get elevationContinueInsist;
 
   /// No description provided for @elevationExit.
   ///

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -67,23 +68,78 @@ class _ElevationGateApp extends StatelessWidget {
   }
 }
 
+/// Headline and confirm label for one gate launch.
+///
+/// The body keeps the factual consequences; only the framing rotates. A user
+/// who starts the launcher elevated more than once would otherwise see the
+/// exact same dialog and stop reading it.
+class _ElevationGateCopy {
+  const _ElevationGateCopy({required this.title, required this.confirm});
+
+  final String title;
+  final String confirm;
+
+  /// Picks one headline and one confirm label for this launch.
+  static _ElevationGateCopy pick(AppLocalizations l10n, Random random) {
+    final titles = <String>[
+      l10n.elevationTitle,
+      l10n.elevationTitleJustKnew,
+      l10n.elevationTitleBegging,
+    ];
+    final confirms = <String>[
+      l10n.elevationContinue,
+      l10n.elevationContinueBegging,
+      l10n.elevationContinueInsist,
+    ];
+    return _ElevationGateCopy(
+      title: titles[random.nextInt(titles.length)],
+      confirm: confirms[random.nextInt(confirms.length)],
+    );
+  }
+}
+
 /// The refusal surface itself, kept separate so tests can drive the two
 /// decisions without owning the root widget.
-class ElevationGatePage extends StatelessWidget {
+class ElevationGatePage extends StatefulWidget {
   const ElevationGatePage({
     super.key,
     required this.elevation,
     required this.onDecision,
+    this.random,
   });
 
   final ProcessElevation elevation;
   final ValueChanged<bool> onDecision;
 
+  /// Test seam. Production leaves this null so every elevated start rolls a
+  /// fresh [Random] and the copy differs between launches.
+  final Random? random;
+
+  @override
+  State<ElevationGatePage> createState() => _ElevationGatePageState();
+}
+
+class _ElevationGatePageState extends State<ElevationGatePage> {
+  _ElevationGateCopy? _copy;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Localized strings arrive through an inherited widget, so the copy can
+    // only be picked once dependencies exist. Picking exactly once keeps a
+    // rebuild (resize, theme switch) from reshuffling the dialog.
+    _copy ??= _ElevationGateCopy.pick(
+      AppLocalizations.of(context),
+      widget.random ?? Random(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final l10n = AppLocalizations.of(context);
-    final kind = elevation.kind == 'administrator'
+    final copy = _copy!;
+    final kind = widget.elevation.kind == 'administrator'
         ? l10n.elevationKindAdministrator
         : l10n.elevationKindRoot;
 
@@ -123,7 +179,7 @@ class ElevationGatePage extends StatelessWidget {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
-                          l10n.elevationTitle,
+                          copy.title,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ),
@@ -139,7 +195,7 @@ class ElevationGatePage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton(
-                        onPressed: () => onDecision(false),
+                        onPressed: () => widget.onDecision(false),
                         child: Text(l10n.elevationExit),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -148,8 +204,8 @@ class ElevationGatePage extends StatelessWidget {
                           backgroundColor: tokens.danger,
                           foregroundColor: tokens.onAccent,
                         ),
-                        onPressed: () => onDecision(true),
-                        child: Text(l10n.elevationContinue),
+                        onPressed: () => widget.onDecision(true),
+                        child: Text(copy.confirm),
                       ),
                     ],
                   ),
