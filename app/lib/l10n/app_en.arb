@@ -2923,5 +2923,16 @@
   "elevationContinueJustOnce": "Just this once",
   "elevationExit": "Exit",
   "elevationKindRoot": "root",
-  "elevationKindAdministrator": "administrator"
+  "elevationKindAdministrator": "administrator",
+  "welcomeBackTitle": "Hi",
+  "welcomeBackBody": "It's been a while since you last played Minecraft.\n\nBut Minecraft has been waiting for you all along.",
+  "welcomeBackGreeting": "Welcome back, {name}",
+  "@welcomeBackGreeting": {
+    "description": "Greeting shown when no instance has been launched for 30 days; a Microsoft account name wins.",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "welcomeBackGreetingAnonymous": "Welcome back",
+  "welcomeBackContinue": "Let's play"
 }

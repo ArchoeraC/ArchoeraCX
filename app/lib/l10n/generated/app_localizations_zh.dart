@@ -3355,4 +3355,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get elevationKindAdministrator => '管理员';
+
+  @override
+  String get welcomeBackTitle => 'Hi';
+
+  @override
+  String get welcomeBackBody =>
+      '看起来你已经很久没有玩过 Minecraft 了呢。\n\n但是 Minecraft 一直在等你回来。';
+
+  @override
+  String welcomeBackGreeting(String name) {
+    return '欢迎回家，$name';
+  }
+
+  @override
+  String get welcomeBackGreetingAnonymous => '欢迎回家';
+
+  @override
+  String get welcomeBackContinue => '开始游戏';
 }

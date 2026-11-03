@@ -6144,6 +6144,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'administrator'**
   String get elevationKindAdministrator;
+
+  /// No description provided for @welcomeBackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi'**
+  String get welcomeBackTitle;
+
+  /// No description provided for @welcomeBackBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s been a while since you last played Minecraft.\n\nBut Minecraft has been waiting for you all along.'**
+  String get welcomeBackBody;
+
+  /// Greeting shown when no instance has been launched for 30 days; a Microsoft account name wins.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back, {name}'**
+  String welcomeBackGreeting(String name);
+
+  /// No description provided for @welcomeBackGreetingAnonymous.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back'**
+  String get welcomeBackGreetingAnonymous;
+
+  /// No description provided for @welcomeBackContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s play'**
+  String get welcomeBackContinue;
 }
 
 class _AppLocalizationsDelegate

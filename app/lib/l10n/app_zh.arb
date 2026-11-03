@@ -1826,5 +1826,16 @@
   "elevationContinueJustOnce": "就这一次",
   "elevationExit": "退出",
   "elevationKindRoot": "root",
-  "elevationKindAdministrator": "管理员"
+  "elevationKindAdministrator": "管理员",
+  "welcomeBackTitle": "Hi",
+  "welcomeBackBody": "看起来你已经很久没有玩过 Minecraft 了呢。\n\n但是 Minecraft 一直在等你回来。",
+  "welcomeBackGreeting": "欢迎回家，{name}",
+  "@welcomeBackGreeting": {
+    "description": "连续 30 天没有启动任何实例后的彩蛋问候，优先显示微软账户名。",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "welcomeBackGreetingAnonymous": "欢迎回家",
+  "welcomeBackContinue": "开始游戏"
 }

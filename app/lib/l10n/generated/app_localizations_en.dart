@@ -3562,4 +3562,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get elevationKindAdministrator => 'administrator';
+
+  @override
+  String get welcomeBackTitle => 'Hi';
+
+  @override
+  String get welcomeBackBody =>
+      'It\'s been a while since you last played Minecraft.\n\nBut Minecraft has been waiting for you all along.';
+
+  @override
+  String welcomeBackGreeting(String name) {
+    return 'Welcome back, $name';
+  }
+
+  @override
+  String get welcomeBackGreetingAnonymous => 'Welcome back';
+
+  @override
+  String get welcomeBackContinue => 'Let\'s play';
 }

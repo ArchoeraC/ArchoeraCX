@@ -15,10 +15,12 @@ import '../../../stores/diagnostics.dart';
 import '../../../stores/instances.dart';
 import '../../../stores/preferences.dart';
 import '../../../stores/providers.dart';
+import '../../../theme/tokens.dart';
 import '../core_client.dart';
 import 'launch_memory.dart';
 import 'launch_post_actions.dart';
 import 'launch_result.dart';
+import 'welcome_back.dart';
 import '../../../widgets/common/toast.dart';
 
 /// Build and start a basic offline launch. UI code only calls this helper;
@@ -51,6 +53,14 @@ Future<void> launchInstance(
     toast(l10n.commonCoreNotConnected, type: ToastType.error);
     return;
   }
+
+  // Decide before `launch.start`: a successful start records a fresh timestamp,
+  // so checking afterwards would always hide the easter egg. The greeting itself
+  // waits until the process is running, so it can never delay the game.
+  final greetReturningPlayer = shouldShowWelcomeBack(
+    ref.read(instancesProvider).value ?? const <GameInstance>[],
+    now: DateTime.now(),
+  );
 
   // Snapshot the desktop launch switches before the first await: the widget
   // may be gone by the time the game starts, and the window actions below must
@@ -104,6 +114,13 @@ Future<void> launchInstance(
     // card immediately shows "played today" instead of the previous session.
     unawaited(instances.refresh());
 
+    // The game is already running; this only delays the launcher window
+    // actions below, never the gameplay. Hiding waits until the greeting is
+    // dismissed so the easter egg is not lost behind a hidden window.
+    if (greetReturningPlayer && context.mounted) {
+      await _showWelcomeBack(context, ref, l10n);
+    }
+
     // Window actions and exit diagnostics run after the success toast and never
     // extend the launch call. The crash watcher is always started: an abnormal
     // exit should be explained even when the user did not ask to quit.
@@ -148,6 +165,45 @@ Future<void> launchInstance(
     };
     toast(message, type: ToastType.error, duration: const Duration(seconds: 4));
   }
+}
+
+/// Shows the "welcome back" easter egg. Names a Microsoft account first, then
+/// falls back to the currently selected account.
+Future<void> _showWelcomeBack(
+  BuildContext context,
+  WidgetRef ref,
+  AppLocalizations l10n,
+) async {
+  final accounts = ref.read(accountsProvider).value ?? const <Account>[];
+  final current = ref.read(currentAccountProvider);
+  final name = welcomeBackAccountName(accounts, current: current);
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.welcomeBackTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.welcomeBackBody),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            name == null
+                ? l10n.welcomeBackGreetingAnonymous
+                : l10n.welcomeBackGreeting(name),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.welcomeBackContinue),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Waits for the game to exit, then asks C# to analyze the artifacts.
