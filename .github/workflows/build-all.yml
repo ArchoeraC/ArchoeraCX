@@ -354,7 +354,11 @@ jobs:
     needs: preflight
     if: needs.preflight.outputs.linux_rpm == 'true'
     runs-on: ubuntu-24.04
-    container: fedora:latest
+    # Pinned: Fedora 45 ships OpenSSL 4 (openssl-libs-4.0.x) and .NET 10's
+    # OpenSSL interop only probes libssl.so.3, so `dotnet publish` aborts with
+    # "No usable version of libssl was found". Fedora 43/44 still ship 3.5.x;
+    # building on 43 also keeps the rpm installable on newer releases.
+    container: fedora:43
     timeout-minutes: 90
     steps:
       - name: Install system dependencies

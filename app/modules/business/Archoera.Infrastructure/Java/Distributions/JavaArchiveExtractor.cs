@@ -357,7 +357,14 @@ internal static class JavaArchiveExtractor
 
         try
         {
-            File.CreateSymbolicLink(destination, linkTarget);
+            // NTFS stores the target verbatim and Win32 resolves it with path
+            // rules that reject '/', so a relative link written as
+            // "../java.base/LICENSE" opens with ERROR_INVALID_NAME. Unix keeps
+            // the archive's literal forward slashes.
+            var nativeTarget = OperatingSystem.IsWindows()
+                ? linkTarget.Replace('/', Path.DirectorySeparatorChar)
+                : linkTarget;
+            File.CreateSymbolicLink(destination, nativeTarget);
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or

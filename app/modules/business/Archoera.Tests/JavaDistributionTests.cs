@@ -202,14 +202,14 @@ public sealed partial class JavaDistributionTests
         var root = TempDirectory();
         try
         {
-            var tar = Path.Combine(root, "source.tar.gz");
-            WriteTarGz(
-                tar,
+            var source = Path.Combine(root, "source");
+            WriteJdkArchive(
+                source,
                 [
                     ("jdk-21/bin/java", "#!/bin/sh\n", true),
                     ("jdk-21/lib/modules", "modules", false),
                 ]);
-            var bytes = await File.ReadAllBytesAsync(tar);
+            var bytes = await File.ReadAllBytesAsync(source);
             var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             var provider = new FakeProvider(sha, bytes.LongLength);
             var registry = new JavaDistributionRegistry([provider]);
@@ -220,7 +220,9 @@ public sealed partial class JavaDistributionTests
             var result = await service.InstallAsync("fake", "v1", target, autoExtract: true, autoDelete: true, allowOutdated: false, acknowledgeCves: false, CancellationToken.None);
 
             Assert.Equal(target, result.Home);
-            Assert.Equal(Path.Combine(target, "bin", "java"), result.Executable);
+            Assert.Equal(
+                Path.Combine(target, "bin", HostJavaExecutableName),
+                result.Executable);
             Assert.True(File.Exists(result.Executable));
             Assert.Equal(bytes.LongLength, result.Bytes);
             Assert.DoesNotContain(
@@ -295,13 +297,13 @@ public sealed partial class JavaDistributionTests
         var root = TempDirectory();
         try
         {
-            var tar = Path.Combine(root, "source.tar.gz");
-            WriteTarGz(
-                tar,
+            var source = Path.Combine(root, "source");
+            WriteJdkArchive(
+                source,
                 [
                     ("jdk-21/bin/java", "#!/bin/sh\n", true),
                 ]);
-            var bytes = await File.ReadAllBytesAsync(tar);
+            var bytes = await File.ReadAllBytesAsync(source);
             var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             var registry = new JavaDistributionRegistry(
                 [new FakeProvider(sha, bytes.LongLength)]);
@@ -338,7 +340,10 @@ public sealed partial class JavaDistributionTests
                 acknowledgeCves: false,
                 CancellationToken.None);
             Assert.True(extracted.Extracted);
-            Assert.True(File.Exists(Path.Combine(extractTarget, "bin", "java")));
+            Assert.True(File.Exists(Path.Combine(
+                extractTarget,
+                "bin",
+                HostJavaExecutableName)));
             Assert.NotNull(extracted.Archive);
             Assert.True(File.Exists(extracted.Archive));
             Assert.NotEqual(downloadOnly.Archive, extracted.Archive);
@@ -355,9 +360,9 @@ public sealed partial class JavaDistributionTests
         var root = TempDirectory();
         try
         {
-            var tar = Path.Combine(root, "source.tar.gz");
-            WriteTarGz(tar, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
-            var bytes = await File.ReadAllBytesAsync(tar);
+            var source = Path.Combine(root, "source");
+            WriteJdkArchive(source, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
+            var bytes = await File.ReadAllBytesAsync(source);
             var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             var registry = new JavaDistributionRegistry(
                 [new FakeProvider(sha, bytes.LongLength, latestPatch: false)]);
@@ -522,6 +527,44 @@ public sealed partial class JavaDistributionTests
         finally
         {
             Delete(root);
+        }
+    }
+
+    /// <summary>
+    /// Target the installer resolves without an explicit platform: the host
+    /// triple. Fixtures must match it because the archive type selects the
+    /// extractor and the OS selects the executable name.
+    /// </summary>
+    private static JavaDistributionPlatform HostPlatform =>
+        JavaDistributionPlatform.Current();
+
+    private static string HostJavaExecutableName =>
+        HostPlatform.IsWindows ? "java.exe" : "java";
+
+    /// <summary>
+    /// Writes a JDK fixture in the host container format: Windows vendors ship
+    /// zip with <c>bin/java.exe</c>, Linux/macOS ship tar.gz with an executable
+    /// <c>bin/java</c>. Entry names use '/' and the executable placeholder is
+    /// <c>&lt;jdk&gt;/bin/java</c>.
+    /// </summary>
+    private static void WriteJdkArchive(
+        string path,
+        IReadOnlyList<(string Name, string Text, bool Exec)> files)
+    {
+        if (HostPlatform.ArchiveType != "zip")
+        {
+            WriteTarGz(path, files);
+            return;
+        }
+
+        using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach (var (name, text, _) in files)
+        {
+            var entryName = name.EndsWith("/bin/java", StringComparison.Ordinal)
+                ? name + ".exe"
+                : name;
+            using var writer = new StreamWriter(zip.CreateEntry(entryName).Open());
+            writer.Write(text);
         }
     }
 

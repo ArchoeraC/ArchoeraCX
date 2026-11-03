@@ -474,9 +474,9 @@ public sealed partial class JavaDistributionTests
         var root = TempDirectory();
         try
         {
-            var tar = Path.Combine(root, "source.tar.gz");
-            WriteTarGz(tar, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
-            var bytes = await File.ReadAllBytesAsync(tar);
+            var source = Path.Combine(root, "source");
+            WriteJdkArchive(source, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
+            var bytes = await File.ReadAllBytesAsync(source);
             var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             var registry = new JavaDistributionRegistry(
                 [new FakeProvider(sha, bytes.LongLength)]);
@@ -539,9 +539,9 @@ public sealed partial class JavaDistributionTests
         var root = TempDirectory();
         try
         {
-            var tar = Path.Combine(root, "source.tar.gz");
-            WriteTarGz(tar, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
-            var bytes = await File.ReadAllBytesAsync(tar);
+            var source = Path.Combine(root, "source");
+            WriteJdkArchive(source, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
+            var bytes = await File.ReadAllBytesAsync(source);
             var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             var registry = new JavaDistributionRegistry(
                 [new FakeProvider(sha, bytes.LongLength)]);
@@ -629,9 +629,9 @@ public sealed partial class JavaDistributionTests
         var root = TempDirectory();
         try
         {
-            var tar = Path.Combine(root, "source.tar.gz");
-            WriteTarGz(tar, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
-            var bytes = await File.ReadAllBytesAsync(tar);
+            var source = Path.Combine(root, "source");
+            WriteJdkArchive(source, [("jdk-21/bin/java", "#!/bin/sh\n", true)]);
+            var bytes = await File.ReadAllBytesAsync(source);
             var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             var registry = new JavaDistributionRegistry(
                 [new FakeProvider(sha, bytes.LongLength)]);
@@ -658,25 +658,36 @@ public sealed partial class JavaDistributionTests
                 cve);
             var module = new JavaModuleService(null, null, root, null, service);
             var target = Path.Combine(root, "module-ack");
+            // Windows paths carry backslashes; serialize instead of
+            // interpolating so the payload stays valid JSON.
+            var request = JsonSerializer.Serialize(new
+            {
+                provider = "fake",
+                versionId = "v1",
+                directory = target,
+            });
 
             var blocked = JsonDocument.Parse(
                 await module.HandleAsync(
                     "java.distributions.install",
-                    $$"""
-                    {"provider":"fake","versionId":"v1","directory":"{{target}}"}
-                    """,
+                    request,
                     CancellationToken.None)).RootElement;
             Assert.False(blocked.GetProperty("ok").GetBoolean());
             Assert.Equal(
                 "JAVA_CVE_UNACKNOWLEDGED",
                 blocked.GetProperty("error").GetProperty("code").GetString());
 
+            var acknowledgeRequest = JsonSerializer.Serialize(new
+            {
+                provider = "fake",
+                versionId = "v1",
+                directory = target,
+                acknowledgeCves = true,
+            });
             var installed = JsonDocument.Parse(
                 await module.HandleAsync(
                     "java.distributions.install",
-                    $$"""
-                    {"provider":"fake","versionId":"v1","directory":"{{target}}","acknowledgeCves":true}
-                    """,
+                    acknowledgeRequest,
                     CancellationToken.None)).RootElement;
             Assert.True(installed.GetProperty("ok").GetBoolean());
             Assert.Equal(
