@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Archoera.Application.Instances;
 using Archoera.Domain.Instances;
 using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Settings;
@@ -284,6 +285,7 @@ public sealed class InstanceDuplicateTests
                 .GetString()!;
             Assert.True(Directory.Exists(copyRoot));
             Assert.NotEqual(Path.GetFullPath(source.RootPath), Path.GetFullPath(copyRoot));
+            Assert.Equal("Same Name (2)", Path.GetFileName(copyRoot));
             Assert.True(Directory.Exists(source.RootPath));
             Assert.Equal(
                 "fov:80",
@@ -304,12 +306,10 @@ public sealed class InstanceDuplicateTests
         {
             var dataRoot = Path.Combine(directory, "data");
             var settings = new JsonAppSettingsStore(dataRoot);
-            var repository = new JsonInstanceRepository(dataRoot, settings);
+            var storage = new JsonInstanceRepository(dataRoot, settings);
             var instancesRoot = (await settings.LoadAsync()).Roots[0];
-            // The JSON repository does not de-duplicate roots, so a name with the
-            // same slug resolves back to the source directory.
             var sourceRoot = Path.Combine(instancesRoot, "versions", "self");
-            var source = await repository.CreateAsync(
+            var source = await storage.CreateAsync(
                 "Self",
                 "1.21.4",
                 "vanilla",
@@ -317,6 +317,9 @@ public sealed class InstanceDuplicateTests
                 sourceRoot);
             Write(sourceRoot, "options.txt", "fov:80");
 
+            // A custom/legacy repository can still resolve a new name onto an
+            // existing root; the duplicate handler must reject that overlap.
+            var repository = new PinnedRootInstances(source, sourceRoot);
             var service = new InstanceModuleService(repository, settings);
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
@@ -344,6 +347,40 @@ public sealed class InstanceDuplicateTests
                 await File.ReadAllTextAsync(
                     Path.Combine(sourceRoot, ".archoera", "instance.json")));
             Assert.Equal(source.Id, metadata.RootElement.GetProperty("id").GetString());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Json_repository_gives_duplicate_names_distinct_directories()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var settings = new JsonAppSettingsStore(dataRoot);
+            var repository = new JsonInstanceRepository(dataRoot, settings);
+
+            var first = await repository.CreateAsync(
+                "Same Name",
+                "1.21.4",
+                "vanilla",
+                string.Empty,
+                rootPath: null);
+            var second = await repository.CreateAsync(
+                "Same Name",
+                "1.21.4",
+                "vanilla",
+                string.Empty,
+                rootPath: null);
+
+            Assert.NotEqual(first.RootPath, second.RootPath);
+            Assert.Equal("Same Name (2)", Path.GetFileName(second.RootPath));
+            Assert.True(Directory.Exists(second.RootPath));
+            Assert.Equal(2, (await repository.ListAsync()).Count);
         }
         finally
         {
@@ -394,6 +431,72 @@ public sealed class InstanceDuplicateTests
         {
             Delete(directory);
         }
+    }
+
+    private sealed class PinnedRootInstances(
+        GameInstanceRecord source,
+        string pinnedRoot) : IInstanceRepository
+    {
+        private readonly List<GameInstanceRecord> _items = [source];
+        private int _created;
+
+        public Task<IReadOnlyList<GameInstanceRecord>> ListAsync(
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<GameInstanceRecord>>(_items.ToArray());
+
+        public Task<GameInstanceRecord> CreateAsync(
+            string name,
+            string gameVersion,
+            string loader,
+            string loaderVersion,
+            string? rootPath,
+            CancellationToken cancellationToken = default)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var record = source with
+            {
+                Id = $"inst-pinned-{_created++}",
+                Name = name,
+                GameVersion = gameVersion,
+                Loader = loader,
+                LoaderVersion = loaderVersion,
+                RootPath = pinnedRoot,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            _items.Add(record);
+            return Task.FromResult(record);
+        }
+
+        public Task<GameInstanceRecord?> UpdateAsync(
+            string id,
+            string? name,
+            bool? favorite,
+            DateTimeOffset? lastPlayedAt,
+            InstanceOverrides? overrides = null,
+            bool setOverrides = false,
+            string? loader = null,
+            string? loaderVersion = null,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<GameInstanceRecord?>(
+                _items.FirstOrDefault(item => item.Id == id));
+
+        public Task<bool> DeleteAsync(
+            string id,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(
+                _items.RemoveAll(item => string.Equals(item.Id, id, StringComparison.Ordinal)) > 0);
+
+        public Task<InstanceSyncReport> SyncAsync(
+            IReadOnlyList<string>? roots,
+            bool dryRun,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new InstanceSyncReport(
+                _items.ToArray(),
+                [],
+                [],
+                [],
+                []));
     }
 
     private static void AssertError(JsonDocument document, string messagePart)

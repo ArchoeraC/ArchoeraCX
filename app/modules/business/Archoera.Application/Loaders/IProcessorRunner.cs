@@ -31,4 +31,11 @@ public interface IProcessorRunner
         string workingDir,
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// True when <see cref="RunAsync"/> can produce this step's outputs without
+    /// a Java executable. The repair service uses it to keep installing when no
+    /// JRE is available and every remaining processor is native.
+    /// </summary>
+    bool CanRunWithoutJava(ProcessorStep step) => false;
 }

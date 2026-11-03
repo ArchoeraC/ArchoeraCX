@@ -61,6 +61,27 @@ public sealed class LoaderRepairTests
     }
 
     [Fact]
+    public async Task Repair_accepts_an_existing_output_directory_argument()
+    {
+        using var temp = new TempFixture(
+            "repair-directory-arg",
+            includeDirectoryArgument: true);
+        var fixture = temp.Loader;
+        var manifest = await fixture.PlanAsync();
+        fixture.WriteExtracted(manifest);
+        fixture.WriteGenerated(manifest, "MAPPINGS");
+
+        var runner = new FakeProcessorRunner(fixture);
+        var service = CreateService(fixture, runner);
+
+        var result = await service.RepairAsync(manifest, fixture.Root, fixture.FakeJavaPath);
+
+        Assert.True(result.Ok);
+        Assert.Equal([1], result.ProcessorsRun);
+        Assert.Equal([1], runner.Indices);
+    }
+
+    [Fact]
     public async Task Repair_regenerates_a_corrupt_existing_output()
     {
         using var temp = new TempFixture("repair-corrupt-output");
@@ -141,6 +162,26 @@ public sealed class LoaderRepairTests
         Assert.False(result.Ok);
         Assert.Contains(result.Details, detail => detail.Contains("does not exist", StringComparison.Ordinal));
         Assert.Empty(runner.Indices);
+    }
+
+    [Fact]
+    public async Task Repair_runs_native_processors_without_java()
+    {
+        using var temp = new TempFixture("repair-native-no-java");
+        var fixture = temp.Loader;
+        var manifest = await fixture.PlanAsync();
+        fixture.WriteExtracted(manifest);
+        fixture.WriteGenerated(manifest, "MAPPINGS");
+
+        var runner = new FakeProcessorRunner(fixture) { CanRunWithoutJavaResult = true };
+        var service = CreateService(fixture, runner);
+        var missingJava = Path.Combine(fixture.BaseDirectory, "missing-java");
+
+        var result = await service.RepairAsync(manifest, fixture.Root, missingJava);
+
+        Assert.True(result.Ok);
+        Assert.Equal(LoaderRepairStatus.Repaired, result.Status);
+        Assert.Equal([1], runner.Indices);
     }
 
     [Fact]

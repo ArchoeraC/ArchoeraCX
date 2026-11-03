@@ -15,6 +15,11 @@ public sealed class ModuleRegistryTests
 
             Assert.Contains("java.scan", registry.Methods);
             Assert.Contains("java.select", registry.Methods);
+            Assert.Contains("java.distributions", registry.Methods);
+            Assert.Contains("java.distributions.majors", registry.Methods);
+            Assert.Contains("java.distributions.versions", registry.Methods);
+            Assert.Contains("java.distributions.advisories", registry.Methods);
+            Assert.Contains("java.distributions.install", registry.Methods);
             Assert.Contains("loader.versions", registry.Methods);
             Assert.Contains("loader.verify", registry.Methods);
             Assert.Contains("loader.repair", registry.Methods);

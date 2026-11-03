@@ -736,31 +736,6 @@ html.intro-pending {
   transform: translateX(2px);
 }
 
-.hero__theme {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.hero__theme > .mono {
-  color: var(--text-3);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-}
-
-.hero__status {
-  margin: 14px 0 0;
-  color: var(--text-3);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-}
-
-.hero__status span {
-  margin: 0 5px;
-  color: var(--border-strong);
-}
-
 .hero__window-wrap {
   position: relative;
   z-index: 1;
@@ -887,39 +862,6 @@ html.intro-pending {
   color: var(--text-3);
   font-size: 9.5px;
   letter-spacing: 0.08em;
-}
-
-.theme-switch {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface-2);
-}
-
-.theme-switch button {
-  padding: 3px 9px;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 10.5px;
-  cursor: pointer;
-  transition:
-    background-color var(--fast) var(--ease),
-    color var(--fast) var(--ease);
-}
-
-.theme-switch button:hover {
-  background: var(--surface-3);
-  color: var(--text-1);
-}
-
-.theme-switch button[aria-pressed="true"] {
-  background: var(--accent-soft);
-  color: var(--link);
-  font-weight: 600;
 }
 
 /* ----------------------------------------------------------------- sections */
@@ -1461,7 +1403,8 @@ html.intro-pending {
   font-weight: 600;
 }
 
-.build__note a {
+.build__note a,
+.section--build .section__lead a {
   color: var(--build-text);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -2549,16 +2492,8 @@ html.intro-pending {
     font-size: 9px;
   }
 
-  .hero__status {
-    font-size: 9.5px;
-  }
-
   .ui-facts {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .theme-switch button {
-    padding: 3px 7px;
   }
 }
 

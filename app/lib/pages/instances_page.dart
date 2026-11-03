@@ -93,8 +93,8 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   /// dialog open while the pack downloads and unpacks.
   Future<void> _importPack(AppLocalizations l10n) async {
     const typeGroup = XTypeGroup(
-      label: 'Modrinth modpack',
-      extensions: <String>['mrpack'],
+      label: 'Modpack',
+      extensions: <String>['mrpack', 'zip'],
     );
     final file = await openFile(acceptedTypeGroups: const [typeGroup]);
     if (file == null || !mounted) return;
@@ -129,7 +129,15 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
             },
           );
       if (!mounted || inspection == null) return;
-      toast(l10n.downloadQueued(inspection.name), type: ToastType.success);
+      final queued = l10n.downloadQueued(inspection.name);
+      if (inspection.repaired) {
+        toast(
+          '${l10n.packRepaired(inspection.backupPath ?? '')}\n$queued',
+          type: ToastType.warning,
+        );
+      } else {
+        toast(queued, type: ToastType.success);
+      }
     } catch (error) {
       if (!mounted) return;
       toast('${l10n.packInstallFailed}\n$error', type: ToastType.error);

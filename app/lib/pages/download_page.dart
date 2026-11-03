@@ -5,6 +5,7 @@ import '../l10n/generated/app_localizations.dart';
 import '../services/core/downloads/build_policy.dart';
 import '../services/core/downloads/download_policy.dart';
 import '../stores/downloads.dart';
+import '../stores/platform_packs.dart';
 import '../stores/providers.dart';
 import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
@@ -12,8 +13,10 @@ import '../widgets/common/app_empty_state.dart';
 import '../widgets/common/app_page_header.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/download/download_queue_bar.dart';
+import '../widgets/download/platform_packs_panel.dart';
 import '../widgets/download/resource_search_panel.dart';
 import '../widgets/instances/create_instance_dialog.dart';
+import '../services/core/packs/platform_pack_models.dart';
 import '../services/core/versions/version_models.dart';
 
 /// Download hub.
@@ -69,8 +72,16 @@ class _DownloadPageState extends State<DownloadPage> {
                 onReload: () => ref.invalidate(downloadPolicyProvider),
               );
             }
+            final platformProviders =
+                ref.watch(platformPackProvidersProvider).value ??
+                const <PlatformPackProviderInfo>[];
+            final platformIds = platformProviders
+                .map((provider) => provider.id)
+                .toSet();
+            final platformOnly = platformIds.contains(_source);
             return DefaultTabController(
-              length: 5,
+              key: ValueKey('download-tabs-$_source'),
+              length: platformOnly ? 1 : 5,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -81,38 +92,46 @@ class _DownloadPageState extends State<DownloadPage> {
                   const SizedBox(height: AppSpacing.sm),
                   _SourceSelector(
                     selected: _source,
+                    platforms: platformProviders,
                     onSelected: (source) => setState(() => _source = source),
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  _CategoryTabs(l10n: l10n),
+                  _CategoryTabs(l10n: l10n, platformOnly: platformOnly),
                   const SizedBox(height: AppSpacing.sm),
                   Expanded(
                     child: TabBarView(
-                      children: [
-                        const _VersionsPanel(),
-                        ResourceSearchPanel(
-                          kind: 'mod',
-                          title: l10n.tabMods,
-                          icon: AppIcons.mod,
-                          global: true,
-                        ),
-                        ResourceSearchPanel(
-                          kind: 'modpack',
-                          title: l10n.tabPacks,
-                          icon: AppIcons.modpack,
-                          global: true,
-                        ),
-                        ResourceSearchPanel(
-                          kind: 'resourcepack',
-                          title: l10n.tabResourcePacks,
-                          icon: AppIcons.resourcePack,
-                        ),
-                        ResourceSearchPanel(
-                          kind: 'shader',
-                          title: l10n.tabShaders,
-                          icon: AppIcons.shader,
-                        ),
-                      ],
+                      children: platformOnly
+                          ? [
+                              PlatformPacksPanel(
+                                key: ValueKey('platform-packs-$_source'),
+                                provider: _source,
+                              ),
+                            ]
+                          : [
+                              const _VersionsPanel(),
+                              ResourceSearchPanel(
+                                kind: 'mod',
+                                title: l10n.tabMods,
+                                icon: AppIcons.mod,
+                                global: true,
+                              ),
+                              ResourceSearchPanel(
+                                kind: 'modpack',
+                                title: l10n.tabPacks,
+                                icon: AppIcons.modpack,
+                                global: true,
+                              ),
+                              ResourceSearchPanel(
+                                kind: 'resourcepack',
+                                title: l10n.tabResourcePacks,
+                                icon: AppIcons.resourcePack,
+                              ),
+                              ResourceSearchPanel(
+                                kind: 'shader',
+                                title: l10n.tabShaders,
+                                icon: AppIcons.shader,
+                              ),
+                            ],
                     ),
                   ),
                   const DownloadQueueBar(),
@@ -193,9 +212,14 @@ class _DownloadUnavailable extends StatelessWidget {
 /// Provider row. Rendered as a compact toolbar so it never competes with the
 /// category tabs underneath it.
 class _SourceSelector extends StatelessWidget {
-  const _SourceSelector({required this.selected, required this.onSelected});
+  const _SourceSelector({
+    required this.selected,
+    required this.platforms,
+    required this.onSelected,
+  });
 
   final String selected;
+  final List<PlatformPackProviderInfo> platforms;
   final ValueChanged<String> onSelected;
 
   @override
@@ -232,6 +256,18 @@ class _SourceSelector extends StatelessWidget {
             selected: selected == 'curseforge',
             tooltip: l10n.sourceCurseForgePending,
           ),
+          Container(
+            width: 1,
+            height: 18,
+            color: tokens.border,
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+          ),
+          for (final provider in platforms)
+            _SourceChip(
+              label: provider.name,
+              selected: selected == provider.id,
+              onSelected: () => onSelected(provider.id),
+            ),
         ],
       ),
     );
@@ -248,8 +284,6 @@ class _SourceChip extends StatelessWidget {
 
   final String label;
   final bool selected;
-
-  /// `null` renders the chip as unavailable.
   final VoidCallback? onSelected;
   final String? tooltip;
 
@@ -268,7 +302,7 @@ class _SourceChip extends StatelessWidget {
           duration: tokens.fast,
           curve: tokens.curve,
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
+            horizontal: AppSpacing.xs,
             vertical: AppSpacing.xs,
           ),
           decoration: BoxDecoration(
@@ -295,7 +329,7 @@ class _SourceChip extends StatelessWidget {
                   color: selected
                       ? tokens.accent
                       : (enabled ? tokens.textSecondary : tokens.textTertiary),
-                  fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -316,9 +350,10 @@ class _SourceChip extends StatelessWidget {
 /// Underline tabs on the page background: visually a separate level from the
 /// provider toolbar above.
 class _CategoryTabs extends StatelessWidget {
-  const _CategoryTabs({required this.l10n});
+  const _CategoryTabs({required this.l10n, required this.platformOnly});
 
   final AppLocalizations l10n;
+  final bool platformOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -341,13 +376,15 @@ class _CategoryTabs extends StatelessWidget {
       unselectedLabelStyle: textTheme.labelLarge,
       labelPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
       overlayColor: WidgetStatePropertyAll(tokens.accentSoft),
-      tabs: [
-        Tab(text: l10n.tabVersions),
-        Tab(text: l10n.tabMods),
-        Tab(text: l10n.tabPacks),
-        Tab(text: l10n.tabResourcePacks),
-        Tab(text: l10n.tabShaders),
-      ],
+      tabs: platformOnly
+          ? [Tab(text: l10n.tabPacks)]
+          : [
+              Tab(text: l10n.tabVersions),
+              Tab(text: l10n.tabMods),
+              Tab(text: l10n.tabPacks),
+              Tab(text: l10n.tabResourcePacks),
+              Tab(text: l10n.tabShaders),
+            ],
     );
   }
 }

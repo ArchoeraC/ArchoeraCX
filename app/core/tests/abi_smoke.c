@@ -174,6 +174,33 @@ int main(void) {
   CHECK(strstr(json, "\"hybrid\":") != NULL);
   archoera_release(core, gpu_task);
 
+  /* system.elevation reports superuser rights from the native probe. The value
+   * depends on the host (CI containers often run as root), so only the stable
+   * payload shape is asserted here. */
+  {
+    uint64_t elevation_task = 0;
+    CHECK(archoera_call(core, "system.elevation", "{}", &elevation_task,
+                        &err) == ARCHOERA_OK);
+    CHECK(elevation_task != 0);
+    count = archoera_poll(core, events, 64);
+    CHECK(count == 1);
+    CHECK(events[0].task_id == elevation_task);
+    CHECK(events[0].state == ARCHOERA_TASK_COMPLETED);
+
+    free(json);
+    json = NULL;
+    len = 0;
+    CHECK(archoera_result(core, elevation_task, NULL, 0, &len, &err) ==
+          ARCHOERA_OK);
+    json = (char*)malloc(len);
+    CHECK(json != NULL);
+    CHECK(archoera_result(core, elevation_task, json, len, &len, &err) ==
+          ARCHOERA_OK);
+    CHECK(strstr(json, "\"elevated\":") != NULL);
+    CHECK(strstr(json, "\"kind\":") != NULL);
+    archoera_release(core, elevation_task);
+  }
+
   /* system.appearance is a core-owned, synchronous method. A native watcher
    * may also enqueue domain events at any time, so scan by task id. */
   CHECK(archoera_call(core, "system.appearance", "{}", &appearance_task,

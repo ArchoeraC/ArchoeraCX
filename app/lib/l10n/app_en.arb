@@ -65,9 +65,18 @@
   "@packBlockedBody": {
     "description": "Explains why a destructive modpack was rejected; no blame on the user."
   },
-  "packInspectFailed": "This file is not a valid Modrinth modpack.",
+  "packInspectFailed": "This file is not a supported modpack.",
   "@packInspectFailed": {
     "description": "shown when a local .mrpack cannot be parsed."
+  },
+  "packRepaired": "The pack used Windows path separators, so the launcher saved a backup to {path} and repaired the archive.",
+  "@packRepaired": {
+    "description": "Toast shown when a local .mrpack was automatically repaired before install.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
   },
   "packLoaderUnsupported": "This pack loader is not supported. Supported loaders: vanilla, Fabric, Quilt, Forge and NeoForge.",
   "packJavaMissing": "This pack needs a Java runtime for its loader processors. Install or select a matching Java in Settings first.",
@@ -84,6 +93,17 @@
   "instanceCreateTitle": "Create instance",
   "instanceNameLabel": "Name",
   "instanceNameHint": "e.g. 1.21.4 · Fabric",
+  "instanceNameTooLong": "Name must be {max} characters or fewer.",
+  "@instanceNameTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "instanceNameInvalidCharacters": "Name cannot contain \\ / : * ? \" < > | or control characters.",
+  "instanceNameInvalidEdges": "Name cannot start or end with a dot.",
+  "instanceNameReserved": "Name is a reserved Windows device name. Choose another name.",
   "instanceGameVersionLabel": "Game version",
   "instanceLocationLabel": "Instance folder",
   "instanceChooseLocation": "Choose folder",
@@ -340,12 +360,40 @@
   "loaderInstallDone": "Loader files downloaded, version JSON written, and processors completed.",
   "loaderInstallPickInstaller": "Choose a Forge/NeoForge installer jar first.",
   "loaderInstallFailed": "Loader install failed.",
+  "loaderJavaRequired": "{loader} requires Java to install: some processors are not implemented natively yet. Install or select a Java runtime in Java settings first.",
+  "@loaderJavaRequired": {
+    "description": "Explicit warning shown when a loader install needs a JVM but none is available.",
+    "placeholders": {
+      "loader": {
+        "type": "String"
+      }
+    }
+  },
   "loaderShareFiles": "Share loader files",
   "@loaderShareFiles": {
     "description": "Checkbox in the Forge/NeoForge install dialog; overrides the global preference for this install only."
   },
   "loaderShareFilesHint": "Reuses one libraries copy in the game folder for every instance of this loader build; the merged launch profile always stays in this instance. Untick to keep the libraries inside this instance.",
   "@loaderShareFilesHint": {},
+  "loaderPureJava": "Use the official installer (pure Java)",
+  "@loaderPureJava": {
+    "description": "Checkbox in the Forge/NeoForge install dialog, on by default; the vendor installer performs the client install."
+  },
+  "loaderPureJavaHint": "The Forge/NeoForge installer handles downloads and processors; works with 1.12.2 and newer installers.",
+  "@loaderPureJavaHint": {},
+  "loaderInstallMode": "Install method",
+  "@loaderInstallMode": {
+    "description": "Group label above the two loader install modes."
+  },
+  "loaderStandardJava": "Standard Java flow (launcher-native)",
+  "@loaderStandardJava": {
+    "description": "The launcher builds the plan, downloads files and runs covered processors natively; uncovered steps use Java."
+  },
+  "loaderStandardJavaHint": "The launcher builds the plan and runs covered processors natively; steps that still need Java use the selected runtime. Choose this for 1.7.10 and older installers.",
+  "loaderJavaInstallUnsupported": "This installer has no client CLI (Forge 1.7.10 and older), so pure Java mode cannot drive it. Choose \"Standard Java flow (launcher-native)\" instead.",
+  "@loaderJavaInstallUnsupported": {
+    "description": "Shown when pure Java mode meets an installer without --installClient."
+  },
   "searchDownload": "Search resources",
   "downloadSearchAction": "Search",
   "downloadSearchEmpty": "No compatible projects found.",
@@ -613,6 +661,12 @@
     "description": "Global default for the Forge/NeoForge install dialog checkbox."
   },
   "@settingsShareLoaderFilesDesc": {},
+  "settingsPreferPureJavaLoaderInstall": "Prefer the official installer (pure Java)",
+  "settingsPreferPureJavaLoaderInstallDesc": "The loader install dialog starts with \"Use the official installer (pure Java)\" selected; each install can still switch to the standard Java flow. Installers without a client CLI (Forge 1.7.10 and older) fall back automatically.",
+  "@settingsPreferPureJavaLoaderInstall": {
+    "description": "Global default for the loader install mode."
+  },
+  "@settingsPreferPureJavaLoaderInstallDesc": {},
   "settingsSectionGameArgs": "Extra game arguments",
   "settingsGameArgsNote": "Appended after the vanilla arguments and split on spaces; leave empty for none.",
   "settingsSectionCommands": "Commands",
@@ -978,42 +1032,151 @@
   },
   "javaStatusScan": "Scan Java",
   "javaInstallAction": "Install Java",
-  "javaInstallTitle": "Install a Java runtime",
-  "javaInstallHint": "Downloads the runtime from Mojang's official catalog and rescans when it finishes; the transfer runs in the background.",
+  "javaInstallPageSubtitle": "Choose a JDK distribution, version and install location.",
+  "javaInstallProviderLabel": "Distribution",
+  "javaInstallMajorLabel": "Java version",
+  "javaInstallVersionsLabel": "Available builds",
+  "javaInstallSecurityHint": "Only the latest patch of each major is recommended; historical builds may contain known CVEs.",
+  "javaInstallOutdated": "Historical",
+  "javaInstallOutdatedSelected": "This build is not the latest patch and may contain known CVEs.",
+  "javaInstallAllowOutdated": "Allow historical builds",
+  "javaInstallAllowOutdatedHint": "Only enable when you need this exact build.",
+  "javaInstallCveTitle": "Security advisories",
+  "javaInstallCveChecking": "Checking NVD/OSV for known CVEs…",
+  "javaInstallCveNone": "No known CVEs affect this build.",
+  "javaInstallCveUnavailable": "CVE data is unavailable; this build was not checked.",
+  "javaInstallCveCount": "{count, plural, =1{1 known CVE affects this build.} other{{count} known CVEs affect this build.}}",
+  "@javaInstallCveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "javaInstallCveAcknowledge": "I understand this build has known CVEs",
+  "javaInstallCveAcknowledgeHint": "Install stays disabled until you acknowledge the advisories.",
+  "javaInstallCveScore": "CVSS {score}",
+  "@javaInstallCveScore": {
+    "placeholders": {
+      "score": {
+        "type": "String"
+      }
+    }
+  },
+  "javaInstallCveOpen": "Open advisory",
+  "javaInstallLatestOnly": "This vendor publishes only the latest build of each major.",
+  "javaInstallPlatform": "{os} · {arch} · {archive}",
+  "@javaInstallPlatform": {
+    "description": "Target triple shown above the build list.",
+    "placeholders": {
+      "os": {
+        "type": "String"
+      },
+      "arch": {
+        "type": "String"
+      },
+      "archive": {
+        "type": "String"
+      }
+    }
+  },
+  "javaInstallTargetPlatform": "Target platform",
+  "javaInstallCurrentDevice": "Current device: {os} · {arch}",
+  "@javaInstallCurrentDevice": {
+    "placeholders": {
+      "os": {"type": "String"},
+      "arch": {"type": "String"}
+    }
+  },
+  "javaInstallPlatformBadge": "Incompatible",
+  "javaInstallPlatformIncompatible": "This JDK targets a different platform and cannot run on this device.",
+  "javaInstallPlatformIncompatibleHint": "You can still download and keep it for another machine.",
+  "javaInstallRiskTitle": "Confirm installation risk",
+  "javaInstallRiskPlatform": "Target platform {targetOs} · {targetArch} does not match this device ({hostOs} · {hostArch}). The installed JDK cannot run here.",
+  "@javaInstallRiskPlatform": {
+    "placeholders": {
+      "targetOs": {"type": "String"},
+      "targetArch": {"type": "String"},
+      "hostOs": {"type": "String"},
+      "hostArch": {"type": "String"}
+    }
+  },
+  "javaInstallRiskCve": "{count} known CVE(s) affect this build:\n{ids}",
+  "@javaInstallRiskCve": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "ids": {"type": "String"}
+    }
+  },
+  "javaInstallRiskAction": "Install anyway",
+  "javaInstallForeignResult": "Downloaded for {os} · {arch}; it cannot run on this device.",
+  "@javaInstallForeignResult": {
+    "placeholders": {
+      "os": {"type": "String"},
+      "arch": {"type": "String"}
+    }
+  },
+  "javaInstallIncompatibleUse": "This JDK targets another platform and cannot be selected on this device.",
   "javaInstallRecommended": "Recommended",
-  "javaInstallQueued": "Java {major} queued for download.",
-  "@javaInstallQueued": {
-    "description": "Toast after starting a Java runtime install.",
+  "javaInstallLts": "LTS",
+  "javaInstallArchiveMeta": "{archive} · {size}",
+  "@javaInstallArchiveMeta": {
+    "description": "Archive type and download size on one build row.",
     "placeholders": {
-      "major": {
-        "type": "int"
+      "archive": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
       }
     }
   },
-  "javaInstallDone": "Java {major} installed.",
-  "@javaInstallDone": {
-    "description": "Toast when the Java runtime download finishes.",
+  "javaInstallLoadFailed": "Could not load the JDK catalogue.",
+  "javaInstallFailed": "Installation failed.",
+  "javaInstallMajorsFailed": "Could not load Java versions.",
+  "javaInstallVersionsFailed": "Could not load builds.",
+  "javaInstallEmptyVersions": "No builds are available for this OS.",
+  "javaInstallEmptyVersionsHint": "Try another distribution or Java version.",
+  "javaInstallDirectory": "Install directory",
+  "javaInstallDirectoryHint": "The JDK is written directly into this folder. It must be empty or not exist yet.",
+  "javaInstallDefaultDirectory": "Default location",
+  "javaInstallCustomDirectory": "Custom location",
+  "javaInstallChooseDirectory": "Choose folder",
+  "javaInstallUseDefault": "Use default",
+  "javaInstallStart": "Install JDK",
+  "javaInstallDownloadOnlyAction": "Download archive",
+  "javaInstallInstalling": "Installing…",
+  "javaInstallDownloading": "Downloading the JDK archive…",
+  "javaInstallExtracting": "Extracting the verified archive…",
+  "javaInstallCancelling": "Cancelling…",
+  "javaInstallCancelled": "Installation cancelled.",
+  "javaInstallSuccess": "Java {version} installed.",
+  "@javaInstallSuccess": {
+    "description": "Result banner after a JDK archive was installed.",
     "placeholders": {
-      "major": {
-        "type": "int"
+      "version": {
+        "type": "String"
       }
     }
   },
-  "javaInstallFailed": "Java {major} installation failed.",
-  "@javaInstallFailed": {
-    "description": "Toast when the Java runtime download fails.",
+  "javaInstallUseRuntime": "Use this Java",
+  "javaInstallBackToJava": "Back to Java",
+  "javaInstallSelected": "Java runtime selected.",
+  "javaInstallDirectoryRequired": "Choose an install directory first.",
+  "javaInstallVersionRequired": "Choose a build first.",
+  "javaInstallProvidersEmpty": "No JDK vendors are registered.",
+  "javaInstallExtractOptions": "Archive handling",
+  "javaInstallAutoExtract": "Extract automatically",
+  "javaInstallAutoExtractHint": "Extract into the install directory; when off, only the archive is downloaded next to it.",
+  "javaInstallAutoDelete": "Delete the archive after extraction",
+  "javaInstallAutoDeleteHint": "When off, the tar.gz/zip is kept next to the install directory.",
+  "javaInstallArchiveOnly": "Archive downloaded, not extracted.",
+  "javaInstallArchiveKept": "Archive kept: {path}",
+  "@javaInstallArchiveKept": {
+    "description": "Shown when the downloaded JDK archive was retained.",
     "placeholders": {
-      "major": {
-        "type": "int"
-      }
-    }
-  },
-  "javaInstallCancelled": "Java {major} installation cancelled.",
-  "@javaInstallCancelled": {
-    "description": "Toast when the Java runtime download is cancelled.",
-    "placeholders": {
-      "major": {
-        "type": "int"
+      "path": {
+        "type": "String"
       }
     }
   },
@@ -1146,7 +1309,7 @@
   "accountRemove": "Remove account",
   "accountRemoveConfirm": "Remove “{name}”? The game files are not deleted.",
   "accountRefresh": "Refresh session",
-  "accountNoAccounts": "No accounts yet. Add a Microsoft or offline account to launch the game.",
+  "accountNoAccounts": "No accounts yet. Add a Microsoft or other account to launch the game.",
   "accountLoginFailed": "Sign-in failed: {message}",
   "accountWaitingAuthorization": "Waiting for authorization",
   "accountSignIn": "Sign in",
@@ -1237,7 +1400,7 @@
   "@accountMicrosoft": {
     "description": "Microsoft account type."
   },
-  "accountAuthlib": "Authlib",
+  "accountAuthlib": "Third-party",
   "@accountAuthlib": {
     "description": "Authlib account type."
   },
@@ -2523,5 +2686,175 @@
         "type": "String"
       }
     }
-  }
+  },
+  "crashDialogTitle": "The game exited unexpectedly",
+  "@crashDialogTitle": {
+    "description": "Title of the automatic crash diagnosis dialog."
+  },
+  "crashDialogExitCode": "Exit code: {code}",
+  "@crashDialogExitCode": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "crashDialogNoDetails": "No specific cause matched. Open the launch log for the last error lines.",
+  "@crashDialogNoDetails": {
+    "description": "Shown when the analyzer has no rule-specific finding."
+  },
+  "crashDialogShareHint": "If you need help from others, share the error log — not a photo or screenshot of this window.",
+  "@crashDialogShareHint": {
+    "description": "Classic launcher reminder in the crash dialog: ask for help with the log, not a screenshot."
+  },
+  "crashDialogForceStopHint": "If you terminated the game yourself, you can ignore this message.",
+  "@crashDialogForceStopHint": {
+    "description": "Shown when the exit code is a POSIX signal (for example 137 = SIGKILL); force-stopping the game also lands in this dialog."
+  },
+  "crashDialogEvidence": "Evidence",
+  "@crashDialogEvidence": {
+    "description": "Expandable list of redacted log lines."
+  },
+  "crashDialogCopy": "Copy diagnosis",
+  "crashDialogCopied": "Diagnosis copied.",
+  "crashDialogClose": "Close",
+  "crashRuleJavaTooOldTitle": "Java version is too old",
+  "crashRuleJavaTooOldDetail": "The game needs Java {needed}, but this launch used Java {current}.",
+  "@crashRuleJavaTooOldDetail": {
+    "placeholders": {
+      "needed": { "type": "String" },
+      "current": { "type": "String" }
+    }
+  },
+  "crashRuleJavaTooOldFix": "Select Java {needed} or newer for this instance in Settings → Java.",
+  "@crashRuleJavaTooOldFix": {
+    "placeholders": {
+      "needed": { "type": "String" }
+    }
+  },
+  "crashRuleJavaTooNewTitle": "Java version is too new",
+  "crashRuleJavaTooNewDetail": "This old loader does not support the selected Java runtime.",
+  "crashRuleJavaTooNewFix": "Use Java 8 for 1.12.2/1.16.5, Java 17 for 1.18–1.20.4, and Java 21 for newer versions.",
+  "crashRuleHeapTitle": "Java memory is insufficient",
+  "crashRuleHeapDetail": "The JVM could not reserve the configured heap or ran out of heap space.",
+  "crashRuleHeapFix": "Close other programs, adjust the allocated memory, and make sure the selected Java is 64-bit.",
+  "crashRuleMixinTitle": "Mixin injection failed",
+  "crashRuleMixinDetail": "Mixin {config} failed to apply. This usually means the mod does not match this Minecraft or loader version.",
+  "@crashRuleMixinDetail": {
+    "placeholders": {
+      "config": { "type": "String" }
+    }
+  },
+  "crashRuleMixinFix": "Update or remove the mod that owns this mixin; disable recently added mods to narrow it down.",
+  "crashRuleDependencyTitle": "Missing mod dependency",
+  "crashRuleDependencyDetail": "A mod requires another mod that is not installed or has an incompatible version.",
+  "crashRuleDependencyFix": "Install the missing dependency version that matches this Minecraft and loader version.",
+  "crashRuleMainClassTitle": "Game or loader installation is incomplete",
+  "crashRuleMainClassDetail": "The main class {cls} could not be loaded.",
+  "@crashRuleMainClassDetail": {
+    "placeholders": {
+      "cls": { "type": "String" }
+    }
+  },
+  "crashRuleMainClassFix": "Reinstall the loader or run loader repair, then try again.",
+  "crashRuleGraphicsTitle": "Graphics/OpenGL initialization failed",
+  "crashRuleGraphicsDetail": "The game could not create an OpenGL window.",
+  "crashRuleGraphicsFix": "Update the graphics driver, run on the dedicated GPU, and avoid remote desktop or virtual machines.",
+  "crashRuleModTitle": "A mod failed to start",
+  "crashRuleModDetail": "Mod {mod} threw an error during the {stage} stage.",
+  "@crashRuleModDetail": {
+    "placeholders": {
+      "mod": { "type": "String" },
+      "stage": { "type": "String" }
+    }
+  },
+  "crashRuleModFix": "Update or remove this mod; attach the crash report when reporting it to the author.",
+  "crashRuleFileLockedTitle": "A game file is locked or not writable",
+  "crashRuleFileLockedDetail": "A file was in use by another process or permission was denied.",
+  "crashRuleFileLockedFix": "Close other launchers or instances, move the game out of OneDrive, and check folder permissions.",
+  "crashRuleDriverTitle": "Graphics driver crashed",
+  "crashRuleDriverDetail": "The JVM crashed inside {lib}.",
+  "@crashRuleDriverDetail": {
+    "placeholders": {
+      "lib": { "type": "String" }
+    }
+  },
+  "crashRuleDriverFix": "Clean-install the graphics driver and disable overlays such as RTSS, Discord or Steam.",
+  "crashRuleNativeTitle": "Native JVM crash",
+  "crashRuleNativeDetail": "The JVM crashed in native code: {frame}.",
+  "@crashRuleNativeDetail": {
+    "placeholders": {
+      "frame": { "type": "String" }
+    }
+  },
+  "crashRuleNativeFix": "Check the hs_err log, remove native mods or agents, and verify the Java runtime.",
+  "crashRuleReportTitle": "The game reported a crash",
+  "crashRuleReportDetail": "Crash report description: {description}",
+  "@crashRuleReportDetail": {
+    "placeholders": {
+      "description": { "type": "String" }
+    }
+  },
+  "crashRuleReportFix": "Check the crash report and mod list; disable recently added mods.",
+  "crashRuleUnknownTitle": "The game exited unexpectedly",
+  "crashRuleUnknownDetail": "No known signature matched the exit code {code}.",
+  "@crashRuleUnknownDetail": {
+    "placeholders": {
+      "code": { "type": "String" }
+    }
+  },
+  "crashRuleUnknownFix": "Open the launch log and crash report for the last error lines.",
+  "accountAddAuthlib": "Third-party sign-in",
+  "accountAuthlibDesc": "Sign in through a Yggdrasil server such as LittleSkin.",
+  "accountAuthTitle": "Third-party sign-in",
+  "accountAuthServerPreset": "Server",
+  "accountAuthCustomServer": "Custom server",
+  "accountAuthServerUrl": "Yggdrasil API URL",
+  "accountAuthTermsUrl": "Terms URL",
+  "accountAuthTermsTitle": "Third-party terms",
+  "accountAuthTermsBody": "You are about to sign in to {server}. Read and accept that server's terms and privacy policy before the launcher downloads authlib-injector or sends credentials.",
+  "@accountAuthTermsBody": {
+    "placeholders": {
+      "server": { "type": "String" }
+    }
+  },
+  "accountAuthOpenTerms": "Open terms",
+  "accountAuthOpenTermsFirst": "Open the terms before accepting.",
+  "accountAuthAcceptTerms": "I have read and accept the server's terms and privacy policy",
+  "accountAuthUsername": "Email or username",
+  "accountAuthPassword": "Password",
+  "accountAuthLogin": "Sign in",
+  "accountAuthImportLink": "Import from authlib link",
+  "accountAuthImportFailed": "The clipboard does not contain an authlib server link.",
+  "platformSearchHint": "Search packs",
+  "platformLoadFailed": "Could not load packs.",
+  "platformEmpty": "No packs found.",
+  "platformEmptyHint": "Try another keyword, or switch the platform.",
+  "platformVersionsEmpty": "No installable versions.",
+  "platformInstall": "Install",
+  "platformInstallUnsupported": "This platform pack format is not supported by the installer.",
+  "platformInstallMetadataFailed": "The platform returned incomplete pack metadata. Try again later or pick another version.",
+  "platformInstallNetworkFailed": "Could not reach the platform or its download host. Try again, or use another pack/source.",
+  "platformDirectArchiveTitle": "Install without a published hash?",
+  "platformDirectArchiveWarning": "This platform publishes only a direct zip and no MD5/SHA digest. The installer will use HTTPS, validate every ZIP entry's CRC, and record the downloaded SHA-256. Continue?",
+  "platformDirectArchiveConfirm": "Continue install",
+  "platformDirectArchiveBadge": "direct zip · no official hash",
+  "accountAuthTermsRequired": "Accept the third-party terms first.",
+  "accountAuthServerInvalid": "Enter a valid https server URL.",
+  "accountAuthInvalidCredentials": "The server rejected the username or password.",
+  "accountAuthNoProfile": "This account has no Minecraft profile on the server.",
+  "accountAuthNetwork": "Cannot reach the auth server.",
+  "accountAuthDownloadFailed": "Could not download authlib-injector. Try again.",
+  "accountAuthTermsOpenFailed": "Could not open the terms page.",
+  "elevationTitle": "I know what you're trying to do",
+  "elevationBody": "ArchoeraCX detected that this process is running as {kind}. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.",
+  "@elevationBody": {
+    "placeholders": {
+      "kind": { "type": "String" }
+    }
+  },
+  "elevationContinue": "I know what I'm doing",
+  "elevationExit": "Exit",
+  "elevationKindRoot": "root",
+  "elevationKindAdministrator": "administrator"
 }

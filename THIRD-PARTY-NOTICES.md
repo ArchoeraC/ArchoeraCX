@@ -129,6 +129,8 @@ Versions are locked by `app/pubspec.lock`. The Flutter SDK and Dart SDK are BSD-
 | SQLitePCLRaw.provider.e_sqlite3 | 2.1.12 | Apache-2.0 | Bundled native provider (all platforms) |
 | SQLitePCLRaw.lib.e_sqlite3 | 2.1.12 | Apache-2.0 | https://www.nuget.org/packages/SQLitePCLRaw.lib.e_sqlite3 |
 | SQLite (e_sqlite3) | bundled (SQLitePCLRaw 2.1.12) | Public domain | https://www.sqlite.org/copyright.html |
+| Faithlife.Lzma | 19.0.0 | MIT | LZMA SDK decoder; https://github.com/Faithlife/FaithlifeLzma |
+| Zlib.Portable | 1.11.0 | Zlib | Managed zlib port; non-Linux deflate fallback |
 | .NET runtime and NativeAOT | 10.0.x | MIT | https://github.com/dotnet/runtime |
 
 ## 4. Rust crates (runtime closure)

@@ -31,6 +31,7 @@ std::string make_state_json(std::string_view method,
 std::string make_info_result();
 std::string make_modules_result(const archoera_core& core);
 std::string make_gpu_result();
+std::string make_elevation_result();
 std::string make_action_result(const char* field, bool value);
 std::string make_open_path_result(const std::string& path, bool opened);
 std::string make_appearance_data(const SystemAppearance& state);
@@ -64,5 +65,11 @@ archoera_status handle_system_gpu(archoera_core& core,
                                   std::string& result,
                                   uint64_t* out_task_id,
                                   archoera_error* err);
+archoera_status handle_system_elevation(archoera_core& core,
+                                        const MethodRoute& route,
+                                        std::string_view params,
+                                        std::string& result,
+                                        uint64_t* out_task_id,
+                                        archoera_error* err);
 
 }  // namespace archoera

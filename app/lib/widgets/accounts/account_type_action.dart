@@ -79,11 +79,7 @@ class AccountTypeAction extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              Icon(
-                AppIcons.chevronRight,
-                size: 18,
-                color: tokens.textTertiary,
-              ),
+              Icon(AppIcons.chevronRight, size: 18, color: tokens.textTertiary),
             ],
           ),
         ),

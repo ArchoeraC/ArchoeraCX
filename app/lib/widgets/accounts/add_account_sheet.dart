@@ -11,15 +11,19 @@ class AddAccountSheet extends StatelessWidget {
     super.key,
     required this.onMicrosoft,
     required this.onOffline,
+    required this.onAuthlib,
     this.offlineHint,
     this.showOffline = true,
+    this.showAuthlib = true,
     this.subtitle,
   });
 
   final VoidCallback onMicrosoft;
   final VoidCallback onOffline;
+  final VoidCallback onAuthlib;
   final String? offlineHint;
   final bool showOffline;
+  final bool showAuthlib;
   final String? subtitle;
 
   @override
@@ -77,6 +81,16 @@ class AddAccountSheet extends StatelessWidget {
                   subtitle: offlineHint ?? l10n.accountOfflineDesc,
                   color: tokens.accent,
                   onTap: onOffline,
+                ),
+              ],
+              if (showAuthlib) ...[
+                Divider(height: 1, color: tokens.border),
+                AccountTypeAction(
+                  icon: AppIcons.accounts,
+                  title: l10n.accountAddAuthlib,
+                  subtitle: l10n.accountAuthlibDesc,
+                  color: tokens.warning,
+                  onTap: onAuthlib,
                 ),
               ],
               Divider(height: 1, color: tokens.border),

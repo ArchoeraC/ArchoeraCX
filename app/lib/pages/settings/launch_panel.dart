@@ -175,8 +175,18 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     }
   }
 
-  Future<void> _setGameOptimization(bool enabled) async {
+  Future<void> _setPreferPureJavaLoaderInstall(bool enabled) async {
     try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(preferPureJavaLoaderInstall: enabled);
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
+  }
+
+  Future<void> _setGameOptimization(bool enabled) async {    try {
       await ref
           .read(appSettingsProvider.notifier)
           .setRuntimeOptions(gameOptimization: enabled);
@@ -192,6 +202,8 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     final tokens = context.tokens;
     final settings = widget.settings;
     final shareLoaderFiles = settings?.shareLoaderFiles ?? true;
+    final preferPureJavaLoaderInstall =
+        settings?.preferPureJavaLoaderInstall ?? true;
     final gameOptimization = settings?.gameOptimization ?? true;
     final desktop = ref.watch(desktopPlatformProvider);
     final prefs = ref.watch(preferencesProvider);
@@ -239,6 +251,16 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
             key: const ValueKey('settings-game-optimization'),
             value: gameOptimization,
             onChanged: _setGameOptimization,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.java,
+          title: l10n.settingsPreferPureJavaLoaderInstall,
+          subtitle: l10n.settingsPreferPureJavaLoaderInstallDesc,
+          trailing: Switch(
+            key: const ValueKey('settings-prefer-pure-java-loader'),
+            value: preferPureJavaLoaderInstall,
+            onChanged: _setPreferPureJavaLoaderInstall,
           ),
         ),
       ],

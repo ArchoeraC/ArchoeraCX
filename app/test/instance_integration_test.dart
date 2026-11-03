@@ -104,6 +104,73 @@ void main() {
   );
 
   test(
+    'manual instance names keep unicode and symbols in the versions folder',
+    () async {
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+      final name = '${DateTime.now().microsecondsSinceEpoch} · 测试!';
+
+      final created = await client.createInstance(
+        name: name,
+        gameVersion: '1.21.4',
+        loader: 'vanilla',
+        loaderVersion: '',
+      );
+      addTearDown(() => client.deleteInstance(created.id, deleteFiles: true));
+
+      expect(created.name, name);
+      expect(Directory(created.rootPath).existsSync(), isTrue);
+      expect(created.rootPath.split(Platform.pathSeparator).last, name);
+    },
+    skip: enabled && core.existsSync() && module.existsSync()
+        ? false
+        : 'Set ARCHOERACX_INSTANCE_TESTS=1 and build core/module to run.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
+
+  test(
+    'diagnostics analyze reads the launch log and crash report',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'archoera-diagnostics-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final client = CoreClient.openDefault();
+      addTearDown(client.close);
+      final root = '${directory.path}/diagnostics instance';
+
+      final created = await client.createInstance(
+        name: 'Diagnostics Instance',
+        gameVersion: '1.21.4',
+        loader: 'fabric',
+        loaderVersion: '0.16.10',
+        rootPath: root,
+      );
+      addTearDown(() => client.deleteInstance(created.id, deleteFiles: true));
+
+      final logDirectory = Directory('$root/.archoera/logs')
+        ..createSync(recursive: true);
+      final logPath = '${logDirectory.path}/launch-20261030-120000.log';
+      File(logPath).writeAsStringSync(
+        'java.lang.OutOfMemoryError: Java heap space\n'
+        '[exited with code 1]\n',
+      );
+
+      final analysis = await client.analyzeCrash(created.id, logPath: logPath);
+      expect(analysis.abnormal, isTrue);
+      expect(analysis.exitCode, 1);
+      expect(analysis.primary?.ruleId, 'jvm.heap');
+
+      final latest = await client.latestCrash(created.id);
+      expect(latest?.primary?.ruleId, 'jvm.heap');
+    },
+    skip: enabled && core.existsSync() && module.existsSync()
+        ? false
+        : 'Set ARCHOERACX_INSTANCE_TESTS=1 and build core/module to run.',
+    timeout: const Timeout(Duration(seconds: 20)),
+  );
+
+  test(
     'instance.delete with deleteFiles removes a managed instance directory',
     () async {
       final client = CoreClient.openDefault();

@@ -40,6 +40,7 @@ class AppSettings {
     this.logRetentionFiles = 10,
     this.logRetentionMegabytes = 32,
     this.shareLoaderFiles = true,
+    this.preferPureJavaLoaderInstall = true,
     this.memoryMode = 'auto',
     this.gameOptimization = true,
   });
@@ -153,6 +154,11 @@ class AppSettings {
   /// each instance keeps its own `libraries/` and `versions/<id>/`.
   final bool shareLoaderFiles;
 
+  /// Default for the loader install dialog: run the official installer with
+  /// `--installClient` instead of the launcher's native processor pipeline.
+  /// The dialog can still override it for one install.
+  final bool preferPureJavaLoaderInstall;
+
   /// `auto` derives the heap from the version, loader, mod count and installed
   /// RAM; `manual` uses [memoryMinMb] / [memoryMaxMb] and only warns when they
   /// are too small.
@@ -241,6 +247,8 @@ class AppSettings {
         512,
       ),
       shareLoaderFiles: value['shareLoaderFiles'] != false,
+      preferPureJavaLoaderInstall:
+          value['preferPureJavaLoaderInstall'] != false,
       memoryMode: value['memoryMode'] == 'manual' ? 'manual' : 'auto',
       gameOptimization: value['gameOptimization'] != false,
     );

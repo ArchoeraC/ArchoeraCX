@@ -1,7 +1,31 @@
-import 'dart:ui';
-
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../l10n/generated/app_localizations.dart';
+
+/// Resolves the language used before a widget tree exists.
+///
+/// The tray menu and the elevated-startup gate run outside Riverpod, so they
+/// read the same stored preference directly. Unsupported platform languages
+/// fall back to English, matching [AppLocalizations.supportedLocales].
+Future<Locale> resolveStartupLocale() async {
+  var locale = WidgetsBinding.instance.platformDispatcher.locale;
+  try {
+    final preferences = await SharedPreferences.getInstance();
+    final stored = LocaleController._fromCode(
+      preferences.getString(LocaleController.storageKey),
+    );
+    if (stored != null) locale = stored;
+  } catch (_) {
+    // A missing preference store keeps the platform language.
+  }
+
+  final supported = AppLocalizations.supportedLocales.any(
+    (candidate) => candidate.languageCode == locale.languageCode,
+  );
+  return supported ? Locale(locale.languageCode) : const Locale('en');
+}
 
 /// UI language preference. `null` means "follow the operating system".
 ///

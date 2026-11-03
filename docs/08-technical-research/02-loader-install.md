@@ -1,8 +1,11 @@
 # 02 · 加载器安装：到底需不需要 Java？
 
 > 核心问题：**SJMCL 是不是真的不用 Java 就能装 Forge/NeoForge？**
-> 答案：**不是。** SJMCL 的 Fabric/Quilt 与 ≤1.12.2 的 Forge 确实只用 HTTP + 解压；
+> 答案：**不是。** SJMCL 的 Fabric/Quilt 与 Forge 1.12.2（spec 0）确实只用 HTTP + 解压；
 > 但 Forge/NeoForge/Cleanroom 的 `processors`、OptiFine 的 `Patcher` 都是**用 Java 进程跑的**。
+> 1.7.10 及更早的 Forge 安装器是另一套旧格式（没有 `version.json`，库条目也没有 `downloads`/size），
+> 本仓库已接入原生旧格式路径：解压 `install.filePath` 的 universal、按 `checksums` 下载旧库、
+> 合并 `versionInfo`；这类安装器没有 `--installClient`，因此纯 Java 模式不可用。
 > 「事实」标注来源（仓库 + commit + 文件行号，或实测命令），检索日期 **2026-10-20**；未复现内容进 §9。
 
 ---
@@ -13,7 +16,9 @@
 |---|---|---|---|
 | Fabric | 拉 meta profile JSON，合并版本 JSON，下库 | **否** | 实测 profile JSON + `fabric.rs:23` |
 | Quilt | 同上（v3 meta，多一个 `hashed` 库） | **否** | 实测 + `quilt.rs` |
-| Forge ≤ 1.12.2 | installer 是 zip，取内嵌 universal jar + version.json | **否** | 实测 1.7.10 / 1.12.2 installer |
+| Forge 1.12.2（spec 0） | installer 是 zip，取内嵌 universal jar + version.json | **否** | 实测 1.12.2 installer，`requiresJava=false` |
+| Forge 1.12.2+ / NeoForge（纯 Java，默认） | `java -jar installer --installClient <root>` | **是** | 官方安装器完成下载/processor/版本 JSON |
+| Forge ≤ 1.7.10（旧 installer） | 只有 `versionInfo`，库无 `downloads`/size，且无 `--installClient` | **否（原生旧格式路径）** | 实测 1.7.10 / 1.6.4 / 1.5.2 installer |
 | Forge 1.13 – 1.21.x | processors 生成 `-client.jar`（Cleanroom 同构） | **是** | 实测 1.20.1 / 1.21.1 / 1.21.8 |
 | NeoForge 1.20.1 | 同 Forge（坐标 `net.neoforged:forge`） | **是** | 实测 + `neoforge.rs:34` 特判 |
 | NeoForge 1.20.2+ | 同 Forge（坐标 `net.neoforged:neoforge`） | **是** | 实测 21.1.209 |
@@ -79,7 +84,20 @@ META-INF/MANIFEST.MF   Main-Class: net.minecraftforge.installer.ClientInstall
 | 1.7.10 / 1.12.2 | 0 | `install{path,filePath}`+`versionInfo{}` 或 `path`+`json`+内嵌 `maven/` | 无（1.7.10 还**无 version.json**） |
 | 1.20.1 / 1.21.1 / 1.21.8 / NeoForge 21.1.209 | 1 | `data{}` + `processors[]` + `libraries[]` + `json` | 有 |
 
-spec 0 的安装 = 解压 + 拷 jar + 合并 version.json，**完全不需要 Java**。spec 1 的 `data` 是变量表，值三类（实测 1.21.1）：
+spec 0 的安装 = 解压 + 拷 jar + 合并 version.json，**完全不需要 Java**。
+
+> **旧格式（1.7.10 / 1.6.4 / 1.5.2）的落地方式**：`version.json` 缺失时回退读取
+> `install_profile.json.versionInfo`；planner 把 `install.filePath` 指向的 universal jar
+> 解压到 `install.path` 的 Maven 坐标路径（repair 的 `Extracted` 产物，不下载）。
+> 旧库条目只有 `name`、可选 `url` 和可选 `checksums`：`checksums[0]` 当 SHA-1，
+> 缺失时取 `.sha1` sidecar，size 用 HEAD 的 `Content-Length`；默认仓库是
+> `https://libraries.minecraft.net/`，镜像模式优先 USTC BMCLAPI。旧 `versionInfo`
+> 会重复 vanilla 库（1.5.2 的 vanilla 自身还重复 `jinput-platform`），合并前按
+> `group:artifact:version` 去重，否则会覆盖 Mojang 条目的 native classifiers 或产生
+> 重复下载目标。旧安装器没有 `--installClient`，纯 Java 模式返回
+> `LOADER_JAVA_INSTALL_UNSUPPORTED`，UI 提示取消勾选后走原生路径。
+
+spec 1 的 `data` 是变量表，值三类（实测 1.21.1）：
 
 | 形态 | 例子 | 含义 |
 |---|---|---|
@@ -245,7 +263,9 @@ ATLauncher `loaders/forge/Processor.java` 用 `URLClassLoader` + `Method.invoke`
 | 场景 | 路径 | 需要 Java | 备注 |
 |---|---|---|---|
 | Fabric / Quilt | meta → 合并 → 下库 | 否 | P0，先做 |
-| Forge ≤1.12.2 | 解 installer，取 universal + version.json | 否 | spec 0 分支 |
+| Forge/NeoForge（纯 Java，默认） | 官方 installer `--installClient` → 合并生成的版本 JSON | **是** | 安装弹窗可取消勾选 |
+| Forge 1.12.2（原生流程） | 解 installer，取 `maven/` 内嵌 universal + version.json | 否 | spec 0 分支，已实现 |
+| Forge ≤1.7.10 | 旧 installer：`versionInfo` + 无 size 的库 | 否 | 已实现；纯 Java 模式不可用 |
 | Forge 1.13–1.21.x | installer + processors | **是** | 用游戏同款 JRE；先校验 outputs 再决定是否跑 |
 | NeoForge 1.20.1 | 同 Forge，坐标 `net.neoforged:forge` | **是** | 版本带 `1.20.1-` 前缀 |
 | NeoForge 1.20.2+ | 同 Forge，坐标 `net.neoforged:neoforge` | **是** | 20.2/21.1/21.4… |
@@ -304,10 +324,10 @@ txid = uuid();  stage = <instance>/.staging/<txid>/;  store = <data>/objects/<sh
 
 | 判断 | 结论 |
 |---|---|
-| 作为 P0/P1 | **不值得**：JRE 本来就要为启动准备，复用到安装的边际成本≈0 |
-| 作为卖点 | 只对 Fabric/Quilt/≤1.12.2 成立，而这块已无 Java |
-| 真正该做 | ① 安装前自动补 Mojang runtime；② PendingProcessors 延迟执行；③ 失败可续跑 |
-| 一定要做的话 | 只做 `binarypatcher` 的 Rust 版，ATR 仍交给 JVM；收益/成本不划算 |
+| 现状 | `MCP_DATA`、`MERGE_MAPPING`、`jarsplitter`、ART、`binarypatcher` 已原生实现；Fabric/Quilt 安装不需要 JVM |
+| 仍需要 Java | `DOWNLOAD_MOJMAPS`（Forge 1.20.1 / 1.21.x、NeoForge 21.1）、`PROCESS_MINECRAFT_JAR`（NeoForge 26.3+）、`binarypatcher --store/--marker`（Forge 26.3+） |
+| 产品决策 | 不再补齐剩余 processor；`loader.plan` 返回 `requiresJava`/`javaRequiredSteps`，无 Java 时在下载前提示 |
+| 边界 | 逐字节 ZIP 输出依赖 zlib level 6：Linux 用系统 libz 可完全匹配，其他平台回退只保证语义正确 |
 
 ---
 
@@ -350,7 +370,7 @@ txid = uuid();  stage = <instance>/.staging/<txid>/;  store = <data>/objects/<sh
 1. **SJMCL 其他分支/新版本**是否已改为无 Java：只审计 `main@ba24b6d`（v1.3.2）。
 2. **SJMCL 在完全无 Java 机器上的行为**：未实机跑；`select_java_runtime` 会返回 `NoSuitableJava`，
    自动下载发生在下载阶段，runtime 何时注册进 `java_list` 未验证（竞态可能）。
-3. **Forge 1.13–1.16.5 逐版本 processor 组合**：只实测 1.20.1/1.21.1/1.21.8/21.1.209/1.12.2/1.7.10。
+3. **Forge 1.13–1.16.5 逐版本 processor 组合**：只实测 1.20.1/1.21.1/1.21.8/21.1.209/1.12.2/1.7.10/1.6.4/1.5.2。
 4. **Forge `66.0.13` 新版本号规则**：来自 Prism meta 索引（requires 26.3），未查官方公告。
 5. **OptiFine 条款完整解读**：只摘了 copyright 一段；「启动器代为下载」是否被允许，法律上无定论。
 6. **Prism ForgeWrapper 首启耗时/失败率**、**ATLauncher 同进程 classpath 冲突**：均未实测。

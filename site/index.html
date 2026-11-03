@@ -6,15 +6,15 @@
     <title>ArchoeraCX · 开源 Minecraft: Java Edition 启动器</title>
     <meta
       name="description"
-      content="ArchoeraCX 是一个开源的跨平台 Minecraft: Java Edition 启动器。实例隔离、加载器安装、整合包导入与哈希校验下载；界面干净、克制、可长时间使用。"
+      content="ArchoeraCX 是一个开源的跨平台 Minecraft: Java Edition 启动器。界面简单，启动快速。"
     />
     <meta name="theme-color" content="#F7F8FB" />
     <meta name="color-scheme" content="light dark" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ArchoeraCX · 开源 Minecraft 启动器" />
+    <meta property="og:title" content="开源 Minecraft: Java Edition 启动器" />
     <meta
       property="og:description"
-      content="把准备留在后台，把世界留在前台。实例、加载器、整合包与下载各有归属。"
+      content="把准备留在后台，把世界放在前台。实例、加载器、整合包与下载各有归属。"
     />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:image" content="assets/shots/home-dark.png" />
@@ -84,7 +84,6 @@
         }
         .menu-button,
         .theme-toggle,
-        .theme-switch,
         .copy-button {
           display: none !important;
         }
@@ -143,7 +142,7 @@
       <span
         class="intro__text"
         data-intro-text
-        data-text="把准备留在后台，"
+        data-text="把准备留在后台"
       ></span>
       <span class="intro__caret" data-intro-caret></span>
     </div>
@@ -176,7 +175,7 @@
         </nav>
 
         <div class="topbar__tools">
-          <span class="dev-badge mono">DEV 0.0.1</span>
+          <span class="dev-badge mono">DEV <span data-app-version>0.0.1+1</span></span>
           <a
             class="topbar__github"
             href="https://github.com/BetaStudio2/ArchoeraCX"
@@ -244,10 +243,10 @@
             <h1>
               <span class="sr-only">把准备留在后台，把世界留在前台。</span>
               <span class="hero__line" aria-hidden="true"
-                ><span data-hero-line="1">把准备留在后台，</span></span
+                ><span data-hero-line="1">把准备留在后台</span></span
               >
               <span class="hero__line hero__line--accent" aria-hidden="true"
-                ><span data-hero-line="2">把世界留在前台。</span
+                ><span data-hero-line="2">把世界留在前台</span
                 ><span
                   class="hero__caret"
                   data-hero-caret
@@ -260,14 +259,14 @@
               <svg class="hero__mark" aria-hidden="true">
                 <use href="#diamond-core" />
               </svg>
-              <p class="label">CORE / 0.0.1 DEV</p>
+              <p class="label">CORE / <span data-app-version>0.0.1+1</span> DEV</p>
               <p class="hero__lead">
                 ArchoeraCX 是一个开源的 Minecraft: Java Edition 启动器。
-                实例、加载器、整合包与下载各有归属；界面安静，启动只要一步。
+                实例、加载器、整合包各有归属；界面简单，启动快速。
               </p>
               <div class="hero__actions">
                 <a class="button button--primary" href="#architecture">
-                  看看它怎么工作
+                  总体布局
                   <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
                     <path d="M2 8h12M9 3l5 5-5 5" />
                   </svg>
@@ -284,30 +283,13 @@
                   </svg>
                 </a>
               </div>
-              <div class="hero__theme">
-                <span class="mono">THEME</span>
-                <div class="theme-switch" role="group" aria-label="切换站点主题">
-                  <button type="button" data-theme-choice="light" aria-pressed="false">
-                    浅色
-                  </button>
-                  <button type="button" data-theme-choice="dark" aria-pressed="true">
-                    深色
-                  </button>
-                </div>
-              </div>
-              <p class="hero__status mono">
-                AGPL-3.0-only <span aria-hidden="true">·</span> 无遥测
-                <span aria-hidden="true">·</span> 凭据留在本机
-              </p>
             </div>
           </div>
 
           <div class="hero__window-wrap">
             <div class="hero__spec" aria-hidden="true">
               <span class="node"></span>
-              <p class="mono">1440 × 900</p>
-              <p class="mono">16:10 / PNG</p>
-              <p class="mono">RENDERED</p>
+              <p class="mono">MAIN MENU</p>
             </div>
 
             <figure class="hero__window">
@@ -318,7 +300,7 @@
                   src="assets/shots/home-dark.png"
                   width="1440"
                   height="900"
-                  alt="ArchoeraCX 深色主题主页：快速启动 1.21.4 Fabric 实例"
+                  alt="ArchoeraCX 深色主题主页"
                   fetchpriority="high"
                   decoding="async"
                 />
@@ -328,7 +310,7 @@
                   src="assets/shots/home-light.png"
                   width="1440"
                   height="900"
-                  alt="ArchoeraCX 浅色主题主页：同一布局与同一套令牌"
+                  alt="ArchoeraCX 浅色主题主页"
                   loading="lazy"
                   decoding="async"
                 />
@@ -352,10 +334,10 @@
             <span class="label">模块 / MODULES</span>
           </div>
           <div class="section__body">
-            <h2>六个职责，<br />六个边界。</h2>
+            <h2>有职责，<br />有边界。</h2>
             <p class="section__lead">
-              每个模块只做一件事；失败时，也只影响一件事。
-              代码、契约和边界都放在明面上。
+              整体复杂，但分工明确。
+              即使出错，也无所顾虑。
             </p>
 
             <div class="ledger">
@@ -368,7 +350,7 @@
                 <code>CORE</code>
                 <div>
                   <h3>生命周期与路由</h3>
-                  <p>C++20 是唯一枢纽：窗口、页面、任务与事件都在这里发生。</p>
+                  <p>C++20 核心：唯一枢纽，所有任务都在这里发生。</p>
                 </div>
                 <span class="ledger__edge">NO BUSINESS</span>
               </article>
@@ -376,7 +358,7 @@
                 <code>INST</code>
                 <div>
                   <h3>实例与覆盖</h3>
-                  <p>独立目录、复制与覆盖设置；SQLite 索引，instance.json 是权威元数据。</p>
+                  <p>可选的独立目录、复制与覆盖设置</p>
                 </div>
                 <span class="ledger__edge">SQLITE / JSON</span>
               </article>
@@ -384,7 +366,7 @@
                 <code>LOAD</code>
                 <div>
                   <h3>加载器安装</h3>
-                  <p>Fabric、Quilt、Forge、NeoForge 的安装、修复与版本选择。</p>
+                  <p>Fabric、Quilt、Forge、NeoForge 的安装、修复、更新与版本选择</p>
                 </div>
                 <span class="ledger__edge">INSTALLER</span>
               </article>
@@ -392,7 +374,7 @@
                 <code>PACK</code>
                 <div>
                   <h3>整合包导入</h3>
-                  <p>Modrinth 与本地 .mrpack；zip-slip、符号链接、大小与条目上限都在解压前检查。</p>
+                  <p>Modrinth 与本地 .mrpack 的一键导入与主动修正</p>
                 </div>
                 <span class="ledger__edge">SAFE UNZIP</span>
               </article>
@@ -400,7 +382,7 @@
                 <code>NET</code>
                 <div>
                   <h3>下载执行</h3>
-                  <p>DownloadPlan 交给 Rust：哈希、原子落盘、分片续传与取消。</p>
+                  <p>Rust 强力驱动的下载执行，支持分片续传与取消</p>
                 </div>
                 <span class="ledger__edge">HASHED</span>
               </article>
@@ -408,7 +390,7 @@
                 <code>ID</code>
                 <div>
                   <h3>账户与凭据</h3>
-                  <p>Microsoft OAuth + PKCE；令牌留在本机保险库，不跨 ABI、不写日志。</p>
+                  <p>使用标准 Microsoft OAuth + PKCE，一次授权，长期使用</p>
                 </div>
                 <span class="ledger__edge">NO TOKENS</span>
               </article>
@@ -425,9 +407,9 @@
             <span class="label">界面 / INTERFACE</span>
           </div>
           <div class="section__body">
-            <h2>界面是工具，<br />不是舞台。</h2>
+            <h2>界面应该“像个工具”，<br />而不是花里胡哨的舞台。</h2>
             <p class="section__lead">
-              层级来自留白和细线，动效只解释状态。明暗两套令牌，同一套布局。
+              明暗作为底色，线条作为表达。以最简单的方式，表达最纯粹的能力
             </p>
 
             <dl class="ui-facts">
@@ -457,7 +439,7 @@
                   src="assets/shots/instances-light.png"
                   width="1000"
                   height="700"
-                  alt="浅色主题的实例页：卡片展示加载器、版本、Mod 数量与最近游玩时间"
+                  alt="浅色主题实例页"
                   loading="lazy"
                   decoding="async"
                 />
@@ -472,7 +454,7 @@
                   src="assets/shots/settings-light.png"
                   width="1000"
                   height="700"
-                  alt="浅色主题的设置页：左侧分区导航与扁平设置组"
+                  alt="浅色主题设置页"
                   loading="lazy"
                   decoding="async"
                 />
@@ -487,7 +469,7 @@
                   src="assets/shots/instances-dark.png"
                   width="1000"
                   height="700"
-                  alt="深色主题的实例页：相同的布局与间距"
+                  alt="深色主题实例页"
                   loading="lazy"
                   decoding="async"
                 />
@@ -502,7 +484,7 @@
                   src="assets/shots/settings-dark.png"
                   width="1000"
                   height="700"
-                  alt="深色主题的设置页：主题、密度与通知选项"
+                  alt="深色主题设置页"
                   loading="lazy"
                   decoding="async"
                 />
@@ -524,10 +506,10 @@
             <span class="label">系统 / SYSTEM</span>
           </div>
           <div class="section__body">
-            <h2>四种语言，<br />一条边界。</h2>
+            <h2>多个组件，<br />一条边界。</h2>
             <p class="section__lead">
-              Flutter 负责界面，C++20 是唯一枢纽，C# 独占业务与 SQLite，Rust 只执行下载计划。
-              全程进程内 FFI；除 OAuth 期间短暂的 loopback 回调外，不监听端口。
+              C++20 作为“交换机”，负责协调 Flutter、C# 等组件；
+              全程进程内 FFI；除 OAuth 期间短暂的 loopback 回调外，无需端口通信
             </p>
 
             <div class="diagram">
@@ -537,15 +519,14 @@
               <span class="vf vf--br"></span>
               <div class="diagram__legend">
                 <span class="mono">SYSTEM MAP / IN-PROCESS</span>
-                <span class="mono">ARCHOERACX / 0.0.1</span>
+                <span class="mono">ARCHOERACX / <span data-app-version>0.0.1+1</span></span>
               </div>
 
               <div class="diagram__map">
                 <article class="diagram__node diagram__node--ui">
                   <span class="mono">UI / DART</span>
                   <h3>Flutter</h3>
-                  <p>页面、主题、动效与窗口壳；只通过 CoreClient 调用核心。</p>
-                  <span class="diagram__tag mono">WINDOW SHELL</span>
+                  <p>页面、主题、动效与窗口</p>
                 </article>
 
                 <div class="diagram__link diagram__link--l1" aria-hidden="true">
@@ -581,8 +562,7 @@
                 <article class="diagram__node diagram__node--data">
                   <span class="mono">DATA / C#</span>
                   <h3>NativeAOT</h3>
-                  <p>API、业务规则与 SQLite；实例索引与 instance.json 的权威数据。</p>
-                  <span class="diagram__tag mono">SQLITE</span>
+                  <p>API、运行规则与实例索引</p>
                 </article>
 
                 <div class="diagram__link diagram__link--d" aria-hidden="true">
@@ -593,8 +573,7 @@
                 <article class="diagram__node diagram__node--rust">
                   <span class="mono">IO / RUST</span>
                   <h3>下载器</h3>
-                  <p>校验哈希、原子写入、分片续传；不解压、不写 SQLite、不碰业务语义。</p>
-                  <span class="diagram__tag mono">CDYLIB</span>
+                  <p>校验哈希、原子写入、分片续传</p>
                 </article>
               </div>
             </div>
@@ -602,18 +581,18 @@
             <div class="arch-notes">
               <article class="arch-note">
                 <span class="mono">EVENT</span>
-                <h3>唤醒驱动，而不是轮询</h3>
-                <p>核心收到任务事件后唤醒 Dart，由监听器批量 drain；界面不用 Timer.periodic 猜进度。</p>
+                <h3>低开销事件驱动</h3>
+                <p>监听器批量 drain；拒绝 Timer.periodic “猜”进度。</p>
               </article>
               <article class="arch-note">
                 <span class="mono">REGISTRY</span>
-                <h3>每个方法都有归属</h3>
-                <p>新方法同时登记到 C++ 与 C# 的注册表；未知调用返回 E_UNSUPPORTED，导出层不写分支。</p>
+                <h3>每条能力都可溯源</h3>
+                <p>调用只查表，导出层不做分支。</p>
               </article>
               <article class="arch-note">
                 <span class="mono">INPUT</span>
-                <h3>外部输入先归一化</h3>
-                <p>拒绝 ..、绝对路径与符号链接逃逸；链接走 http/https 白名单；下载一律校验哈希。</p>
+                <h3>外部输入归一</h3>
+                <p>拒绝不明确逃逸，明确的hash校验，完整的白名单机制</p>
               </article>
             </div>
           </div>
@@ -628,10 +607,15 @@
             <span class="label">构建 / BUILD</span>
           </div>
           <div class="section__body">
-            <h2>从源码开始，<br />在自己的机器上。</h2>
+            <h2>从源码开始，<br />每一步都清晰。</h2>
             <p class="section__lead">
-              当前是开发版。完整的依赖、逐模块构建与测试矩阵在构建文档里；
-              先在一个临时实例里试跑，再导入日常使用的世界。
+              当前版本仍为开发版。完整的依赖、逐模块编译与打包测试矩阵在<a
+                href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/docs/12-build-and-test.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >构建文档</a
+              >中；
+              如果您有重要实例等，请在使用前备份您的数据，以免发生不可逆后果。
             </p>
             <p class="build__note">
               <strong>开发版提示</strong>
@@ -648,24 +632,24 @@
               <div class="build__links">
                 <a
                   class="build__link"
-                  href="https://github.com/BetaStudio2/ArchoeraCX"
+                  href="https://github.com/BetaStudio2/ArchoeraCX/releases"
                   target="_blank"
                   rel="noopener noreferrer"
-                  >GitHub <span aria-hidden="true">↗</span></a
+                  >发版说明 <span aria-hidden="true">↗</span></a
                 >
                 <a
                   class="build__link"
-                  href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/docs"
+                  href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/docs/12-build-and-test.md"
                   target="_blank"
                   rel="noopener noreferrer"
-                  >文档 <span aria-hidden="true">↗</span></a
+                  >构建文档 <span aria-hidden="true">↗</span></a
                 >
                 <a
                   class="build__link"
-                  href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/PRIVACY.md"
+                  href="https://github.com/BetaStudio2/ArchoeraCX/issues"
                   target="_blank"
                   rel="noopener noreferrer"
-                  >隐私 <span aria-hidden="true">↗</span></a
+                  >问题反馈 <span aria-hidden="true">↗</span></a
                 >
               </div>
 
@@ -700,15 +684,15 @@ flutter run -d linux<span class="terminal__caret" aria-hidden="true"></span></co
             <div class="platforms">
               <div class="platform">
                 <span class="mono">LINUX</span>
-                <p>tar.gz · deb · rpm · Arch · AppImage · Flatpak · Nix</p>
+                <p>tar.gz / deb / rpm / Arch / AppImage / Flatpak / NixOS</p>
               </div>
               <div class="platform">
                 <span class="mono">MACOS</span>
-                <p>tar.gz · dmg</p>
+                <p>tar.gz / dmg</p>
               </div>
               <div class="platform">
                 <span class="mono">WINDOWS</span>
-                <p>便携 zip · 安装器</p>
+                <p>便携 zip / Installer</p>
               </div>
             </div>
           </div>
@@ -770,7 +754,7 @@ flutter run -d linux<span class="terminal__caret" aria-hidden="true"></span></co
               href="https://github.com/BetaStudio2/ArchoeraCX/blob/main/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
-              >AGPL-3.0 <span aria-hidden="true">↗</span></a
+              >AGPL-3.0 说明<span aria-hidden="true">↗</span></a
             >
           </div>
         </div>

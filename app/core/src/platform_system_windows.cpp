@@ -175,4 +175,28 @@ bool send_system_notification(const std::string& title,
   return true;
 }
 
+ProcessElevation query_process_elevation() {
+  ProcessElevation elevation;
+
+  // TokenElevation reports whether UAC actually granted elevated rights
+  // (TOKEN_ELEVATION.TokenIsElevated). An administrator account started without
+  // elevation reports 0, which is the normal, supported launch mode.
+  HANDLE token = nullptr;
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
+    return elevation;
+  }
+
+  TOKEN_ELEVATION info{};
+  DWORD returned = 0;
+  const BOOL read = GetTokenInformation(
+      token, TokenElevation, &info, sizeof(info), &returned);
+  CloseHandle(token);
+
+  if (read != FALSE && info.TokenIsElevated != 0) {
+    elevation.elevated = true;
+    elevation.kind = "administrator";
+  }
+  return elevation;
+}
+
 }  // namespace archoera

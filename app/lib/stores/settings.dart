@@ -112,6 +112,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     int? logRetentionFiles,
     int? logRetentionMegabytes,
     bool? shareLoaderFiles,
+    bool? preferPureJavaLoaderInstall,
     String? memoryMode,
     bool? gameOptimization,
   }) async {
@@ -169,6 +170,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
           logRetentionMegabytes:
               logRetentionMegabytes ?? current.logRetentionMegabytes,
           shareLoaderFiles: shareLoaderFiles ?? current.shareLoaderFiles,
+          preferPureJavaLoaderInstall:
+              preferPureJavaLoaderInstall ?? current.preferPureJavaLoaderInstall,
           memoryMode: memoryMode ?? current.memoryMode,
           gameOptimization: gameOptimization ?? current.gameOptimization,
         ),
@@ -202,6 +205,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         logRetentionFiles: logRetentionFiles,
         logRetentionMegabytes: logRetentionMegabytes,
         shareLoaderFiles: shareLoaderFiles,
+        preferPureJavaLoaderInstall: preferPureJavaLoaderInstall,
         memoryMode: memoryMode,
         gameOptimization: gameOptimization,
       ),

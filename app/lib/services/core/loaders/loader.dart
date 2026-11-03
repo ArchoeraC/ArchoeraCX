@@ -107,6 +107,9 @@ mixin CoreClientLoader on CoreTransport {
       versionId: versionId,
       versionJson: versionJson,
       requiresJava: data['requiresJava'] == true,
+      javaRequiredSteps: asList(data['javaRequiredSteps'])
+          .whereType<String>()
+          .toList(growable: false),
       installerPath: asString(data['installerPath']),
       installRoot: asString(data['installRoot']) ?? root,
       profilePath: asString(data['profilePath']) ?? '',
@@ -203,6 +206,38 @@ mixin CoreClientLoader on CoreTransport {
     final jsonText = await runAsync(
       methodName,
       paramsJson: paramsJson,
+      onProgress: onProgress,
+      label: label,
+    );
+    return decodeRawEnvelope(jsonText, fallbackMethod: methodName);
+  }
+
+  /// Pure Java install: runs the official Forge/NeoForge installer with
+  /// `--installClient`, then imports the generated version into the instance
+  /// profile. The installer owns downloads and processors.
+  Future<Map<String, Object?>> installLoaderWithJava({
+    required String root,
+    required String installerPath,
+    required String kind,
+    required String gameVersion,
+    required String loaderVersion,
+    required String javaPath,
+    bool? shareLoaderFiles,
+    void Function(int done, int total)? onProgress,
+    String? label,
+  }) async {
+    const methodName = 'loader.installJava';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'root': root,
+        'installerPath': installerPath,
+        'kind': kind,
+        'gameVersion': gameVersion,
+        'loaderVersion': loaderVersion,
+        'javaPath': javaPath,
+        'shareLoaderFiles': ?shareLoaderFiles,
+      }),
       onProgress: onProgress,
       label: label,
     );

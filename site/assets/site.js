@@ -254,9 +254,6 @@
   var themeToggle = document.querySelector("[data-theme-toggle]");
   var themeMeta = document.querySelector('meta[name="theme-color"]');
   var themeScheme = document.querySelector('meta[name="color-scheme"]');
-  var themeButtons = Array.prototype.slice.call(
-    document.querySelectorAll("[data-theme-choice]")
-  );
   var themeShots = Array.prototype.slice.call(
     document.querySelectorAll("[data-theme-shot]")
   );
@@ -282,12 +279,6 @@
 
   var syncTheme = function (theme) {
     var dark = theme === "dark";
-    themeButtons.forEach(function (button) {
-      button.setAttribute(
-        "aria-pressed",
-        button.getAttribute("data-theme-choice") === theme ? "true" : "false"
-      );
-    });
     if (themeToggle) {
       themeToggle.setAttribute("aria-pressed", dark ? "true" : "false");
       themeToggle.setAttribute(
@@ -385,12 +376,6 @@
     };
     transition.finished.then(finish, finish);
   };
-
-  themeButtons.forEach(function (button) {
-    button.addEventListener("click", function () {
-      setTheme(button.getAttribute("data-theme-choice"), button);
-    });
-  });
 
   if (themeToggle) {
     themeToggle.addEventListener("click", function () {

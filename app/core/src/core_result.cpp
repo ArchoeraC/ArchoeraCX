@@ -7,6 +7,7 @@
 
 #include "core_json.h"
 #include "platform_gpu.h"
+#include "platform_system.h"
 
 #include <cstdio>
 #include <string>
@@ -134,6 +135,22 @@ std::string make_gpu_result() {
   return json;
 }
 
+std::string make_elevation_result() {
+  const ProcessElevation elevation = query_process_elevation();
+  std::string json = "{\"ok\":true,\"data\":{\"elevated\":";
+  json.append(elevation.elevated ? "true" : "false");
+  json.append(",\"kind\":");
+  if (elevation.kind.empty()) {
+    json.append("null");
+  } else {
+    json.append("\"");
+    append_json_escaped(json, elevation.kind);
+    json.append("\"");
+  }
+  json.append("},\"meta\":{\"schemaVersion\":1}}");
+  return json;
+}
+
 std::string make_action_result(const char* field, bool value) {
   std::string json = "{\"ok\":true,\"data\":{\"";
   json.append(field);
@@ -239,6 +256,16 @@ archoera_status handle_system_gpu(archoera_core&,
                                   uint64_t*,
                                   archoera_error*) {
   result = make_gpu_result();
+  return ARCHOERA_OK;
+}
+
+archoera_status handle_system_elevation(archoera_core&,
+                                        const MethodRoute&,
+                                        std::string_view,
+                                        std::string& result,
+                                        uint64_t*,
+                                        archoera_error*) {
+  result = make_elevation_result();
   return ARCHOERA_OK;
 }
 

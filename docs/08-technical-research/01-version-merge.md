@@ -101,7 +101,10 @@ Fabric（`meta.fabricmc.net/v2/versions/loader/1.20.1/0.15.11/profile/json`）�
 
 ### 3.2 libraries
 
-**键**：`group:artifact:classifier:extension`（版本不参与；extension 默认 `jar`）。
+**键**：`group:artifact:classifier:extension` + `rules` 签名（版本不参与；extension 默认 `jar`）。
+`rules` 签名把同一坐标的 OS/feature 变体区分开：1.12.2 的 vanilla 同时给出
+`lwjgl 2.9.4`（非 macOS）与 `lwjgl 2.9.2`（仅 macOS），两者都必须保留，否则 Linux
+启动会缺 `lwjgl64`。`rules` 本身仍然原样保留，启动时求值。
 
 **顺序**：从根到叶依次遍历；首次出现的 key 决定位置。
 
@@ -117,7 +120,8 @@ override: com.google.guava:guava 32.1.2 -> 31.1 (from 1.20.1-forge-47.2.0)
 - 叶子版本胜出符合加载器作者的预期（它明确覆盖了依赖）；
 - 如果直接保留两份，classpath 上谁先谁后是隐式行为，极难排查。
 
-**例外**：`classifier` 不同（如 `:natives-windows`）视为不同 key，全部保留。
+**例外**：`classifier` 不同（如 `:natives-windows`）视为不同 key，全部保留；
+`rules` 不同（如 Linux 2.9.4 与 macOS 2.9.2）也视为不同 key，全部保留。
 
 **natives（≤1.12.2）**：
 

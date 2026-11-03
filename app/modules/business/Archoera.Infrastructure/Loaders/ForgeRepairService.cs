@@ -199,14 +199,6 @@ public sealed class ForgeRepairService : IForgeRepairService
             return Failed(manifest, rootFull, processorsRun, details);
         }
 
-        if (!File.Exists(javaPath))
-        {
-            details.Add(string.IsNullOrWhiteSpace(javaPath)
-                ? "a Java executable is required to run loader processors"
-                : "the supplied Java executable does not exist");
-            return Failed(manifest, rootFull, processorsRun, details);
-        }
-
         var minecraftJarFull = Path.GetFullPath(Path.Combine(
             rootFull,
             "versions",
@@ -284,6 +276,14 @@ public sealed class ForgeRepairService : IForgeRepairService
                 librariesFull,
                 installerFull,
                 minecraftJarFull);
+
+            if (!File.Exists(javaPath) && !_runner.CanRunWithoutJava(resolved))
+            {
+                details.Add(string.IsNullOrWhiteSpace(javaPath)
+                    ? $"processor {processor.Index} requires a Java executable"
+                    : $"the supplied Java executable does not exist (processor {processor.Index})");
+                return Failed(manifest, rootFull, processorsRun, details);
+            }
 
             details.Add($"processor {processor.Index} started: {processor.MainClass}");
 
@@ -516,7 +516,9 @@ public sealed class ForgeRepairService : IForgeRepairService
                 minecraftJarFull);
 
             var full = Path.GetFullPath(expanded);
-            if (!File.Exists(full) && !plannedOutputs.Contains(full))
+            if (!File.Exists(full) &&
+                !Directory.Exists(full) &&
+                !plannedOutputs.Contains(full))
             {
                 error = $"processor input is missing: {argument}";
                 return false;

@@ -49,6 +49,12 @@ public static class ForgeDownloadPlanBuilder
     /// </param>
     /// <param name="options">Destination/client-jar knobs; defaults are safe.</param>
     /// <param name="cancellationToken">Cancels parsing between entries.</param>
+    /// <param name="versionJsonOverride">
+    /// Loader version JSON to use instead of the archive's <c>version.json</c>.
+    /// Pre-1.7 installers only embed it as
+    /// <c>install_profile.json.versionInfo</c>; the caller extracts that
+    /// object (and may filter vanilla duplicates) before planning.
+    /// </param>
     /// <exception cref="ForgeDownloadException">
     /// <c>INVALID_REQUEST</c>, <c>INVALID_METADATA</c>, <c>MISSING_HASH</c>,
     /// <c>MISSING_SIZE</c>, <c>DUPLICATE_DEST</c> or <c>INSTALLER_INVALID</c>.
@@ -62,7 +68,8 @@ public static class ForgeDownloadPlanBuilder
         ForgeInstallerDescriptor installer,
         ZipArchive? archive,
         ForgeDownloadPlanOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? versionJsonOverride = null)
     {
         ArgumentNullException.ThrowIfNull(installer);
         cancellationToken.ThrowIfCancellationRequested();
@@ -168,7 +175,9 @@ public static class ForgeDownloadPlanBuilder
         }
 
         using var profile = ReadJsonEntry(archive, "install_profile.json");
-        using var version = ReadJsonEntry(archive, "version.json");
+        using var version = versionJsonOverride is null
+            ? ReadJsonEntry(archive, "version.json")
+            : ParseVersionOverride(versionJsonOverride);
 
         AddLibraries(
             profile.RootElement,
@@ -184,7 +193,7 @@ public static class ForgeDownloadPlanBuilder
             warnings,
             cancellationToken);
 
-        if (resolvedOptions.IncludeClientJar)
+        if (resolvedOptions.IncludeClientJar && versionJsonOverride is null)
         {
             AddVersionClient(version.RootElement, gameVersion, kind, loaderVersion, AddFile, warnings);
         }
@@ -473,6 +482,21 @@ public static class ForgeDownloadPlanBuilder
             throw new ForgeDownloadException(
                 ForgeDownloadErrorCode.InstallerInvalid,
                 $"{name} is not valid JSON: {exception.Message}",
+                innerException: exception);
+        }
+    }
+
+    private static JsonDocument ParseVersionOverride(string json)
+    {
+        try
+        {
+            return JsonDocument.Parse(json);
+        }
+        catch (JsonException exception)
+        {
+            throw new ForgeDownloadException(
+                ForgeDownloadErrorCode.InstallerInvalid,
+                $"version JSON override is not valid JSON: {exception.Message}",
                 innerException: exception);
         }
     }

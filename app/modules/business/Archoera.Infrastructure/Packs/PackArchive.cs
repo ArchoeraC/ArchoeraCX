@@ -115,7 +115,7 @@ public static class PackArchive
         }
     }
 
-    private static byte[] ReadIndexBytes(ZipArchive archive)
+    internal static byte[] ReadIndexBytes(ZipArchive archive)
     {
         ZipArchiveEntry? indexEntry = null;
         foreach (var entry in archive.Entries)
@@ -202,7 +202,10 @@ public static class PackArchive
 
         foreach (var entry in archive.Entries)
         {
-            var name = entry.FullName;
+            // Some Windows exporters write `client-overrides\config\x`. ZIP
+            // entry names are still looked up verbatim, but the destination
+            // path uses the format's forward slashes.
+            var name = NormalizeEntryName(entry.FullName);
             var unixMode = (uint)entry.ExternalAttributes >> 16;
             if (name.EndsWith('/') ||
                 (entry.ExternalAttributes & 0x10) != 0 ||
@@ -268,7 +271,7 @@ public static class PackArchive
             }
 
             var value = new PackArchiveEntry(
-                name,
+                entry.FullName,
                 relative,
                 length,
                 entry.ExternalAttributes);
@@ -319,12 +322,15 @@ public static class PackArchive
         return (null, false);
     }
 
+    internal static string NormalizeEntryName(string name)
+        => name.Replace('\\', '/');
+
     private static bool ShouldReplace(PackArchiveEntry existing, PackArchiveEntry candidate)
     {
-        var existingClient = existing.EntryName.StartsWith(
+        var existingClient = NormalizeEntryName(existing.EntryName).StartsWith(
             ClientOverridesPrefix,
             StringComparison.Ordinal);
-        var candidateClient = candidate.EntryName.StartsWith(
+        var candidateClient = NormalizeEntryName(candidate.EntryName).StartsWith(
             ClientOverridesPrefix,
             StringComparison.Ordinal);
 
@@ -336,7 +342,7 @@ public static class PackArchive
         return false;
     }
 
-    private static void RejectLinkEntry(ZipArchiveEntry entry)
+    internal static void RejectLinkEntry(ZipArchiveEntry entry)
     {
         var mode = (uint)entry.ExternalAttributes >> 16;
         const uint fileTypeMask = 0xF000;
@@ -484,6 +490,7 @@ public static class PackArchive
             parent,
             $".{Path.GetFileName(destination)}.{Guid.NewGuid():N}.packtmp");
         long total = 0;
+        var crc = uint.MaxValue;
         try
         {
             using (var source = entry.Open())
@@ -508,8 +515,17 @@ public static class PackArchive
                             $"{relative}: override exceeds the uncompressed size limit");
                     }
 
+                    crc = UpdateCrc(crc, buffer.AsSpan(0, read));
                     target.Write(buffer, 0, read);
                 }
+            }
+
+            crc ^= uint.MaxValue;
+            if (entry.Crc32 != crc)
+            {
+                throw new PackException(
+                    PackErrorCode.ArchiveInvalid,
+                    $"{relative}: ZIP CRC mismatch");
             }
 
             File.Move(temporary, destination, overwrite: true);
@@ -685,4 +701,35 @@ public static class PackArchive
         OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
+
+    private static readonly uint[] Crc32Table = BuildCrc32Table();
+
+    private static uint[] BuildCrc32Table()
+    {
+        var table = new uint[256];
+        for (uint index = 0; index < table.Length; index++)
+        {
+            var value = index;
+            for (var bit = 0; bit < 8; bit++)
+            {
+                value = (value & 1) != 0
+                    ? 0xEDB88320u ^ (value >> 1)
+                    : value >> 1;
+            }
+
+            table[index] = value;
+        }
+
+        return table;
+    }
+
+    private static uint UpdateCrc(uint crc, ReadOnlySpan<byte> data)
+    {
+        foreach (var value in data)
+        {
+            crc = Crc32Table[(crc ^ value) & 0xFF] ^ (crc >> 8);
+        }
+
+        return crc;
+    }
 }

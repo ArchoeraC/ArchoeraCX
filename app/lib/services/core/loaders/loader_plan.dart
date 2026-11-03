@@ -5,6 +5,7 @@ class LoaderPlanResult {
     required this.versionId,
     required this.versionJson,
     required this.requiresJava,
+    this.javaRequiredSteps = const [],
     this.installerPath,
     this.installRoot = '',
     this.profilePath = '',
@@ -15,9 +16,14 @@ class LoaderPlanResult {
   final String versionId;
   final String versionJson;
 
-  /// Forge/NeoForge processors need a JVM. The download/commit phase itself
-  /// does not invoke Java.
+  /// True when at least one client processor has no native implementation.
+  /// Fabric/Quilt are always false; this is about the installer, not about
+  /// launching the game (which always needs a Java runtime).
   final bool requiresJava;
+
+  /// Processor steps without a native implementation, for example
+  /// `1: net.neoforged.installertools.ConsoleTool`.
+  final List<String> javaRequiredSteps;
 
   /// Instance-relative installer file written by the plan.
   final String? installerPath;

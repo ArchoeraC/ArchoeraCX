@@ -22,7 +22,8 @@ public sealed class SyntheticLoaderFixture
     private SyntheticLoaderFixture(
         string baseDirectory,
         bool includePatchedOutput,
-        bool includePatchedLibrary)
+        bool includePatchedLibrary,
+        bool includeDirectoryArgument)
     {
         BaseDirectory = baseDirectory;
         Root = Path.Combine(baseDirectory, "instance");
@@ -95,6 +96,16 @@ public sealed class SyntheticLoaderFixture
         Directory.CreateDirectory(Path.GetDirectoryName(srgPath)!);
         File.WriteAllText(srgPath, "synthetic srg input");
 
+        // Newer installers pass an output directory (NeoForge 26.3's
+        // PROCESS_MINECRAFT_JAR does this); the directory exists before repair
+        // but is not a file the input check can stat.
+        var processorOneArgs = includeDirectoryArgument
+            ? "\"--input\", \"{MC_SRG}\", \"--output\", \"{PATCHED}\", " +
+              "\"--patch\", \"{BINPATCH}\", \"--extract-libraries-to\", " +
+              "\"{ROOT}/libraries/\""
+            : "\"--input\", \"{MC_SRG}\", \"--output\", \"{PATCHED}\", " +
+              "\"--patch\", \"{BINPATCH}\"";
+
         var profile = $$"""
             {
               "_comment_": ["synthetic fixture; no Forge code"],
@@ -127,7 +138,7 @@ public sealed class SyntheticLoaderFixture
                   "sides": ["client"],
                   "jar": "com.example:binarypatcher:1.0",
                   "classpath": ["com.example:binarypatcher:1.0"],
-                  "args": ["--input", "{MC_SRG}", "--output", "{PATCHED}", "--patch", "{BINPATCH}"],
+                  "args": [{{processorOneArgs}}],
                   "outputs": {{patchedOutputsJson}}
                 },
                 {
@@ -191,13 +202,15 @@ public sealed class SyntheticLoaderFixture
     public static SyntheticLoaderFixture Create(
         string baseDirectory,
         bool includePatchedOutput = true,
-        bool includePatchedLibrary = true)
+        bool includePatchedLibrary = true,
+        bool includeDirectoryArgument = false)
     {
         Directory.CreateDirectory(baseDirectory);
         return new SyntheticLoaderFixture(
             Path.GetFullPath(baseDirectory),
             includePatchedOutput,
-            includePatchedLibrary);
+            includePatchedLibrary,
+            includeDirectoryArgument);
     }
 
     public Task<LoaderArtifactManifest> PlanAsync(
@@ -315,6 +328,10 @@ public sealed class FakeProcessorRunner : IProcessorRunner
     public int FailOnIndex { get; set; } = -1;
 
     public bool ThrowOnRun { get; set; }
+
+    public bool CanRunWithoutJavaResult { get; set; }
+
+    public bool CanRunWithoutJava(ProcessorStep step) => CanRunWithoutJavaResult;
 
     public Task<ProcessorRunResult> RunAsync(
         ProcessorStep step,

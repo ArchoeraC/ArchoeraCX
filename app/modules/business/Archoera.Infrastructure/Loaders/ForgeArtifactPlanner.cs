@@ -12,7 +12,7 @@ namespace Archoera.Infrastructure.Loaders;
 /// Builds a relocatable Forge/NeoForge manifest from an installer zip.
 /// This is a pure parser: no Java, no network and no writes.
 /// </summary>
-public sealed class ForgeArtifactPlanner : IForgeArtifactPlanner
+public sealed partial class ForgeArtifactPlanner : IForgeArtifactPlanner
 {
     public async Task<LoaderArtifactManifest> ParseAsync(
         string installerJar,
@@ -62,14 +62,17 @@ public sealed class ForgeArtifactPlanner : IForgeArtifactPlanner
         try
         {
             using var profileDocument = ReadJsonEntry(archive, "install_profile.json");
-            using var versionDocument = ReadJsonEntry(archive, "version.json");
+            using var versionDocument = ReadVersionDocument(archive, profileDocument.RootElement);
 
             var spec = ReadInt(profileDocument.RootElement, "spec", 0);
-            if (spec != 1)
+            // Spec 0 is the pre-1.13 installer: no processors, just the
+            // universal jar and a version JSON. Repair only extracts the
+            // embedded maven artifacts, so the same manifest still applies.
+            if (spec is < 0 or > 1)
             {
                 throw new LoaderManifestException(
                     "E_UNSUPPORTED_SPEC",
-                    $"install_profile.json spec {spec} is not supported by the processor planner (need spec 1)");
+                    $"install_profile.json spec {spec} is not supported (need 0 or 1)");
             }
 
             var builder = new PlanBuilder(
@@ -95,7 +98,6 @@ public sealed class ForgeArtifactPlanner : IForgeArtifactPlanner
                     ?? throw new LoaderManifestException(
                         "E_INSTALLER_ENTRY_MISSING",
                         $"installer does not contain {name}");
-
         using var stream = entry.Open();
         using var memory = new MemoryStream(checked((int)Math.Max(0, entry.Length)));
         stream.CopyTo(memory);
@@ -207,6 +209,7 @@ internal sealed partial class PlanBuilder
         ResolveBinpatchCoordinate(profile, versionJson);
 
         AddEmbeddedMavenArtifacts();
+        AddLegacyUniversal(profile);
 
         // Resolving data early creates the client.lzma (BINPATCH) extraction
         // artifact and validates every variable used by processors.
@@ -262,7 +265,11 @@ internal sealed partial class PlanBuilder
         var versionId = ReadString(versionJson, "id");
         var inheritsFrom = ReadString(versionJson, "inheritsFrom");
 
-        _gameVersion = FirstNonEmpty(profileMinecraft, inheritsFrom, versionId)
+        _gameVersion = FirstNonEmpty(
+                           profileMinecraft,
+                           inheritsFrom,
+                           DeriveGameVersion(versionId),
+                           versionId)
                        ?? throw new LoaderManifestException(
                            "E_GAME_VERSION_MISSING",
                            "installer profile does not declare a Minecraft version");
@@ -282,14 +289,34 @@ internal sealed partial class PlanBuilder
         }
     }
 
+    /// <summary>
+    /// Pre-1.7 <c>versionInfo</c> has no <c>inheritsFrom</c>; its id still
+    /// starts with the game version (<c>1.6.4-Forge9.11.1.1345</c>). Use that
+    /// prefix so <see cref="LoaderId.GameVersion"/> stays usable for repair.
+    /// </summary>
+    private static string? DeriveGameVersion(string? versionId)
+    {
+        if (string.IsNullOrWhiteSpace(versionId))
+        {
+            return null;
+        }
+
+        var index = versionId.IndexOf("-forge", StringComparison.OrdinalIgnoreCase);
+        return index > 0 ? versionId[..index] : null;
+    }
+
     private static string NormalizeLoaderVersion(string raw, string gameVersion)
     {
         var prefixes = new[]
         {
             $"{gameVersion}-forge-",
             $"{gameVersion}-neoforge-",
+            $"{gameVersion}-Forge",
+            $"{gameVersion}-NeoForge",
             "forge-",
             "neoforge-",
+            "Forge",
+            "NeoForge",
             $"{gameVersion}-",
         };
 
@@ -810,10 +837,22 @@ internal sealed partial class PlanBuilder
         }
 
         var producer = incoming.ProducerIndex >= 0 ? incoming.ProducerIndex : existing.ProducerIndex;
-        var key = existing.Key.StartsWith("installer:", StringComparison.Ordinal) &&
-                  !incoming.Key.StartsWith("installer:", StringComparison.Ordinal)
-            ? incoming.Key
-            : existing.Key;
+        // Repair extracts an embedded artifact by its `installer:` key, so that
+        // key must survive the merge with a version-library entry.
+        var key = existing.Key.StartsWith("installer:", StringComparison.Ordinal)
+            ? existing.Key
+            : incoming.Key.StartsWith("installer:", StringComparison.Ordinal)
+                ? incoming.Key
+                : existing.Key;
+
+        // A processor output always wins. Otherwise, an artifact the installer
+        // embeds is extracted, even when the version JSON only lists it as a
+        // local library with an empty URL (Forge ≤ 1.12.2 universal jar).
+        var kind = producer >= 0 ||
+                   (existing.Kind != LoaderArtifactKind.Extracted &&
+                    incoming.Kind != LoaderArtifactKind.Extracted)
+            ? LoaderArtifactKind.Generated
+            : LoaderArtifactKind.Extracted;
 
         return existing with
         {
@@ -822,9 +861,7 @@ internal sealed partial class PlanBuilder
             Size = size,
             ProducerIndex = producer,
             RequiredForLaunch = existing.RequiredForLaunch || incoming.RequiredForLaunch,
-            Kind = existing.Kind == LoaderArtifactKind.Generated || incoming.Kind == LoaderArtifactKind.Generated
-                ? LoaderArtifactKind.Generated
-                : LoaderArtifactKind.Extracted,
+            Kind = kind,
         };
     }
 

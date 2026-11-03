@@ -58,6 +58,58 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('keeps unicode and symbols but rejects path separators', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [coreClientProvider.overrideWithValue(null)],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ToastOverlay(
+            child: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () => showCreateInstanceDialog(context),
+                    child: const Text('Open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    final nameField = find.byType(TextField).first;
+    await tester.enterText(nameField, 'A/B');
+    await tester.pump();
+    expect(find.textContaining('cannot contain'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Create'))
+          .onPressed,
+      isNull,
+    );
+
+    await tester.enterText(nameField, '1.21.4 · Fabric');
+    await tester.pump();
+    expect(find.textContaining('versions/1.21.4 · Fabric'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Create'))
+          .onPressed,
+      isNotNull,
+    );
+  });
+
   testWidgets('the whole dialog expands for loaders and shrinks for vanilla', (
     tester,
   ) async {

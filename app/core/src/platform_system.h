@@ -14,6 +14,20 @@
 
 namespace archoera {
 
+// Whether this process owns superuser rights. Probe only: the launcher refuses
+// an elevated start unless the user explicitly confirms, because root/admin
+// would take ownership of every instance, mod and game file it touches.
+// Implemented with the platform's own API (POSIX/macOS effective uid, Win32
+// token elevation); callers probe once at startup and never per frame.
+struct ProcessElevation {
+  bool elevated = false;
+  // Backend-specific label for the achieved privilege: "root" on POSIX,
+  // "administrator" on Windows. Empty when [elevated] is false.
+  std::string kind;
+};
+
+ProcessElevation query_process_elevation();
+
 bool open_external_url(const std::string& url, std::string* error);
 
 // Hands an already validated absolute directory to the platform file manager.

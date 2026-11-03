@@ -11,7 +11,8 @@ internal sealed class TempFixture : IDisposable
     public TempFixture(
         string name,
         bool includePatchedOutput = true,
-        bool includePatchedLibrary = true)
+        bool includePatchedLibrary = true,
+        bool includeDirectoryArgument = false)
     {
         DirectoryPath = Path.Combine(
             Path.GetTempPath(),
@@ -20,7 +21,8 @@ internal sealed class TempFixture : IDisposable
         Loader = SyntheticLoaderFixture.Create(
             DirectoryPath,
             includePatchedOutput,
-            includePatchedLibrary);
+            includePatchedLibrary,
+            includeDirectoryArgument);
     }
 
     public string DirectoryPath { get; }

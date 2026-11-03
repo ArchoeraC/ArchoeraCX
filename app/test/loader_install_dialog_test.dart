@@ -18,6 +18,7 @@ class _RecordingDownloads extends DownloadsNotifier {
   final List<String> kinds = <String>[];
   final List<String> installerPaths = <String>[];
   final List<bool?> shares = <bool?>[];
+  final List<bool?> pureJava = <bool?>[];
   CoreException? failure;
 
   @override
@@ -28,6 +29,7 @@ class _RecordingDownloads extends DownloadsNotifier {
     required String loaderVersion,
     required String installerPath,
     bool? shareLoaderFiles,
+    bool? pureJava,
     required String successMessage,
     required String failureMessage,
     required String cancelledMessage,
@@ -36,6 +38,7 @@ class _RecordingDownloads extends DownloadsNotifier {
     kinds.add(kind);
     installerPaths.add(installerPath);
     shares.add(shareLoaderFiles);
+    this.pureJava.add(pureJava);
     final failure = this.failure;
     if (failure != null) throw failure;
   }
@@ -113,7 +116,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('/tmp/forge-installer.jar'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Download and commit'));
+    final install = find.widgetWithText(FilledButton, 'Download and commit');
+    await tester.ensureVisible(install);
+    await tester.tap(install);
     await tester.pumpAndSettle();
 
     expect(downloads.kinds, ['neoforge']);
@@ -121,6 +126,8 @@ void main() {
     // Untouched, the dialog defers to the global preference (null), which the
     // queue resolves against the current settings.
     expect(downloads.shares, [null]);
+    // Pure Java mode is the default for Forge/NeoForge.
+    expect(downloads.pureJava, [true]);
     // The regression: the dialog used to stay open for the whole download.
     expect(find.byType(LoaderInstallDialog), findsNothing);
     expect(find.textContaining('queued'), findsOneWidget);
@@ -145,7 +152,10 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    final sharing = find.byType(CheckboxListTile);
+    final sharing = find.ancestor(
+      of: find.text('Share loader files'),
+      matching: find.byType(CheckboxListTile),
+    );
     expect(sharing, findsOneWidget);
     expect(tester.widget<CheckboxListTile>(sharing).value, isTrue);
 
@@ -156,10 +166,47 @@ void main() {
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Choose installer'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Download and commit'));
+    final install = find.widgetWithText(FilledButton, 'Download and commit');
+    await tester.ensureVisible(install);
+    await tester.tap(install);
     await tester.pumpAndSettle();
 
     expect(downloads.shares, [false]);
+
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('standard Java flow is selectable and passed to the install', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final downloads = _RecordingDownloads();
+    FileSelectorPlatform.instance = _FakeFileSelector(
+      '/tmp/forge-installer.jar',
+    );
+
+    await tester.pumpWidget(_host(downloads));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    final standard = find.text('Standard Java flow (launcher-native)');
+    expect(standard, findsOneWidget);
+    await tester.ensureVisible(standard);
+    await tester.tap(standard);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Choose installer'));
+    await tester.pumpAndSettle();
+    final install = find.widgetWithText(FilledButton, 'Download and commit');
+    await tester.ensureVisible(install);
+    await tester.tap(install);
+    await tester.pumpAndSettle();
+
+    expect(downloads.pureJava, [false]);
 
     await tester.pump(const Duration(seconds: 4));
   });
@@ -188,14 +235,16 @@ void main() {
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Choose installer'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Download and commit'));
+    final install = find.widgetWithText(FilledButton, 'Download and commit');
+    await tester.ensureVisible(install);
+    await tester.tap(install);
     await tester.pumpAndSettle();
 
     expect(find.byType(LoaderInstallDialog), findsOneWidget);
     expect(
-      find.textContaining('Java'),
-      findsWidgets,
-      reason: 'the pre-flight failure must be explained in the dialog',
+      find.textContaining('requires Java to install'),
+      findsOneWidget,
+      reason: 'the pre-flight failure must name the loader and Java',
     );
     expect(tester.takeException(), isNull);
   });

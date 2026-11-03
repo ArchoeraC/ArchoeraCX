@@ -298,6 +298,26 @@ fn file(url: String, body: &[u8], dest: &str) -> FileSpec {
     }
 }
 
+fn unverified_file(url: String, body: &[u8], dest: &str) -> FileSpec {
+    FileSpec {
+        url,
+        mirrors: Vec::new(),
+        hash: Some(HashSpec {
+            algo: "none".into(),
+            hex: String::new(),
+        }),
+        sha1: None,
+        sha256: None,
+        sha512: None,
+        size: body.len() as u64,
+        dest: dest.into(),
+        mode: FileMode::Ensure,
+        priority: 0,
+        executable: false,
+        headers: BTreeMap::new(),
+    }
+}
+
 fn mirror(mut spec: FileSpec, url: String) -> FileSpec {
     spec.mirrors.push(url);
     spec
@@ -436,6 +456,31 @@ async fn downloads_three_files_with_mirror_fallback_and_progress() {
     assert_eq!(json["status"], "completed");
     assert!(json["elapsedMs"].is_u64());
     assert!(json["post"].as_array().expect("post array").is_empty());
+}
+
+#[tokio::test]
+async fn downloads_with_the_unverified_sentinel() {
+    let temp = TempDir::new().expect("tempdir");
+    let body = b"provider published no digest".to_vec();
+    let mut routes = HashMap::new();
+    routes.insert("/pack.zip".into(), Route::ok(body.clone()));
+    let server = TestServer::start(routes);
+
+    let result = execute_plan(
+        plan(
+            temp.path(),
+            vec![unverified_file(server.url("/pack.zip"), &body, "pack.zip")],
+        ),
+        CancellationToken::new(),
+        None,
+    )
+    .await
+    .expect("execute");
+
+    assert_eq!(result.status.as_str(), "completed");
+    assert_eq!(result.ok, 1);
+    assert_eq!(read(&temp.path().join("pack.zip")), body);
+    assert_no_parts(temp.path());
 }
 
 #[tokio::test]

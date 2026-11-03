@@ -119,6 +119,9 @@ internal static class SettingsModuleJson
             writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
             writer.WriteNumber("logRetentionMb", settings.LogRetentionMegabytes);
             writer.WriteBoolean("shareLoaderFiles", settings.ShareLoaderFiles);
+            writer.WriteBoolean(
+                "preferPureJavaLoaderInstall",
+                settings.PreferPureJavaLoaderInstall);
             writer.WriteString("memoryMode", settings.MemoryMode);
             writer.WriteBoolean("gameOptimization", settings.GameOptimization);
             if (string.IsNullOrWhiteSpace(settings.DownloadProxy))

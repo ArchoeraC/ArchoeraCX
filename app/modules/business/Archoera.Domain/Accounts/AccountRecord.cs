@@ -22,7 +22,8 @@ public sealed record AccountRecord(
     bool Active,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? LastLoginAt)
+    DateTimeOffset? LastLoginAt,
+    string? AuthlibServer = null)
 {
     public const int CurrentSchemaVersion = 1;
 }

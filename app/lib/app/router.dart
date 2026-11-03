@@ -7,10 +7,13 @@ import '../pages/accounts_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/download_page.dart';
 import '../pages/instances_page.dart';
+import '../pages/java_install_page.dart';
 import '../pages/java_page.dart';
+import '../pages/platform_pack_page.dart';
 import '../pages/resource_detail_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/wiki_page.dart';
+import '../services/core/packs/platform_pack_models.dart';
 import '../services/core/resources/resource_models.dart';
 import '../theme/tokens.dart';
 import '../widgets/common/app_navigator.dart';
@@ -72,6 +75,33 @@ GoRouter buildAppRouter({String? initialLocation}) {
                     const AppPageSurface(child: DownloadPage()),
                 routes: [
                   GoRoute(
+                    path: 'platform/:provider/:packId',
+                    name: 'download-platform-pack',
+                    pageBuilder: (context, state) {
+                      final extra = state.extra;
+                      final pack = extra is PlatformPackSummary ? extra : null;
+                      return _fadeSlidePage(
+                        context,
+                        state,
+                        AppPageSurface(
+                          child: PlatformPackPage(
+                            provider: state.pathParameters['provider'] ?? '',
+                            packId: state.pathParameters['packId'] ?? '',
+                            name:
+                                pack?.name ??
+                                state.uri.queryParameters['name'] ??
+                                '',
+                            summary:
+                                pack?.summary ??
+                                state.uri.queryParameters['summary'] ??
+                                '',
+                            pack: pack,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  GoRoute(
                     path: 'project/:kind/:projectId',
                     name: 'download-project',
                     pageBuilder: (context, state) {
@@ -131,6 +161,17 @@ GoRouter buildAppRouter({String? initialLocation}) {
                       state,
                       const AppPageSurface(child: JavaPage()),
                     ),
+                    routes: [
+                      GoRoute(
+                        path: 'install',
+                        name: 'settings-java-install',
+                        pageBuilder: (context, state) => _fadeSlidePage(
+                          context,
+                          state,
+                          const AppPageSurface(child: JavaInstallPage()),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

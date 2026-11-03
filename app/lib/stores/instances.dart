@@ -102,7 +102,7 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
       final root = rootPath.isEmpty
           ? joinPath(
               settings?.roots.first ?? fallbackInstancesRoot(),
-              slugForInstance(name),
+              instanceFolderName(name),
             )
           : rootPath;
       created = GameInstance(

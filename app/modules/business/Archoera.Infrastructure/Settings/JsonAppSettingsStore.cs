@@ -161,6 +161,12 @@ public sealed class JsonAppSettingsStore
                 !root.TryGetProperty("shareLoaderFiles", out var shareElement) ||
                 shareElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
                 shareElement.GetBoolean();
+            // Schema 16 adds the loader install default. Older documents keep
+            // the previous behavior (pure Java on).
+            var preferPureJavaLoaderInstall =
+                !root.TryGetProperty("preferPureJavaLoaderInstall", out var pureJavaElement) ||
+                pureJavaElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                pureJavaElement.GetBoolean();
             var downloadProxy = ReadString(root, "downloadProxy")?.Trim();
             if (!string.IsNullOrEmpty(downloadProxy) &&
                 (!Uri.TryCreate(downloadProxy, UriKind.Absolute, out var proxyUri) ||
@@ -213,6 +219,7 @@ public sealed class JsonAppSettingsStore
                 LogRetentionFiles = logRetentionFiles,
                 LogRetentionMegabytes = logRetentionMb,
                 ShareLoaderFiles = shareLoaderFiles,
+                PreferPureJavaLoaderInstall = preferPureJavaLoaderInstall,
                 MemoryMode = memoryMode,
                 GameOptimization = gameOptimization,
                 WrapperCommand = wrapperCommand,
@@ -391,6 +398,9 @@ public sealed class JsonAppSettingsStore
             writer.WriteNumber("logRetentionFiles", settings.LogRetentionFiles);
             writer.WriteNumber("logRetentionMb", settings.LogRetentionMegabytes);
             writer.WriteBoolean("shareLoaderFiles", settings.ShareLoaderFiles);
+            writer.WriteBoolean(
+                "preferPureJavaLoaderInstall",
+                settings.PreferPureJavaLoaderInstall);
             writer.WriteString("memoryMode", settings.MemoryMode);
             writer.WriteBoolean("gameOptimization", settings.GameOptimization);
             if (!string.IsNullOrWhiteSpace(settings.WrapperCommand))

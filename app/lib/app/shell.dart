@@ -15,11 +15,13 @@ import '../stores/accounts.dart';
 import '../services/core/downloads/build_policy.dart';
 import '../services/core/launch/launch_action.dart';
 import '../stores/appearance.dart';
+import '../stores/diagnostics.dart';
 import '../stores/instances.dart';
 import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/accounts/account_avatar.dart';
 import '../widgets/common/task_center_button.dart';
+import '../widgets/instances/crash_report_dialog.dart';
 import '../widgets/layout/app_background.dart';
 
 part 'shell/page_transition.dart';
@@ -164,6 +166,14 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(pendingCrashReportProvider, (previous, next) {
+      if (next == null || identical(previous, next)) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(pendingCrashReportProvider.notifier).clear();
+        showCrashReportDialog(context, next);
+      });
+    });
     final l10n = AppLocalizations.of(context);
     final destinations = <AppDestination>[
       AppDestination(

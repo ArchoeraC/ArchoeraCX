@@ -122,6 +122,37 @@ mixin CoreClientAccounts on CoreTransport {
     return _parseAccountEnvelope(this, jsonText, methodName);
   }
 
+  /// Third-party Yggdrasil login. The caller must first show the server's
+  /// terms and pass [acceptedTerms] only after the user accepted them; C#
+  /// downloads authlib-injector after that gate.
+  Future<Account> loginAuthlib({
+    required String server,
+    required String username,
+    required String password,
+    required String termsUrl,
+    required bool acceptedTerms,
+    bool requirePremium = false,
+    bool requireMicrosoft = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'account.login.authlib';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'server': server,
+        'username': username,
+        'password': password,
+        'termsUrl': termsUrl,
+        'acceptedTerms': acceptedTerms,
+        'requirePremium': requirePremium,
+        'requireMicrosoft': requireMicrosoft,
+      }),
+      onProgress: onProgress,
+      label: username,
+    );
+    return _parseAccountEnvelope(this, jsonText, methodName);
+  }
+
   Future<Account> refreshAccount(
     String id, {
     void Function(int done, int total)? onProgress,
@@ -156,7 +187,10 @@ Account _parseAccountEnvelope(
   String jsonText,
   String methodName,
 ) {
-  final decoded = transport.decodeEnvelope(jsonText, fallbackMethod: methodName);
+  final decoded = transport.decodeEnvelope(
+    jsonText,
+    fallbackMethod: methodName,
+  );
   final data = transport.asMap(decoded['data'], methodName);
   final account = Account.fromNative(data['account']);
   if (account == null) {

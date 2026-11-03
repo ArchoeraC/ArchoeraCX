@@ -600,7 +600,13 @@ internal sealed record VaultCredentialDto(
     string? MinecraftAccessToken,
     DateTimeOffset? MinecraftAccessTokenExpiresAt,
     string? CertificatesJson,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    string? AuthlibServer,
+    string? AuthlibAccessToken,
+    string? AuthlibClientToken,
+    string? AuthlibMetadataJson,
+    string? AuthlibTermsUrl,
+    DateTimeOffset? AuthlibTermsAcceptedAt)
 {
     public static VaultCredentialDto FromDomain(AccountCredential credential) => new(
         credential.AccountId,
@@ -608,7 +614,13 @@ internal sealed record VaultCredentialDto(
         credential.MinecraftAccessToken,
         credential.MinecraftAccessTokenExpiresAt,
         credential.CertificatesJson,
-        credential.UpdatedAt);
+        credential.UpdatedAt,
+        credential.AuthlibServer,
+        credential.AuthlibAccessToken,
+        credential.AuthlibClientToken,
+        credential.AuthlibMetadataJson,
+        credential.AuthlibTermsUrl,
+        credential.AuthlibTermsAcceptedAt);
 
     public AccountCredential ToDomain() => new(
         AccountId,
@@ -616,7 +628,13 @@ internal sealed record VaultCredentialDto(
         MinecraftAccessToken,
         MinecraftAccessTokenExpiresAt,
         CertificatesJson,
-        UpdatedAt);
+        UpdatedAt,
+        AuthlibServer,
+        AuthlibAccessToken,
+        AuthlibClientToken,
+        AuthlibMetadataJson,
+        AuthlibTermsUrl,
+        AuthlibTermsAcceptedAt);
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

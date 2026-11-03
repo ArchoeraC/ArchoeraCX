@@ -571,20 +571,19 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         }
 
         var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
-        var slug = Slug(name);
+        var folder = InstanceFolderName.FromDisplayName(name);
         // New instances are version-isolated by default: the game directory
         // lives in versions/<name> while libraries and assets stay shared with
         // the instance root. An explicit rootPath still wins.
         var versionsRoot = Path.Combine(settings.Roots[0], "versions");
-        var candidate = Path.Combine(versionsRoot, slug);
-        var suffix = 2;
-        while (Directory.Exists(candidate) || await RootExistsAsync(candidate, cancellationToken)
-                   .ConfigureAwait(false))
-        {
-            candidate = Path.Combine(versionsRoot, $"{slug}-{suffix++}");
-        }
-
-        return candidate;
+        return await InstanceFolderName.ResolveUniqueAsync(
+                versionsRoot,
+                folder,
+                async candidate => Directory.Exists(candidate) ||
+                    await RootExistsAsync(candidate, cancellationToken)
+                        .ConfigureAwait(false),
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<bool> RootExistsAsync(string root, CancellationToken cancellationToken)
@@ -643,22 +642,6 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
         }
 
         return clean;
-    }
-
-    private static string Slug(string name)
-    {
-        var chars = name.Trim().ToLowerInvariant()
-            .Select(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-'
-                ? character
-                : '-')
-            .ToArray();
-        var slug = new string(chars).Trim('-');
-        while (slug.Contains("--", StringComparison.Ordinal))
-        {
-            slug = slug.Replace("--", "-", StringComparison.Ordinal);
-        }
-
-        return string.IsNullOrWhiteSpace(slug) ? "instance" : slug;
     }
 
     private static async Task WriteInstanceFileAsync(

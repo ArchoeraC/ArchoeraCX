@@ -27,7 +27,7 @@ namespace Archoera.Infrastructure.Launch;
 public sealed class LaunchModuleService : IModuleMethodHandler
 {
     private static readonly string[] SupportedMethods =
-        ["launch.start", "launch.prepare", "launch.memory"];
+        ["launch.start", "launch.prepare", "launch.memory", "launch.wait"];
 
     private static readonly HttpClient Http = new()
     {
@@ -40,6 +40,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     private readonly IAccountCredentialStore _credentials;
     private readonly MicrosoftAuthClient _auth;
     private readonly MicrosoftAccountGate _premiumGate;
+    private readonly AuthlibInjectorClient _authlibClient = new();
+    private readonly AuthlibInjectorManager _injector;
     private readonly JavaScanner _java = new();
     private readonly JavaRuntimeSelectionService _javaSelection;
     private readonly PackInstallService? _instanceRepair;
@@ -65,6 +67,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         _instanceRepair = instanceRepair;
         _javaSelection = new JavaRuntimeSelectionService(_java, _settings);
         _sessionResolver = new OnlineSessionResolver(_auth, _credentials, _accounts);
+        _injector = new AuthlibInjectorManager(dataRoot ?? _settings.DataRoot);
         _downloadPolicy = downloadPolicy ??
                           new DownloadPolicy(dataRoot ?? _settings.DataRoot);
     }
@@ -74,6 +77,121 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     private static bool IsForgeInstance(GameInstanceRecord instance)
         => instance.Loader.Equals("forge", StringComparison.OrdinalIgnoreCase) ||
            instance.Loader.Equals("neoforge", StringComparison.OrdinalIgnoreCase);
+
+    private sealed record AuthlibLaunchSession(
+        AccountRecord Account,
+        string AccessToken,
+        AuthlibLaunchArguments Arguments);
+
+    /// <summary>
+    /// Resolves the stored Yggdrasil session, refreshes it when the server
+    /// rejects it, and makes sure the verified authlib-injector jar exists.
+    /// Terms acceptance is checked here too: an account created before the terms
+    /// gate must not download the jar silently.
+    /// </summary>
+    private async Task<AuthlibLaunchSession> ResolveAuthlibLaunchAsync(
+        AccountRecord account,
+        CancellationToken cancellationToken)
+    {
+        var credential = await _credentials
+            .GetCredentialAsync(account.Id, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new LaunchException(
+                "AUTH_REQUIRED",
+                "No stored third-party session for this account. Sign in again.");
+        if (!credential.HasAuthlibToken)
+        {
+            throw new LaunchException(
+                "AUTH_REQUIRED",
+                "No third-party access token is stored. Sign in again.");
+        }
+
+        if (credential.AuthlibTermsAcceptedAt is null)
+        {
+            throw new LaunchException(
+                "AUTHLIB_TERMS_REQUIRED",
+                "Accept the third-party server terms before launching this account.");
+        }
+
+        var server = credential.AuthlibServer ?? account.AuthlibServer;
+        if (string.IsNullOrWhiteSpace(server))
+        {
+            throw new LaunchException(
+                "AUTH_REQUIRED",
+                "The account has no authlib server. Sign in again.");
+        }
+
+        AuthlibServerMetadata metadata;
+        try
+        {
+            metadata = await _authlibClient
+                .ResolveAsync(server, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (AccountAuthException) when (
+            !string.IsNullOrWhiteSpace(credential.AuthlibMetadataJson))
+        {
+            // Offline launch can still use the prefetched metadata; the game
+            // itself will report a session problem if the server is required.
+            metadata = new AuthlibServerMetadata(
+                server,
+                server,
+                account.DisplayName,
+                null,
+                credential.AuthlibMetadataJson!);
+        }
+
+        var accessToken = credential.AuthlibAccessToken!;
+        var current = account;
+        var valid = await _authlibClient
+            .ValidateAsync(
+                metadata,
+                accessToken,
+                credential.AuthlibClientToken ?? string.Empty,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (!valid)
+        {
+            var session = await _authlibClient
+                .RefreshAsync(
+                    metadata,
+                    accessToken,
+                    credential.AuthlibClientToken ?? string.Empty,
+                    account.Uuid ?? string.Empty,
+                    account.DisplayName,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            accessToken = session.AccessToken;
+            var now = DateTimeOffset.UtcNow;
+            current = account with
+            {
+                DisplayName = session.Name,
+                Uuid = session.Uuid,
+                SkinUrl = session.SkinUrl ?? account.SkinUrl,
+                AuthlibServer = metadata.ServerUrl,
+                UpdatedAt = now,
+                LastLoginAt = now,
+            };
+            await _accounts.SaveAsync(current, cancellationToken).ConfigureAwait(false);
+            await _credentials.SaveCredentialAsync(
+                    credential with
+                    {
+                        AuthlibServer = metadata.ServerUrl,
+                        AuthlibAccessToken = session.AccessToken,
+                        AuthlibClientToken = session.ClientToken,
+                        AuthlibMetadataJson = metadata.RawJson,
+                        UpdatedAt = now,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var jar = await _injector.EnsureAsync(cancellationToken).ConfigureAwait(false);
+        return new AuthlibLaunchSession(
+            current,
+            accessToken,
+            new AuthlibLaunchArguments(jar, metadata.ServerUrl, metadata.RawJson));
+    }
 
     private async Task<MojangVersion> LoadOrRepairVersionAsync(
         GameInstanceRecord instance,
@@ -318,6 +436,30 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             {
                 reason = "ACCOUNT_REQUIRED";
             }
+            else if (account.Kind == AccountKind.Authlib)
+            {
+                var credential = await _credentials
+                    .GetCredentialAsync(account.Id, cancellationToken)
+                    .ConfigureAwait(false);
+                if (credential?.HasAuthlibToken != true)
+                {
+                    reason = "AUTH_REQUIRED";
+                }
+                else if (credential.AuthlibTermsAcceptedAt is null)
+                {
+                    reason = "AUTHLIB_TERMS_REQUIRED";
+                }
+                else if (requirePremium &&
+                         !await _premiumGate.HasValidAccountAsync(cancellationToken)
+                             .ConfigureAwait(false))
+                {
+                    reason = "PREMIUM_ACCOUNT_REQUIRED";
+                }
+                else
+                {
+                    ready = true;
+                }
+            }
             else if (!onlineAccount)
             {
                 reason = "MICROSOFT_ACCOUNT_REQUIRED";
@@ -417,8 +559,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     private async Task<byte[]> MemoryAsync(
         string? paramsJson,
         CancellationToken cancellationToken)
-    {
-        try
+    {        try
         {
             var instanceId = ReadRequired(paramsJson, "instanceId");
             var instance = (await _instances.ListAsync(cancellationToken).ConfigureAwait(false))
@@ -454,6 +595,70 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         {
             return ModuleJson.Error("E_INTERNAL", exception.Message);
         }
+    }
+
+    /// <summary>
+    /// Waits for the registered JVM to exit without streaming its log. The UI
+    /// calls this once after <c>launch.start</c>; on return it can analyze the
+    /// artifacts. A timeout returns <c>running: true</c> so the caller follows
+    /// again instead of treating a long session as an exit.
+    /// </summary>
+    private async Task<byte[]> WaitAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        var instanceId = ReadRequired(paramsJson, "instanceId");
+        var logPath = ReadOptional(paramsJson, "logPath");
+        var timeoutSeconds = Math.Clamp(
+            ReadInt(paramsJson, "timeoutSec") ?? 21600,
+            1,
+            43200);
+
+        var waiter = LaunchProcessRegistry.TryWaitForExit(instanceId);
+        int? exitCode = null;
+        var running = waiter is not null;
+        if (waiter is not null)
+        {
+            try
+            {
+                exitCode = await waiter
+                    .WaitAsync(TimeSpan.FromSeconds(timeoutSeconds), cancellationToken)
+                    .ConfigureAwait(false);
+                running = false;
+            }
+            catch (TimeoutException)
+            {
+                // Still running; the caller may wait again.
+            }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // A new launch replaced this waiter.
+                running = true;
+            }
+        }
+
+        return ModuleJson.Envelope(writer =>
+        {
+            writer.WriteString("instanceId", instanceId);
+            writer.WriteBoolean("running", running);
+            if (exitCode is { } code)
+            {
+                writer.WriteNumber("exitCode", code);
+            }
+            else
+            {
+                writer.WriteNull("exitCode");
+            }
+
+            if (string.IsNullOrWhiteSpace(logPath))
+            {
+                writer.WriteNull("logPath");
+            }
+            else
+            {
+                writer.WriteString("logPath", logPath);
+            }
+        });
     }
 
     private static void WriteMemoryPlan(Utf8JsonWriter writer, LaunchMemoryPlan plan)
@@ -498,6 +703,11 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         if (string.Equals(method, "launch.memory", StringComparison.Ordinal))
         {
             return await MemoryAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.Equals(method, "launch.wait", StringComparison.Ordinal))
+        {
+            return await WaitAsync(paramsJson, cancellationToken).ConfigureAwait(false);
         }
 
         if (!string.Equals(method, "launch.start", StringComparison.Ordinal))
@@ -570,15 +780,28 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             var accessToken = "0";
             var clientId = string.Empty;
             var userType = "legacy";
+            AuthlibLaunchArguments? authlibLaunch = null;
             if (mode == "online")
             {
-                var session = await _sessionResolver
-                    .ResolveAsync(account, cancellationToken)
-                    .ConfigureAwait(false);
-                launchAccount = session.Account;
-                accessToken = session.AccessToken;
-                clientId = _auth.Options.ClientId;
-                userType = "msa";
+                if (account.Kind == AccountKind.Authlib)
+                {
+                    var session = await ResolveAuthlibLaunchAsync(account, cancellationToken)
+                        .ConfigureAwait(false);
+                    launchAccount = session.Account;
+                    accessToken = session.AccessToken;
+                    userType = "msa";
+                    authlibLaunch = session.Arguments;
+                }
+                else
+                {
+                    var session = await _sessionResolver
+                        .ResolveAsync(account, cancellationToken)
+                        .ConfigureAwait(false);
+                    launchAccount = session.Account;
+                    accessToken = session.AccessToken;
+                    clientId = _auth.Options.ClientId;
+                    userType = "msa";
+                }
             }
             else if (account.Kind != AccountKind.Offline)
             {
@@ -717,7 +940,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 userType: userType,
                 memoryPlan: memoryPlan,
                 optimizationPlan: optimizationPlan,
-                cores: Environment.ProcessorCount);
+                cores: Environment.ProcessorCount,
+                authlib: authlibLaunch);
 
             await LaunchCommandRunner
                 .RunPreLaunchAsync(instance, settings, plan, cancellationToken)
@@ -876,6 +1100,24 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         catch (JsonException)
         {
             return false;
+        }
+    }
+
+    private static int? ReadInt(string? json, string name)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.TryGetProperty(name, out var element) &&
+                   element.ValueKind == JsonValueKind.Number &&
+                   element.TryGetInt32(out var value)
+                ? value
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 

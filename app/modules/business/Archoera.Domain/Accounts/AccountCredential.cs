@@ -10,7 +10,14 @@ public sealed record AccountCredential(
     string? MinecraftAccessToken,
     DateTimeOffset? MinecraftAccessTokenExpiresAt,
     string? CertificatesJson,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    string? AuthlibServer = null,
+    string? AuthlibAccessToken = null,
+    string? AuthlibClientToken = null,
+    string? AuthlibMetadataJson = null,
+    string? AuthlibTermsUrl = null,
+    DateTimeOffset? AuthlibTermsAcceptedAt = null)
 {
     public bool HasRefreshToken => !string.IsNullOrWhiteSpace(MicrosoftRefreshToken);
+    public bool HasAuthlibToken => !string.IsNullOrWhiteSpace(AuthlibAccessToken);
 }

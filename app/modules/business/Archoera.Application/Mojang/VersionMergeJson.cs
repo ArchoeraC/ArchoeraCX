@@ -62,9 +62,15 @@ public static class VersionMergeJson
         JsonObject? logging = null;
         JsonObject? leafSource = null;
         var libraries = new List<LibrarySlot>();
-        var libraryIndex = new Dictionary<string, int>(StringComparer.Ordinal);
-        var jvmArguments = new List<JsonNode?>();
+        var libraryIndex = new Dictionary<string, int>(StringComparer.Ordinal);        var jvmArguments = new List<JsonNode?>();
         var gameArguments = new List<JsonNode?>();
+        // Legacy minecraftArguments inherit by replacement: Forge 1.12.2
+        // repeats the vanilla arguments plus --tweakClass, so appending both
+        // layers would pass --gameDir twice. Remember where the nearest legacy
+        // block sits so a child can replace it without disturbing structured
+        // arguments.
+        var legacyStart = -1;
+        var legacyCount = 0;
         var argumentExtras = new JsonObject();
         var sawArguments = false;
         int? minimumLauncherVersion = null;
@@ -161,7 +167,9 @@ public static class VersionMergeJson
                     hasStructuredGame,
                     gameArguments,
                     warnings,
-                    ref sawArguments);
+                    ref sawArguments,
+                    ref legacyStart,
+                    ref legacyCount);
             }
         }
 
@@ -291,7 +299,7 @@ public static class VersionMergeJson
                     LibraryKey: name,
                     LayerId: layer.Id));
 
-                var rawKey = "\0raw:" + name;
+                var rawKey = "\0raw:" + name + "\0" + RulesSignature(library);
                 if (index.TryGetValue(rawKey, out var rawSlot))
                 {
                     slots[rawSlot].Node = (JsonObject)library.DeepClone();
@@ -306,7 +314,8 @@ public static class VersionMergeJson
             }
 
             var key = coordinate.Key;
-            if (index.TryGetValue(key, out var existing))
+            var slotKey = key + "\0" + RulesSignature(library);
+            if (index.TryGetValue(slotKey, out var existing))
             {
                 var slot = slots[existing];
                 if (!string.Equals(slot.Version, coordinate.Version, StringComparison.Ordinal))
@@ -328,13 +337,24 @@ public static class VersionMergeJson
             }
             else
             {
-                index[key] = slots.Count;
+                index[slotKey] = slots.Count;
                 slots.Add(new LibrarySlot(
                     coordinate.Version,
                     (JsonObject)library.DeepClone()));
             }
         }
     }
+
+    /// <summary>
+    /// OS/feature variants of the same Maven coordinate (notably lwjgl on
+    /// 1.12.2: Linux 2.9.4 and macOS 2.9.2) are distinct libraries. Include
+    /// the rules text in the merge key so one variant does not replace the
+    /// other; rules stay unevaluated until launch.
+    /// </summary>
+    private static string RulesSignature(JsonObject library)
+        => library.TryGetPropertyValue("rules", out var rules) && rules is not null
+            ? rules.ToJsonString()
+            : string.Empty;
 
     private static void MergeArguments(
         JsonNode? value,
@@ -407,7 +427,9 @@ public static class VersionMergeJson
         bool hasStructuredGame,
         List<JsonNode?> gameArguments,
         List<MergeWarning> warnings,
-        ref bool sawArguments)
+        ref bool sawArguments,
+        ref int legacyStart,
+        ref int legacyCount)
     {
         if (value is not JsonValue legacyValue
             || !legacyValue.TryGetValue<string>(out var legacy))
@@ -433,6 +455,15 @@ public static class VersionMergeJson
         }
 
         var tokens = TokenizeLegacyArguments(legacy, layer.Id);
+        // Child legacy arguments replace the parent's block instead of being
+        // appended; see the declaration in Build for the 1.12.2 case.
+        if (legacyCount > 0)
+        {
+            gameArguments.RemoveRange(legacyStart, legacyCount);
+        }
+
+        legacyStart = gameArguments.Count;
+        legacyCount = tokens.Count;
         foreach (var token in tokens)
         {
             gameArguments.Add(JsonValue.Create(token));

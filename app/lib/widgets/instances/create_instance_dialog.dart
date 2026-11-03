@@ -116,7 +116,8 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
     final selectedRoot = _selectedRoot != null && roots.contains(_selectedRoot)
         ? _selectedRoot!
         : roots.first;
-    final canCreate = _nameController.text.trim().isNotEmpty;
+    final canCreate =
+        instanceNameProblem(_nameController.text) == null && !_creating;
     return AlertDialog(
       scrollable: true,
       title: Text(l10n.instanceCreateTitle),
@@ -141,6 +142,12 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                 decoration: InputDecoration(
                   labelText: l10n.instanceNameLabel,
                   hintText: l10n.instanceNameHint,
+                  errorText: _nameController.text.trim().isEmpty
+                      ? null
+                      : _nameProblemText(
+                          l10n,
+                          instanceNameProblem(_nameController.text),
+                        ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -172,8 +179,14 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
                       decoration: InputDecoration(
                         labelText: l10n.instanceLocationLabel,
                         hintText: _versionIsolation
-                            ? '$selectedRoot/versions/${slugForInstance(_nameController.text)}'
-                            : '$selectedRoot/${slugForInstance(_nameController.text)}',
+                            ? joinPath(
+                                joinPath(selectedRoot, 'versions'),
+                                instanceFolderName(_nameController.text),
+                              )
+                            : joinPath(
+                                selectedRoot,
+                                instanceFolderName(_nameController.text),
+                              ),
                         helperText: l10n.instanceLocationHint,
                       ),
                     ),
@@ -272,6 +285,19 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
     );
   }
 
+  String? _nameProblemText(
+    AppLocalizations l10n,
+    InstanceNameProblem? problem,
+  ) => switch (problem) {
+    null || InstanceNameProblem.empty => null,
+    InstanceNameProblem.tooLong => l10n.instanceNameTooLong(
+      instanceNameMaxLength,
+    ),
+    InstanceNameProblem.invalidCharacters => l10n.instanceNameInvalidCharacters,
+    InstanceNameProblem.invalidEdges => l10n.instanceNameInvalidEdges,
+    InstanceNameProblem.reservedName => l10n.instanceNameReserved,
+  };
+
   Future<void> _loadLoaderVersions() async {
     final loader = _loader;
     final game = _gameVersion;
@@ -348,7 +374,9 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
 
   Future<void> _create(AppLocalizations l10n) async {
     final name = _nameController.text.trim();
-    if (name.isEmpty || _creating) return;
+    if (name.isEmpty || _creating || instanceNameProblem(name) != null) {
+      return;
+    }
 
     final settings = ref.read(appSettingsProvider).value;
     final roots = settings?.roots ?? <String>[fallbackInstancesRoot()];
@@ -356,10 +384,12 @@ class _CreateInstanceDialogState extends ConsumerState<CreateInstanceDialog> {
         ? _selectedRoot!
         : roots.first;
     final explicitRoot = _rootController.text.trim();
-    final slug = slugForInstance(name);
+    final folder = instanceFolderName(name);
     final rootPath = _versionIsolation
-        ? joinPath(joinPath(selectedRoot, 'versions'), slug)
-        : (explicitRoot.isEmpty ? joinPath(selectedRoot, slug) : explicitRoot);
+        ? joinPath(joinPath(selectedRoot, 'versions'), folder)
+        : (explicitRoot.isEmpty
+              ? joinPath(selectedRoot, folder)
+              : explicitRoot);
 
     setState(() => _creating = true);
     try {

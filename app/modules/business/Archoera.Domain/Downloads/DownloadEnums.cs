@@ -5,9 +5,17 @@ namespace Archoera.Domain.Downloads;
 /// </summary>
 public enum DownloadHashAlgorithm
 {
+    Md5,
     Sha1,
     Sha256,
     Sha512,
+
+    /// <summary>
+    /// No published digest. Only used for platform bundles whose provider
+    /// offers an HTTPS URL and no hash at all; the archive's own ZIP CRCs are
+    /// still verified during extraction.
+    /// </summary>
+    None,
 }
 
 /// <summary>What the executor does when <c>dest</c> already exists.</summary>
@@ -53,9 +61,11 @@ public static class DownloadWire
 {
     public static string ToWire(this DownloadHashAlgorithm algorithm) => algorithm switch
     {
+        DownloadHashAlgorithm.Md5 => "md5",
         DownloadHashAlgorithm.Sha1 => "sha1",
         DownloadHashAlgorithm.Sha256 => "sha256",
         DownloadHashAlgorithm.Sha512 => "sha512",
+        DownloadHashAlgorithm.None => "none",
         _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
     };
 
@@ -64,6 +74,9 @@ public static class DownloadWire
     {
         switch (value?.Trim().ToLowerInvariant())
         {
+            case "md5":
+                algorithm = DownloadHashAlgorithm.Md5;
+                return true;
             case "sha1" or "sha-1":
                 algorithm = DownloadHashAlgorithm.Sha1;
                 return true;
@@ -72,6 +85,9 @@ public static class DownloadWire
                 return true;
             case "sha512" or "sha-512":
                 algorithm = DownloadHashAlgorithm.Sha512;
+                return true;
+            case "none":
+                algorithm = DownloadHashAlgorithm.None;
                 return true;
             default:
                 algorithm = default;

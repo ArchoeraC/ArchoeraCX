@@ -419,6 +419,7 @@ class CoreTransport {
   Future<String> runAsync(
     String methodName, {
     void Function(int done, int total)? onProgress,
+    void Function(int bytesPerSecond)? onRate,
     CoreDetailedProgress? onDetailedProgress,
     void Function(int taskId)? onTaskStarted,
     String paramsJson = '{}',
@@ -460,6 +461,7 @@ class CoreTransport {
               final line =
                   event.payload['current']?.toString() ?? event.message;
               onProgress?.call(event.done, event.total);
+              onRate?.call(event.bytesPerSec);
               onDetailedProgress?.call(event.done, event.total, line);
               _emitTask(
                 TaskUpdate(
@@ -751,7 +753,11 @@ class CoreTransport {
     try {
       decoded = jsonDecode(jsonText);
     } on FormatException catch (error) {
-      throw invalidEnvelope(fallbackMethod, 'invalid JSON', detail: error.message);
+      throw invalidEnvelope(
+        fallbackMethod,
+        'invalid JSON',
+        detail: error.message,
+      );
     }
 
     if (decoded is! Map<String, Object?>) {

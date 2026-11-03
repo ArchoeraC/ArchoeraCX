@@ -11,6 +11,7 @@ using Archoera.Domain.Loaders;
 using Archoera.Domain.Resources;
 using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Loaders;
+using Archoera.Infrastructure.Loaders.Native;
 using Archoera.Infrastructure.Resources.Modrinth;
 
 namespace Archoera.DevHost;
@@ -240,7 +241,7 @@ internal static class Program
             return 0;
         }
 
-        IProcessorRunner runner = new ForgeProcessorRunner();
+        IProcessorRunner runner = new NativeProcessorRunner();
         var service = new ForgeRepairService(
             runner,
             verifier,

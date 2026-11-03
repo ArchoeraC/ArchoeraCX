@@ -110,15 +110,87 @@ String instanceRoot({
   return root != null && root.isNotEmpty ? root : joinPath(instancesRoot, id);
 }
 
-String slugForInstance(String name) {
-  final slug = name
-      .trim()
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9._-]+'), '-')
-      .replaceAll(RegExp(r'-+'), '-')
-      .replaceAll(RegExp(r'^-|-$'), '');
-  // Reject separators: "."/".."/"..." would otherwise make the instance root
-  // resolve to the instances directory or its parent.
-  if (slug.isEmpty || RegExp(r'^\.+$').hasMatch(slug)) return 'instance';
-  return slug;
+/// Maximum display-name length, matching C# `ValidateName` and
+/// `InstanceFolderName.MaxLength`.
+const int instanceNameMaxLength = 80;
+
+/// Characters Windows cannot store in a file name. SJMCL rejects these in the
+/// name field; we keep the same set so a name is either usable as-is or
+/// reported instead of being silently rewritten.
+const String _forbiddenInstanceNameChars = r'\/:*?"<>|';
+
+final RegExp _reservedInstanceName = RegExp(
+  r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$',
+  caseSensitive: false,
+);
+
+/// Why a manually entered instance name cannot become a folder name.
+enum InstanceNameProblem {
+  empty,
+  tooLong,
+  invalidCharacters,
+  invalidEdges,
+  reservedName,
+}
+
+/// Validates a manual instance name before it is sent to C#.
+///
+/// Mirrors SJMCL's directory-name rule: Unicode and ordinary punctuation are
+/// allowed; only separators, Windows-reserved characters/device names and
+/// leading/trailing dots are rejected.
+InstanceNameProblem? instanceNameProblem(String value) {
+  final name = value.trim();
+  if (name.isEmpty) return InstanceNameProblem.empty;
+  if (name.length > instanceNameMaxLength) {
+    return InstanceNameProblem.tooLong;
+  }
+  if (name.startsWith('.') || name.endsWith('.')) {
+    return InstanceNameProblem.invalidEdges;
+  }
+
+  for (final rune in name.runes) {
+    if (rune < 0x20 || rune == 0x7f) {
+      return InstanceNameProblem.invalidCharacters;
+    }
+    if (rune < 0x80 &&
+        _forbiddenInstanceNameChars.contains(String.fromCharCode(rune))) {
+      return InstanceNameProblem.invalidCharacters;
+    }
+  }
+
+  if (_reservedInstanceName.hasMatch(name)) {
+    return InstanceNameProblem.reservedName;
+  }
+
+  return null;
+}
+
+/// Folder name used below `versions/` (or the instances root).
+///
+/// This is the Dart mirror of C# `InstanceFolderName.FromDisplayName`: keep
+/// Unicode and punctuation, turn separators into `-`, trim leading/trailing
+/// dots and spaces, and avoid Windows device names. A valid manual name passes
+/// through unchanged.
+String instanceFolderName(String value) {
+  final buffer = StringBuffer();
+  for (final rune in value.trim().runes) {
+    if (buffer.length >= instanceNameMaxLength) break;
+    if (rune < 0x20 || rune == 0x7f) continue;
+
+    final character = String.fromCharCode(rune);
+    buffer.write(
+      rune < 0x80 && _forbiddenInstanceNameChars.contains(character)
+          ? '-'
+          : character,
+    );
+  }
+
+  var folder = buffer.toString();
+  folder = folder.replaceFirst(RegExp(r'^[ .]+'), '');
+  folder = folder.replaceFirst(RegExp(r'[ .]+$'), '');
+  if (folder.isEmpty || RegExp(r'^\.+$').hasMatch(folder)) {
+    return 'instance';
+  }
+
+  return _reservedInstanceName.hasMatch(folder) ? '_$folder' : folder;
 }

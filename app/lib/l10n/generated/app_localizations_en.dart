@@ -156,7 +156,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'This pack tried to write outside its folder, create a link, or expand to an unreasonable size (zip bomb). The launcher stopped before installing it. Do not install it unless you trust its source.';
 
   @override
-  String get packInspectFailed => 'This file is not a valid Modrinth modpack.';
+  String get packInspectFailed => 'This file is not a supported modpack.';
+
+  @override
+  String packRepaired(String path) {
+    return 'The pack used Windows path separators, so the launcher saved a backup to $path and repaired the archive.';
+  }
 
   @override
   String get packLoaderUnsupported =>
@@ -177,6 +182,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceNameHint => 'e.g. 1.21.4 · Fabric';
+
+  @override
+  String instanceNameTooLong(int max) {
+    return 'Name must be $max characters or fewer.';
+  }
+
+  @override
+  String get instanceNameInvalidCharacters =>
+      'Name cannot contain \\ / : * ? \" < > | or control characters.';
+
+  @override
+  String get instanceNameInvalidEdges => 'Name cannot start or end with a dot.';
+
+  @override
+  String get instanceNameReserved =>
+      'Name is a reserved Windows device name. Choose another name.';
 
   @override
   String get instanceGameVersionLabel => 'Game version';
@@ -575,11 +596,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loaderInstallFailed => 'Loader install failed.';
 
   @override
+  String loaderJavaRequired(String loader) {
+    return '$loader requires Java to install: some processors are not implemented natively yet. Install or select a Java runtime in Java settings first.';
+  }
+
+  @override
   String get loaderShareFiles => 'Share loader files';
 
   @override
   String get loaderShareFilesHint =>
       'Reuses one libraries copy in the game folder for every instance of this loader build; the merged launch profile always stays in this instance. Untick to keep the libraries inside this instance.';
+
+  @override
+  String get loaderPureJava => 'Use the official installer (pure Java)';
+
+  @override
+  String get loaderPureJavaHint =>
+      'The Forge/NeoForge installer handles downloads and processors; works with 1.12.2 and newer installers.';
+
+  @override
+  String get loaderInstallMode => 'Install method';
+
+  @override
+  String get loaderStandardJava => 'Standard Java flow (launcher-native)';
+
+  @override
+  String get loaderStandardJavaHint =>
+      'The launcher builds the plan and runs covered processors natively; steps that still need Java use the selected runtime. Choose this for 1.7.10 and older installers.';
+
+  @override
+  String get loaderJavaInstallUnsupported =>
+      'This installer has no client CLI (Forge 1.7.10 and older), so pure Java mode cannot drive it. Choose \"Standard Java flow (launcher-native)\" instead.';
 
   @override
   String get searchDownload => 'Search resources';
@@ -898,6 +945,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsShareLoaderFilesDesc =>
       'Forge/NeoForge libraries and processor output are installed once in the game folder and reused by every instance of that loader build. Each instance keeps its merged launch profile in its own folder. Untick to keep the libraries inside each instance.';
+
+  @override
+  String get settingsPreferPureJavaLoaderInstall =>
+      'Prefer the official installer (pure Java)';
+
+  @override
+  String get settingsPreferPureJavaLoaderInstallDesc =>
+      'The loader install dialog starts with \"Use the official installer (pure Java)\" selected; each install can still switch to the standard Java flow. Installers without a client CLI (Forge 1.7.10 and older) fall back automatically.';
 
   @override
   String get settingsSectionGameArgs => 'Extra game arguments';
@@ -1433,33 +1488,251 @@ class AppLocalizationsEn extends AppLocalizations {
   String get javaInstallAction => 'Install Java';
 
   @override
-  String get javaInstallTitle => 'Install a Java runtime';
+  String get javaInstallPageSubtitle =>
+      'Choose a JDK distribution, version and install location.';
 
   @override
-  String get javaInstallHint =>
-      'Downloads the runtime from Mojang\'s official catalog and rescans when it finishes; the transfer runs in the background.';
+  String get javaInstallProviderLabel => 'Distribution';
+
+  @override
+  String get javaInstallMajorLabel => 'Java version';
+
+  @override
+  String get javaInstallVersionsLabel => 'Available builds';
+
+  @override
+  String get javaInstallSecurityHint =>
+      'Only the latest patch of each major is recommended; historical builds may contain known CVEs.';
+
+  @override
+  String get javaInstallOutdated => 'Historical';
+
+  @override
+  String get javaInstallOutdatedSelected =>
+      'This build is not the latest patch and may contain known CVEs.';
+
+  @override
+  String get javaInstallAllowOutdated => 'Allow historical builds';
+
+  @override
+  String get javaInstallAllowOutdatedHint =>
+      'Only enable when you need this exact build.';
+
+  @override
+  String get javaInstallCveTitle => 'Security advisories';
+
+  @override
+  String get javaInstallCveChecking => 'Checking NVD/OSV for known CVEs…';
+
+  @override
+  String get javaInstallCveNone => 'No known CVEs affect this build.';
+
+  @override
+  String get javaInstallCveUnavailable =>
+      'CVE data is unavailable; this build was not checked.';
+
+  @override
+  String javaInstallCveCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count known CVEs affect this build.',
+      one: '1 known CVE affects this build.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get javaInstallCveAcknowledge =>
+      'I understand this build has known CVEs';
+
+  @override
+  String get javaInstallCveAcknowledgeHint =>
+      'Install stays disabled until you acknowledge the advisories.';
+
+  @override
+  String javaInstallCveScore(String score) {
+    return 'CVSS $score';
+  }
+
+  @override
+  String get javaInstallCveOpen => 'Open advisory';
+
+  @override
+  String get javaInstallLatestOnly =>
+      'This vendor publishes only the latest build of each major.';
+
+  @override
+  String javaInstallPlatform(String os, String arch, String archive) {
+    return '$os · $arch · $archive';
+  }
+
+  @override
+  String get javaInstallTargetPlatform => 'Target platform';
+
+  @override
+  String javaInstallCurrentDevice(String os, String arch) {
+    return 'Current device: $os · $arch';
+  }
+
+  @override
+  String get javaInstallPlatformBadge => 'Incompatible';
+
+  @override
+  String get javaInstallPlatformIncompatible =>
+      'This JDK targets a different platform and cannot run on this device.';
+
+  @override
+  String get javaInstallPlatformIncompatibleHint =>
+      'You can still download and keep it for another machine.';
+
+  @override
+  String get javaInstallRiskTitle => 'Confirm installation risk';
+
+  @override
+  String javaInstallRiskPlatform(
+    String targetOs,
+    String targetArch,
+    String hostOs,
+    String hostArch,
+  ) {
+    return 'Target platform $targetOs · $targetArch does not match this device ($hostOs · $hostArch). The installed JDK cannot run here.';
+  }
+
+  @override
+  String javaInstallRiskCve(int count, String ids) {
+    return '$count known CVE(s) affect this build:\n$ids';
+  }
+
+  @override
+  String get javaInstallRiskAction => 'Install anyway';
+
+  @override
+  String javaInstallForeignResult(String os, String arch) {
+    return 'Downloaded for $os · $arch; it cannot run on this device.';
+  }
+
+  @override
+  String get javaInstallIncompatibleUse =>
+      'This JDK targets another platform and cannot be selected on this device.';
 
   @override
   String get javaInstallRecommended => 'Recommended';
 
   @override
-  String javaInstallQueued(int major) {
-    return 'Java $major queued for download.';
+  String get javaInstallLts => 'LTS';
+
+  @override
+  String javaInstallArchiveMeta(String archive, String size) {
+    return '$archive · $size';
   }
 
   @override
-  String javaInstallDone(int major) {
-    return 'Java $major installed.';
+  String get javaInstallLoadFailed => 'Could not load the JDK catalogue.';
+
+  @override
+  String get javaInstallFailed => 'Installation failed.';
+
+  @override
+  String get javaInstallMajorsFailed => 'Could not load Java versions.';
+
+  @override
+  String get javaInstallVersionsFailed => 'Could not load builds.';
+
+  @override
+  String get javaInstallEmptyVersions => 'No builds are available for this OS.';
+
+  @override
+  String get javaInstallEmptyVersionsHint =>
+      'Try another distribution or Java version.';
+
+  @override
+  String get javaInstallDirectory => 'Install directory';
+
+  @override
+  String get javaInstallDirectoryHint =>
+      'The JDK is written directly into this folder. It must be empty or not exist yet.';
+
+  @override
+  String get javaInstallDefaultDirectory => 'Default location';
+
+  @override
+  String get javaInstallCustomDirectory => 'Custom location';
+
+  @override
+  String get javaInstallChooseDirectory => 'Choose folder';
+
+  @override
+  String get javaInstallUseDefault => 'Use default';
+
+  @override
+  String get javaInstallStart => 'Install JDK';
+
+  @override
+  String get javaInstallDownloadOnlyAction => 'Download archive';
+
+  @override
+  String get javaInstallInstalling => 'Installing…';
+
+  @override
+  String get javaInstallDownloading => 'Downloading the JDK archive…';
+
+  @override
+  String get javaInstallExtracting => 'Extracting the verified archive…';
+
+  @override
+  String get javaInstallCancelling => 'Cancelling…';
+
+  @override
+  String get javaInstallCancelled => 'Installation cancelled.';
+
+  @override
+  String javaInstallSuccess(String version) {
+    return 'Java $version installed.';
   }
 
   @override
-  String javaInstallFailed(int major) {
-    return 'Java $major installation failed.';
-  }
+  String get javaInstallUseRuntime => 'Use this Java';
 
   @override
-  String javaInstallCancelled(int major) {
-    return 'Java $major installation cancelled.';
+  String get javaInstallBackToJava => 'Back to Java';
+
+  @override
+  String get javaInstallSelected => 'Java runtime selected.';
+
+  @override
+  String get javaInstallDirectoryRequired =>
+      'Choose an install directory first.';
+
+  @override
+  String get javaInstallVersionRequired => 'Choose a build first.';
+
+  @override
+  String get javaInstallProvidersEmpty => 'No JDK vendors are registered.';
+
+  @override
+  String get javaInstallExtractOptions => 'Archive handling';
+
+  @override
+  String get javaInstallAutoExtract => 'Extract automatically';
+
+  @override
+  String get javaInstallAutoExtractHint =>
+      'Extract into the install directory; when off, only the archive is downloaded next to it.';
+
+  @override
+  String get javaInstallAutoDelete => 'Delete the archive after extraction';
+
+  @override
+  String get javaInstallAutoDeleteHint =>
+      'When off, the tar.gz/zip is kept next to the install directory.';
+
+  @override
+  String get javaInstallArchiveOnly => 'Archive downloaded, not extracted.';
+
+  @override
+  String javaInstallArchiveKept(String path) {
+    return 'Archive kept: $path';
   }
 
   @override
@@ -1607,7 +1880,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountNoAccounts =>
-      'No accounts yet. Add a Microsoft or offline account to launch the game.';
+      'No accounts yet. Add a Microsoft or other account to launch the game.';
 
   @override
   String accountLoginFailed(String message) {
@@ -1665,7 +1938,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountMicrosoft => 'Microsoft';
 
   @override
-  String get accountAuthlib => 'Authlib';
+  String get accountAuthlib => 'Third-party';
 
   @override
   String get settingsDiagnosticsOpen => 'Open';
@@ -2846,4 +3119,334 @@ class AppLocalizationsEn extends AppLocalizations {
   String instanceSettingsSaveFailed(String message) {
     return 'Could not save instance settings: $message';
   }
+
+  @override
+  String get crashDialogTitle => 'The game exited unexpectedly';
+
+  @override
+  String crashDialogExitCode(int code) {
+    return 'Exit code: $code';
+  }
+
+  @override
+  String get crashDialogNoDetails =>
+      'No specific cause matched. Open the launch log for the last error lines.';
+
+  @override
+  String get crashDialogShareHint =>
+      'If you need help from others, share the error log — not a photo or screenshot of this window.';
+
+  @override
+  String get crashDialogForceStopHint =>
+      'If you terminated the game yourself, you can ignore this message.';
+
+  @override
+  String get crashDialogEvidence => 'Evidence';
+
+  @override
+  String get crashDialogCopy => 'Copy diagnosis';
+
+  @override
+  String get crashDialogCopied => 'Diagnosis copied.';
+
+  @override
+  String get crashDialogClose => 'Close';
+
+  @override
+  String get crashRuleJavaTooOldTitle => 'Java version is too old';
+
+  @override
+  String crashRuleJavaTooOldDetail(String needed, String current) {
+    return 'The game needs Java $needed, but this launch used Java $current.';
+  }
+
+  @override
+  String crashRuleJavaTooOldFix(String needed) {
+    return 'Select Java $needed or newer for this instance in Settings → Java.';
+  }
+
+  @override
+  String get crashRuleJavaTooNewTitle => 'Java version is too new';
+
+  @override
+  String get crashRuleJavaTooNewDetail =>
+      'This old loader does not support the selected Java runtime.';
+
+  @override
+  String get crashRuleJavaTooNewFix =>
+      'Use Java 8 for 1.12.2/1.16.5, Java 17 for 1.18–1.20.4, and Java 21 for newer versions.';
+
+  @override
+  String get crashRuleHeapTitle => 'Java memory is insufficient';
+
+  @override
+  String get crashRuleHeapDetail =>
+      'The JVM could not reserve the configured heap or ran out of heap space.';
+
+  @override
+  String get crashRuleHeapFix =>
+      'Close other programs, adjust the allocated memory, and make sure the selected Java is 64-bit.';
+
+  @override
+  String get crashRuleMixinTitle => 'Mixin injection failed';
+
+  @override
+  String crashRuleMixinDetail(String config) {
+    return 'Mixin $config failed to apply. This usually means the mod does not match this Minecraft or loader version.';
+  }
+
+  @override
+  String get crashRuleMixinFix =>
+      'Update or remove the mod that owns this mixin; disable recently added mods to narrow it down.';
+
+  @override
+  String get crashRuleDependencyTitle => 'Missing mod dependency';
+
+  @override
+  String get crashRuleDependencyDetail =>
+      'A mod requires another mod that is not installed or has an incompatible version.';
+
+  @override
+  String get crashRuleDependencyFix =>
+      'Install the missing dependency version that matches this Minecraft and loader version.';
+
+  @override
+  String get crashRuleMainClassTitle =>
+      'Game or loader installation is incomplete';
+
+  @override
+  String crashRuleMainClassDetail(String cls) {
+    return 'The main class $cls could not be loaded.';
+  }
+
+  @override
+  String get crashRuleMainClassFix =>
+      'Reinstall the loader or run loader repair, then try again.';
+
+  @override
+  String get crashRuleGraphicsTitle => 'Graphics/OpenGL initialization failed';
+
+  @override
+  String get crashRuleGraphicsDetail =>
+      'The game could not create an OpenGL window.';
+
+  @override
+  String get crashRuleGraphicsFix =>
+      'Update the graphics driver, run on the dedicated GPU, and avoid remote desktop or virtual machines.';
+
+  @override
+  String get crashRuleModTitle => 'A mod failed to start';
+
+  @override
+  String crashRuleModDetail(String mod, String stage) {
+    return 'Mod $mod threw an error during the $stage stage.';
+  }
+
+  @override
+  String get crashRuleModFix =>
+      'Update or remove this mod; attach the crash report when reporting it to the author.';
+
+  @override
+  String get crashRuleFileLockedTitle =>
+      'A game file is locked or not writable';
+
+  @override
+  String get crashRuleFileLockedDetail =>
+      'A file was in use by another process or permission was denied.';
+
+  @override
+  String get crashRuleFileLockedFix =>
+      'Close other launchers or instances, move the game out of OneDrive, and check folder permissions.';
+
+  @override
+  String get crashRuleDriverTitle => 'Graphics driver crashed';
+
+  @override
+  String crashRuleDriverDetail(String lib) {
+    return 'The JVM crashed inside $lib.';
+  }
+
+  @override
+  String get crashRuleDriverFix =>
+      'Clean-install the graphics driver and disable overlays such as RTSS, Discord or Steam.';
+
+  @override
+  String get crashRuleNativeTitle => 'Native JVM crash';
+
+  @override
+  String crashRuleNativeDetail(String frame) {
+    return 'The JVM crashed in native code: $frame.';
+  }
+
+  @override
+  String get crashRuleNativeFix =>
+      'Check the hs_err log, remove native mods or agents, and verify the Java runtime.';
+
+  @override
+  String get crashRuleReportTitle => 'The game reported a crash';
+
+  @override
+  String crashRuleReportDetail(String description) {
+    return 'Crash report description: $description';
+  }
+
+  @override
+  String get crashRuleReportFix =>
+      'Check the crash report and mod list; disable recently added mods.';
+
+  @override
+  String get crashRuleUnknownTitle => 'The game exited unexpectedly';
+
+  @override
+  String crashRuleUnknownDetail(String code) {
+    return 'No known signature matched the exit code $code.';
+  }
+
+  @override
+  String get crashRuleUnknownFix =>
+      'Open the launch log and crash report for the last error lines.';
+
+  @override
+  String get accountAddAuthlib => 'Third-party sign-in';
+
+  @override
+  String get accountAuthlibDesc =>
+      'Sign in through a Yggdrasil server such as LittleSkin.';
+
+  @override
+  String get accountAuthTitle => 'Third-party sign-in';
+
+  @override
+  String get accountAuthServerPreset => 'Server';
+
+  @override
+  String get accountAuthCustomServer => 'Custom server';
+
+  @override
+  String get accountAuthServerUrl => 'Yggdrasil API URL';
+
+  @override
+  String get accountAuthTermsUrl => 'Terms URL';
+
+  @override
+  String get accountAuthTermsTitle => 'Third-party terms';
+
+  @override
+  String accountAuthTermsBody(String server) {
+    return 'You are about to sign in to $server. Read and accept that server\'s terms and privacy policy before the launcher downloads authlib-injector or sends credentials.';
+  }
+
+  @override
+  String get accountAuthOpenTerms => 'Open terms';
+
+  @override
+  String get accountAuthOpenTermsFirst => 'Open the terms before accepting.';
+
+  @override
+  String get accountAuthAcceptTerms =>
+      'I have read and accept the server\'s terms and privacy policy';
+
+  @override
+  String get accountAuthUsername => 'Email or username';
+
+  @override
+  String get accountAuthPassword => 'Password';
+
+  @override
+  String get accountAuthLogin => 'Sign in';
+
+  @override
+  String get accountAuthImportLink => 'Import from authlib link';
+
+  @override
+  String get accountAuthImportFailed =>
+      'The clipboard does not contain an authlib server link.';
+
+  @override
+  String get platformSearchHint => 'Search packs';
+
+  @override
+  String get platformLoadFailed => 'Could not load packs.';
+
+  @override
+  String get platformEmpty => 'No packs found.';
+
+  @override
+  String get platformEmptyHint =>
+      'Try another keyword, or switch the platform.';
+
+  @override
+  String get platformVersionsEmpty => 'No installable versions.';
+
+  @override
+  String get platformInstall => 'Install';
+
+  @override
+  String get platformInstallUnsupported =>
+      'This platform pack format is not supported by the installer.';
+
+  @override
+  String get platformInstallMetadataFailed =>
+      'The platform returned incomplete pack metadata. Try again later or pick another version.';
+
+  @override
+  String get platformInstallNetworkFailed =>
+      'Could not reach the platform or its download host. Try again, or use another pack/source.';
+
+  @override
+  String get platformDirectArchiveTitle => 'Install without a published hash?';
+
+  @override
+  String get platformDirectArchiveWarning =>
+      'This platform publishes only a direct zip and no MD5/SHA digest. The installer will use HTTPS, validate every ZIP entry\'s CRC, and record the downloaded SHA-256. Continue?';
+
+  @override
+  String get platformDirectArchiveConfirm => 'Continue install';
+
+  @override
+  String get platformDirectArchiveBadge => 'direct zip · no official hash';
+
+  @override
+  String get accountAuthTermsRequired => 'Accept the third-party terms first.';
+
+  @override
+  String get accountAuthServerInvalid => 'Enter a valid https server URL.';
+
+  @override
+  String get accountAuthInvalidCredentials =>
+      'The server rejected the username or password.';
+
+  @override
+  String get accountAuthNoProfile =>
+      'This account has no Minecraft profile on the server.';
+
+  @override
+  String get accountAuthNetwork => 'Cannot reach the auth server.';
+
+  @override
+  String get accountAuthDownloadFailed =>
+      'Could not download authlib-injector. Try again.';
+
+  @override
+  String get accountAuthTermsOpenFailed => 'Could not open the terms page.';
+
+  @override
+  String get elevationTitle => 'I know what you\'re trying to do';
+
+  @override
+  String elevationBody(String kind) {
+    return 'ArchoeraCX detected that this process is running as $kind. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.';
+  }
+
+  @override
+  String get elevationContinue => 'I know what I\'m doing';
+
+  @override
+  String get elevationExit => 'Exit';
+
+  @override
+  String get elevationKindRoot => 'root';
+
+  @override
+  String get elevationKindAdministrator => 'administrator';
 }

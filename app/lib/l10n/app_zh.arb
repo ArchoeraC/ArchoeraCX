@@ -47,13 +47,33 @@
   "packInstallFailed": "整合包安装失败。",
   "packBlockedTitle": "已阻止不安全的整合包",
   "packBlockedBody": "该整合包试图写出实例目录、创建符号链接，或解压到不合理的大小（zip 炸弹）。启动器已在安装前停止。除非你信任来源，否则不要安装。",
-  "packInspectFailed": "该文件不是有效的 Modrinth 整合包。",
+  "packInspectFailed": "该文件不是受支持的整合包。",
+  "packRepaired": "整合包使用了 Windows 路径分隔符，已备份到 {path} 并自动修复。",
+  "@packRepaired": {
+    "description": "本地 .mrpack 在安装前被自动修复时显示的提示。",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "packLoaderUnsupported": "暂不支持该整合包加载器。支持原版、Fabric、Quilt、Forge 与 NeoForge。",
   "packJavaMissing": "该整合包需要 Java 来运行加载器 processors。请先在设置中安装或选择匹配的 Java。",
   "packTargetNewInstance": "将新建实例",
   "instanceCreateTitle": "创建实例",
   "instanceNameLabel": "名称",
   "instanceNameHint": "例如 1.21.4 · Fabric",
+  "instanceNameTooLong": "名称最多 {max} 个字符。",
+  "@instanceNameTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "instanceNameInvalidCharacters": "名称不能包含 \\ / : * ? \" < > | 或控制字符。",
+  "instanceNameInvalidEdges": "名称不能以点开头或结尾。",
+  "instanceNameReserved": "该名称是 Windows 保留设备名，请换一个。",
   "instanceGameVersionLabel": "游戏版本",
   "instanceLocationLabel": "实例目录",
   "instanceChooseLocation": "选择目录",
@@ -275,12 +295,40 @@
   "loaderInstallDone": "加载器文件已下载，版本 JSON 已写入，processors 已完成。",
   "loaderInstallPickInstaller": "请先选择 Forge/NeoForge 安装包。",
   "loaderInstallFailed": "加载器安装失败。",
+  "loaderJavaRequired": "{loader} 需要 Java 才能完成安装：部分 processor 尚未原生支持。请先在 Java 设置中安装或选择可用的 Java 运行时。",
+  "@loaderJavaRequired": {
+    "description": "安装弹窗在无 Java 时给出的明确警告；loader 形如 NeoForge 26.3.0.100。",
+    "placeholders": {
+      "loader": {
+        "type": "String"
+      }
+    }
+  },
   "loaderShareFiles": "共享加载器文件",
   "@loaderShareFiles": {
     "description": "Forge/NeoForge 安装弹窗中的勾选项，仅对本次安装覆盖全局设置。"
   },
   "loaderShareFilesHint": "同一加载器版本的所有实例共用游戏目录下的一份 libraries；合并后的启动 profile 始终放在本实例。取消勾选则 library 也只装进本实例。",
   "@loaderShareFilesHint": {},
+  "loaderPureJava": "使用官方安装器（纯 Java 模式）",
+  "@loaderPureJava": {
+    "description": "Forge/NeoForge 安装弹窗中的勾选项，默认开启；由官方安装器完成客户端安装。"
+  },
+  "loaderPureJavaHint": "由 Forge/NeoForge 官方安装器完成下载与 processor；适用于 1.12.2 及更新的安装器。",
+  "@loaderPureJavaHint": {},
+  "loaderInstallMode": "安装方式",
+  "@loaderInstallMode": {
+    "description": "加载器安装方式分组标题。"
+  },
+  "loaderStandardJava": "标准 Java 流程（启动器原生）",
+  "@loaderStandardJava": {
+    "description": "启动器自行构建计划、下载并原生执行已覆盖的 processor；未覆盖步骤使用 Java。"
+  },
+  "loaderStandardJavaHint": "启动器构建计划并原生执行已覆盖的 processor；仍需 Java 的步骤使用所选运行时。1.7.10 及更早的安装器请选此项。",
+  "loaderJavaInstallUnsupported": "该安装器没有命令行客户端安装（Forge 1.7.10 及更早），无法使用纯 Java 模式。请改选“标准 Java 流程（启动器原生）”。",
+  "@loaderJavaInstallUnsupported": {
+    "description": "纯 Java 模式遇到没有 --installClient 的旧安装器时的提示。"
+  },
   "searchDownload": "搜索资源",
   "downloadSearchAction": "搜索",
   "downloadSearchEmpty": "没有找到兼容的项目。",
@@ -548,6 +596,12 @@
     "description": "Forge/NeoForge 安装弹窗勾选项的全局默认值。"
   },
   "@settingsShareLoaderFilesDesc": {},
+  "settingsPreferPureJavaLoaderInstall": "优先使用官方安装器（纯 Java）",
+  "settingsPreferPureJavaLoaderInstallDesc": "加载器安装弹窗默认选中“使用官方安装器（纯 Java 模式）”；仍可在单次安装中改为标准 Java 流程。1.7.10 及更早的安装器没有客户端命令行，会自动回退到标准流程。",
+  "@settingsPreferPureJavaLoaderInstall": {
+    "description": "加载器安装方式的全局默认值。"
+  },
+  "@settingsPreferPureJavaLoaderInstallDesc": {},
   "settingsSectionGameArgs": "附加游戏参数",
   "settingsGameArgsNote": "追加到原版参数之后，按空格拆分；留空表示不加。",
   "settingsSectionCommands": "启动命令",
@@ -780,47 +834,156 @@
   "javaStatusReady": "就绪",
   "javaStatusUnavailable": "不可用",
   "javaStatusIdleHint": "扫描系统中已安装的 Java 运行时。",
-  "javaStatusScanningHint": "正在调用 java.scan…",
+  "javaStatusScanningHint": "正在扫描设备上的 java…",
   "javaStatusProgress": "进度：{done}/{total}",
-  "javaStatusUnavailableHint": "Java 扫描不可用，业务模块可能尚未构建。",
+  "javaStatusUnavailableHint": "无法扫描 Java，业务模块可能尚未构建。",
   "javaStatusScan": "扫描 Java",
   "javaInstallAction": "安装 Java",
-  "javaInstallTitle": "安装 Java 运行时",
-  "javaInstallHint": "从 Mojang 官方源下载运行时，完成后自动重新扫描；下载在后台进行。",
+  "javaInstallPageSubtitle": "选择 JDK 发行版、版本与安装位置。",
+  "javaInstallProviderLabel": "发行版",
+  "javaInstallMajorLabel": "Java 版本",
+  "javaInstallVersionsLabel": "可用构建",
+  "javaInstallSecurityHint": "仅推荐每个大版本的最新补丁；历史构建可能包含已修复的 CVE。",
+  "javaInstallOutdated": "历史",
+  "javaInstallOutdatedSelected": "该构建不是最新补丁，可能包含已修复的 CVE。",
+  "javaInstallAllowOutdated": "允许安装历史构建",
+  "javaInstallAllowOutdatedHint": "仅在你明确需要该构建时开启。",
+  "javaInstallCveTitle": "安全公告",
+  "javaInstallCveChecking": "正在通过 NVD/OSV 检查已知 CVE…",
+  "javaInstallCveNone": "未发现影响该构建的已知 CVE。",
+  "javaInstallCveUnavailable": "无法获取 CVE 数据，该构建未完成漏洞检查。",
+  "javaInstallCveCount": "有 {count} 个已知 CVE 对该二进制包体存在影响：",
+  "@javaInstallCveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "javaInstallCveAcknowledge": "我了解该构建存在已知 CVE",
+  "javaInstallCveAcknowledgeHint": "您必须勾选此附加选项后，启动器才能执行后续的 Java 部署程序。",
+  "javaInstallCveScore": "CVSS {score}",
+  "@javaInstallCveScore": {
+    "placeholders": {
+      "score": {
+        "type": "String"
+      }
+    }
+  },
+  "javaInstallCveOpen": "查看公告",
+  "javaInstallLatestOnly": "该发行版只提供每个大版本的可能最新构建。",
+  "javaInstallPlatform": "{os} · {arch} · {archive}",
+  "@javaInstallPlatform": {
+    "description": "构建列表上方显示的目标平台。",
+    "placeholders": {
+      "os": {
+        "type": "String"
+      },
+      "arch": {
+        "type": "String"
+      },
+      "archive": {
+        "type": "String"
+      }
+    }
+  },
+  "javaInstallTargetPlatform": "目标平台",
+  "javaInstallCurrentDevice": "当前设备：{os} · {arch}",
+  "@javaInstallCurrentDevice": {
+    "placeholders": {
+      "os": {"type": "String"},
+      "arch": {"type": "String"}
+    }
+  },
+  "javaInstallPlatformBadge": "不兼容",
+  "javaInstallPlatformIncompatible": "该 JDK 面向其他平台，无法在当前设备运行。",
+  "javaInstallPlatformIncompatibleHint": "仍可下载并保留，供其他设备使用。",
+  "javaInstallRiskTitle": "确认安装风险",
+  "javaInstallRiskPlatform": "目标平台 {targetOs} · {targetArch} 与当前设备（{hostOs} · {hostArch}）不兼容，安装后无法在此设备运行。",
+  "@javaInstallRiskPlatform": {
+    "placeholders": {
+      "targetOs": {"type": "String"},
+      "targetArch": {"type": "String"},
+      "hostOs": {"type": "String"},
+      "hostArch": {"type": "String"}
+    }
+  },
+  "javaInstallRiskCve": "该构建存在 {count} 个已知 CVE：\n{ids}",
+  "@javaInstallRiskCve": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "ids": {"type": "String"}
+    }
+  },
+  "javaInstallRiskAction": "仍然安装",
+  "javaInstallForeignResult": "已下载 {os} · {arch} 版本；无法在当前设备运行。",
+  "@javaInstallForeignResult": {
+    "placeholders": {
+      "os": {"type": "String"},
+      "arch": {"type": "String"}
+    }
+  },
+  "javaInstallIncompatibleUse": "该 JDK 面向其他平台，无法在此设备选用。",
   "javaInstallRecommended": "推荐",
-  "javaInstallQueued": "已加入下载队列：Java {major}。",
-  "@javaInstallQueued": {
-    "description": "开始安装 Java 运行时后的提示。",
+  "javaInstallLts": "LTS",
+  "javaInstallArchiveMeta": "{archive} · {size}",
+  "@javaInstallArchiveMeta": {
+    "description": "构建行中的压缩包类型与下载大小。",
     "placeholders": {
-      "major": {
-        "type": "int"
+      "archive": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
       }
     }
   },
-  "javaInstallDone": "Java {major} 安装完成。",
-  "@javaInstallDone": {
-    "description": "Java 运行时下载完成提示。",
+  "javaInstallLoadFailed": "无法加载 JDK 目录。",
+  "javaInstallFailed": "安装失败。",
+  "javaInstallMajorsFailed": "无法加载 Java 版本。",
+  "javaInstallVersionsFailed": "无法加载构建列表。",
+  "javaInstallEmptyVersions": "当前系统没有可用构建。",
+  "javaInstallEmptyVersionsHint": "请尝试其他发行版或 Java 版本。",
+  "javaInstallDirectory": "安装目录",
+  "javaInstallDirectoryHint": "JDK 会直接写入该目录；目录必须为空或尚不存在。",
+  "javaInstallDefaultDirectory": "默认位置",
+  "javaInstallCustomDirectory": "自定义位置",
+  "javaInstallChooseDirectory": "选择目录",
+  "javaInstallUseDefault": "使用默认位置",
+  "javaInstallStart": "安装 JDK",
+  "javaInstallDownloadOnlyAction": "下载安装包",
+  "javaInstallInstalling": "正在安装…",
+  "javaInstallDownloading": "正在下载 JDK 压缩包…",
+  "javaInstallExtracting": "正在解压校验后的压缩包…",
+  "javaInstallCancelling": "正在取消…",
+  "javaInstallCancelled": "已取消安装。",
+  "javaInstallSuccess": "Java {version} 安装完成。",
+  "@javaInstallSuccess": {
+    "description": "JDK 压缩包安装完成后的结果提示。",
     "placeholders": {
-      "major": {
-        "type": "int"
+      "version": {
+        "type": "String"
       }
     }
   },
-  "javaInstallFailed": "Java {major} 安装失败。",
-  "@javaInstallFailed": {
-    "description": "Java 运行时下载失败提示。",
+  "javaInstallUseRuntime": "使用此 Java",
+  "javaInstallBackToJava": "返回 Java 页面",
+  "javaInstallSelected": "已选择该 Java 运行时。",
+  "javaInstallDirectoryRequired": "请先选择安装目录。",
+  "javaInstallVersionRequired": "请先选择一个构建。",
+  "javaInstallProvidersEmpty": "没有注册任何 JDK 发行版。",
+  "javaInstallExtractOptions": "安装包处理",
+  "javaInstallAutoExtract": "自动解压",
+  "javaInstallAutoExtractHint": "解压到安装目录；取消后只把压缩包下载到安装目录旁。",
+  "javaInstallAutoDelete": "解压后删除安装包",
+  "javaInstallAutoDeleteHint": "取消后会在安装目录旁保留 tar.gz/zip。",
+  "javaInstallArchiveOnly": "安装包已下载，未解压。",
+  "javaInstallArchiveKept": "已保留安装包：{path}",
+  "@javaInstallArchiveKept": {
+    "description": "保留 JDK 安装包时显示。",
     "placeholders": {
-      "major": {
-        "type": "int"
-      }
-    }
-  },
-  "javaInstallCancelled": "Java {major} 安装已取消。",
-  "@javaInstallCancelled": {
-    "description": "Java 运行时下载取消提示。",
-    "placeholders": {
-      "major": {
-        "type": "int"
+      "path": {
+        "type": "String"
       }
     }
   },
@@ -894,7 +1057,7 @@
   "accountRemove": "移除账户",
   "accountRemoveConfirm": "移除“{name}”？不会删除游戏文件。",
   "accountRefresh": "刷新会话",
-  "accountNoAccounts": "还没有账户。添加微软或离线账户后即可启动游戏。",
+  "accountNoAccounts": "还没有添加账户。添加微软或其它账户后即可启动游戏。",
   "accountLoginFailed": "登录失败：{message}",
   "accountWaitingAuthorization": "等待授权",
   "accountSignIn": "登录",
@@ -956,7 +1119,7 @@
   "loaderNeoForge": "NeoForge",
   "loaderVersionValue": "{loader} {version}",
   "accountMicrosoft": "微软",
-  "accountAuthlib": "Authlib",
+  "accountAuthlib": "第三方",
   "settingsDiagnosticsOpen": "打开",
   "settingsLanguageSystem": "跟随系统",
   "settingsLanguageEnglish": "English",
@@ -1437,5 +1600,164 @@
   "instanceSettingsInvalidRange": "内存需在 128–65536 MB 之间且最小值不大于最大值，窗口需在 640–7680 × 480–4320 之间。",
   "instanceSettingsInvalidPath": "请填写 Java 可执行文件的绝对路径。",
   "instanceSettingsInvalidGc": "不支持的垃圾回收器。",
-  "instanceSettingsSaveFailed": "保存实例设置失败：{message}"
+  "instanceSettingsSaveFailed": "保存实例设置失败：{message}",
+  "crashDialogTitle": "游戏异常退出",
+  "crashDialogExitCode": "退出码：{code}",
+  "@crashDialogExitCode": {
+    "placeholders": {
+      "code": { "type": "int" }
+    }
+  },
+  "crashDialogNoDetails": "没有匹配到具体原因。请打开启动日志查看最后的错误信息。",
+  "crashDialogShareHint": "如果你需要寻求他人的帮助，请向他人提供错误日志，而不是这个窗口的照片或者截图。",
+  "@crashDialogShareHint": {
+    "description": "崩溃弹窗中的经典提醒：求助时贴日志，不要只发截图。"
+  },
+  "crashDialogForceStopHint": "如果此次终止由您本人操作，请忽略此消息。",
+  "@crashDialogForceStopHint": {
+    "description": "退出码是信号终止（如 137 = SIGKILL）时显示；强制终止游戏后也会走到崩溃弹窗。"
+  },
+  "crashDialogEvidence": "证据",
+  "crashDialogCopy": "复制诊断",
+  "crashDialogCopied": "诊断信息已复制。",
+  "crashDialogClose": "关闭",
+  "crashRuleJavaTooOldTitle": "Java 版本过低",
+  "crashRuleJavaTooOldDetail": "游戏需要 Java {needed}，本次启动使用的是 Java {current}。",
+  "@crashRuleJavaTooOldDetail": {
+    "placeholders": {
+      "needed": { "type": "String" },
+      "current": { "type": "String" }
+    }
+  },
+  "crashRuleJavaTooOldFix": "请在 设置 → Java 中为实例选择 Java {needed} 或更高版本。",
+  "@crashRuleJavaTooOldFix": {
+    "placeholders": {
+      "needed": { "type": "String" }
+    }
+  },
+  "crashRuleJavaTooNewTitle": "Java 版本过高",
+  "crashRuleJavaTooNewDetail": "该旧版加载器不支持当前选择的 Java。",
+  "crashRuleJavaTooNewFix": "1.12.2/1.16.5 请用 Java 8，1.18–1.20.4 用 Java 17，更新版本用 Java 21。",
+  "crashRuleHeapTitle": "Java 内存不足",
+  "crashRuleHeapDetail": "JVM 无法申请到配置的堆内存，或堆内存已耗尽。",
+  "crashRuleHeapFix": "关闭其他程序，调整分配内存，并确认使用的是 64 位 Java。",
+  "crashRuleMixinTitle": "Mixin 注入失败",
+  "crashRuleMixinDetail": "Mixin {config} 注入失败，通常是对应 Mod 与当前 Minecraft/加载器版本不匹配。",
+  "@crashRuleMixinDetail": {
+    "placeholders": {
+      "config": { "type": "String" }
+    }
+  },
+  "crashRuleMixinFix": "更新或移除拥有该 Mixin 的 Mod；可先禁用最近添加的 Mod 逐步排查。",
+  "crashRuleDependencyTitle": "缺少 Mod 前置",
+  "crashRuleDependencyDetail": "某个 Mod 依赖的前置未安装，或版本不匹配。",
+  "crashRuleDependencyFix": "安装与当前 Minecraft、加载器版本匹配的前置 Mod。",
+  "crashRuleMainClassTitle": "游戏或加载器安装不完整",
+  "crashRuleMainClassDetail": "无法加载主类 {cls}。",
+  "@crashRuleMainClassDetail": {
+    "placeholders": {
+      "cls": { "type": "String" }
+    }
+  },
+  "crashRuleMainClassFix": "重新安装加载器或运行加载器修复后重试。",
+  "crashRuleGraphicsTitle": "图形/OpenGL 初始化失败",
+  "crashRuleGraphicsDetail": "游戏无法创建 OpenGL 窗口。",
+  "crashRuleGraphicsFix": "更新显卡驱动，改用独立显卡运行，并避免远程桌面或虚拟机。",
+  "crashRuleModTitle": "某个 Mod 启动失败",
+  "crashRuleModDetail": "Mod {mod} 在 {stage} 阶段抛出异常。",
+  "@crashRuleModDetail": {
+    "placeholders": {
+      "mod": { "type": "String" },
+      "stage": { "type": "String" }
+    }
+  },
+  "crashRuleModFix": "更新或移除此 Mod；向作者反馈时附上崩溃报告。",
+  "crashRuleFileLockedTitle": "游戏文件被占用或无权限",
+  "crashRuleFileLockedDetail": "文件被其他进程占用，或权限不足。",
+  "crashRuleFileLockedFix": "关闭其他启动器/实例，将游戏移出 OneDrive，并检查目录权限。",
+  "crashRuleDriverTitle": "显卡驱动崩溃",
+  "crashRuleDriverDetail": "JVM 在 {lib} 中崩溃。",
+  "@crashRuleDriverDetail": {
+    "placeholders": {
+      "lib": { "type": "String" }
+    }
+  },
+  "crashRuleDriverFix": "干净安装显卡驱动，并关闭 RTSS、Discord、Steam 等覆盖层。",
+  "crashRuleNativeTitle": "JVM 原生崩溃",
+  "crashRuleNativeDetail": "JVM 在原生代码中崩溃：{frame}。",
+  "@crashRuleNativeDetail": {
+    "placeholders": {
+      "frame": { "type": "String" }
+    }
+  },
+  "crashRuleNativeFix": "查看 hs_err 日志，移除原生 Mod/Agent，并确认 Java 运行时正常。",
+  "crashRuleReportTitle": "游戏产生了崩溃报告",
+  "crashRuleReportDetail": "崩溃报告描述：{description}",
+  "@crashRuleReportDetail": {
+    "placeholders": {
+      "description": { "type": "String" }
+    }
+  },
+  "crashRuleReportFix": "查看崩溃报告与 Mod 列表，尝试禁用最近添加的 Mod。",
+  "crashRuleUnknownTitle": "游戏异常退出",
+  "crashRuleUnknownDetail": "没有匹配到已知的失败特征，退出码为 {code}。",
+  "@crashRuleUnknownDetail": {
+    "placeholders": {
+      "code": { "type": "String" }
+    }
+  },
+  "crashRuleUnknownFix": "打开启动日志和崩溃报告查看最后的错误信息。",
+  "accountAddAuthlib": "第三方认证",
+  "accountAuthlibDesc": "通过 LittleSkin 等 Yggdrasil 服务器登录。",
+  "accountAuthTitle": "第三方认证登录",
+  "accountAuthServerPreset": "认证服务器",
+  "accountAuthCustomServer": "自定义服务器",
+  "accountAuthServerUrl": "Yggdrasil API 地址",
+  "accountAuthTermsUrl": "服务条款地址",
+  "accountAuthTermsTitle": "第三方服务条款",
+  "accountAuthTermsBody": "你即将登录 {server}。请先阅读并同意该服务器的服务条款与隐私政策；启动器只会在你同意后下载 authlib-injector 并提交登录信息。",
+  "@accountAuthTermsBody": {
+    "placeholders": {
+      "server": { "type": "String" }
+    }
+  },
+  "accountAuthOpenTerms": "打开服务条款",
+  "accountAuthOpenTermsFirst": "请先打开服务条款阅读。",
+  "accountAuthAcceptTerms": "我已阅读并同意该服务器的服务条款与隐私政策",
+  "accountAuthUsername": "邮箱或用户名",
+  "accountAuthPassword": "密码",
+  "accountAuthLogin": "登录",
+  "accountAuthImportLink": "从 authlib 链接导入",
+  "accountAuthImportFailed": "剪贴板里没有 authlib 服务器链接。",
+  "platformSearchHint": "搜索整合包",
+  "platformLoadFailed": "无法加载整合包。",
+  "platformEmpty": "没有找到整合包。",
+  "platformEmptyHint": "试试其它关键词，或切换平台。",
+  "platformVersionsEmpty": "没有可安装的版本。",
+  "platformInstall": "安装",
+  "platformInstallUnsupported": "安装器暂不支持该平台整合包格式。",
+  "platformInstallMetadataFailed": "平台返回的整合包元数据不完整，请稍后重试或选择其他版本。",
+  "platformInstallNetworkFailed": "无法连接平台或其下载主机，请稍后重试或改用其他整合包/来源。",
+  "platformDirectArchiveTitle": "该整合包没有官方哈希，仍要安装吗？",
+  "platformDirectArchiveWarning": "该平台只提供直链 zip，不发布 MD5/SHA 摘要。安装器将使用 HTTPS 下载、逐条校验 ZIP CRC，并记录下载后的 SHA-256。是否继续？",
+  "platformDirectArchiveConfirm": "继续安装",
+  "platformDirectArchiveBadge": "直链 zip · 无官方哈希",
+  "accountAuthTermsRequired": "请先同意第三方服务条款。",
+  "accountAuthServerInvalid": "请输入有效的 https 服务器地址。",
+  "accountAuthInvalidCredentials": "服务器拒绝了用户名或密码。",
+  "accountAuthNoProfile": "该账户在服务器上没有 Minecraft 角色。",
+  "accountAuthNetwork": "无法连接认证服务器。",
+  "accountAuthDownloadFailed": "无法下载 authlib-injector，请重试。",
+  "accountAuthTermsOpenFailed": "无法打开服务条款页面。",
+  "elevationTitle": "我知道你想干什么",
+  "elevationBody": "ArchoeraCX 检测到当前进程正以{kind}权限运行。以超级管理员身份启动，实例、Mod 与游戏文件都会归该账户所有，下载或安装的恶意内容也会拥有更高的破坏力。\n\n启动器和 Minecraft 都不需要管理员权限。请用普通账户重新启动；只有在你清楚后果时才继续。",
+  "@elevationBody": {
+    "placeholders": {
+      "kind": { "type": "String" }
+    }
+  },
+  "elevationContinue": "我知道我在干什么",
+  "elevationExit": "退出",
+  "elevationKindRoot": "root",
+  "elevationKindAdministrator": "管理员"
 }

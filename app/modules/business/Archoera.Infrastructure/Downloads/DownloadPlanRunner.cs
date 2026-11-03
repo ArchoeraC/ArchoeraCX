@@ -52,12 +52,14 @@ public static class DownloaderMissing
 /// <summary>
 /// Producer intent for runtime tuning. Resource plans contain many small
 /// mod/config files, so they use shorter ranges to keep a single large file
-/// parallel; game plans keep the user's normal chunk size.
+/// parallel; game plans keep the user's normal chunk size. Archive plans are
+/// one large vendor file, so they may use the whole global budget on its host.
 /// </summary>
 public enum DownloadProfile
 {
     Default,
     Resource,
+    Archive,
 }
 
 public interface IDownloadPlanRunner
@@ -340,6 +342,15 @@ public sealed class DownloadPlanRunner : IDownloadPlanRunner
             {
                 perHost = Math.Min(concurrency, 16);
             }
+        }
+        else if (profile == DownloadProfile.Archive &&
+                 plan.Files.Count == 1 &&
+                 perHost == DownloadPlanLimits.DefaultPerHostConcurrency)
+        {
+            // A JDK archive is one large file on one host. The historical
+            // per-host default would leave half of the global budget idle;
+            // an explicit lower cap is still preserved.
+            perHost = concurrency;
         }
         return plan with
         {

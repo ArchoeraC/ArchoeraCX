@@ -112,6 +112,39 @@ public sealed class DownloadTuningTests
     }
 
     [Fact]
+    public void Archive_profile_uses_the_global_budget_for_one_large_file()
+    {
+        var file = PlanFile.Create(
+            "https://cdn.example.invalid/jdk.tar.gz",
+            "jdk.tar.gz",
+            DownloadHash.Create(DownloadHashAlgorithm.Sha256, new string('a', 64)),
+            194L * 1024 * 1024);
+        var one = Plan() with { Files = [file] };
+
+        var defaultCap = DownloadPlanRunner.ApplyTuning(
+            one,
+            Settings(16, 8),
+            DownloadProfile.Archive);
+        Assert.Equal(16, defaultCap.Options.PerHostConcurrency);
+
+        var explicitLow = DownloadPlanRunner.ApplyTuning(
+            one,
+            Settings(16, 4),
+            DownloadProfile.Archive);
+        Assert.Equal(4, explicitLow.Options.PerHostConcurrency);
+
+        var many = Plan() with
+        {
+            Files = [file, file with { Dest = "jdk-2.tar.gz" }],
+        };
+        var multi = DownloadPlanRunner.ApplyTuning(
+            many,
+            Settings(16, 8),
+            DownloadProfile.Archive);
+        Assert.Equal(8, multi.Options.PerHostConcurrency);
+    }
+
+    [Fact]
     public void Disabling_ranges_keeps_the_plan_single_stream()
     {
         var tuned = DownloadPlanRunner.ApplyTuning(

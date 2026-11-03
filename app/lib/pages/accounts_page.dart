@@ -14,17 +14,20 @@ import '../stores/preferences.dart';
 import '../stores/providers.dart';
 import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
+import '../utils/authlib_link.dart';
 import '../widgets/accounts/accounts_list.dart';
 import '../widgets/accounts/accounts_status_panel.dart';
 import '../widgets/accounts/add_account_sheet.dart';
 import '../widgets/accounts/current_account_panel.dart';
 import '../widgets/accounts/empty_accounts_panel.dart';
 import '../widgets/common/app_page_header.dart';
+import '../widgets/common/app_dropdown.dart';
 import '../widgets/common/confirm.dart';
 import '../widgets/common/safe_url.dart';
 import '../widgets/common/toast.dart';
 
 part 'accounts/device_login_dialog.dart';
+part 'accounts/authlib_login_dialog.dart';
 
 class AccountsPage extends ConsumerWidget {
   const AccountsPage({super.key});
@@ -68,8 +71,10 @@ class AccountsPage extends ConsumerWidget {
       body = EmptyAccountsPanel(
         onMicrosoft: () => _addAccount(context, ref, 'microsoft'),
         onOffline: () => _addAccount(context, ref, 'offline'),
+        onAuthlib: () => _addAccount(context, ref, 'authlib'),
         offlineHint: policy.canUseOtherAccounts ? null : blockedHint,
         showOffline: !policy.microsoftOnly,
+        showAuthlib: policy.canUseAuthlib,
         emptyMessage: policy.microsoftOnly
             ? l10n.accountNoAccountsMicrosoftOnly
             : null,
@@ -80,7 +85,7 @@ class AccountsPage extends ConsumerWidget {
           ? null
           : CurrentAccountPanel(
               account: currentAccount,
-              onRefresh: currentAccount.kind == AccountKind.microsoft
+              onRefresh: currentAccount.kind != AccountKind.offline
                   ? () => _refresh(context, ref, currentAccount)
                   : null,
             );
@@ -190,6 +195,8 @@ class AccountsPage extends ConsumerWidget {
       builder: (sheetContext) => AddAccountSheet(
         onMicrosoft: () => Navigator.of(sheetContext).pop('microsoft'),
         onOffline: () => Navigator.of(sheetContext).pop('offline'),
+        onAuthlib: () => Navigator.of(sheetContext).pop('authlib'),
+        showAuthlib: ref.read(accountPolicyProvider).canUseAuthlib,
         offlineHint: ref.read(accountPolicyProvider).canUseOtherAccounts
             ? null
             : (ref.read(accountPolicyProvider).microsoftOnly
@@ -199,8 +206,10 @@ class AccountsPage extends ConsumerWidget {
     );
 
     if (!context.mounted) return;
-    if (choice == 'offline' &&
-        !ref.read(accountPolicyProvider).canUseOtherAccounts) {
+    if ((choice == 'offline' &&
+            !ref.read(accountPolicyProvider).canUseOtherAccounts) ||
+        (choice == 'authlib' &&
+            !ref.read(accountPolicyProvider).canUseAuthlib)) {
       _notify(
         context,
         AppLocalizations.of(context).accountPremiumRequired,
@@ -212,6 +221,18 @@ class AccountsPage extends ConsumerWidget {
       await _loginMicrosoft(context, ref);
     } else if (choice == 'offline') {
       await _loginOffline(context, ref);
+    } else if (choice == 'authlib') {
+      await _loginAuthlib(context, ref);
+    }
+  }
+
+  Future<void> _loginAuthlib(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final account = await showAuthlibLoginDialog(context, ref);
+    if (account == null || !context.mounted) return;
+    await ref.read(accountsProvider.notifier).reload();
+    if (context.mounted) {
+      _notify(context, l10n.accountSelected);
     }
   }
 
@@ -310,8 +331,10 @@ class AccountsPage extends ConsumerWidget {
   ) async {
     if (account.active) return;
     final l10n = AppLocalizations.of(context);
-    if (account.kind != AccountKind.microsoft &&
-        !ref.read(accountPolicyProvider).canUseOtherAccounts) {
+    if ((account.kind == AccountKind.offline &&
+            !ref.read(accountPolicyProvider).canUseOtherAccounts) ||
+        (account.kind == AccountKind.authlib &&
+            !ref.read(accountPolicyProvider).canUseAuthlib)) {
       _notify(context, l10n.accountPremiumRequired, error: true);
       return;
     }

@@ -307,7 +307,13 @@ public sealed class JsonAccountStore : IAccountRepository, IAccountCredentialSto
                     String(element, "minecraftAccessToken"),
                     Date(String(element, "minecraftAccessTokenExpiresAt")),
                     String(element, "certificatesJson"),
-                    Date(String(element, "updatedAt")) ?? DateTimeOffset.UtcNow));
+                    Date(String(element, "updatedAt")) ?? DateTimeOffset.UtcNow,
+                    String(element, "authlibServer"),
+                    String(element, "authlibAccessToken"),
+                    String(element, "authlibClientToken"),
+                    String(element, "authlibMetadataJson"),
+                    String(element, "authlibTermsUrl"),
+                    Date(String(element, "authlibTermsAcceptedAt"))));
             }
 
             return items;
@@ -377,6 +383,14 @@ public sealed class JsonAccountStore : IAccountRepository, IAccountCredentialSto
                     item.MinecraftAccessTokenExpiresAt?.ToString("O"));
                 writer.WriteString("certificatesJson", item.CertificatesJson);
                 writer.WriteString("updatedAt", item.UpdatedAt.ToString("O"));
+                writer.WriteString("authlibServer", item.AuthlibServer);
+                writer.WriteString("authlibAccessToken", item.AuthlibAccessToken);
+                writer.WriteString("authlibClientToken", item.AuthlibClientToken);
+                writer.WriteString("authlibMetadataJson", item.AuthlibMetadataJson);
+                writer.WriteString("authlibTermsUrl", item.AuthlibTermsUrl);
+                writer.WriteString(
+                    "authlibTermsAcceptedAt",
+                    item.AuthlibTermsAcceptedAt?.ToString("O"));
                 writer.WriteEndObject();
             }
 
@@ -433,7 +447,8 @@ public sealed class JsonAccountStore : IAccountRepository, IAccountCredentialSto
             Bool(element, "active"),
             Date(String(element, "createdAt")) ?? DateTimeOffset.UtcNow,
             Date(String(element, "updatedAt")) ?? DateTimeOffset.UtcNow,
-            Date(String(element, "lastLoginAt")));
+            Date(String(element, "lastLoginAt")),
+            String(element, "authlibServer"));
     }
 
     private static void WriteAccount(Utf8JsonWriter writer, AccountRecord account)
@@ -450,6 +465,7 @@ public sealed class JsonAccountStore : IAccountRepository, IAccountCredentialSto
         writer.WriteString("createdAt", account.CreatedAt.ToString("O"));
         writer.WriteString("updatedAt", account.UpdatedAt.ToString("O"));
         writer.WriteString("lastLoginAt", account.LastLoginAt?.ToString("O"));
+        writer.WriteString("authlibServer", account.AuthlibServer);
         writer.WriteEndObject();
     }
 

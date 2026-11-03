@@ -429,6 +429,60 @@ public sealed class ForgeDownloadPlanTests
             error?.ToString());
     }
 
+    [Fact]
+    public void Build_uses_version_json_override_for_pre_1_7_installers()
+    {
+        var bytes = ForgeInstallerFixture.CreateZip(
+            ("install_profile.json", """
+                {
+                  "install": {
+                    "path": "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10",
+                    "filePath": "forge-1.7.10-10.13.4.1614-1.7.10-universal.jar"
+                  }
+                }
+                """),
+            ("forge-1.7.10-10.13.4.1614-1.7.10-universal.jar", "synthetic"));
+
+        var overrideJson = $$"""
+            {
+              "id": "1.7.10-Forge10.13.4.1614-1.7.10",
+              "inheritsFrom": "1.7.10",
+              "libraries": [
+                {
+                  "name": "org.ow2.asm:asm-all:5.0.3",
+                  "downloads": {
+                    "artifact": {
+                      "path": "org/ow2/asm/asm-all/5.0.3/asm-all-5.0.3.jar",
+                      "url": "https://maven.minecraftforge.net/org/ow2/asm/asm-all/5.0.3/asm-all-5.0.3.jar",
+                      "sha1": "{{ForgeInstallerFixture.Sha('e')}}",
+                      "size": 777
+                    }
+                  }
+                }
+              ]
+            }
+            """;
+
+        using var archive = ForgeInstallerFixture.OpenZip(bytes);
+        var result = ForgeDownloadPlanBuilder.Build(
+            Root,
+            LoaderKind.Forge,
+            "1.7.10",
+            "10.13.4.1614-1.7.10",
+            Descriptor(),
+            archive,
+            versionJsonOverride: overrideJson);
+
+        var asm = Assert.Single(
+            result.Plan.Files,
+            file => file.Dest == "libraries/org/ow2/asm/asm-all/5.0.3/asm-all-5.0.3.jar");
+        Assert.Equal(ForgeInstallerFixture.Sha('e'), asm.Hash.Hex);
+        Assert.Equal(777, asm.Size);
+        Assert.DoesNotContain(
+            result.Plan.Files,
+            file => file.Dest.Contains("universal", StringComparison.Ordinal));
+    }
+
     private static ForgeDownloadPlanResult Build(byte[] installerBytes)
     {
         using var archive = ForgeInstallerFixture.OpenZip(installerBytes);

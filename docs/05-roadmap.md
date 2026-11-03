@@ -27,7 +27,7 @@
 | P0 | 选型与文档 | 本仓库文档、许可证结论、架构决策 | 已完成 |
 | P1 | ABI + 枢纽骨架 | C++ 枢纽、C#/Rust 模块、垂直切片跑通 | 4–5 周 |
 | P2 | FFI 接线 + UI 壳 | Flutter 通过 ABI 装原版并启动 | 3–4 周 |
-| P3 | 账户 | 微软登录 / 离线 / 第三方（未接入） | 2–3 周 |
+| P3 | 账户 | 微软登录 / 离线 / 第三方 authlib（已接入，条款门控） | 2–3 周 |
 | P4 | 加载器 | Fabric / Quilt / Forge / NeoForge | 4–6 周 |
 | P5 | 实例与资源 | 多实例、Mod 管理、整合包 | 6–8 周 |
 | P6 | 体验与打磨 | 主题、动效、3D 皮肤、托盘、i18n | 持续 |
@@ -128,7 +128,7 @@
 - Xbox Live → XSTS → Minecraft Services → profile
 - refresh token 持久化（凭据保险库：crypto/file encrypted-file 模式）
 - 离线账户（明确提示仅离线/局域网）
-- 第三方认证：`authlib-injector` 以独立 agent 调用（当前未接入）
+- 第三方认证：`authlib-injector` 以独立 agent 调用（已接入；先展示服务条款并要求同意，再下载）
 - 多账户切换、token 失效自动刷新、登出清理
 
 **验收**
@@ -154,7 +154,7 @@
 **范围**
 
 - Fabric/Quilt：meta API 取 loader profile，合并进版本 JSON
-- Forge/NeoForge：下载 installer → 解析 `install_profile.json` → 执行 processors（需要 Java）→ 合并版本
+- Forge/NeoForge：下载 installer → 解析 `install_profile.json` → 原生 processors（1.20.1 / NeoForge 21.1 无需 Java）→ 合并版本
 - 加载器版本与游戏版本兼容矩阵
 - 安装失败的可恢复状态（半成品标记 + 重装）
 - 启动参数合并（`-DignoreList`、`--add-opens` 等）

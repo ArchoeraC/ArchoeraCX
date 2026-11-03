@@ -12,6 +12,7 @@ final class Account {
     this.xuid,
     this.skinUrl,
     this.capeUrl,
+    this.authlibServer,
     this.createdAt,
     this.updatedAt,
     this.lastLoginAt,
@@ -25,6 +26,7 @@ final class Account {
   final String? xuid;
   final String? skinUrl;
   final String? capeUrl;
+  final String? authlibServer;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? lastLoginAt;
@@ -50,6 +52,7 @@ final class Account {
       xuid: _stringOrNull(value['xuid']),
       skinUrl: _stringOrNull(value['skinUrl']),
       capeUrl: _stringOrNull(value['capeUrl']),
+      authlibServer: _stringOrNull(value['authlibServer']),
       createdAt: _dateOrNull(value['createdAt']),
       updatedAt: _dateOrNull(value['updatedAt']),
       lastLoginAt: _dateOrNull(value['lastLoginAt']),

@@ -19,6 +19,8 @@ Microsoft / Minecraft 认证已单独整理到 [`../authentication.md`](../authe
 | [12-download-scheduling-principles.md](12-download-scheduling-principles.md) | FDM/aria2 的分段与调度原理（只读） |
 | [13-transport-protocol-fallback.md](13-transport-protocol-fallback.md) | 地址族/TLS/HTTP 版本/代理的多协议回退 |
 | [15-launch-parameter-parity.md](15-launch-parameter-parity.md) | 启动参数与 Prism 的差距（只读） |
+| [16-no-java-loader-processors.md](16-no-java-loader-processors.md) | 无 Java 安装实测：客户端 processor 已全部原生实现 |
+| [17-art-rewrite-compatibility.md](17-art-rewrite-compatibility.md) | 原生 ART 重写：ART/ASM/映射兼容矩阵与 writer 模式 |
 
 > 合规门控的内部决策记录与安全审查报告不随公开仓库发布；公开行为以
 > [`../09-distribution-and-download-policy.md`](../09-distribution-and-download-policy.md)

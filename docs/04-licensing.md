@@ -94,8 +94,8 @@
 ### 4.3 第三方认证
 
 - `authlib-injector` 为 **AGPL-3.0**，通过独立 jar / `-javaagent` 使用。
-- 分发其 jar 时，必须提供对应源码或有效的书面要约；仅给上游链接不一定是充分的合规方式。
-- 当前未接入第三方 authlib 登录。
+- 本项目不随安装包分发其 jar；登录前展示第三方服务器服务条款并要求用户勾选同意，同意后才从官方 artifact 元数据下载，并用发布方 SHA-256 校验。
+- 分发其 jar 时，仍必须提供对应源码或有效的书面要约；仅给上游链接不一定是充分的合规方式。
 
 ### 4.4 第三方 API 条款
 
@@ -106,7 +106,7 @@
 | Modrinth | 设置可识别 `User-Agent`；遵守速率限制；`.mrpack` 规范开放 |
 | CurseForge | 需要 API key；未配置前不发起请求；遵守作者分发限制 |
 | OptiFine | 无公开 API，站点条款限制自动化下载，谨慎处理 |
-| Java 运行时 | Mojang runtime 已接入；Adoptium 为可选源（尚未接入）；不打包 Oracle JDK |
+| Java 运行时 | Mojang runtime，以及 Adoptium/Zulu/Microsoft/GraalVM/Corretto/Liberica/SapMachine/Dragonwell 的二进制 JDK 压缩包；不打包 Oracle JDK |
 | BMCLAPI 等镜像 | 遵守镜像方说明；中国大陆自动模式下镜像优先、官方 fallback；始终校验官方 hash |
 
 ---

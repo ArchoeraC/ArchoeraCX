@@ -56,6 +56,45 @@ public sealed class LaunchOnlinePlanTests
     }
 
     [Fact]
+    public void Authlib_injector_arguments_are_added_for_third_party_accounts()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var (instance, version, paths) = CreateFixture(
+                root,
+                new MojangArguments(Game: [], Jvm: []));
+            const string metadata = """{"meta":{"serverName":"LittleSkin"}}""";
+
+            var plan = LaunchPlanBuilder.Build(
+                instance,
+                version,
+                CreateAccount(),
+                CreateJava(),
+                CreateSettings(root),
+                paths,
+                userType: "msa",
+                authlib: new AuthlibLaunchArguments(
+                    "/tmp/authlib-injector.jar",
+                    "https://littleskin.cn/api/yggdrasil",
+                    metadata));
+
+            Assert.Contains(
+                "-javaagent:/tmp/authlib-injector.jar=https://littleskin.cn/api/yggdrasil",
+                plan.Arguments);
+            Assert.Contains("-Dauthlibinjector.side=client", plan.Arguments);
+            Assert.Contains(
+                "-Dauthlibinjector.yggdrasil.prefetched=" +
+                Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(metadata)),
+                plan.Arguments);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Online_credentials_fill_the_legacy_fallback_arguments()
     {
         var root = CreateTempDirectory();

@@ -15,6 +15,8 @@ internal static class LaunchProcessRegistry
     private static readonly object Gate = new();
     private static readonly Dictionary<string, Entry> Running =
         new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, TaskCompletionSource<int>> ExitWaiters =
+        new(StringComparer.Ordinal);
 
     internal sealed record Entry(int Pid, string LogPath, DateTimeOffset StartedAt);
 
@@ -23,6 +25,57 @@ internal static class LaunchProcessRegistry
         lock (Gate)
         {
             Running[instanceId] = new Entry(pid, logPath, DateTimeOffset.UtcNow);
+            if (ExitWaiters.Remove(instanceId, out var previous))
+            {
+                previous.TrySetCanceled();
+            }
+
+            ExitWaiters[instanceId] = new TaskCompletionSource<int>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    /// <summary>
+    /// Waits for the launch currently registered for <paramref name="instanceId"/>.
+    /// Returns null when no launch is running, so a late caller can fall back to
+    /// the stored analysis instead of hanging.
+    /// </summary>
+    public static Task<int>? TryWaitForExit(string instanceId)
+    {
+        lock (Gate)
+        {
+            return ExitWaiters.TryGetValue(instanceId, out var waiter)
+                ? waiter.Task
+                : null;
+        }
+    }
+
+    /// <summary>Completes the waiter created by <see cref="Register"/>.</summary>
+    public static void CompleteExit(string instanceId, int pid, int exitCode)
+    {
+        lock (Gate)
+        {
+            if (Running.TryGetValue(instanceId, out var entry) && entry.Pid == pid)
+            {
+                Running.Remove(instanceId);
+            }
+
+            if (ExitWaiters.Remove(instanceId, out var waiter))
+            {
+                waiter.TrySetResult(exitCode);
+            }
+        }
+    }
+
+    /// <summary>Cancels a waiter when the JVM could not be started.</summary>
+    public static void CancelExitWait(string instanceId)
+    {
+        lock (Gate)
+        {
+            if (ExitWaiters.Remove(instanceId, out var waiter))
+            {
+                waiter.TrySetCanceled();
+            }
         }
     }
 

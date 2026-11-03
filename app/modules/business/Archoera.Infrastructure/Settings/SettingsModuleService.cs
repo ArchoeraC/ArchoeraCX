@@ -128,6 +128,7 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         int? logRetentionFiles = null;
         int? logRetentionMb = null;
         bool? shareLoaderFiles = null;
+        bool? preferPureJavaLoaderInstall = null;
         string? memoryMode = null;
         bool? gameOptimization = null;
         string? wrapperCommand = null;
@@ -402,6 +403,15 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                     : throw new ArgumentException("shareLoaderFiles must be a boolean");
             }
 
+            if (root.TryGetProperty("preferPureJavaLoaderInstall", out var pureJavaElement))
+            {
+                preferPureJavaLoaderInstall =
+                    pureJavaElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                        ? pureJavaElement.GetBoolean()
+                        : throw new ArgumentException(
+                            "preferPureJavaLoaderInstall must be a boolean");
+            }
+
             if (root.TryGetProperty("memoryMode", out var memoryModeElement))
             {
                 memoryMode = memoryModeElement.ValueKind == JsonValueKind.String
@@ -672,6 +682,14 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             current = current with { ShareLoaderFiles = shareLoaderFiles.Value };
         }
 
+        if (preferPureJavaLoaderInstall is not null)
+        {
+            current = current with
+            {
+                PreferPureJavaLoaderInstall = preferPureJavaLoaderInstall.Value,
+            };
+        }
+
         if (memoryMode is not null)
         {
             current = current with { MemoryMode = memoryMode };
@@ -736,6 +754,7 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             logRetentionFiles is null &&
             logRetentionMb is null &&
             shareLoaderFiles is null &&
+            preferPureJavaLoaderInstall is null &&
             memoryMode is null &&
             gameOptimization is null &&
             !wrapperCommandPresent &&

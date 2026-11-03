@@ -42,6 +42,42 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
+    public async Task Create_rejects_an_explicit_root_used_by_another_instance()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var root = Path.Combine(directory, "shared-root");
+            var repository = new JsonInstanceRepository(
+                dataRoot,
+                new JsonAppSettingsStore(dataRoot));
+
+            await repository.CreateAsync(
+                "First",
+                "1.21.4",
+                "vanilla",
+                string.Empty,
+                root);
+
+            var error = await Assert.ThrowsAsync<ArgumentException>(
+                () => repository.CreateAsync(
+                    "Second",
+                    "1.21.4",
+                    "vanilla",
+                    string.Empty,
+                    root));
+
+            Assert.Contains("already used", error.Message, StringComparison.Ordinal);
+            Assert.Single(await repository.ListAsync());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Create_without_a_root_uses_version_isolation()
     {
         var directory = TempDirectory();
@@ -61,9 +97,38 @@ public sealed class InstanceRepositoryTests
 
             var marker = $"{Path.DirectorySeparatorChar}versions{Path.DirectorySeparatorChar}";
             Assert.Contains(marker, created.RootPath);
-            Assert.Equal("my-instance", Path.GetFileName(created.RootPath));
+            Assert.Equal("My Instance", Path.GetFileName(created.RootPath));
             Assert.True(
                 File.Exists(Path.Combine(created.RootPath, ".archoera", "instance.json")));
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Create_without_a_root_preserves_unicode_folder_names()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var dataRoot = Path.Combine(directory, "data");
+            var repository = new SqliteInstanceRepository(
+                dataRoot,
+                new JsonAppSettingsStore(dataRoot));
+
+            var created = await repository.CreateAsync(
+                "26.2-猫猫整合包Fabric",
+                "1.21.4",
+                "fabric",
+                "0.16.10",
+                rootPath: null);
+
+            Assert.Equal(
+                "26.2-猫猫整合包Fabric",
+                Path.GetFileName(created.RootPath));
+            Assert.True(Directory.Exists(created.RootPath));
         }
         finally
         {

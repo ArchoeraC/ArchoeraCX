@@ -14,6 +14,7 @@
   - macOS：`AppleInterfaceStyle` + `NSColor.controlAccentColor`，监听 AppKit 分布式通知
   - 首次调用 `system.appearance` 才启动监听线程；变化以 `ARCHOERA_EV_DOMAIN` 事件（`kind=system.appearance`）推送
 - `system.gpu` 返回显示适配器快照（`vendor`/`discrete`/`driverLoaded`/`hybrid`/`primaryVendor`）：Linux 读 `/sys/class/drm`（含 `boot_vga`、`mem_info_vram_total`），Windows 走 `EnumDisplayDevicesW`，macOS/其它返回空列表；进程内缓存一次，不做轮询。GPU 策略（PRIME 环境变量、Windows 首选项）属于 C# 启动模块
+- `system.elevation` 用系统 API 探测进程是否持有超级用户权限：Linux/其它 POSIX 与 macOS 都读 `geteuid() == 0`（macOS 在 `platform_system_macos.mm`，Darwin 没有 Win32 式令牌提权），Windows 读 `GetTokenInformation(TokenElevation)`；返回 `elevated` 与 `kind`（`root`/`administrator`）。只做探测，拒绝启动与确认交互属于 Dart 启动门，原生侧不读环境变量、不弹窗
 - 测试：`abi_smoke`、`async_smoke`、`module_smoke`（使用 `libarchoera_fake_module.so` 作为 oracle）
 
 职责与禁止事项见 [`docs/10-architecture-design.md`](../../docs/10-architecture-design.md) §5。

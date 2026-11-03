@@ -9,6 +9,10 @@
 #include <filesystem>
 #include <system_error>
 
+#if !defined(_WIN32) && !defined(__APPLE__)
+#include <unistd.h>
+#endif
+
 namespace archoera {
 namespace {
 
@@ -44,6 +48,22 @@ bool is_absolute_path(const std::string& path) {
 }
 
 }  // namespace
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+// Lives here instead of the Linux backend so the probe still works when the
+// build falls back to the stub system backend (no dbus-1). sudo and a root
+// login both leave the effective uid at 0; the real uid stays at the invoking
+// user, so it must not be used for this check. macOS has its own Darwin
+// backend in platform_system_macos.mm.
+ProcessElevation query_process_elevation() {
+  ProcessElevation elevation;
+  if (geteuid() == 0) {
+    elevation.elevated = true;
+    elevation.kind = "root";
+  }
+  return elevation;
+}
+#endif
 
 bool is_safe_external_url(const std::string& url) {
   // Authentication URLs are well under this; the cap keeps a malformed

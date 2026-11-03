@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/game_instance.dart';
 import '../services/core/core_client.dart';
-import '../services/core/java/java_runtime_plan.dart';
 import '../services/core/packs/pack_install_result.dart';
 import '../services/core/resources/resource_models.dart';
 import '../services/core/downloads/task_update.dart';
@@ -24,6 +23,7 @@ const _downloadMethods = <String>{
   'download.execute',
   'modpack.install',
   'modpack.installLocal',
+  'pack.platform.install',
 };
 
 bool isDownloadTaskMethod(String method) => _downloadMethods.contains(method);
@@ -243,6 +243,39 @@ class DownloadsNotifier extends Notifier<void> {
     );
   }
 
+  /// Platform pack (FTB/Technic/ATLauncher): the backend builds a validated
+  /// index from the platform manifest, then installs it like a Modrinth pack.
+  Future<void> installModpackFromPlatform({
+    required String provider,
+    required String packId,
+    required String versionId,
+    required String label,
+    required String successMessage,
+    required String failureMessage,
+    required String cancelledMessage,
+    String? Function(CoreException error)? describeError,
+  }) async {
+    final client = _client();
+    _detach(
+      () async {
+        final result = await client.installPlatformPack(
+          provider: provider,
+          packId: packId,
+          versionId: versionId,
+          label: label,
+        );
+        await ref.read(instancesProvider.notifier).sync();
+        ref
+            .read(selectedInstanceIdProvider.notifier)
+            .select(result.instance.id);
+      },
+      successMessage: successMessage,
+      failureMessage: failureMessage,
+      cancelledMessage: cancelledMessage,
+      describeError: describeError,
+    );
+  }
+
   /// Local `.mrpack` import: inspect first so an unreadable or invalid file
   /// fails before a queue entry appears, then install in the background.
   ///
@@ -312,6 +345,7 @@ class DownloadsNotifier extends Notifier<void> {
     required String loaderVersion,
     required String installerPath,
     bool? shareLoaderFiles,
+    bool? pureJava,
     required String successMessage,
     required String failureMessage,
     required String cancelledMessage,
@@ -323,10 +357,43 @@ class DownloadsNotifier extends Notifier<void> {
         shareLoaderFiles ??
         ref.read(appSettingsProvider).value?.shareLoaderFiles ??
         true;
+    // The dialog sends an explicit choice; callers that omit it follow the
+    // global preference saved in Settings.
+    final usePureJava =
+        pureJava ??
+        ref.read(appSettingsProvider).value?.preferPureJavaLoaderInstall ??
+        true;
 
-    // Forge/NeoForge processors need a JVM; fail before the large download
-    // when no suitable runtime is installed.
-    final java = await client.selectJava(gameVersion: gameVersion);
+    // Pure Java mode hands the whole client install to the vendor installer.
+    // It supports every installer format with a client CLI (Forge 1.12.2+ and
+    // NeoForge) and does not depend on our processor coverage.
+    if (usePureJava && (kind == 'forge' || kind == 'neoforge')) {
+      final java = await client.selectJava(gameVersion: gameVersion);
+      _detach(
+        () async {
+          await client.installLoaderWithJava(
+            root: instance.rootPath,
+            installerPath: installerPath,
+            kind: kind,
+            gameVersion: gameVersion,
+            loaderVersion: loaderVersion,
+            javaPath: java.path,
+            shareLoaderFiles: share,
+            label: label,
+          );
+          await ref.read(instancesProvider.notifier).reload();
+        },
+        successMessage: successMessage,
+        failureMessage: failureMessage,
+        cancelledMessage: cancelledMessage,
+        describeError: describeError,
+      );
+      return;
+    }
+
+    // Plan first: the native processor coverage decides whether a JVM is
+    // needed at all. Fabric/Quilt never need one; a Forge/NeoForge build with
+    // an uncovered processor must fail here, before the large download.
     final plan = await client.planLoaderInstall(
       root: instance.rootPath,
       installerPath: installerPath,
@@ -336,6 +403,23 @@ class DownloadsNotifier extends Notifier<void> {
       shareLoaderFiles: share,
       label: label,
     );
+    JavaRuntime? java;
+    if (plan.requiresJava) {
+      try {
+        java = await client.selectJava(gameVersion: gameVersion);
+      } on CoreException catch (error) {
+        if (error.code == 'JAVA_MISSING' ||
+            error.code == 'JAVA_VERSION_MISMATCH') {
+          throw CoreException(
+            status: error.status,
+            code: 'LOADER_JAVA_REQUIRED',
+            message: error.message,
+            detail: plan.javaRequiredSteps.join(', '),
+          );
+        }
+        rethrow;
+      }
+    }
     // Commit and repair follow the plan: the shared game root, or the
     // instance itself when sharing is off.
     final installRoot = plan.installRoot.isEmpty
@@ -359,16 +443,12 @@ class DownloadsNotifier extends Notifier<void> {
           profilePath: plan.profilePath,
           label: label,
         );
-        if (plan.requiresJava) {
-          final generated = plan.installerPath;
-          if (generated == null || generated.isEmpty) {
-            throw StateError('The loader plan produced no installer to run.');
-          }
+        if (plan.installerPath != null && plan.installerPath!.isNotEmpty) {
           final repair = await client.repairLoader(
-            installerPath: generated,
+            installerPath: plan.installerPath!,
             root: installRoot,
             kind: kind,
-            javaPath: java.path,
+            javaPath: java?.path ?? '',
             label: label,
           );
           if (repair['ok'] != true) {
@@ -445,45 +525,6 @@ class DownloadsNotifier extends Notifier<void> {
       failureMessage: failureMessage,
       cancelledMessage: cancelledMessage,
       describeError: describeError,
-    );
-  }
-
-  /// Installs a Mojang Java runtime (e.g. Java 21) under the data root.
-  ///
-  /// The plan is built first so a missing component fails before the UI claims
-  /// the download started; the transfer itself runs in the background.
-  Future<void> installJavaRuntime(
-    int major, {
-    required String successMessage,
-    required String failureMessage,
-    required String cancelledMessage,
-  }) async {
-    final client = _client();
-    JavaRuntimePlan plan;
-    try {
-      plan = await client.planJavaRuntime(major: major);
-    } catch (error) {
-      toast('$failureMessage\n$error', type: ToastType.error);
-      return;
-    }
-
-    await _runDetached(
-      () async {
-        final result = await client.executeDownload(
-          plan.plan,
-          label: 'Java $major',
-        );
-        if (!result.ok) {
-          throw StateError(
-            result.stderr?.trim().isNotEmpty == true
-                ? result.stderr!.trim()
-                : 'Java runtime download failed (${result.status}).',
-          );
-        }
-      },
-      successMessage: successMessage,
-      failureMessage: failureMessage,
-      cancelledMessage: cancelledMessage,
     );
   }
 

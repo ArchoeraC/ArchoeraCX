@@ -37,6 +37,7 @@ internal static class LaunchProcessStarter
         }
 
         var pid = process.Id;
+        LaunchProcessRegistry.Register(instanceId, pid, logPath);
         var log = new LaunchLogWriter(logPath);
         log.WriteLine($"[archoera] java: {plan.JavaPath}");
         if (plan.Environment.Count > 0)
@@ -76,6 +77,7 @@ internal static class LaunchProcessStarter
             log.Complete(process.ExitCode);
 
             // The log viewer polls the registry to know when a follow can end.
+            LaunchProcessRegistry.CompleteExit(instanceId, pid, process.ExitCode);
             LaunchProcessRegistry.Unregister(instanceId, pid);
 
             // Launcher-side post-exit hook. It must never block or break the

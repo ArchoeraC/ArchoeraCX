@@ -67,6 +67,43 @@ public sealed class SettingsRuntimeOptionsTests
     }
 
     [Fact]
+    public async Task Loader_install_default_round_trips_and_defaults_to_pure_java()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var store = new JsonAppSettingsStore(Path.Combine(directory, "data"));
+            var service = new SettingsModuleService(store);
+
+            Assert.True((await store.LoadAsync()).PreferPureJavaLoaderInstall);
+
+            using (var set = JsonDocument.Parse(
+                       await service.HandleAsync(
+                           "settings.setRuntimeOptions",
+                           """{"preferPureJavaLoaderInstall":false}""",
+                           CancellationToken.None)))
+            {
+                Assert.True(set.RootElement.GetProperty("ok").GetBoolean());
+                Assert.False(
+                    Settings(set).GetProperty("preferPureJavaLoaderInstall").GetBoolean());
+            }
+
+            Assert.False((await store.LoadAsync()).PreferPureJavaLoaderInstall);
+
+            using var invalid = JsonDocument.Parse(
+                await service.HandleAsync(
+                    "settings.setRuntimeOptions",
+                    """{"preferPureJavaLoaderInstall":"no"}""",
+                    CancellationToken.None));
+            Assert.False(invalid.RootElement.GetProperty("ok").GetBoolean());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task Environment_null_clears_and_wrapper_empty_disables()
     {
         var directory = TempDirectory();

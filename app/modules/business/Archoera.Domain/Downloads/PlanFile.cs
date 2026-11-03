@@ -62,4 +62,25 @@ public sealed record PlanFile(
         {
             Headers = headers ?? NoHeaders,
         };
+
+    /// <summary>
+    /// Single-source file whose provider publishes no digest. Restricted to
+    /// platform bundles that also have ZIP-level CRC validation. Never use it
+    /// for game, loader or library downloads.
+    /// </summary>
+    public static PlanFile CreateUnverified(
+        string url,
+        string dest,
+        long size,
+        IReadOnlyList<string>? mirrors = null,
+        DownloadFileMode mode = DownloadFileMode.Ensure,
+        int priority = 0)
+        => Create(
+            url,
+            dest,
+            DownloadHash.Unverified,
+            size,
+            mirrors,
+            mode,
+            priority);
 }

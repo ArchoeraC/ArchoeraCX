@@ -4,6 +4,8 @@
 > 归属：C#（`archoera_cs`）业务层；C++ 只负责进程生命周期与事件转发；Dart 只渲染。
 > 标记：**[事实]** 官方文档/源码/实测；**[推断]** 有依据但未逐项验证；**[未验证]** 待实测。
 
+> **当前实现（阶段 1）**：C# 已提供 `diagnostics.analyze` / `diagnostics.latest` 与 `launch.wait`；异常退出后自动读取 `launch-*.log`、`logs/latest.log`、`crash-reports/`、`hs_err_pid*.log`，用内置高频规则给出原因/建议，并由 Flutter 弹窗展示。弹窗固定带一句经典提醒：**求助时请提供错误日志，而不是这个窗口的照片或截图**，并把日志路径放在同屏；退出码是用户主动终止信号（SIGKILL 137、SIGTERM 143、SIGINT 130、SIGHUP 129，或 Windows `TerminateProcess` 的 -1）时再加一句**如果此次终止由您本人操作，请忽略此消息**。仅本地分析，不生成或上传诊断包；评分/合并、运行中早期提示、签名规则集与上传流程仍待后续阶段。
+
 ## 0. 结论
 
 1. **退出码只是线索**。MC 崩溃后停在崩溃界面，用户关窗可能以 0 退出（**[推断]**，待复现）；存在 crash-report 或日志标记 `#@!@# Game crashed! Crash report saved to: #@!@#` 时一律按崩溃处理（HMCL 用同一标记定位报告）。**[事实-源码]**

@@ -1,13 +1,18 @@
 # ArchoeraCX web presence
 
-Static introduction page for the launcher. No build step, no package manager, no
-network requests: open `site/index.html` directly, or serve the folder.
+Static introduction page for the launcher. No build step, no package manager and
+no network requests: open `site/index.html` directly, or serve the folder.
 
 ```bash
 cd site
 python3 -m http.server 8000
 # http://localhost:8000/
 ```
+
+The version stamps (topbar badge, hero label, system-map legend) follow
+`app/pubspec.yaml`. After bumping the version, run `tool/sync-version.sh`; it
+rewrites the `data-app-version` spans in `index.html`. The committed page always
+holds a concrete value, so it keeps working without running the script.
 
 ## Design language
 
@@ -81,6 +86,8 @@ site/
 │  ├─ branding/         # the application icon (same SVG as the app)
 │  └─ shots/            # screenshots rendered from the real widget tree
 ├─ NOTICE.md            # asset sources and licenses
+├─ tool/
+│  └─ sync-version.sh   # stamps app/pubspec.yaml version into index.html
 └─ README.md
 ```
 

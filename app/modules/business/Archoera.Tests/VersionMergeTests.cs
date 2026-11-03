@@ -363,6 +363,82 @@ public sealed class VersionMergeTests
     }
 
     [Fact]
+    public void Merge_replaces_parent_legacy_arguments_instead_of_appending_them()
+    {
+        const string parent = """
+            {
+              "id": "1.12.2",
+              "minecraftArguments": "--username ${auth_player_name} --gameDir ${game_directory} --versionType release"
+            }
+            """;
+
+        const string child = """
+            {
+              "id": "1.12.2-forge-14.23.5.2860",
+              "inheritsFrom": "1.12.2",
+              "minecraftArguments": "--username ${auth_player_name} --gameDir ${game_directory} --tweakClass net.minecraftforge.fml.common.launcher.FMLTweaker --versionType Forge"
+            }
+            """;
+
+        var effective = Service.Merge([
+            new VersionLayer("1.12.2", parent, "mojang"),
+            new VersionLayer("1.12.2-forge-14.23.5.2860", child, "loader"),
+        ]);
+
+        var tokens = effective.Version.Arguments!.Game
+            .SelectMany(argument => argument.Values)
+            .ToArray();
+        Assert.Equal(
+            [
+                "--username",
+                "${auth_player_name}",
+                "--gameDir",
+                "${game_directory}",
+                "--tweakClass",
+                "net.minecraftforge.fml.common.launcher.FMLTweaker",
+                "--versionType",
+                "Forge",
+            ],
+            tokens);
+        Assert.Equal(1, tokens.Count(token => token == "--gameDir"));
+    }
+
+    [Fact]
+    public void Merge_keeps_os_variants_of_the_same_library()
+    {
+        const string vanilla = """
+            {
+              "id": "1.12.2",
+              "libraries": [
+                {
+                  "name": "org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209",
+                  "rules": [
+                    { "action": "allow" },
+                    { "action": "disallow", "os": { "name": "osx" } }
+                  ]
+                },
+                {
+                  "name": "org.lwjgl.lwjgl:lwjgl:2.9.2-nightly-20140822",
+                  "rules": [ { "action": "allow", "os": { "name": "osx" } } ]
+                }
+              ]
+            }
+            """;
+
+        var effective = Service.Merge([new VersionLayer("1.12.2", vanilla, "mojang")]);
+
+        var libraries = effective.Version.Libraries
+            .Select(library => library.Name)
+            .ToArray();
+        Assert.Equal(
+            [
+                "org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209",
+                "org.lwjgl.lwjgl:lwjgl:2.9.2-nightly-20140822",
+            ],
+            libraries);
+    }
+
+    [Fact]
     public void Merge_keeps_classifier_and_extension_keys_distinct_and_override_positions()
     {
         const string root = """

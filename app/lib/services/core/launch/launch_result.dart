@@ -16,6 +16,33 @@ class LaunchResult {
   final String? logPath;
 }
 
+/// Result of `launch.wait`: whether the JVM is still running and its code.
+class LaunchExit {
+  const LaunchExit({
+    required this.instanceId,
+    required this.running,
+    this.exitCode,
+    this.logPath,
+  });
+
+  final String instanceId;
+  final bool running;
+  final int? exitCode;
+  final String? logPath;
+
+  static LaunchExit fromNative(String fallbackInstanceId, Object? value) {
+    final data = value is Map ? value : const <Object?, Object?>{};
+    return LaunchExit(
+      instanceId: data['instanceId']?.toString() ?? fallbackInstanceId,
+      running: data['running'] == true,
+      exitCode: data['exitCode'] is num
+          ? (data['exitCode'] as num).toInt()
+          : null,
+      logPath: data['logPath']?.toString(),
+    );
+  }
+}
+
 /// Result of `launch.stop`: the game process that was force-terminated.
 ///
 /// [stopped] is false when nothing was running any more (the game exited on

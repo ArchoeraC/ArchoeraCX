@@ -108,10 +108,31 @@ public sealed class PackModuleService : IModuleMethodHandler
     private static byte[] Inspect(JsonElement root)
     {
         var path = RequireString(root, "path");
-        var contents = PackArchive.Read(path, clientSide: true);
+        if (NativePackArchive.TryRead(path, out var native))
+        {
+            return ModuleJson.Envelope(writer =>
+            {
+                writer.WriteString("format", native.Format);
+                writer.WriteString("name", native.Name);
+                writer.WriteString("versionId", native.VersionId);
+                writer.WriteString("summary", native.Summary);
+                writer.WriteString("gameVersion", native.GameVersion);
+                writer.WriteString("loader", native.Loader.Kind);
+                writer.WriteString("loaderVersion", native.Loader.Version);
+                writer.WriteNumber("fileCount", native.Files.Count);
+                writer.WriteNumber("totalBytes", native.TotalBytes);
+                writer.WriteNumber("overrideFiles", native.Files.Count);
+                writer.WriteNumber("overrideBytes", native.TotalBytes);
+                writer.WriteNumber("ignoredServerFiles", 0);
+                writer.WriteBoolean("repaired", false);
+            });
+        }
+
+        var (contents, repair) = PackArchiveRepair.ReadWithRepair(path, clientSide: true);
         var index = contents.Index;
         return ModuleJson.Envelope(writer =>
         {
+            writer.WriteString("format", "modrinth");
             writer.WriteString("name", index.Name);
             writer.WriteString("versionId", index.VersionId);
             writer.WriteString("summary", index.Summary);
@@ -123,6 +144,12 @@ public sealed class PackModuleService : IModuleMethodHandler
             writer.WriteNumber("overrideFiles", contents.Overrides.Count);
             writer.WriteNumber("overrideBytes", contents.OverrideBytes);
             writer.WriteNumber("ignoredServerFiles", contents.IgnoredServerFiles);
+            writer.WriteBoolean("repaired", repair is not null);
+            if (repair is not null)
+            {
+                writer.WriteString("backupPath", repair.BackupPath);
+                writer.WriteNumber("repairedPaths", repair.RepairedPaths);
+            }
         });
     }
 
@@ -178,7 +205,7 @@ public sealed class PackModuleService : IModuleMethodHandler
         });
     }
 
-    private static byte[] BuildResult(PackInstallResult result)
+    internal static byte[] BuildResult(PackInstallResult result)
     {
         var instance = result.Instance;
         return ModuleJson.Envelope(writer =>

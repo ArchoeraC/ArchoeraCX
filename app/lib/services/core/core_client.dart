@@ -2,6 +2,7 @@ import 'dart:ffi' as ffi;
 import 'dart:io';
 
 import 'accounts/accounts.dart';
+import 'diagnostics/diagnostics.dart';
 import 'downloads/downloads.dart';
 import 'instances/instances.dart';
 import 'java/java.dart';
@@ -17,12 +18,14 @@ import 'wiki/wiki.dart';
 import 'core_transport.dart';
 
 export 'accounts/accounts.dart';
+export 'diagnostics/diagnostics.dart';
 export 'downloads/downloads.dart';
 export 'instances/instances.dart';
 export 'java/java.dart';
 export 'launch/launch.dart';
 export 'loaders/loader.dart';
 export 'packs/modpack.dart';
+export 'packs/platform_pack_models.dart';
 export 'resources/resource.dart';
 export 'settings/settings.dart';
 export 'system/system.dart';
@@ -53,6 +56,7 @@ export 'core_transport.dart';
 final class CoreClient extends CoreTransport
     with
         CoreClientAccounts,
+        CoreClientDiagnostics,
         CoreClientDownloads,
         CoreClientInstances,
         CoreClientJava,

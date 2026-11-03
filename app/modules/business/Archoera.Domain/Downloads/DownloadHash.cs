@@ -1,15 +1,22 @@
 namespace Archoera.Domain.Downloads;
 
 /// <summary>
-/// Canonical file hash: a supported algorithm plus lower-case hex.
+/// Canonical file hash: a supported algorithm plus lower-case hex. The
+/// <see cref="DownloadHashAlgorithm.None"/> sentinel is reserved for platform
+/// bundles that publish no digest at all (Technic direct zips); their ZIP CRCs
+/// are still verified during extraction.
 /// </summary>
-/// <param name="Algorithm">SHA-1, SHA-256 or SHA-512.</param>
+/// <param name="Algorithm">SHA-1, SHA-256, SHA-512 or the no-digest sentinel.</param>
 /// <param name="Hex">Lower-case hex digest, exactly <see cref="ExpectedHexLength"/> characters.</param>
 public sealed record DownloadHash(DownloadHashAlgorithm Algorithm, string Hex)
 {
+    /// <summary>Sentinel used when the provider publishes no digest.</summary>
+    public static DownloadHash Unverified { get; } =
+        new(DownloadHashAlgorithm.None, string.Empty);
     /// <summary>Expected digest length in hex characters for <see cref="Algorithm"/>.</summary>
     public int ExpectedHexLength => Algorithm switch
     {
+        DownloadHashAlgorithm.Md5 => 32,
         DownloadHashAlgorithm.Sha1 => 40,
         DownloadHashAlgorithm.Sha256 => 64,
         DownloadHashAlgorithm.Sha512 => 128,

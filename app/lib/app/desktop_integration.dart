@@ -2,21 +2,16 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:window_manager/window_manager.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../stores/locale.dart';
 import '../stores/preferences.dart';
 
 /// 32x32 PNG tray icon. Windows only accepts PNG (and ICO) for tray images,
 /// so this asset must stay a PNG.
 const _trayIconAsset = 'assets/branding/tray_icon.png';
-
-/// Mirrors `LocaleController.storageKey`; only read here to pick the language
-/// of the tray menu before a widget tree is available.
-const _localePreferenceKey = 'ui.locale';
 
 /// Set once the integration has started, so repeated calls are cheap no-ops.
 bool _setupStarted = false;
@@ -157,24 +152,8 @@ tray.Menu? _createTrayMenu(AppLocalizations l10n) {
 }
 
 /// Resolves the tray menu language without a [BuildContext].
-Future<AppLocalizations> _loadLocalizations() async {
-  var locale = WidgetsBinding.instance.platformDispatcher.locale;
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final code = prefs.getString(_localePreferenceKey);
-    if (code != null && (code == 'en' || code == 'zh')) {
-      locale = Locale(code);
-    }
-  } catch (_) {
-    // Fall back to the platform locale.
-  }
-
-  final supported = AppLocalizations.supportedLocales.any(
-    (candidate) => candidate.languageCode == locale.languageCode,
-  );
-  if (!supported) locale = const Locale('en');
-  return AppLocalizations.delegate.load(locale);
-}
+Future<AppLocalizations> _loadLocalizations() async =>
+    AppLocalizations.delegate.load(await resolveStartupLocale());
 
 void _onTrayEvent(tray.TrayIconEvent event) {
   // Linux panels own tray clicks and only open the menu, so this covers

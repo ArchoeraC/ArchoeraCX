@@ -9,6 +9,7 @@ using Archoera.Application.Packs;
 using Archoera.Domain.Downloads;
 using Archoera.Domain.Loaders;
 using Archoera.Infrastructure.Downloads;
+using Archoera.Infrastructure.Loaders.Native;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Launch;
@@ -19,7 +20,7 @@ using Archoera.Domain.Mojang;
 namespace Archoera.Infrastructure.Loaders;
 
 /// <summary>Registered handler for <c>loader.verify</c> / <c>loader.repair</c>.</summary>
-public sealed class LoaderModuleService : IModuleMethodHandler
+public sealed partial class LoaderModuleService : IModuleMethodHandler
 {
     private readonly string[] _supportedMethods;
     private readonly IForgeArtifactPlanner _planner;
@@ -28,6 +29,7 @@ public sealed class LoaderModuleService : IModuleMethodHandler
     private readonly DownloadPolicy _policy;
     private readonly JsonAppSettingsStore _settings;
     private readonly RegionPolicy _regionPolicy;
+    private readonly IMojangMetadataClient? _mojang;
 
     public LoaderModuleService(
         IForgeArtifactPlanner? planner = null,
@@ -36,18 +38,23 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         bool enableDownloads = true,
         DownloadPolicy? policy = null,
         JsonAppSettingsStore? settings = null,
-        RegionPolicy? regionPolicy = null)
+        RegionPolicy? regionPolicy = null,
+        IMojangMetadataClient? mojang = null)
     {
         _policy = policy ?? new DownloadPolicy();
         _settings = settings ?? new JsonAppSettingsStore();
         _regionPolicy = regionPolicy ?? new RegionPolicy();
+        _mojang = mojang;
         _supportedMethods = enableDownloads
-            ? ["loader.verify", "loader.repair", "loader.check", "loader.plan", "loader.commit"]
+            ? [
+                "loader.verify", "loader.repair", "loader.check", "loader.plan",
+                "loader.commit", "loader.installJava",
+            ]
             : ["loader.verify", "loader.repair", "loader.check"];
         _planner = planner ?? new ForgeArtifactPlanner();
         _verifier = verifier ?? new LoaderArtifactVerifier();
         _repairService = repairService ?? new ForgeRepairService(
-            new ForgeProcessorRunner(),
+            new NativeProcessorRunner(),
             _verifier);
     }
 
@@ -64,7 +71,8 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         }
 
         if (string.Equals(method, "loader.plan", StringComparison.Ordinal) ||
-            string.Equals(method, "loader.commit", StringComparison.Ordinal))
+            string.Equals(method, "loader.commit", StringComparison.Ordinal) ||
+            string.Equals(method, "loader.installJava", StringComparison.Ordinal))
         {
             try
             {
@@ -79,6 +87,11 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         if (string.Equals(method, "loader.plan", StringComparison.Ordinal))
         {
             return await PlanAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.Equals(method, "loader.installJava", StringComparison.Ordinal))
+        {
+            return await InstallJavaAsync(paramsJson, cancellationToken).ConfigureAwait(false);
         }
 
         if (string.Equals(method, "loader.commit", StringComparison.Ordinal))
@@ -204,6 +217,8 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                     writer.WriteString("versionId", profilePlan.VersionId);
                     writer.WriteString("versionJson", profilePlan.VersionJson);
                     writer.WriteBoolean("requiresJava", false);
+                    writer.WriteStartArray("javaRequiredSteps");
+                    writer.WriteEndArray();
                     writer.WriteString("kind", profilePlan.LoaderKind);
                     writer.WriteString("installRoot", loaderRoot);
                     writer.WriteString("profilePath", instanceProfilePath);
@@ -235,7 +250,8 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 loaderVersion);
             var plan = await new ForgeInstallPlanService(
                     mojang,
-                    libraryResolver.ResolveAsync)
+                    libraryResolver.ResolveAsync,
+                    http)
                 .BuildAsync(
                     loaderRoot,
                     kind,
@@ -244,6 +260,12 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                     Path.GetFullPath(installerPath),
                     MojangPlatform.Current(),
                     cancellationToken,
+                    options: sourceMode == DownloadSourceMode.Mirror
+                        ? new ForgeDownloadPlanOptions
+                        {
+                            MavenMirror = ForgeMavenMirror.Bmclapi,
+                        }
+                        : null,
                     sourceMode: sourceMode)
                 .ConfigureAwait(false);
 
@@ -258,13 +280,29 @@ public sealed class LoaderModuleService : IModuleMethodHandler
                 ForgeMavenUrls.DefaultInstallerRelativePath(kind, gameVersion, loaderVersion)
                     .Replace('/', Path.DirectorySeparatorChar));
 
+            var javaRequirement = await ResolveJavaRequirementAsync(
+                    loaderRoot,
+                    kind,
+                    gameVersion,
+                    Path.GetFullPath(installerPath),
+                    plan.Version.Id,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             return BuildEnvelope(writer =>
             {
                 writer.WritePropertyName("plan");
                 planDocument.RootElement.WriteTo(writer);
                 writer.WriteString("versionId", plan.Version.Id);
                 writer.WriteString("versionJson", versionJson);
-                writer.WriteBoolean("requiresJava", true);
+                writer.WriteBoolean("requiresJava", javaRequirement.RequiresJava);
+                writer.WriteStartArray("javaRequiredSteps");
+                foreach (var step in javaRequirement.Steps)
+                {
+                    writer.WriteStringValue(step);
+                }
+
+                writer.WriteEndArray();
                 writer.WriteString("kind", kind.ToString().ToLowerInvariant());
                 writer.WriteString("installerPath", planInstaller);
                 // Callers commit and repair against this root so the loader
@@ -277,10 +315,55 @@ public sealed class LoaderModuleService : IModuleMethodHandler
         catch (Exception exception) when (
             exception is IOException or JsonException or ArgumentException or
             ForgeDownloadException or MojangException or DownloadPlanException or
-            PackException)
+            PackException or LoaderManifestException)
         {
             return ModuleJson.Error("LOADER_PLAN_FAILED", exception.Message);
         }
+    }
+
+
+    /// <summary>
+    /// Reports whether the installer's client processor chain is fully covered
+    /// by the native handlers. Anything left over needs a JVM, so the UI can
+    /// warn before the large download instead of failing after it.
+    /// </summary>
+    private async Task<(bool RequiresJava, IReadOnlyList<string> Steps)> ResolveJavaRequirementAsync(
+        string loaderRoot,
+        LoaderKind kind,
+        string gameVersion,
+        string installerPath,
+        string versionId,
+        CancellationToken cancellationToken)
+    {
+        var libraries = Path.Combine(loaderRoot, "libraries");
+        var manifest = await _planner
+            .ParseAsync(installerPath, loaderRoot, libraries, kind, cancellationToken)
+            .ConfigureAwait(false);
+
+        var minecraftJar = Path.Combine(
+            loaderRoot,
+            "versions",
+            gameVersion,
+            $"{gameVersion}.jar");
+        if (!File.Exists(minecraftJar))
+        {
+            // The plan downloads the vanilla client under the merged profile id.
+            var mergedJar = Path.Combine(
+                loaderRoot,
+                "versions",
+                versionId,
+                $"{versionId}.jar");
+            if (File.Exists(mergedJar))
+            {
+                minecraftJar = mergedJar;
+            }
+        }
+
+        return LoaderJavaCoverage.Evaluate(
+            manifest,
+            loaderRoot,
+            installerPath,
+            minecraftJar);
     }
 
     /// <summary>

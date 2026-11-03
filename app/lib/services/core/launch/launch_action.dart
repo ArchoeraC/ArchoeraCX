@@ -11,12 +11,14 @@ import '../../../models/account.dart';
 import '../../../models/game_instance.dart';
 import '../../../stores/account_policy.dart';
 import '../../../stores/accounts.dart';
+import '../../../stores/diagnostics.dart';
 import '../../../stores/instances.dart';
 import '../../../stores/preferences.dart';
 import '../../../stores/providers.dart';
 import '../core_client.dart';
 import 'launch_memory.dart';
 import 'launch_post_actions.dart';
+import 'launch_result.dart';
 import '../../../widgets/common/toast.dart';
 
 /// Build and start a basic offline launch. UI code only calls this helper;
@@ -36,7 +38,10 @@ Future<void> launchInstance(
     );
     return;
   }
-  if (!policy.microsoftOnly && policy.requirePremium && !policy.hasPremium) {
+  if (!policy.microsoftOnly &&
+      policy.requirePremium &&
+      !policy.hasPremium &&
+      account?.kind != AccountKind.authlib) {
     toast(l10n.accountPremiumRequired, type: ToastType.error);
     return;
   }
@@ -82,8 +87,11 @@ Future<void> launchInstance(
   try {
     final result = await client.launchInstance(
       instance.id,
-      mode: account?.kind == AccountKind.microsoft ? 'online' : 'offline',
-      requirePremium: policy.requirePremium,
+      mode: account == null || account.kind == AccountKind.offline
+          ? 'offline'
+          : 'online',
+      requirePremium:
+          policy.requirePremium && account?.kind != AccountKind.authlib,
       requireMicrosoft: policy.microsoftOnly,
       hardware: hardware,
       label: instance.name,
@@ -96,17 +104,24 @@ Future<void> launchInstance(
     // card immediately shows "played today" instead of the previous session.
     unawaited(instances.refresh());
 
-    // Window actions run after the success toast and never extend the launch
-    // call: hiding is best effort and the exit monitor follows the log until
-    // the game process ends. They also run when the page was closed mid-launch.
+    // Window actions and exit diagnostics run after the success toast and never
+    // extend the launch call. The crash watcher is always started: an abnormal
+    // exit should be explained even when the user did not ask to quit.
     final plan = postLaunchPlan(
       succeeded: true,
       hideAfterLaunch: uiPrefs.hideAfterLaunch,
       quitAfterGameExit: uiPrefs.quitAfterGameExit,
     );
-    if (plan.hideWindow || plan.monitorGameExit) {
-      unawaited(_applyPostLaunchPlan(client, instance.id, plan));
-    }
+    if (plan.hideWindow) await _hideLauncherAfterStart();
+    unawaited(
+      _watchLaunchExit(
+        ref,
+        client,
+        instance,
+        result,
+        quitWhenDone: plan.monitorGameExit,
+      ),
+    );
   } catch (error) {
     if (!context.mounted) return;
     final message = switch (error) {
@@ -135,18 +150,55 @@ Future<void> launchInstance(
   }
 }
 
-/// Applies the desktop window actions after a successful start.
+/// Waits for the game to exit, then asks C# to analyze the artifacts.
 ///
-/// Hiding happens first, so enabling both switches hides the launcher and only
-/// quits once the game process ends. The exit monitor is never awaited here.
-Future<void> _applyPostLaunchPlan(
+/// `launch.wait` is a native task that completes on process exit; this watcher
+/// therefore adds no Dart timer. The pending report is stored in a provider so
+/// the shell can show it even when the launch page was disposed or the window
+/// was hidden.
+Future<void> _watchLaunchExit(
+  WidgetRef ref,
   CoreClient client,
-  String instanceId,
-  PostLaunchPlan plan,
-) async {
-  if (plan.hideWindow) await _hideLauncherAfterStart();
-  if (!plan.monitorGameExit) return;
-  unawaited(quitWhenGameExits(client, instanceId));
+  GameInstance instance,
+  LaunchResult result, {
+  required bool quitWhenDone,
+}) async {
+  PendingCrashReportNotifier? reports;
+  try {
+    reports = ref.read(pendingCrashReportProvider.notifier);
+  } catch (_) {
+    // The provider tree is already gone; the app is closing anyway.
+  }
+
+  var fallbackQuit = false;
+  try {
+    LaunchExit exit;
+    do {
+      exit = await client.waitForLaunchExit(
+        instance.id,
+        logPath: result.logPath,
+      );
+    } while (exit.running);
+
+    final analysis = await client.analyzeCrash(
+      instance.id,
+      logPath: result.logPath,
+      exitCode: exit.exitCode,
+    );
+    if (analysis.abnormal && !quitWhenDone) {
+      reports?.show(analysis);
+    }
+  } catch (error, stackTrace) {
+    _logPostLaunchFailure('crash diagnosis failed', error, stackTrace);
+    // An older core has no `launch.wait`; keep the quit-on-exit preference
+    // working through the log-tail fallback, and let that watcher do the quit.
+    if (quitWhenDone) {
+      unawaited(quitWhenGameExits(client, instance.id));
+      fallbackQuit = true;
+    }
+  } finally {
+    if (quitWhenDone && !fallbackQuit) await quitApplication();
+  }
 }
 
 Future<void> _hideLauncherAfterStart() async {

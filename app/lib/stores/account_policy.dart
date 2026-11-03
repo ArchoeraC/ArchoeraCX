@@ -29,6 +29,11 @@ class AccountPolicy {
 
   bool get canUseOtherAccounts =>
       !microsoftOnly && (!requirePremium || hasPremium);
+
+  /// Third-party Yggdrasil accounts are real online identities; they are only
+  /// blocked when the region requires a Microsoft account, not by the local
+  /// "premium first" gate that protects offline profiles.
+  bool get canUseAuthlib => !microsoftOnly;
 }
 
 final regionPolicyProvider = FutureProvider<RegionPolicyState>((ref) async {

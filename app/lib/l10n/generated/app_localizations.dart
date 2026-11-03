@@ -383,8 +383,14 @@ abstract class AppLocalizations {
   /// shown when a local .mrpack cannot be parsed.
   ///
   /// In en, this message translates to:
-  /// **'This file is not a valid Modrinth modpack.'**
+  /// **'This file is not a supported modpack.'**
   String get packInspectFailed;
+
+  /// Toast shown when a local .mrpack was automatically repaired before install.
+  ///
+  /// In en, this message translates to:
+  /// **'The pack used Windows path separators, so the launcher saved a backup to {path} and repaired the archive.'**
+  String packRepaired(String path);
 
   /// Shown for Forge/NeoForge modpack dependencies.
   ///
@@ -421,6 +427,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'e.g. 1.21.4 · Fabric'**
   String get instanceNameHint;
+
+  /// No description provided for @instanceNameTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Name must be {max} characters or fewer.'**
+  String instanceNameTooLong(int max);
+
+  /// No description provided for @instanceNameInvalidCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Name cannot contain \\ / : * ? \" < > | or control characters.'**
+  String get instanceNameInvalidCharacters;
+
+  /// No description provided for @instanceNameInvalidEdges.
+  ///
+  /// In en, this message translates to:
+  /// **'Name cannot start or end with a dot.'**
+  String get instanceNameInvalidEdges;
+
+  /// No description provided for @instanceNameReserved.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is a reserved Windows device name. Choose another name.'**
+  String get instanceNameReserved;
 
   /// No description provided for @instanceGameVersionLabel.
   ///
@@ -1076,6 +1106,12 @@ abstract class AppLocalizations {
   /// **'Loader install failed.'**
   String get loaderInstallFailed;
 
+  /// Explicit warning shown when a loader install needs a JVM but none is available.
+  ///
+  /// In en, this message translates to:
+  /// **'{loader} requires Java to install: some processors are not implemented natively yet. Install or select a Java runtime in Java settings first.'**
+  String loaderJavaRequired(String loader);
+
   /// Checkbox in the Forge/NeoForge install dialog; overrides the global preference for this install only.
   ///
   /// In en, this message translates to:
@@ -1087,6 +1123,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reuses one libraries copy in the game folder for every instance of this loader build; the merged launch profile always stays in this instance. Untick to keep the libraries inside this instance.'**
   String get loaderShareFilesHint;
+
+  /// Checkbox in the Forge/NeoForge install dialog, on by default; the vendor installer performs the client install.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the official installer (pure Java)'**
+  String get loaderPureJava;
+
+  /// No description provided for @loaderPureJavaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The Forge/NeoForge installer handles downloads and processors; works with 1.12.2 and newer installers.'**
+  String get loaderPureJavaHint;
+
+  /// Group label above the two loader install modes.
+  ///
+  /// In en, this message translates to:
+  /// **'Install method'**
+  String get loaderInstallMode;
+
+  /// The launcher builds the plan, downloads files and runs covered processors natively; uncovered steps use Java.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard Java flow (launcher-native)'**
+  String get loaderStandardJava;
+
+  /// No description provided for @loaderStandardJavaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The launcher builds the plan and runs covered processors natively; steps that still need Java use the selected runtime. Choose this for 1.7.10 and older installers.'**
+  String get loaderStandardJavaHint;
+
+  /// Shown when pure Java mode meets an installer without --installClient.
+  ///
+  /// In en, this message translates to:
+  /// **'This installer has no client CLI (Forge 1.7.10 and older), so pure Java mode cannot drive it. Choose \"Standard Java flow (launcher-native)\" instead.'**
+  String get loaderJavaInstallUnsupported;
 
   /// No description provided for @searchDownload.
   ///
@@ -1633,6 +1705,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forge/NeoForge libraries and processor output are installed once in the game folder and reused by every instance of that loader build. Each instance keeps its merged launch profile in its own folder. Untick to keep the libraries inside each instance.'**
   String get settingsShareLoaderFilesDesc;
+
+  /// Global default for the loader install mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer the official installer (pure Java)'**
+  String get settingsPreferPureJavaLoaderInstall;
+
+  /// No description provided for @settingsPreferPureJavaLoaderInstallDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The loader install dialog starts with \"Use the official installer (pure Java)\" selected; each install can still switch to the standard Java flow. Installers without a client CLI (Forge 1.7.10 and older) fall back automatically.'**
+  String get settingsPreferPureJavaLoaderInstallDesc;
 
   /// No description provided for @settingsSectionGameArgs.
   ///
@@ -2564,17 +2648,196 @@ abstract class AppLocalizations {
   /// **'Install Java'**
   String get javaInstallAction;
 
-  /// No description provided for @javaInstallTitle.
+  /// No description provided for @javaInstallPageSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Install a Java runtime'**
-  String get javaInstallTitle;
+  /// **'Choose a JDK distribution, version and install location.'**
+  String get javaInstallPageSubtitle;
 
-  /// No description provided for @javaInstallHint.
+  /// No description provided for @javaInstallProviderLabel.
   ///
   /// In en, this message translates to:
-  /// **'Downloads the runtime from Mojang\'s official catalog and rescans when it finishes; the transfer runs in the background.'**
-  String get javaInstallHint;
+  /// **'Distribution'**
+  String get javaInstallProviderLabel;
+
+  /// No description provided for @javaInstallMajorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Java version'**
+  String get javaInstallMajorLabel;
+
+  /// No description provided for @javaInstallVersionsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Available builds'**
+  String get javaInstallVersionsLabel;
+
+  /// No description provided for @javaInstallSecurityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the latest patch of each major is recommended; historical builds may contain known CVEs.'**
+  String get javaInstallSecurityHint;
+
+  /// No description provided for @javaInstallOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Historical'**
+  String get javaInstallOutdated;
+
+  /// No description provided for @javaInstallOutdatedSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'This build is not the latest patch and may contain known CVEs.'**
+  String get javaInstallOutdatedSelected;
+
+  /// No description provided for @javaInstallAllowOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow historical builds'**
+  String get javaInstallAllowOutdated;
+
+  /// No description provided for @javaInstallAllowOutdatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only enable when you need this exact build.'**
+  String get javaInstallAllowOutdatedHint;
+
+  /// No description provided for @javaInstallCveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security advisories'**
+  String get javaInstallCveTitle;
+
+  /// No description provided for @javaInstallCveChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking NVD/OSV for known CVEs…'**
+  String get javaInstallCveChecking;
+
+  /// No description provided for @javaInstallCveNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No known CVEs affect this build.'**
+  String get javaInstallCveNone;
+
+  /// No description provided for @javaInstallCveUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'CVE data is unavailable; this build was not checked.'**
+  String get javaInstallCveUnavailable;
+
+  /// No description provided for @javaInstallCveCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 known CVE affects this build.} other{{count} known CVEs affect this build.}}'**
+  String javaInstallCveCount(int count);
+
+  /// No description provided for @javaInstallCveAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand this build has known CVEs'**
+  String get javaInstallCveAcknowledge;
+
+  /// No description provided for @javaInstallCveAcknowledgeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Install stays disabled until you acknowledge the advisories.'**
+  String get javaInstallCveAcknowledgeHint;
+
+  /// No description provided for @javaInstallCveScore.
+  ///
+  /// In en, this message translates to:
+  /// **'CVSS {score}'**
+  String javaInstallCveScore(String score);
+
+  /// No description provided for @javaInstallCveOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open advisory'**
+  String get javaInstallCveOpen;
+
+  /// No description provided for @javaInstallLatestOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'This vendor publishes only the latest build of each major.'**
+  String get javaInstallLatestOnly;
+
+  /// Target triple shown above the build list.
+  ///
+  /// In en, this message translates to:
+  /// **'{os} · {arch} · {archive}'**
+  String javaInstallPlatform(String os, String arch, String archive);
+
+  /// No description provided for @javaInstallTargetPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Target platform'**
+  String get javaInstallTargetPlatform;
+
+  /// No description provided for @javaInstallCurrentDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Current device: {os} · {arch}'**
+  String javaInstallCurrentDevice(String os, String arch);
+
+  /// No description provided for @javaInstallPlatformBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible'**
+  String get javaInstallPlatformBadge;
+
+  /// No description provided for @javaInstallPlatformIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'This JDK targets a different platform and cannot run on this device.'**
+  String get javaInstallPlatformIncompatible;
+
+  /// No description provided for @javaInstallPlatformIncompatibleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can still download and keep it for another machine.'**
+  String get javaInstallPlatformIncompatibleHint;
+
+  /// No description provided for @javaInstallRiskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm installation risk'**
+  String get javaInstallRiskTitle;
+
+  /// No description provided for @javaInstallRiskPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Target platform {targetOs} · {targetArch} does not match this device ({hostOs} · {hostArch}). The installed JDK cannot run here.'**
+  String javaInstallRiskPlatform(
+    String targetOs,
+    String targetArch,
+    String hostOs,
+    String hostArch,
+  );
+
+  /// No description provided for @javaInstallRiskCve.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} known CVE(s) affect this build:\n{ids}'**
+  String javaInstallRiskCve(int count, String ids);
+
+  /// No description provided for @javaInstallRiskAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Install anyway'**
+  String get javaInstallRiskAction;
+
+  /// No description provided for @javaInstallForeignResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded for {os} · {arch}; it cannot run on this device.'**
+  String javaInstallForeignResult(String os, String arch);
+
+  /// No description provided for @javaInstallIncompatibleUse.
+  ///
+  /// In en, this message translates to:
+  /// **'This JDK targets another platform and cannot be selected on this device.'**
+  String get javaInstallIncompatibleUse;
 
   /// No description provided for @javaInstallRecommended.
   ///
@@ -2582,29 +2845,215 @@ abstract class AppLocalizations {
   /// **'Recommended'**
   String get javaInstallRecommended;
 
-  /// Toast after starting a Java runtime install.
+  /// No description provided for @javaInstallLts.
   ///
   /// In en, this message translates to:
-  /// **'Java {major} queued for download.'**
-  String javaInstallQueued(int major);
+  /// **'LTS'**
+  String get javaInstallLts;
 
-  /// Toast when the Java runtime download finishes.
+  /// Archive type and download size on one build row.
   ///
   /// In en, this message translates to:
-  /// **'Java {major} installed.'**
-  String javaInstallDone(int major);
+  /// **'{archive} · {size}'**
+  String javaInstallArchiveMeta(String archive, String size);
 
-  /// Toast when the Java runtime download fails.
+  /// No description provided for @javaInstallLoadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Java {major} installation failed.'**
-  String javaInstallFailed(int major);
+  /// **'Could not load the JDK catalogue.'**
+  String get javaInstallLoadFailed;
 
-  /// Toast when the Java runtime download is cancelled.
+  /// No description provided for @javaInstallFailed.
   ///
   /// In en, this message translates to:
-  /// **'Java {major} installation cancelled.'**
-  String javaInstallCancelled(int major);
+  /// **'Installation failed.'**
+  String get javaInstallFailed;
+
+  /// No description provided for @javaInstallMajorsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load Java versions.'**
+  String get javaInstallMajorsFailed;
+
+  /// No description provided for @javaInstallVersionsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load builds.'**
+  String get javaInstallVersionsFailed;
+
+  /// No description provided for @javaInstallEmptyVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'No builds are available for this OS.'**
+  String get javaInstallEmptyVersions;
+
+  /// No description provided for @javaInstallEmptyVersionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another distribution or Java version.'**
+  String get javaInstallEmptyVersionsHint;
+
+  /// No description provided for @javaInstallDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Install directory'**
+  String get javaInstallDirectory;
+
+  /// No description provided for @javaInstallDirectoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The JDK is written directly into this folder. It must be empty or not exist yet.'**
+  String get javaInstallDirectoryHint;
+
+  /// No description provided for @javaInstallDefaultDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Default location'**
+  String get javaInstallDefaultDirectory;
+
+  /// No description provided for @javaInstallCustomDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom location'**
+  String get javaInstallCustomDirectory;
+
+  /// No description provided for @javaInstallChooseDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose folder'**
+  String get javaInstallChooseDirectory;
+
+  /// No description provided for @javaInstallUseDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Use default'**
+  String get javaInstallUseDefault;
+
+  /// No description provided for @javaInstallStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Install JDK'**
+  String get javaInstallStart;
+
+  /// No description provided for @javaInstallDownloadOnlyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Download archive'**
+  String get javaInstallDownloadOnlyAction;
+
+  /// No description provided for @javaInstallInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing…'**
+  String get javaInstallInstalling;
+
+  /// No description provided for @javaInstallDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the JDK archive…'**
+  String get javaInstallDownloading;
+
+  /// No description provided for @javaInstallExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting the verified archive…'**
+  String get javaInstallExtracting;
+
+  /// No description provided for @javaInstallCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling…'**
+  String get javaInstallCancelling;
+
+  /// No description provided for @javaInstallCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation cancelled.'**
+  String get javaInstallCancelled;
+
+  /// Result banner after a JDK archive was installed.
+  ///
+  /// In en, this message translates to:
+  /// **'Java {version} installed.'**
+  String javaInstallSuccess(String version);
+
+  /// No description provided for @javaInstallUseRuntime.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this Java'**
+  String get javaInstallUseRuntime;
+
+  /// No description provided for @javaInstallBackToJava.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Java'**
+  String get javaInstallBackToJava;
+
+  /// No description provided for @javaInstallSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Java runtime selected.'**
+  String get javaInstallSelected;
+
+  /// No description provided for @javaInstallDirectoryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an install directory first.'**
+  String get javaInstallDirectoryRequired;
+
+  /// No description provided for @javaInstallVersionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a build first.'**
+  String get javaInstallVersionRequired;
+
+  /// No description provided for @javaInstallProvidersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No JDK vendors are registered.'**
+  String get javaInstallProvidersEmpty;
+
+  /// No description provided for @javaInstallExtractOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive handling'**
+  String get javaInstallExtractOptions;
+
+  /// No description provided for @javaInstallAutoExtract.
+  ///
+  /// In en, this message translates to:
+  /// **'Extract automatically'**
+  String get javaInstallAutoExtract;
+
+  /// No description provided for @javaInstallAutoExtractHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Extract into the install directory; when off, only the archive is downloaded next to it.'**
+  String get javaInstallAutoExtractHint;
+
+  /// No description provided for @javaInstallAutoDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the archive after extraction'**
+  String get javaInstallAutoDelete;
+
+  /// No description provided for @javaInstallAutoDeleteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When off, the tar.gz/zip is kept next to the install directory.'**
+  String get javaInstallAutoDeleteHint;
+
+  /// No description provided for @javaInstallArchiveOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive downloaded, not extracted.'**
+  String get javaInstallArchiveOnly;
+
+  /// Shown when the downloaded JDK archive was retained.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive kept: {path}'**
+  String javaInstallArchiveKept(String path);
 
   /// No description provided for @javaStatusSelect.
   ///
@@ -2825,7 +3274,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountNoAccounts.
   ///
   /// In en, this message translates to:
-  /// **'No accounts yet. Add a Microsoft or offline account to launch the game.'**
+  /// **'No accounts yet. Add a Microsoft or other account to launch the game.'**
   String get accountNoAccounts;
 
   /// Sign-in error.
@@ -2933,7 +3382,7 @@ abstract class AppLocalizations {
   /// Authlib account type.
   ///
   /// In en, this message translates to:
-  /// **'Authlib'**
+  /// **'Third-party'**
   String get accountAuthlib;
 
   /// Action that opens diagnostics.
@@ -4951,6 +5400,552 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not save instance settings: {message}'**
   String instanceSettingsSaveFailed(String message);
+
+  /// Title of the automatic crash diagnosis dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'The game exited unexpectedly'**
+  String get crashDialogTitle;
+
+  /// No description provided for @crashDialogExitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code: {code}'**
+  String crashDialogExitCode(int code);
+
+  /// Shown when the analyzer has no rule-specific finding.
+  ///
+  /// In en, this message translates to:
+  /// **'No specific cause matched. Open the launch log for the last error lines.'**
+  String get crashDialogNoDetails;
+
+  /// Classic launcher reminder in the crash dialog: ask for help with the log, not a screenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'If you need help from others, share the error log — not a photo or screenshot of this window.'**
+  String get crashDialogShareHint;
+
+  /// Shown when the exit code is a POSIX signal (for example 137 = SIGKILL); force-stopping the game also lands in this dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'If you terminated the game yourself, you can ignore this message.'**
+  String get crashDialogForceStopHint;
+
+  /// Expandable list of redacted log lines.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence'**
+  String get crashDialogEvidence;
+
+  /// No description provided for @crashDialogCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy diagnosis'**
+  String get crashDialogCopy;
+
+  /// No description provided for @crashDialogCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnosis copied.'**
+  String get crashDialogCopied;
+
+  /// No description provided for @crashDialogClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get crashDialogClose;
+
+  /// No description provided for @crashRuleJavaTooOldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Java version is too old'**
+  String get crashRuleJavaTooOldTitle;
+
+  /// No description provided for @crashRuleJavaTooOldDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The game needs Java {needed}, but this launch used Java {current}.'**
+  String crashRuleJavaTooOldDetail(String needed, String current);
+
+  /// No description provided for @crashRuleJavaTooOldFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Java {needed} or newer for this instance in Settings → Java.'**
+  String crashRuleJavaTooOldFix(String needed);
+
+  /// No description provided for @crashRuleJavaTooNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Java version is too new'**
+  String get crashRuleJavaTooNewTitle;
+
+  /// No description provided for @crashRuleJavaTooNewDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'This old loader does not support the selected Java runtime.'**
+  String get crashRuleJavaTooNewDetail;
+
+  /// No description provided for @crashRuleJavaTooNewFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Java 8 for 1.12.2/1.16.5, Java 17 for 1.18–1.20.4, and Java 21 for newer versions.'**
+  String get crashRuleJavaTooNewFix;
+
+  /// No description provided for @crashRuleHeapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Java memory is insufficient'**
+  String get crashRuleHeapTitle;
+
+  /// No description provided for @crashRuleHeapDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The JVM could not reserve the configured heap or ran out of heap space.'**
+  String get crashRuleHeapDetail;
+
+  /// No description provided for @crashRuleHeapFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Close other programs, adjust the allocated memory, and make sure the selected Java is 64-bit.'**
+  String get crashRuleHeapFix;
+
+  /// No description provided for @crashRuleMixinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixin injection failed'**
+  String get crashRuleMixinTitle;
+
+  /// No description provided for @crashRuleMixinDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixin {config} failed to apply. This usually means the mod does not match this Minecraft or loader version.'**
+  String crashRuleMixinDetail(String config);
+
+  /// No description provided for @crashRuleMixinFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Update or remove the mod that owns this mixin; disable recently added mods to narrow it down.'**
+  String get crashRuleMixinFix;
+
+  /// No description provided for @crashRuleDependencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing mod dependency'**
+  String get crashRuleDependencyTitle;
+
+  /// No description provided for @crashRuleDependencyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'A mod requires another mod that is not installed or has an incompatible version.'**
+  String get crashRuleDependencyDetail;
+
+  /// No description provided for @crashRuleDependencyFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the missing dependency version that matches this Minecraft and loader version.'**
+  String get crashRuleDependencyFix;
+
+  /// No description provided for @crashRuleMainClassTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game or loader installation is incomplete'**
+  String get crashRuleMainClassTitle;
+
+  /// No description provided for @crashRuleMainClassDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The main class {cls} could not be loaded.'**
+  String crashRuleMainClassDetail(String cls);
+
+  /// No description provided for @crashRuleMainClassFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstall the loader or run loader repair, then try again.'**
+  String get crashRuleMainClassFix;
+
+  /// No description provided for @crashRuleGraphicsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphics/OpenGL initialization failed'**
+  String get crashRuleGraphicsTitle;
+
+  /// No description provided for @crashRuleGraphicsDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The game could not create an OpenGL window.'**
+  String get crashRuleGraphicsDetail;
+
+  /// No description provided for @crashRuleGraphicsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the graphics driver, run on the dedicated GPU, and avoid remote desktop or virtual machines.'**
+  String get crashRuleGraphicsFix;
+
+  /// No description provided for @crashRuleModTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A mod failed to start'**
+  String get crashRuleModTitle;
+
+  /// No description provided for @crashRuleModDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Mod {mod} threw an error during the {stage} stage.'**
+  String crashRuleModDetail(String mod, String stage);
+
+  /// No description provided for @crashRuleModFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Update or remove this mod; attach the crash report when reporting it to the author.'**
+  String get crashRuleModFix;
+
+  /// No description provided for @crashRuleFileLockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A game file is locked or not writable'**
+  String get crashRuleFileLockedTitle;
+
+  /// No description provided for @crashRuleFileLockedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'A file was in use by another process or permission was denied.'**
+  String get crashRuleFileLockedDetail;
+
+  /// No description provided for @crashRuleFileLockedFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Close other launchers or instances, move the game out of OneDrive, and check folder permissions.'**
+  String get crashRuleFileLockedFix;
+
+  /// No description provided for @crashRuleDriverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphics driver crashed'**
+  String get crashRuleDriverTitle;
+
+  /// No description provided for @crashRuleDriverDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The JVM crashed inside {lib}.'**
+  String crashRuleDriverDetail(String lib);
+
+  /// No description provided for @crashRuleDriverFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean-install the graphics driver and disable overlays such as RTSS, Discord or Steam.'**
+  String get crashRuleDriverFix;
+
+  /// No description provided for @crashRuleNativeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Native JVM crash'**
+  String get crashRuleNativeTitle;
+
+  /// No description provided for @crashRuleNativeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The JVM crashed in native code: {frame}.'**
+  String crashRuleNativeDetail(String frame);
+
+  /// No description provided for @crashRuleNativeFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the hs_err log, remove native mods or agents, and verify the Java runtime.'**
+  String get crashRuleNativeFix;
+
+  /// No description provided for @crashRuleReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The game reported a crash'**
+  String get crashRuleReportTitle;
+
+  /// No description provided for @crashRuleReportDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Crash report description: {description}'**
+  String crashRuleReportDetail(String description);
+
+  /// No description provided for @crashRuleReportFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the crash report and mod list; disable recently added mods.'**
+  String get crashRuleReportFix;
+
+  /// No description provided for @crashRuleUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The game exited unexpectedly'**
+  String get crashRuleUnknownTitle;
+
+  /// No description provided for @crashRuleUnknownDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'No known signature matched the exit code {code}.'**
+  String crashRuleUnknownDetail(String code);
+
+  /// No description provided for @crashRuleUnknownFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the launch log and crash report for the last error lines.'**
+  String get crashRuleUnknownFix;
+
+  /// No description provided for @accountAddAuthlib.
+  ///
+  /// In en, this message translates to:
+  /// **'Third-party sign-in'**
+  String get accountAddAuthlib;
+
+  /// No description provided for @accountAuthlibDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in through a Yggdrasil server such as LittleSkin.'**
+  String get accountAuthlibDesc;
+
+  /// No description provided for @accountAuthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Third-party sign-in'**
+  String get accountAuthTitle;
+
+  /// No description provided for @accountAuthServerPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get accountAuthServerPreset;
+
+  /// No description provided for @accountAuthCustomServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom server'**
+  String get accountAuthCustomServer;
+
+  /// No description provided for @accountAuthServerUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Yggdrasil API URL'**
+  String get accountAuthServerUrl;
+
+  /// No description provided for @accountAuthTermsUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms URL'**
+  String get accountAuthTermsUrl;
+
+  /// No description provided for @accountAuthTermsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Third-party terms'**
+  String get accountAuthTermsTitle;
+
+  /// No description provided for @accountAuthTermsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You are about to sign in to {server}. Read and accept that server\'s terms and privacy policy before the launcher downloads authlib-injector or sends credentials.'**
+  String accountAuthTermsBody(String server);
+
+  /// No description provided for @accountAuthOpenTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Open terms'**
+  String get accountAuthOpenTerms;
+
+  /// No description provided for @accountAuthOpenTermsFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the terms before accepting.'**
+  String get accountAuthOpenTermsFirst;
+
+  /// No description provided for @accountAuthAcceptTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'I have read and accept the server\'s terms and privacy policy'**
+  String get accountAuthAcceptTerms;
+
+  /// No description provided for @accountAuthUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Email or username'**
+  String get accountAuthUsername;
+
+  /// No description provided for @accountAuthPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get accountAuthPassword;
+
+  /// No description provided for @accountAuthLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get accountAuthLogin;
+
+  /// No description provided for @accountAuthImportLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from authlib link'**
+  String get accountAuthImportLink;
+
+  /// No description provided for @accountAuthImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The clipboard does not contain an authlib server link.'**
+  String get accountAuthImportFailed;
+
+  /// No description provided for @platformSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search packs'**
+  String get platformSearchHint;
+
+  /// No description provided for @platformLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load packs.'**
+  String get platformLoadFailed;
+
+  /// No description provided for @platformEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No packs found.'**
+  String get platformEmpty;
+
+  /// No description provided for @platformEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another keyword, or switch the platform.'**
+  String get platformEmptyHint;
+
+  /// No description provided for @platformVersionsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No installable versions.'**
+  String get platformVersionsEmpty;
+
+  /// No description provided for @platformInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get platformInstall;
+
+  /// No description provided for @platformInstallUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This platform pack format is not supported by the installer.'**
+  String get platformInstallUnsupported;
+
+  /// No description provided for @platformInstallMetadataFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The platform returned incomplete pack metadata. Try again later or pick another version.'**
+  String get platformInstallMetadataFailed;
+
+  /// No description provided for @platformInstallNetworkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the platform or its download host. Try again, or use another pack/source.'**
+  String get platformInstallNetworkFailed;
+
+  /// No description provided for @platformDirectArchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install without a published hash?'**
+  String get platformDirectArchiveTitle;
+
+  /// No description provided for @platformDirectArchiveWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This platform publishes only a direct zip and no MD5/SHA digest. The installer will use HTTPS, validate every ZIP entry\'s CRC, and record the downloaded SHA-256. Continue?'**
+  String get platformDirectArchiveWarning;
+
+  /// No description provided for @platformDirectArchiveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue install'**
+  String get platformDirectArchiveConfirm;
+
+  /// No description provided for @platformDirectArchiveBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'direct zip · no official hash'**
+  String get platformDirectArchiveBadge;
+
+  /// No description provided for @accountAuthTermsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept the third-party terms first.'**
+  String get accountAuthTermsRequired;
+
+  /// No description provided for @accountAuthServerInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid https server URL.'**
+  String get accountAuthServerInvalid;
+
+  /// No description provided for @accountAuthInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'The server rejected the username or password.'**
+  String get accountAuthInvalidCredentials;
+
+  /// No description provided for @accountAuthNoProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has no Minecraft profile on the server.'**
+  String get accountAuthNoProfile;
+
+  /// No description provided for @accountAuthNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the auth server.'**
+  String get accountAuthNetwork;
+
+  /// No description provided for @accountAuthDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download authlib-injector. Try again.'**
+  String get accountAuthDownloadFailed;
+
+  /// No description provided for @accountAuthTermsOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the terms page.'**
+  String get accountAuthTermsOpenFailed;
+
+  /// No description provided for @elevationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'I know what you\'re trying to do'**
+  String get elevationTitle;
+
+  /// No description provided for @elevationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'ArchoeraCX detected that this process is running as {kind}. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.'**
+  String elevationBody(String kind);
+
+  /// No description provided for @elevationContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'I know what I\'m doing'**
+  String get elevationContinue;
+
+  /// No description provided for @elevationExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit'**
+  String get elevationExit;
+
+  /// No description provided for @elevationKindRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'root'**
+  String get elevationKindRoot;
+
+  /// No description provided for @elevationKindAdministrator.
+  ///
+  /// In en, this message translates to:
+  /// **'administrator'**
+  String get elevationKindAdministrator;
 }
 
 class _AppLocalizationsDelegate

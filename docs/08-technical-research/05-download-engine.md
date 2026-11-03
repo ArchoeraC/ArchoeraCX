@@ -29,7 +29,7 @@
 | `symlink` | 仅高级选项；创建相对符号链接，Windows 需权限，失败降级复制 |
 | `skip` | 存在即跳过、不校验；仅生产者确认的标记文件，默认禁用 |
 
-**校验**（失败即 `INVALID_PLAN`，不启动下载）：兼容 07 旧字段 `sha1/sha256/sha512`，归一化为 `hash`；`root` 绝对路径并 canonicalize；`dest` 必须相对，拒绝绝对路径、`..`、空段、NUL、Windows 保留名（CON/PRN/AUX/NUL/COM1-9/LPT1-9，含扩展名及尾随点/空格）、ADS 冒号；Windows/macOS 大小写不敏感冲突检测；规范化后仍在 root 内，父目录符号链接/junction 解析后仍在 root 内。URL 仅 https（测试允许 loopback）；拒绝 userinfo；mirror 去重。hash 必填，白名单 `sha1/sha256/sha512`；`size` 必须给出（0 允许为空文件）。上限：200k 文件、64 MiB 计划 JSON、单文件 1 TiB；`totalBytes` 按 `sum(size)` 重算，仅用于进度。默认 `verifyExisting=size`（对 10k assets 避免全量哈希）；jar、可执行文件、用户 Mod 建议 C# 设 `hash`，否则同尺寸损坏会被误判为已完成。`planId` 幂等：运行中重复提交返回同一 `taskId`，完成后缓存 10 分钟；不同 plan 写同一 dest 时按 dest 加锁，后到者等待或 `DEST_BUSY`。
+**校验**（失败即 `INVALID_PLAN`，不启动下载）：兼容 07 旧字段 `sha1/sha256/sha512`，归一化为 `hash`；`root` 绝对路径并 canonicalize；`dest` 必须相对，拒绝绝对路径、`..`、空段、NUL、Windows 保留名（CON/PRN/AUX/NUL/COM1-9/LPT1-9，含扩展名及尾随点/空格）、ADS 冒号；Windows/macOS 大小写不敏感冲突检测；规范化后仍在 root 内，父目录符号链接/junction 解析后仍在 root 内。URL 仅 https（测试允许 loopback）；拒绝 userinfo；mirror 去重。hash 必填，白名单 `md5/sha1/sha256/sha512`（md5 仅用于 Technic/ATLauncher 等只发布 md5 的旧平台 manifest）；唯一的 `none` 例外用于平台只发布直链 zip、不提供任何摘要的整合包归档：必须同时声明 `size > 0`，且由 C# 在解压时逐条校验 ZIP CRC 并在安装后记录 SHA-256，游戏/加载器/库不得使用。`size` 必须给出（0 允许为空文件）。上限：200k 文件、64 MiB 计划 JSON、单文件 1 TiB；`totalBytes` 按 `sum(size)` 重算，仅用于进度。默认 `verifyExisting=size`（对 10k assets 避免全量哈希）；jar、可执行文件、用户 Mod 建议 C# 设 `hash`，否则同尺寸损坏会被误判为已完成。`planId` 幂等：运行中重复提交返回同一 `taskId`，完成后缓存 10 分钟；不同 plan 写同一 dest 时按 dest 加锁，后到者等待或 `DEST_BUSY`。
 
 ### 1.2 状态机、取消/暂停
 ```
@@ -103,7 +103,7 @@ loop {
 
 **分片参数有边界**：`chunkSize` 只接受 64 KiB–64 MiB（0 关闭 Range），单文件最多 1024 片；文件更大时按 `size / 1024` 放大块大小，而不是继续增加请求与任务数。计划校验在 `plan.rs`，不要只依赖 C# 生产者的 clamp。
 
-**资源/模组计划**：C# 的 `DownloadProfile.Resource` 将 chunk/range 上限压到 1 MiB，并在多文件计划沿用默认 per-host 8 时提升到 `min(concurrency,16)`（显式更低值保留）；同时使用 `fast` durability，避免大量小 mod/config 每个文件一次 fsync。Rust 对最后一段 ≥512 KiB 的 range 再拆成最多 8 个尾分片（每段至少 128 KiB），`tailParts` 写入 `.part.meta` 并在续传时重建，解决下载末尾只剩一个连接的问题。
+**资源/模组计划**：C# 的 `DownloadProfile.Resource` 将 chunk/range 上限压到 1 MiB，并在多文件计划沿用默认 per-host 8 时提升到 `min(concurrency,16)`（显式更低值保留）；同时使用 `fast` durability，避免大量小 mod/config 每个文件一次 fsync。Rust 对最后一段 ≥512 KiB 的 range 再拆成最多 8 个尾分片（每段至少 128 KiB），`tailParts` 写入 `.part.meta` 并在续传时重建，解决下载末尾只剩一个连接的问题。JDK 等单文件厂商归档使用 `DownloadProfile.Archive`：仅当计划只有一项且 per-host 仍为默认 8 时提升到全局 `concurrency`，让单个大归档用满连接预算。
 
 **探测**：`GET` + `Range: bytes=0-0`；仅当 `206` 且 `Content-Range: bytes 0-0/总长` 才认为支持。`200` 表示忽略 Range，立即 drop body。不要用 HEAD 判断 Range（CDN 的 HEAD/GET 行为可能不同）。**小文件合并**：不做 HTTP/1.1 pipelining，也不把多文件拼成一个请求；协议层没有安全的“合并”，只能靠 `auto` client 协商出的 H2 多路复用，或由 C# 生成“一个 zip + extract”的计划（另一计划，不是下载器职责）。**Range 与压缩**：固定 `Accept-Encoding: identity`，禁用 reqwest gzip/brotli/deflate/zstd；若响应仍带 `Content-Encoding`，直接 `ENCODING_UNSUPPORTED`，否则字节范围与哈希都会错。
 

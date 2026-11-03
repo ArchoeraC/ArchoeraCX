@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Archoera.Application.Instances;
+using Archoera.Domain;
 using Archoera.Domain.Instances;
 using Archoera.Domain.Loaders;
 using Archoera.Infrastructure.Settings;
@@ -77,6 +78,20 @@ public sealed class JsonInstanceRepository : IInstanceRepository
 
         var root = await ResolveRootAsync(cleanName, rootPath, cancellationToken)
             .ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(rootPath))
+        {
+            // Explicit roots are never re-named; reject a collision instead of
+            // letting two instances share one directory. Matches SQLite.
+            var registered = await ReadRegistryAsync(cancellationToken).ConfigureAwait(false);
+            if (registered.Any(record => string.Equals(
+                    AppDataPaths.Normalize(record.RootPath),
+                    root,
+                    PathSemantics.Comparison)))
+            {
+                throw new ArgumentException("rootPath is already used by another instance");
+            }
+        }
+
         var now = DateTimeOffset.UtcNow;
         var record = new GameInstanceRecord(
             Id: CreateId(now),
@@ -282,9 +297,22 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         }
 
         var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
-        var slug = Slug(name);
-        // Match the SQLite repository: version isolation is the default.
-        return Path.Combine(settings.Roots[0], "versions", slug);
+        var folder = InstanceFolderName.FromDisplayName(name);
+        var versionsRoot = Path.Combine(settings.Roots[0], "versions");
+        var registry = await ReadRegistryAsync(cancellationToken).ConfigureAwait(false);
+        var used = registry
+            .Select(record => AppDataPaths.Normalize(record.RootPath))
+            .ToHashSet(PathSemantics.Comparer);
+        // Match the SQLite repository: version isolation is the default and a
+        // second instance with the same name gets " (2)" instead of sharing a
+        // directory.
+        return await InstanceFolderName.ResolveUniqueAsync(
+                versionsRoot,
+                folder,
+                candidate => Task.FromResult(
+                    Directory.Exists(candidate) || used.Contains(candidate)),
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static string CreateId(DateTimeOffset now)
@@ -337,22 +365,6 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         }
 
         return clean;
-    }
-
-    private static string Slug(string name)
-    {
-        var chars = name.Trim().ToLowerInvariant()
-            .Select(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-'
-                ? character
-                : '-')
-            .ToArray();
-        var slug = new string(chars).Trim('-');
-        while (slug.Contains("--", StringComparison.Ordinal))
-        {
-            slug = slug.Replace("--", "-", StringComparison.Ordinal);
-        }
-
-        return string.IsNullOrWhiteSpace(slug) ? "instance" : slug;
     }
 
     private async Task<List<GameInstanceRecord>> ReadRegistryAsync(

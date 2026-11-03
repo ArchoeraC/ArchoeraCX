@@ -56,9 +56,17 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
   /// Null follows the setting until the user touches the checkbox.
   bool? _shareLoaderFiles;
 
+  /// Pure Java mode runs the vendor installer (`--installClient`) instead of
+  /// the native download/processor pipeline. Seeded from Settings and still
+  /// overridable for this install.
+  late bool _pureJava;
+
   @override
   void initState() {
     super.initState();
+    _pureJava =
+        ref.read(appSettingsProvider).value?.preferPureJavaLoaderInstall ??
+        true;
     _gameController = TextEditingController(text: widget.instance.gameVersion);
     _loaderController = TextEditingController(
       text: widget.instance.loaderVersion,
@@ -215,12 +223,20 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
             loaderVersion: loaderVersion,
             installerPath: installer,
             shareLoaderFiles: _shareLoaderFiles,
+            pureJava: _pureJava,
             successMessage: l10n.loaderInstallDone,
             failureMessage: l10n.loaderInstallFailed,
             cancelledMessage: l10n.downloadCancelled(widget.instance.name),
             describeError: (error) => switch (error) {
-              CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
-                l10n.launchJavaMissing,
+              CoreException(
+                code:
+                    'JAVA_MISSING' ||
+                    'JAVA_VERSION_MISMATCH' ||
+                    'LOADER_JAVA_REQUIRED',
+              ) =>
+                l10n.loaderJavaRequired(label),
+              CoreException(code: 'LOADER_JAVA_INSTALL_UNSUPPORTED') =>
+                l10n.loaderJavaInstallUnsupported,
               CoreException(code: 'DOWNLOAD_DISABLED') =>
                 l10n.downloadUnavailableTitle,
               _ => null,
@@ -231,8 +247,15 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
       setState(() {
         _busy = false;
         _message = switch (error) {
-          CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
-            l10n.launchJavaMissing,
+          CoreException(
+            code:
+                'JAVA_MISSING' ||
+                'JAVA_VERSION_MISMATCH' ||
+                'LOADER_JAVA_REQUIRED',
+          ) =>
+            l10n.loaderJavaRequired(label),
+          CoreException(code: 'LOADER_JAVA_INSTALL_UNSUPPORTED') =>
+            l10n.loaderJavaInstallUnsupported,
           CoreException(code: 'DOWNLOAD_DISABLED') =>
             l10n.downloadUnavailableTitle,
           _ => error.toString(),
@@ -407,6 +430,56 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                   l10n.loaderShareFilesHint,
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: tokens.textTertiary),
+                ),
+              ),
+              Text(
+                l10n.loaderInstallMode,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              RadioGroup<bool>(
+                groupValue: _pureJava,
+                onChanged: _busy
+                    ? (_) {}
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _pureJava = value);
+                      },
+                child: Column(
+                  children: [
+                    RadioListTile<bool>(
+                      value: true,
+                      enabled: !_busy,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      dense: true,
+                      title: Text(
+                        l10n.loaderPureJava,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      subtitle: Text(
+                        l10n.loaderPureJavaHint,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: tokens.textTertiary),
+                      ),
+                    ),
+                    RadioListTile<bool>(
+                      value: false,
+                      enabled: !_busy,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      dense: true,
+                      title: Text(
+                        l10n.loaderStandardJava,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      subtitle: Text(
+                        l10n.loaderStandardJavaHint,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: tokens.textTertiary),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (_message != null) ...[

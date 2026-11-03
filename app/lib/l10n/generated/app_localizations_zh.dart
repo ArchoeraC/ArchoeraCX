@@ -154,7 +154,12 @@ class AppLocalizationsZh extends AppLocalizations {
       '该整合包试图写出实例目录、创建符号链接，或解压到不合理的大小（zip 炸弹）。启动器已在安装前停止。除非你信任来源，否则不要安装。';
 
   @override
-  String get packInspectFailed => '该文件不是有效的 Modrinth 整合包。';
+  String get packInspectFailed => '该文件不是受支持的整合包。';
+
+  @override
+  String packRepaired(String path) {
+    return '整合包使用了 Windows 路径分隔符，已备份到 $path 并自动修复。';
+  }
 
   @override
   String get packLoaderUnsupported =>
@@ -175,6 +180,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instanceNameHint => '例如 1.21.4 · Fabric';
+
+  @override
+  String instanceNameTooLong(int max) {
+    return '名称最多 $max 个字符。';
+  }
+
+  @override
+  String get instanceNameInvalidCharacters =>
+      '名称不能包含 \\ / : * ? \" < > | 或控制字符。';
+
+  @override
+  String get instanceNameInvalidEdges => '名称不能以点开头或结尾。';
+
+  @override
+  String get instanceNameReserved => '该名称是 Windows 保留设备名，请换一个。';
 
   @override
   String get instanceGameVersionLabel => '游戏版本';
@@ -550,11 +570,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loaderInstallFailed => '加载器安装失败。';
 
   @override
+  String loaderJavaRequired(String loader) {
+    return '$loader 需要 Java 才能完成安装：部分 processor 尚未原生支持。请先在 Java 设置中安装或选择可用的 Java 运行时。';
+  }
+
+  @override
   String get loaderShareFiles => '共享加载器文件';
 
   @override
   String get loaderShareFilesHint =>
       '同一加载器版本的所有实例共用游戏目录下的一份 libraries；合并后的启动 profile 始终放在本实例。取消勾选则 library 也只装进本实例。';
+
+  @override
+  String get loaderPureJava => '使用官方安装器（纯 Java 模式）';
+
+  @override
+  String get loaderPureJavaHint =>
+      '由 Forge/NeoForge 官方安装器完成下载与 processor；适用于 1.12.2 及更新的安装器。';
+
+  @override
+  String get loaderInstallMode => '安装方式';
+
+  @override
+  String get loaderStandardJava => '标准 Java 流程（启动器原生）';
+
+  @override
+  String get loaderStandardJavaHint =>
+      '启动器构建计划并原生执行已覆盖的 processor；仍需 Java 的步骤使用所选运行时。1.7.10 及更早的安装器请选此项。';
+
+  @override
+  String get loaderJavaInstallUnsupported =>
+      '该安装器没有命令行客户端安装（Forge 1.7.10 及更早），无法使用纯 Java 模式。请改选“标准 Java 流程（启动器原生）”。';
 
   @override
   String get searchDownload => '搜索资源';
@@ -855,6 +901,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get settingsShareLoaderFilesDesc =>
       'Forge/NeoForge 的库与 processors 产物只装一份在游戏目录，同版本的实例共用；合并后的启动 profile 始终放在各实例自己的文件夹。取消勾选则库也只装进本实例。';
+
+  @override
+  String get settingsPreferPureJavaLoaderInstall => '优先使用官方安装器（纯 Java）';
+
+  @override
+  String get settingsPreferPureJavaLoaderInstallDesc =>
+      '加载器安装弹窗默认选中“使用官方安装器（纯 Java 模式）”；仍可在单次安装中改为标准 Java 流程。1.7.10 及更早的安装器没有客户端命令行，会自动回退到标准流程。';
 
   @override
   String get settingsSectionGameArgs => '附加游戏参数';
@@ -1330,7 +1383,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get javaStatusIdleHint => '扫描系统中已安装的 Java 运行时。';
 
   @override
-  String get javaStatusScanningHint => '正在调用 java.scan…';
+  String get javaStatusScanningHint => '正在扫描设备上的 java…';
 
   @override
   String javaStatusProgress(int done, int total) {
@@ -1338,7 +1391,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get javaStatusUnavailableHint => 'Java 扫描不可用，业务模块可能尚未构建。';
+  String get javaStatusUnavailableHint => '无法扫描 Java，业务模块可能尚未构建。';
 
   @override
   String get javaStatusScan => '扫描 Java';
@@ -1347,32 +1400,230 @@ class AppLocalizationsZh extends AppLocalizations {
   String get javaInstallAction => '安装 Java';
 
   @override
-  String get javaInstallTitle => '安装 Java 运行时';
+  String get javaInstallPageSubtitle => '选择 JDK 发行版、版本与安装位置。';
 
   @override
-  String get javaInstallHint => '从 Mojang 官方源下载运行时，完成后自动重新扫描；下载在后台进行。';
+  String get javaInstallProviderLabel => '发行版';
+
+  @override
+  String get javaInstallMajorLabel => 'Java 版本';
+
+  @override
+  String get javaInstallVersionsLabel => '可用构建';
+
+  @override
+  String get javaInstallSecurityHint => '仅推荐每个大版本的最新补丁；历史构建可能包含已修复的 CVE。';
+
+  @override
+  String get javaInstallOutdated => '历史';
+
+  @override
+  String get javaInstallOutdatedSelected => '该构建不是最新补丁，可能包含已修复的 CVE。';
+
+  @override
+  String get javaInstallAllowOutdated => '允许安装历史构建';
+
+  @override
+  String get javaInstallAllowOutdatedHint => '仅在你明确需要该构建时开启。';
+
+  @override
+  String get javaInstallCveTitle => '安全公告';
+
+  @override
+  String get javaInstallCveChecking => '正在通过 NVD/OSV 检查已知 CVE…';
+
+  @override
+  String get javaInstallCveNone => '未发现影响该构建的已知 CVE。';
+
+  @override
+  String get javaInstallCveUnavailable => '无法获取 CVE 数据，该构建未完成漏洞检查。';
+
+  @override
+  String javaInstallCveCount(int count) {
+    return '有 $count 个已知 CVE 对该二进制包体存在影响：';
+  }
+
+  @override
+  String get javaInstallCveAcknowledge => '我了解该构建存在已知 CVE';
+
+  @override
+  String get javaInstallCveAcknowledgeHint =>
+      '您必须勾选此附加选项后，启动器才能执行后续的 Java 部署程序。';
+
+  @override
+  String javaInstallCveScore(String score) {
+    return 'CVSS $score';
+  }
+
+  @override
+  String get javaInstallCveOpen => '查看公告';
+
+  @override
+  String get javaInstallLatestOnly => '该发行版只提供每个大版本的可能最新构建。';
+
+  @override
+  String javaInstallPlatform(String os, String arch, String archive) {
+    return '$os · $arch · $archive';
+  }
+
+  @override
+  String get javaInstallTargetPlatform => '目标平台';
+
+  @override
+  String javaInstallCurrentDevice(String os, String arch) {
+    return '当前设备：$os · $arch';
+  }
+
+  @override
+  String get javaInstallPlatformBadge => '不兼容';
+
+  @override
+  String get javaInstallPlatformIncompatible => '该 JDK 面向其他平台，无法在当前设备运行。';
+
+  @override
+  String get javaInstallPlatformIncompatibleHint => '仍可下载并保留，供其他设备使用。';
+
+  @override
+  String get javaInstallRiskTitle => '确认安装风险';
+
+  @override
+  String javaInstallRiskPlatform(
+    String targetOs,
+    String targetArch,
+    String hostOs,
+    String hostArch,
+  ) {
+    return '目标平台 $targetOs · $targetArch 与当前设备（$hostOs · $hostArch）不兼容，安装后无法在此设备运行。';
+  }
+
+  @override
+  String javaInstallRiskCve(int count, String ids) {
+    return '该构建存在 $count 个已知 CVE：\n$ids';
+  }
+
+  @override
+  String get javaInstallRiskAction => '仍然安装';
+
+  @override
+  String javaInstallForeignResult(String os, String arch) {
+    return '已下载 $os · $arch 版本；无法在当前设备运行。';
+  }
+
+  @override
+  String get javaInstallIncompatibleUse => '该 JDK 面向其他平台，无法在此设备选用。';
 
   @override
   String get javaInstallRecommended => '推荐';
 
   @override
-  String javaInstallQueued(int major) {
-    return '已加入下载队列：Java $major。';
+  String get javaInstallLts => 'LTS';
+
+  @override
+  String javaInstallArchiveMeta(String archive, String size) {
+    return '$archive · $size';
   }
 
   @override
-  String javaInstallDone(int major) {
-    return 'Java $major 安装完成。';
+  String get javaInstallLoadFailed => '无法加载 JDK 目录。';
+
+  @override
+  String get javaInstallFailed => '安装失败。';
+
+  @override
+  String get javaInstallMajorsFailed => '无法加载 Java 版本。';
+
+  @override
+  String get javaInstallVersionsFailed => '无法加载构建列表。';
+
+  @override
+  String get javaInstallEmptyVersions => '当前系统没有可用构建。';
+
+  @override
+  String get javaInstallEmptyVersionsHint => '请尝试其他发行版或 Java 版本。';
+
+  @override
+  String get javaInstallDirectory => '安装目录';
+
+  @override
+  String get javaInstallDirectoryHint => 'JDK 会直接写入该目录；目录必须为空或尚不存在。';
+
+  @override
+  String get javaInstallDefaultDirectory => '默认位置';
+
+  @override
+  String get javaInstallCustomDirectory => '自定义位置';
+
+  @override
+  String get javaInstallChooseDirectory => '选择目录';
+
+  @override
+  String get javaInstallUseDefault => '使用默认位置';
+
+  @override
+  String get javaInstallStart => '安装 JDK';
+
+  @override
+  String get javaInstallDownloadOnlyAction => '下载安装包';
+
+  @override
+  String get javaInstallInstalling => '正在安装…';
+
+  @override
+  String get javaInstallDownloading => '正在下载 JDK 压缩包…';
+
+  @override
+  String get javaInstallExtracting => '正在解压校验后的压缩包…';
+
+  @override
+  String get javaInstallCancelling => '正在取消…';
+
+  @override
+  String get javaInstallCancelled => '已取消安装。';
+
+  @override
+  String javaInstallSuccess(String version) {
+    return 'Java $version 安装完成。';
   }
 
   @override
-  String javaInstallFailed(int major) {
-    return 'Java $major 安装失败。';
-  }
+  String get javaInstallUseRuntime => '使用此 Java';
 
   @override
-  String javaInstallCancelled(int major) {
-    return 'Java $major 安装已取消。';
+  String get javaInstallBackToJava => '返回 Java 页面';
+
+  @override
+  String get javaInstallSelected => '已选择该 Java 运行时。';
+
+  @override
+  String get javaInstallDirectoryRequired => '请先选择安装目录。';
+
+  @override
+  String get javaInstallVersionRequired => '请先选择一个构建。';
+
+  @override
+  String get javaInstallProvidersEmpty => '没有注册任何 JDK 发行版。';
+
+  @override
+  String get javaInstallExtractOptions => '安装包处理';
+
+  @override
+  String get javaInstallAutoExtract => '自动解压';
+
+  @override
+  String get javaInstallAutoExtractHint => '解压到安装目录；取消后只把压缩包下载到安装目录旁。';
+
+  @override
+  String get javaInstallAutoDelete => '解压后删除安装包';
+
+  @override
+  String get javaInstallAutoDeleteHint => '取消后会在安装目录旁保留 tar.gz/zip。';
+
+  @override
+  String get javaInstallArchiveOnly => '安装包已下载，未解压。';
+
+  @override
+  String javaInstallArchiveKept(String path) {
+    return '已保留安装包：$path';
   }
 
   @override
@@ -1512,7 +1763,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountRefresh => '刷新会话';
 
   @override
-  String get accountNoAccounts => '还没有账户。添加微软或离线账户后即可启动游戏。';
+  String get accountNoAccounts => '还没有添加账户。添加微软或其它账户后即可启动游戏。';
 
   @override
   String accountLoginFailed(String message) {
@@ -1570,7 +1821,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountMicrosoft => '微软';
 
   @override
-  String get accountAuthlib => 'Authlib';
+  String get accountAuthlib => '第三方';
 
   @override
   String get settingsDiagnosticsOpen => '打开';
@@ -2696,4 +2947,304 @@ class AppLocalizationsZh extends AppLocalizations {
   String instanceSettingsSaveFailed(String message) {
     return '保存实例设置失败：$message';
   }
+
+  @override
+  String get crashDialogTitle => '游戏异常退出';
+
+  @override
+  String crashDialogExitCode(int code) {
+    return '退出码：$code';
+  }
+
+  @override
+  String get crashDialogNoDetails => '没有匹配到具体原因。请打开启动日志查看最后的错误信息。';
+
+  @override
+  String get crashDialogShareHint => '如果你需要寻求他人的帮助，请向他人提供错误日志，而不是这个窗口的照片或者截图。';
+
+  @override
+  String get crashDialogForceStopHint => '如果此次终止由您本人操作，请忽略此消息。';
+
+  @override
+  String get crashDialogEvidence => '证据';
+
+  @override
+  String get crashDialogCopy => '复制诊断';
+
+  @override
+  String get crashDialogCopied => '诊断信息已复制。';
+
+  @override
+  String get crashDialogClose => '关闭';
+
+  @override
+  String get crashRuleJavaTooOldTitle => 'Java 版本过低';
+
+  @override
+  String crashRuleJavaTooOldDetail(String needed, String current) {
+    return '游戏需要 Java $needed，本次启动使用的是 Java $current。';
+  }
+
+  @override
+  String crashRuleJavaTooOldFix(String needed) {
+    return '请在 设置 → Java 中为实例选择 Java $needed 或更高版本。';
+  }
+
+  @override
+  String get crashRuleJavaTooNewTitle => 'Java 版本过高';
+
+  @override
+  String get crashRuleJavaTooNewDetail => '该旧版加载器不支持当前选择的 Java。';
+
+  @override
+  String get crashRuleJavaTooNewFix =>
+      '1.12.2/1.16.5 请用 Java 8，1.18–1.20.4 用 Java 17，更新版本用 Java 21。';
+
+  @override
+  String get crashRuleHeapTitle => 'Java 内存不足';
+
+  @override
+  String get crashRuleHeapDetail => 'JVM 无法申请到配置的堆内存，或堆内存已耗尽。';
+
+  @override
+  String get crashRuleHeapFix => '关闭其他程序，调整分配内存，并确认使用的是 64 位 Java。';
+
+  @override
+  String get crashRuleMixinTitle => 'Mixin 注入失败';
+
+  @override
+  String crashRuleMixinDetail(String config) {
+    return 'Mixin $config 注入失败，通常是对应 Mod 与当前 Minecraft/加载器版本不匹配。';
+  }
+
+  @override
+  String get crashRuleMixinFix => '更新或移除拥有该 Mixin 的 Mod；可先禁用最近添加的 Mod 逐步排查。';
+
+  @override
+  String get crashRuleDependencyTitle => '缺少 Mod 前置';
+
+  @override
+  String get crashRuleDependencyDetail => '某个 Mod 依赖的前置未安装，或版本不匹配。';
+
+  @override
+  String get crashRuleDependencyFix => '安装与当前 Minecraft、加载器版本匹配的前置 Mod。';
+
+  @override
+  String get crashRuleMainClassTitle => '游戏或加载器安装不完整';
+
+  @override
+  String crashRuleMainClassDetail(String cls) {
+    return '无法加载主类 $cls。';
+  }
+
+  @override
+  String get crashRuleMainClassFix => '重新安装加载器或运行加载器修复后重试。';
+
+  @override
+  String get crashRuleGraphicsTitle => '图形/OpenGL 初始化失败';
+
+  @override
+  String get crashRuleGraphicsDetail => '游戏无法创建 OpenGL 窗口。';
+
+  @override
+  String get crashRuleGraphicsFix => '更新显卡驱动，改用独立显卡运行，并避免远程桌面或虚拟机。';
+
+  @override
+  String get crashRuleModTitle => '某个 Mod 启动失败';
+
+  @override
+  String crashRuleModDetail(String mod, String stage) {
+    return 'Mod $mod 在 $stage 阶段抛出异常。';
+  }
+
+  @override
+  String get crashRuleModFix => '更新或移除此 Mod；向作者反馈时附上崩溃报告。';
+
+  @override
+  String get crashRuleFileLockedTitle => '游戏文件被占用或无权限';
+
+  @override
+  String get crashRuleFileLockedDetail => '文件被其他进程占用，或权限不足。';
+
+  @override
+  String get crashRuleFileLockedFix => '关闭其他启动器/实例，将游戏移出 OneDrive，并检查目录权限。';
+
+  @override
+  String get crashRuleDriverTitle => '显卡驱动崩溃';
+
+  @override
+  String crashRuleDriverDetail(String lib) {
+    return 'JVM 在 $lib 中崩溃。';
+  }
+
+  @override
+  String get crashRuleDriverFix => '干净安装显卡驱动，并关闭 RTSS、Discord、Steam 等覆盖层。';
+
+  @override
+  String get crashRuleNativeTitle => 'JVM 原生崩溃';
+
+  @override
+  String crashRuleNativeDetail(String frame) {
+    return 'JVM 在原生代码中崩溃：$frame。';
+  }
+
+  @override
+  String get crashRuleNativeFix =>
+      '查看 hs_err 日志，移除原生 Mod/Agent，并确认 Java 运行时正常。';
+
+  @override
+  String get crashRuleReportTitle => '游戏产生了崩溃报告';
+
+  @override
+  String crashRuleReportDetail(String description) {
+    return '崩溃报告描述：$description';
+  }
+
+  @override
+  String get crashRuleReportFix => '查看崩溃报告与 Mod 列表，尝试禁用最近添加的 Mod。';
+
+  @override
+  String get crashRuleUnknownTitle => '游戏异常退出';
+
+  @override
+  String crashRuleUnknownDetail(String code) {
+    return '没有匹配到已知的失败特征，退出码为 $code。';
+  }
+
+  @override
+  String get crashRuleUnknownFix => '打开启动日志和崩溃报告查看最后的错误信息。';
+
+  @override
+  String get accountAddAuthlib => '第三方认证';
+
+  @override
+  String get accountAuthlibDesc => '通过 LittleSkin 等 Yggdrasil 服务器登录。';
+
+  @override
+  String get accountAuthTitle => '第三方认证登录';
+
+  @override
+  String get accountAuthServerPreset => '认证服务器';
+
+  @override
+  String get accountAuthCustomServer => '自定义服务器';
+
+  @override
+  String get accountAuthServerUrl => 'Yggdrasil API 地址';
+
+  @override
+  String get accountAuthTermsUrl => '服务条款地址';
+
+  @override
+  String get accountAuthTermsTitle => '第三方服务条款';
+
+  @override
+  String accountAuthTermsBody(String server) {
+    return '你即将登录 $server。请先阅读并同意该服务器的服务条款与隐私政策；启动器只会在你同意后下载 authlib-injector 并提交登录信息。';
+  }
+
+  @override
+  String get accountAuthOpenTerms => '打开服务条款';
+
+  @override
+  String get accountAuthOpenTermsFirst => '请先打开服务条款阅读。';
+
+  @override
+  String get accountAuthAcceptTerms => '我已阅读并同意该服务器的服务条款与隐私政策';
+
+  @override
+  String get accountAuthUsername => '邮箱或用户名';
+
+  @override
+  String get accountAuthPassword => '密码';
+
+  @override
+  String get accountAuthLogin => '登录';
+
+  @override
+  String get accountAuthImportLink => '从 authlib 链接导入';
+
+  @override
+  String get accountAuthImportFailed => '剪贴板里没有 authlib 服务器链接。';
+
+  @override
+  String get platformSearchHint => '搜索整合包';
+
+  @override
+  String get platformLoadFailed => '无法加载整合包。';
+
+  @override
+  String get platformEmpty => '没有找到整合包。';
+
+  @override
+  String get platformEmptyHint => '试试其它关键词，或切换平台。';
+
+  @override
+  String get platformVersionsEmpty => '没有可安装的版本。';
+
+  @override
+  String get platformInstall => '安装';
+
+  @override
+  String get platformInstallUnsupported => '安装器暂不支持该平台整合包格式。';
+
+  @override
+  String get platformInstallMetadataFailed => '平台返回的整合包元数据不完整，请稍后重试或选择其他版本。';
+
+  @override
+  String get platformInstallNetworkFailed => '无法连接平台或其下载主机，请稍后重试或改用其他整合包/来源。';
+
+  @override
+  String get platformDirectArchiveTitle => '该整合包没有官方哈希，仍要安装吗？';
+
+  @override
+  String get platformDirectArchiveWarning =>
+      '该平台只提供直链 zip，不发布 MD5/SHA 摘要。安装器将使用 HTTPS 下载、逐条校验 ZIP CRC，并记录下载后的 SHA-256。是否继续？';
+
+  @override
+  String get platformDirectArchiveConfirm => '继续安装';
+
+  @override
+  String get platformDirectArchiveBadge => '直链 zip · 无官方哈希';
+
+  @override
+  String get accountAuthTermsRequired => '请先同意第三方服务条款。';
+
+  @override
+  String get accountAuthServerInvalid => '请输入有效的 https 服务器地址。';
+
+  @override
+  String get accountAuthInvalidCredentials => '服务器拒绝了用户名或密码。';
+
+  @override
+  String get accountAuthNoProfile => '该账户在服务器上没有 Minecraft 角色。';
+
+  @override
+  String get accountAuthNetwork => '无法连接认证服务器。';
+
+  @override
+  String get accountAuthDownloadFailed => '无法下载 authlib-injector，请重试。';
+
+  @override
+  String get accountAuthTermsOpenFailed => '无法打开服务条款页面。';
+
+  @override
+  String get elevationTitle => '我知道你想干什么';
+
+  @override
+  String elevationBody(String kind) {
+    return 'ArchoeraCX 检测到当前进程正以$kind权限运行。以超级管理员身份启动，实例、Mod 与游戏文件都会归该账户所有，下载或安装的恶意内容也会拥有更高的破坏力。\n\n启动器和 Minecraft 都不需要管理员权限。请用普通账户重新启动；只有在你清楚后果时才继续。';
+  }
+
+  @override
+  String get elevationContinue => '我知道我在干什么';
+
+  @override
+  String get elevationExit => '退出';
+
+  @override
+  String get elevationKindRoot => 'root';
+
+  @override
+  String get elevationKindAdministrator => '管理员';
 }

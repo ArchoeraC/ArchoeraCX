@@ -18,6 +18,55 @@ public sealed class DownloadPlanTests
         new('b', 40);
 
     [Fact]
+    public void Md5_is_accepted_for_legacy_platform_manifests()
+    {
+        var hash = new DownloadHash(DownloadHashAlgorithm.Md5, new string('c', 32));
+        Assert.Equal(32, hash.ExpectedHexLength);
+        Assert.Equal("md5", hash.Algo);
+        Assert.True(hash.IsCanonicalHex());
+        Assert.True(DownloadWire.TryParseHashAlgorithm("md5", out var parsed));
+        Assert.Equal(DownloadHashAlgorithm.Md5, parsed);
+    }
+
+    [Fact]
+    public void Unverified_sentinel_is_allowed_only_with_a_size()
+    {
+        var plan = new DownloadPlanBuilder(Root)
+            .AddFile(PlanFile.CreateUnverified(
+                "https://example.test/pack.zip",
+                "pack.zip",
+                123))
+            .Build();
+        var file = Assert.Single(plan.Files);
+        Assert.Equal(DownloadHashAlgorithm.None, file.Hash.Algorithm);
+        Assert.Equal(string.Empty, file.Hash.Hex);
+
+        using var document = JsonDocument.Parse(DownloadPlanJson.Build(plan));
+        var hash = document.RootElement
+            .GetProperty("files")[0]
+            .GetProperty("hash");
+        Assert.Equal("none", hash.GetProperty("algo").GetString());
+        Assert.Equal(string.Empty, hash.GetProperty("hex").GetString());
+        Assert.True(DownloadPlanJson.TryParse(
+            DownloadPlanJson.Build(plan),
+            out var roundTrip,
+            out var parseIssue));
+        Assert.Null(parseIssue);
+        Assert.Equal(
+            DownloadHashAlgorithm.None,
+            Assert.Single(roundTrip!.Files).Hash.Algorithm);
+
+        var invalid = new DownloadPlanBuilder(Root)
+            .AddFile(PlanFile.CreateUnverified(
+                "https://example.test/pack.zip",
+                "pack.zip",
+                0))
+            .TryBuild(out _, out var issue);
+        Assert.False(invalid);
+        Assert.Equal(DownloadPlanErrorCode.InvalidHash, issue!.Code);
+    }
+
+    [Fact]
     public void Build_emits_only_fields_the_rust_executor_parses()
     {
         var plan = SamplePlan();

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Archoera.Application;
@@ -18,6 +19,7 @@ using Archoera.Infrastructure.Instances;
 using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Launch;
 using Archoera.Infrastructure.Loaders;
+using Archoera.Infrastructure.Loaders.Native;
 using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Resources.Modrinth;
 using Archoera.Infrastructure.Modules;
@@ -90,7 +92,7 @@ public sealed partial class PackInstallService
         _forgePlanner = forgePlanner ?? new ForgeArtifactPlanner();
         _regionPolicy = regionPolicy ?? new RegionPolicy();
         _forgeRepair = forgeRepair ?? new ForgeRepairService(
-            new ForgeProcessorRunner(),
+            new NativeProcessorRunner(),
             new LoaderArtifactVerifier());
         _forgeBootstrap = new PackForgeInstallerBootstrap(_gameInstall, _runner, SharedHttp);
         _modrinth = modrinth ?? new ModrinthClient(
@@ -118,7 +120,19 @@ public sealed partial class PackInstallService
                 $"pack archive not found: {fullPath}");
         }
 
-        var contents = PackArchive.Read(fullPath, clientSide: true);
+        if (NativePackArchive.TryRead(fullPath, out var native))
+        {
+            return await InstallNativeAsync(
+                    fullPath,
+                    native,
+                    new PackSource(native.Format, null, native.VersionId, fullPath),
+                    name,
+                    rootPath,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var (contents, _) = PackArchiveRepair.ReadWithRepair(fullPath, clientSide: true);
         return await InstallFromArchiveAsync(
                 fullPath,
                 contents,
@@ -127,6 +141,159 @@ public sealed partial class PackInstallService
                 rootPath,
                 cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Downloads a provider-supplied direct archive (Technic non-Solder packs)
+    /// and installs its legacy layout. The provider publishes no digest, so the
+    /// plan uses the explicit unverified sentinel, the executor still enforces
+    /// the declared size, and the archive's ZIP CRCs are validated by
+    /// <see cref="NativePackArchive"/> / <see cref="PackArchive.Extract"/>.
+    /// The computed SHA-256 is recorded next to the instance provenance.
+    /// </summary>
+    public async Task<PackInstallResult> InstallDownloadedArchiveAsync(
+        string url,
+        long size,
+        string versionId,
+        string name,
+        string summary,
+        string gameVersion,
+        string sourceKind,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        string? requestedName,
+        string? rootPath,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            uri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new PackException(
+                PackErrorCode.Invalid,
+                "pack archive URL must be HTTPS");
+        }
+
+        if (size <= 0)
+        {
+            throw new PackException(
+                PackErrorCode.Invalid,
+                "pack archive size is required");
+        }
+
+        var stagingRoot = Path.Combine(
+            _settings.DataRoot,
+            "staging",
+            "packs",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stagingRoot);
+        var archivePath = Path.Combine(stagingRoot, "pack.zip");
+        try
+        {
+            var plan = new DownloadPlanBuilder(stagingRoot)
+                .AddFile(PlanFile.CreateUnverified(
+                    uri.AbsoluteUri,
+                    "pack.zip",
+                    size))
+                .Build();
+            var download = await _runner
+                .ExecuteAsync(plan, cancellationToken, DownloadProfile.Archive)
+                .ConfigureAwait(false);
+            if (!download.Completed)
+            {
+                throw DownloadIncomplete(download, "pack");
+            }
+
+            if (!NativePackArchive.TryRead(archivePath, out var native))
+            {
+                throw new PackException(
+                    PackErrorCode.Unsupported,
+                    "this Technic archive has no supported legacy launcher metadata");
+            }
+
+            var sha256 = await ComputeSha256Async(archivePath, cancellationToken)
+                .ConfigureAwait(false);
+            native = native with
+            {
+                Name = string.IsNullOrWhiteSpace(name) ? native.Name : name,
+                VersionId = string.IsNullOrWhiteSpace(versionId)
+                    ? native.VersionId
+                    : versionId,
+                Summary = string.IsNullOrWhiteSpace(native.Summary)
+                    ? summary
+                    : native.Summary,
+                GameVersion = string.IsNullOrWhiteSpace(native.GameVersion)
+                    ? gameVersion
+                    : native.GameVersion,
+            };
+            var source = new PackSource(
+                sourceKind,
+                sourceProjectId,
+                sourceVersionId,
+                null);
+            var result = await InstallNativeAsync(
+                    archivePath,
+                    native,
+                    source,
+                    requestedName,
+                    rootPath,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            result = result with { DownloadedFiles = 1, DownloadedBytes = size };
+            WritePackManifest(result.Instance.RootPath, native, source, result);
+            WriteArchiveDigest(result.Instance.RootPath, sha256, uri);
+            return result;
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(stagingRoot))
+                {
+                    Directory.Delete(stagingRoot, recursive: true);
+                }
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException)
+            {
+                // Staging cleanup is best-effort.
+            }
+        }
+    }
+
+    private static async Task<string> ComputeSha256Async(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            64 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var hash = await SHA256.HashDataAsync(stream, cancellationToken)
+            .ConfigureAwait(false);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static void WriteArchiveDigest(
+        string instanceRoot,
+        string sha256,
+        Uri archive)
+    {
+        try
+        {
+            var directory = Path.Combine(instanceRoot, ".archoera");
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(
+                Path.Combine(directory, "pack-archive.sha256"),
+                $"{sha256}  {Path.GetFileName(archive.LocalPath)}\n");
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            // Provenance is informative; a completed install is still valid.
+        }
     }
 
     /// <summary>
@@ -223,8 +390,147 @@ public sealed partial class PackInstallService
         }
     }
 
-    private async Task<PackInstallResult> InstallFromArchiveAsync(
+    private async Task<PackInstallResult> InstallNativeAsync(
         string archivePath,
+        NativePackContents pack,
+        PackSource source,
+        string? requestedName,
+        string? rootPath,
+        CancellationToken cancellationToken)
+    {
+        var loaderName = pack.Loader.Kind.Trim().ToLowerInvariant();
+        var forgeKind = loaderName switch
+        {
+            "forge" => LoaderKind.Forge,
+            "neoforge" => LoaderKind.NeoForge,
+            _ => (LoaderKind?)null,
+        };
+        if (forgeKind is null &&
+            loaderName is not ("vanilla" or "fabric" or "quilt"))
+        {
+            throw new PackException(
+                PackErrorCode.LoaderUnsupported,
+                $"unsupported pack loader '{pack.Loader.Kind}'");
+        }
+
+        EnsureRunnerAvailable();
+        var platform = MojangPlatform.Current();
+        JavaRuntimeInfo? javaRuntime = null;
+        if (forgeKind is not null)
+        {
+            javaRuntime = await _java
+                .SelectAsync(null, pack.GameVersion, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var instance = await CreateInstanceAsync(
+                pack.Name,
+                pack.GameVersion,
+                pack.Loader,
+                requestedName,
+                rootPath,
+                cancellationToken)
+            .ConfigureAwait(false);
+        var shareLoaderFiles = (await _settings
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false))
+            .ShareLoaderFiles;
+
+        if (forgeKind is { } kind)
+        {
+            await InstallForgeGameAsync(
+                    instance,
+                    kind,
+                    javaRuntime!.Path,
+                    cancellationToken,
+                    shareLoaderFiles)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            var game = await _gameInstall
+                .BuildAsync(
+                    instance.RootPath,
+                    pack.GameVersion,
+                    pack.Loader.Kind,
+                    pack.Loader.Version,
+                    platform,
+                    await ResolveSourceModeAsync(cancellationToken).ConfigureAwait(false),
+                    cancellationToken,
+                    shareLoaderFiles)
+                .ConfigureAwait(false);
+
+            ModuleProgress.Report(
+                0,
+                game.Plan.TotalBytes,
+                0,
+                $"Installing Minecraft {pack.GameVersion} + {game.LoaderKind}");
+            var gameDownload = await _runner
+                .ExecuteAsync(game.Plan, cancellationToken)
+                .ConfigureAwait(false);
+            if (!gameDownload.Completed)
+            {
+                throw DownloadIncomplete(gameDownload, "game/loader");
+            }
+
+            PackGameInstallService.CommitInstanceProfile(
+                instance.RootPath,
+                game.VersionJson);
+        }
+
+        // Native exports already contain every mod/config; extract them after
+        // the game/loader files so an override wins on a path collision.
+        var extracted = PackArchive.Extract(
+            archivePath,
+            instance.RootPath,
+            pack.Files,
+            cancellationToken,
+            (done, total) =>
+            {
+                if (done == total || done % 64 == 0)
+                {
+                    ModuleProgress.Report(
+                        done,
+                        total,
+                        0,
+                        "Extracting bundled files");
+                }
+            });
+
+        var result = new PackInstallResult(
+            instance,
+            pack.VersionId,
+            source.Kind,
+            0,
+            0,
+            extracted.Count,
+            0);
+        WritePackManifest(instance.RootPath, pack, source, result);
+        return result;
+    }
+
+    /// <summary>
+    /// Installs a provider-built index that has no archive (FTB/Technic/
+    /// ATLauncher manifests already describe every file).
+    /// </summary>
+    public Task<PackInstallResult> InstallIndexAsync(
+        ModpackIndex index,
+        string sourceKind,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        string? name,
+        string? rootPath,
+        CancellationToken cancellationToken = default)
+        => InstallFromArchiveAsync(
+            null,
+            new PackArchiveContents(index, [], 0, 0),
+            new PackSource(sourceKind, sourceProjectId, sourceVersionId, null),
+            name,
+            rootPath,
+            cancellationToken);
+
+    private async Task<PackInstallResult> InstallFromArchiveAsync(
+        string? archivePath,
         PackArchiveContents contents,
         PackSource source,
         string? requestedName,
@@ -340,24 +646,34 @@ public sealed partial class PackInstallService
 
         // Overrides are extracted while index downloads run. They never target
         // the same destination: conflicts were removed from the plan above.
-        var extractTask = Task.Run(
-            () => PackArchive.Extract(
-                archivePath,
-                instance.RootPath,
-                contents.Overrides,
-                cancellationToken,
-                (done, total) =>
-                {
-                    if (done == total || done % 64 == 0)
+        // Platform manifests (FTB/Technic/ATLauncher) have no archive, so the
+        // extraction phase is skipped when only index files exist.
+        Task<IReadOnlyList<string>> extractTask;
+        if (archivePath is null || contents.Overrides.Count == 0)
+        {
+            extractTask = Task.FromResult<IReadOnlyList<string>>([]);
+        }
+        else
+        {
+            extractTask = Task.Run(
+                () => PackArchive.Extract(
+                    archivePath,
+                    instance.RootPath,
+                    contents.Overrides,
+                    cancellationToken,
+                    (done, total) =>
                     {
-                        ModuleProgress.Report(
-                            done,
-                            total,
-                            0,
-                            "Extracting bundled overrides");
-                    }
-                }),
-            cancellationToken);
+                        if (done == total || done % 64 == 0)
+                        {
+                            ModuleProgress.Report(
+                                done,
+                                total,
+                                0,
+                                "Extracting bundled overrides");
+                        }
+                    }),
+                cancellationToken);
+        }
 
         PlanExecutionResult packDownload;
         IReadOnlyList<string> extracted;
@@ -432,21 +748,36 @@ public sealed partial class PackInstallService
         }
     }
 
-    private async Task<GameInstanceRecord> CreateInstanceAsync(
+    private Task<GameInstanceRecord> CreateInstanceAsync(
         ModpackIndex index,
         string? requestedName,
         string? rootPath,
         CancellationToken cancellationToken)
+        => CreateInstanceAsync(
+            index.Name,
+            index.MinecraftVersion,
+            index.Loader,
+            requestedName,
+            rootPath,
+            cancellationToken);
+
+    private async Task<GameInstanceRecord> CreateInstanceAsync(
+        string packName,
+        string gameVersion,
+        ModpackLoader loader,
+        string? requestedName,
+        string? rootPath,
+        CancellationToken cancellationToken)
     {
-        var name = SanitizeInstanceName(requestedName ?? index.Name);
+        var name = SanitizeInstanceName(requestedName ?? packName);
         try
         {
             return await _repository
                 .CreateAsync(
                     name,
-                    index.MinecraftVersion,
-                    index.Loader.Kind,
-                    index.Loader.Version,
+                    gameVersion,
+                    loader.Kind,
+                    loader.Version,
                     rootPath,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -523,6 +854,59 @@ public sealed partial class PackInstallService
 
     private static void WritePackManifest(
         string instanceRoot,
+        NativePackContents pack,
+        PackSource source,
+        PackInstallResult result)
+    {
+        try
+        {
+            var directory = Path.Combine(instanceRoot, ".archoera");
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "pack.json");
+            var temporary = path + ".tmp";
+            using (var stream = new FileStream(
+                       temporary,
+                       FileMode.Create,
+                       FileAccess.Write,
+                       FileShare.None))
+            using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions
+                   {
+                       Indented = true,
+                   }))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("schemaVersion", 1);
+                writer.WriteString("format", pack.Format);
+                writer.WriteString("name", pack.Name);
+                writer.WriteString("versionId", pack.VersionId);
+                writer.WriteString("gameVersion", pack.GameVersion);
+                writer.WriteString("loader", pack.Loader.Kind);
+                writer.WriteString("loaderVersion", pack.Loader.Version);
+                writer.WriteString("source", source.Kind);
+                if (source.Origin is not null)
+                {
+                    writer.WriteString("origin", source.Origin);
+                }
+
+                writer.WriteString("installedAt", DateTimeOffset.UtcNow.ToString("O"));
+                writer.WriteNumber("downloadedFiles", result.DownloadedFiles);
+                writer.WriteNumber("skippedFiles", result.SkippedFiles);
+                writer.WriteNumber("extractedFiles", result.ExtractedFiles);
+                writer.WriteNumber("downloadedBytes", result.DownloadedBytes);
+                writer.WriteEndObject();
+            }
+
+            File.Move(temporary, path, overwrite: true);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            // Provenance is informative; a completed install is still valid.
+        }
+    }
+
+    private static void WritePackManifest(
+        string instanceRoot,
         ModpackIndex index,
         PackSource source,
         PackInstallResult result)
@@ -545,6 +929,7 @@ public sealed partial class PackInstallService
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("schemaVersion", 1);
+                writer.WriteString("format", source.Kind);
                 writer.WriteString("name", index.Name);
                 writer.WriteString("versionId", index.VersionId);
                 writer.WriteString("gameVersion", index.MinecraftVersion);

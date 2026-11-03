@@ -76,29 +76,60 @@ void main() {
     });
   });
 
-  group('slugForInstance', () {
-    test('normalizes a display name', () {
-      expect(slugForInstance('  My Instance!  '), 'my-instance');
-      expect(slugForInstance('1.21.4 NeoForge'), '1.21.4-neoforge');
-      expect(slugForInstance('a_b-c.d'), 'a_b-c.d');
+  group('instanceFolderName', () {
+    test('keeps unicode, case and ordinary symbols', () {
+      expect(instanceFolderName('  My Instance!  '), 'My Instance!');
+      expect(instanceFolderName('1.21.4 · Fabric'), '1.21.4 · Fabric');
+      expect(instanceFolderName('生存整合包'), '生存整合包');
+      expect(instanceFolderName('a_b-c.d'), 'a_b-c.d');
+      expect(instanceFolderName('a[1] {x} (y)'), 'a[1] {x} (y)');
     });
 
-    test('falls back for empty or separator-only names', () {
-      expect(slugForInstance(''), 'instance');
-      expect(slugForInstance('   '), 'instance');
-      expect(slugForInstance('---'), 'instance');
+    test('turns separators into dashes', () {
+      expect(instanceFolderName('A/B:C'), 'A-B-C');
+      expect(instanceFolderName(r'A\B'), 'A-B');
     });
 
-    test('rejects dot-only slugs that would escape the instances root', () {
-      expect(slugForInstance('.'), 'instance');
-      expect(slugForInstance('..'), 'instance');
-      expect(slugForInstance('...'), 'instance');
-      expect(slugForInstance('...   '), 'instance');
+    test('falls back for empty or dot-only names', () {
+      expect(instanceFolderName(''), 'instance');
+      expect(instanceFolderName('   '), 'instance');
+      expect(instanceFolderName('.'), 'instance');
+      expect(instanceFolderName('..'), 'instance');
+      expect(instanceFolderName('...   '), 'instance');
+      expect(instanceFolderName(' . . '), 'instance');
     });
 
     test('keeps interior dots', () {
-      expect(slugForInstance('foo..bar'), 'foo..bar');
-      expect(slugForInstance(' . . '), '.-.');
+      expect(instanceFolderName('foo..bar'), 'foo..bar');
+    });
+
+    test('avoids windows device names', () {
+      expect(instanceFolderName('CON'), '_CON');
+      expect(instanceFolderName('com1.txt'), '_com1.txt');
+    });
+  });
+
+  group('instanceNameProblem', () {
+    test('accepts unicode and ordinary symbols', () {
+      expect(instanceNameProblem('My Instance!'), isNull);
+      expect(instanceNameProblem('1.21.4 · Fabric'), isNull);
+      expect(instanceNameProblem('生存整合包'), isNull);
+      expect(instanceNameProblem('a[1] {x} (y)'), isNull);
+    });
+
+    test('reports filesystem and windows problems', () {
+      expect(instanceNameProblem(''), InstanceNameProblem.empty);
+      expect(instanceNameProblem('   '), InstanceNameProblem.empty);
+      expect(
+        instanceNameProblem('a'.padRight(instanceNameMaxLength + 1, 'a')),
+        InstanceNameProblem.tooLong,
+      );
+      expect(instanceNameProblem('A/B'), InstanceNameProblem.invalidCharacters);
+      expect(instanceNameProblem('A:B'), InstanceNameProblem.invalidCharacters);
+      expect(instanceNameProblem('.hidden'), InstanceNameProblem.invalidEdges);
+      expect(instanceNameProblem('name.'), InstanceNameProblem.invalidEdges);
+      expect(instanceNameProblem('CON'), InstanceNameProblem.reservedName);
+      expect(instanceNameProblem('com1.txt'), InstanceNameProblem.reservedName);
     });
   });
 }

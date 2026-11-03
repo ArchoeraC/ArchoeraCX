@@ -21,6 +21,16 @@
          on every platform and loaded by absolute path (SqliteNativeLibrary),
          so the bundle never depends on the host's libsqlite3. -->
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
+    <!-- Forge/NeoForge binarypatcher stores its .binpatch set as a raw LZMA
+         stream. This is the LZMA SDK decoder only (MIT, no dependencies,
+         pure managed); it is not used for archive extraction. -->
+    <PackageReference Include="Faithlife.Lzma" Version="19.0.0" />
+    <!-- The installer's jarsplitter/binarypatcher jars must be byte-identical
+         (Forge's profile carries MC_SLIM_SHA/MC_EXTRA_SHA). .NET's
+         DeflateStream uses zlib-ng and does not match zlib level 6;
+         Zlib.Portable is a direct zlib port under the zlib license and has no
+         dependencies (DotNetZip would pull in a vulnerable System.Drawing). -->
+    <PackageReference Include="Zlib.Portable" Version="1.11.0" NoWarn="NU1701" />
   </ItemGroup>
 
   <ItemGroup>

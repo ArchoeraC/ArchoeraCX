@@ -82,6 +82,35 @@ mixin CoreClientLaunch on CoreTransport {
     );
   }
 
+  /// Waits for the JVM registered by [launchInstance] to exit.
+  ///
+  /// This is a native task that completes on process exit (or after
+  /// [timeoutSec]); it never polls from Dart. A timeout returns
+  /// `running: true`, so the caller can wait again instead of mistaking a long
+  /// session for an exit.
+  Future<LaunchExit> waitForLaunchExit(
+    String instanceId, {
+    String? logPath,
+    int timeoutSec = 21600,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'launch.wait';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'instanceId': instanceId,
+        'logPath': ?logPath,
+        'timeoutSec': timeoutSec,
+      }),
+      onProgress: onProgress,
+    );
+    final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return LaunchExit.fromNative(
+      instanceId,
+      asMap(decoded['data'], methodName),
+    );
+  }
+
   /// Force-terminates the game process started for [instanceId].
   ///
   /// The pid is resolved by the C# module from the launch it started, so the

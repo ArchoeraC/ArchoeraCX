@@ -62,13 +62,16 @@ public sealed record ModpackFile(
     long Size,
     IReadOnlyList<string> Downloads,
     bool ClientUnsupported,
-    bool ServerUnsupported)
+    bool ServerUnsupported,
+    string? Md5 = null)
 {
-    /// <summary>Preferred hash: SHA-512, then SHA-1. Never null after parsing.</summary>
+    /// <summary>Preferred hash: SHA-512, then SHA-1, then MD5. Never null after parsing.</summary>
     public DownloadHash Hash =>
         Sha512 is not null
             ? DownloadHash.Create(DownloadHashAlgorithm.Sha512, Sha512)
-            : DownloadHash.Create(DownloadHashAlgorithm.Sha1, Sha1!);
+            : Sha1 is not null
+                ? DownloadHash.Create(DownloadHashAlgorithm.Sha1, Sha1)
+                : DownloadHash.Create(DownloadHashAlgorithm.Md5, Md5!);
 
     /// <summary>True when this payload applies to the requested side.</summary>
     public bool AppliesTo(bool clientSide)

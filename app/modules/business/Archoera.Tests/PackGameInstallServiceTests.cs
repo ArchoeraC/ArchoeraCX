@@ -98,6 +98,60 @@ public sealed class PackGameInstallServiceTests
     }
 
     [Fact]
+    public async Task Quilt_profile_is_fetched_from_quilt_meta_and_merged()
+    {
+        var handler = new FakeHttpMessageHandler();
+        handler.EnqueueJson("""
+                            {
+                              "id": "quilt-loader-0.27.0-1.20.1",
+                              "inheritsFrom": "1.20.1",
+                              "mainClass": "org.quiltmc.loader.impl.launch.knot.KnotClient",
+                              "libraries": []
+                            }
+                            """);
+
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-pack-quilt",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var service = new PackGameInstallService(
+                new FakeMojangMetadata(),
+                new HttpClient(handler),
+                new LoaderProfileEndpoints(
+                    new Uri("https://meta.fabricmc.net/v2/"),
+                    new Uri("https://meta.quiltmc.org/v3/")));
+
+            var result = await service.BuildAsync(
+                directory,
+                "1.20.1",
+                "quilt",
+                "0.27.0",
+                MojangPlatform.LinuxX64);
+
+            Assert.Equal(
+                "https://meta.quiltmc.org/v3/versions/loader/1.20.1/0.27.0/profile/json",
+                Assert.Single(handler.Requests).Uri.ToString());
+            Assert.Equal("quilt-loader-0.27.0-1.20.1", result.VersionId);
+            Assert.Equal("quilt", result.LoaderKind);
+            Assert.DoesNotContain("inheritsFrom", result.VersionJson);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch
+            {
+                // best effort
+            }
+        }
+    }
+
+    [Fact]
     public async Task Mirror_mode_fetches_the_fabric_profile_from_bmclapi()
     {
         var handler = new FakeHttpMessageHandler();

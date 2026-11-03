@@ -119,7 +119,7 @@ class AccountsListSection extends StatelessWidget {
               AccountRow(
                 account: accounts[i],
                 onSelect: () => onSelect(accounts[i]),
-                onRefresh: accounts[i].kind == AccountKind.microsoft
+                onRefresh: accounts[i].kind != AccountKind.offline
                     ? () => onRefresh(accounts[i])
                     : null,
                 onRemove: () => onRemove(accounts[i]),

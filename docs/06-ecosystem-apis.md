@@ -115,11 +115,13 @@ MSA OAuth (authorization code + PKCE；device code 为 fallback)
 
 ---
 
-## 3. 第三方认证（authlib-injector；当前未接入）
+## 3. 第三方认证（authlib-injector，已接入）
 
-- 规划中的接入方式：以 `-javaagent:authlib-injector.jar=<API 根地址>` 注入，可加 `-Dauthlibinjector.yggdrasil.prefetched=<base64>` 预取元数据。
-- 需要实现/对接的 Yggdrasil 端点：`/authserver/authenticate`、`/authserver/refresh`、`/sessionserver/session/minecraft/profile/<uuid>`。
-- 许可证 **AGPL-3.0**：作为独立 jar 分发时，提供对应源码或有效的书面要约；仅给上游链接不一定是充分的合规方式。
+- 接入方式：登录前展示第三方服务器服务条款并取得明确同意；同意后才下载 `authlib-injector`（官方 `artifact/latest.json` + SHA-256 校验，BMCLAPI 仅作下载兜底），以 `-javaagent:authlib-injector.jar=<API 根地址>` 注入，可加 `-Dauthlibinjector.yggdrasil.prefetched=<base64>` 预取元数据。
+- 支持 LittleSkin、Blessing Skin、Ely.by 预设，也支持任意 https Yggdrasil API 地址；可粘贴 `authlib-injector:yggdrasil-server:<urlencoded>` 链接自动识别预设或填入自定义服务器。
+- 已实现端点：`/authserver/authenticate`、`/authserver/refresh`、`/authserver/validate`、`/sessionserver/session/minecraft/profile/<uuid>`。
+- 条款门控在 C#：`account.login.authlib` 必须收到 `acceptedTerms: true`，否则不下载 jar、不提交凭据。
+- 许可证 **AGPL-3.0**：作为独立 jar 分发时，提供对应源码或有效的书面要约；本项目不随安装包分发 jar，只从官方源运行时下载。
 - 不要修改游戏 jar；不要绕过正版验证做在线服务。
 
 ---
@@ -205,7 +207,25 @@ server-overrides/     # 仅服务端
 | 整合包 | zip 内 `manifest.json`：`minecraft.version`、`modLoaders[{id, primary}]`、`files[{projectID, fileID, required}]`、`overrides` |
 | 条款 | 内容版权归作者与平台；接入实现必须持有 API key，且不得绕过作者分发限制 |
 
-### 5.4 本地 Mod 元数据
+### 5.4 平台整合包下载（无需账号或 API key）
+
+下载页的“平台整合包”页签直接读取各平台公开目录；安装时把平台 manifest 映射为同一个
+`ModpackIndex`，再走现有 Rust 下载计划与 C# 安装流水线。
+
+| 平台 | 目录 / 版本 API | 安装 manifest 解析 |
+|---|---|---|
+| **FTB** | `https://api.feed-the-beast.com/v1/modpacks/public/modpack/search/1000?term=`；`/modpack/{id}`；`/modpack/{id}/{versionId}` | `targets[]` 中 `type=game` 为 MC、`type=modloader` 的 `name/version` 为加载器；`files[]` 的 `path`+`name`、`url`、`mirrors`、`sha1`/`hashes.sha512`、`size`、`clientonly`/`serveronly`、`optional` |
+| **Technic** | `https://api.technicpack.net/trending`、`/search?q=`、`/modpack/{slug}`；Solder `.../modpack/{slug}/{build}` | Solder：`minecraft`、`forge`、`mods[]` 的 `url`、`filesize`、`md5`；安装到 `mods/<文件名>`。直链包：`url` 指向单个 zip，读取包内 `bin/modpack.jar`（Forge/NeoForge installer profile）或 `bin/version.json`（Fabric/Quilt/Forge profile），安装对应加载器后安全解压 `mods/`、`config/`、`resources/` 等条目 |
+| **ATLauncher** | GraphQL `https://api.atlauncher.com/v2/graphql`：`packs` / `searchPacks` / `pack` / `packVersion` | `packVersion.json.minecraft`、`.loader.type` + `.loader.metadata.version`、`.mods[]` 的 `file`、`url`、`md5`、`filesize`、`client`/`server`、`type`、`optional`；`type=RESOURCEPACK` 落 `resourcepacks/`，其余落 `mods/` |
+
+- ATLauncher 目录查询只取 `id/name/safeName`，不再拉取体积很大的 `description`；搜索结果缓存 60 秒，版本缓存 5 分钟，版本查询受 GraphQL 复杂度限制最多 8 个。需要走自建镜像时可设置 `ARCHOERACX_ATLAUNCHER_API`（默认官方 `https://api.atlauncher.com/v2/graphql`）。
+- 平台提供者由 C# `PlatformPackRegistry` 注册，`pack.platform.providers` 暴露 `{id,name}`；下载页从注册表生成来源按钮，新增平台不需要改 UI 的硬编码列表。
+- 三个平台都不需要登录或 API key；FTB 提供 SHA-1/SHA-512，Technic Solder 和 ATLauncher 的公开 manifest 只提供 MD5，因此下载计划支持 MD5（仅用于这些平台发布的摘要）。
+- Technic 的 Solder manifest 不包含配置目录；安装只保证 `mods/`，包内配置类文件需要平台/作者另行提供。非 Solder 直链包改为下载整包：平台不发布任何摘要，下载计划使用 `hash.algo = none` 并强制声明大小，解压时逐个校验 ZIP CRC，安装完成后在实例 `.archoera/pack-archive.sha256` 记录本次下载的 SHA-256。
+- Technic 直链包的加载器从包内 `bin/modpack.jar!/install_profile.json`、`bin/modpack.jar!/version.json` 或根 `bin/version.json` 推断；`bin/` 本身不写入实例。
+- ATLauncher 的 `mods[]` 没有 `path` 字段，按 `type` 推断目标目录；`Configs` 独立文件目前不下载。
+
+### 5.5 本地 Mod 元数据
 
 | 加载器 | 文件 | 用途 |
 |---|---|---|
@@ -215,7 +235,7 @@ server-overrides/     # 仅服务端
 
 用于：启停、依赖提示、重复 modId 检测、更新检查。
 
-### 5.5 搜索与浏览的工程约定
+### 5.6 搜索与浏览的工程约定
 
 > 归属：**C# 统一实现**。Dart 只做输入防抖、取消与渲染。
 
@@ -303,13 +323,25 @@ params: {
 | 26.x | 25（以 `javaVersion.majorVersion` 为准） |
 | 更新版本 | 以 `javaVersion.majorVersion` 为准；上表只覆盖到 26.x |
 
-**来源**
+**来源**（默认下载当前 OS/arch 的二进制 JDK 压缩包，可在安装页切换目标平台供其他设备使用；不使用安装器、MSI/DEB/RPM 或纯 JRE）
 
-- Mojang 官方运行时清单（`java-runtime` manifest）：与版本 JSON 的 `javaVersion.component` 对应，最稳。
-- Adoptium API v3：`https://api.adoptium.net/v3/binary/latest/{major}/ga/{os}/{arch}/jre/hotspot/normal/eclipse`
-- Azul Zulu Metadata API：适合 Windows/macOS 的 JRE 分发（核对再分发条款）。
+- Mojang 官方运行时清单（`java-runtime` manifest）：与版本 JSON 的 `javaVersion.component` 对应，作为兜底。
+- Eclipse Adoptium（Temurin）API v3：`feature_releases` 枚举全部 GA 构建，`jdk` 镜像提供 tar.gz/zip、SHA-256 与大小。
+- Azul Zulu Metadata API：包列表枚举全部 CA JDK；列表只有 uuid，安装时读取 package detail 取得 `download_url` / `sha256_hash` / `size`。
+- Microsoft Build of OpenJDK：官方下载页每个大版本只发布最新 tar.gz/zip；安装时重新核对页面并读取 `.sha256sum.txt` 与 `Content-Length`。
+- GraalVM Community：GitHub Releases 资产，配套 `.sha256`；兼容 `25i4-25.0.x` 与旧版 `21.0.x` 命名。
+- Amazon Corretto：每个大版本的 `latest` 跳转给出精确版本，配套 `latest_sha256`；只枚举 LTS 线。
+- BellSoft Liberica JDK：Product Discovery API 枚举全部 GA 构建，返回大小与 SHA-1；`latestInFeatureVersion` 决定推荐顺序。
+- SAP SapMachine：GitHub Releases 的 GA JDK 资产，配套 `.sha256.txt`；排除 EA。
+- Alibaba Dragonwell：每个大版本一个 GitHub 仓库，Standard JDK 资产配套 `.sha256.txt`；不提供 macOS 构建。
 
-**不要**打包 Oracle JDK。Temurin 为 GPLv2 + Classpath Exception，可再分发。
+安全基线：每个大版本只把该厂商的最新补丁标记为推荐/可默认安装；历史补丁在 UI 中标记为「历史」并在后端要求 `allowOutdated`，避免把含已修复 CVE 的旧构建当作普通选项安装。
+
+CVE 查询：`java.distributions.advisories` 按 `{provider, major, versionId}` 返回该构建的已知 CVE。因为只有选中构建后才查询，C# 不再拉取完整的 `oracle:jdk` 产品 feed，而是把 NVD 2.0 的 keyword search 限定到该大版本最新补丁的十位段：`21.0.13` 查 `Oracle Java SE 21.0.1`，`11.0.33` 查 `11.0.3`，`8u504` 查 `8u5`。返回的 CVE 同时按 CPE 配置和 Oracle 描述里的“Supported versions that are affected are …”解析受影响版本；GraalVM 发行版常落后于上游，因此按整条 `{major}.0` 线查询，并额外查 `Oracle GraalVM for JDK {major}.0`。这样一次响应通常只有几十 KB，NVD 尝试 10 秒超时，单次查询 25 秒总超时，结果按前缀磁盘缓存 24 小时。NVD 匿名接口在部分网络下仍会限流或长时间不返回，此时自动切换 CIRCL 的 NVD 镜像（CVE 5 记录里的 Oracle Java SE 受影响版本，按版本串匹配；GraalVM Enterprise 不会误算到 OpenJDK），镜像结果同样缓存 24 小时；NVD 失败后的 5 分钟内直接走镜像，避免反复等待。feed 全部不可用时返回 `status: "unavailable"` 而不是异常，UI 显示「未完成漏洞检查」；有结果且存在 CVE 时，安装必须显式传 `acknowledgeCves`，否则后端返回 `JAVA_CVE_UNACKNOWLEDGED`。NVD 匿名接口有速率限制，可通过环境变量 `ARCHOERACX_NVD_API_KEY` 提供 API key（不写日志、不跨 ABI）。
+
+UI 只拿 provider-native 版本 id，URL 与哈希不跨 ABI；安装时由 C# 重新解析并要求 HTTPS + 强哈希 + 精确大小。推荐 Java 21，保留各大版本的全部构建枚举。默认下载后自动解压并删除压缩包，也可关闭自动解压或保留安装包；默认拒绝非最新补丁，需显式允许历史构建。
+
+**不要**打包 Oracle JDK。Temurin 为 GPLv2 + Classpath Exception，可再分发；Zulu/Microsoft/GraalVM/Corretto/Liberica/SapMachine/Dragonwell 按其各自许可证再分发。
 
 ---
 

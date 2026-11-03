@@ -1216,7 +1216,7 @@ public sealed record LaunchPlan(
    - JVM/game 参数（rules + ${} 展开）
    - 账户占位符（token 只在 C# 内拼进 argv）
    - logging.client 配置（Log4Shell）：必须使用版本 JSON 提供的配置，不自行拼 `-Dlog4j.configurationFile`
-   - authlib-injector（可选；当前未接入）
+   - authlib-injector（第三方认证；运行时下载，用户先同意服务条款）
 4. 预检：Java 版本、生成物 manifest（含未列出的 `PATCHED`）、文件存在/hash、磁盘、内存、路径长度
    - 生成物缺失/损坏 → 先自动 `loader.repair`（从最早缺失 processor 重跑）；未通过前不 spawn JVM
 5. spawn JVM：argv 数组、无 shell、清空 JAVA_TOOL_OPTIONS/_JAVA_OPTIONS/CLASSPATH
@@ -1244,7 +1244,8 @@ JavaLocator
 - 结果：`java.scan` 经 C++ ModuleRegistry 调 C# `archoera_cs`；按 `java.home` 归并 symlink/JRE 别名，按主版本排序；设置页 Java 分区提供 `/settings/java` 子页入口，子页平铺展示全部扫描结果（带搜索与自定义路径管理）。
 - 托管运行时：`java.runtime.plan` 生成的计划由 `download.execute` 执行，默认根为 `<dataRoot>/runtime`；`java.scan` 与自动选择都会附带该根，装完即可被发现。
 - 手动路径：`java.scan {roots, executables, includeDefaults}`；默认扫描为空时 UI 提示“选择目录搜索”，仍为空再提示“选择 JDK 目录 / java 可执行文件”；用户选择后用 `includeDefaults:false` 验证，路径持久化并随扫描带上。
-- 安装：Mojang runtime 优先并已接入；Adoptium 作为可选源（尚未接入）；校验 SHA-256/签名；不打包 Oracle JDK。
+- 安装：`/settings/java/install` 独立页面，不再使用四选项弹窗；Adoptium、Zulu、Microsoft、GraalVM、Corretto、Liberica、SapMachine、Dragonwell 八源枚举目标 OS/arch 的二进制 JDK 压缩包（tar.gz/zip），默认当前设备且推荐 Java 21 并保留全部构建。页面提供 linux/windows/macos × x64/aarch64 目标平台选择；选择其他平台时明确标记「不兼容」并说明该 JDK 无法在本机运行，仍可下载给其他设备。默认落到 `<dataRoot>/runtime/<provider>-<version>`，跨平台构建落到 `<provider>-<os>-<arch>-<version>`，也可选择自定义目录（解压时必须为空目录或尚不存在）。默认自动解压并删除压缩包；可关闭自动解压（只下载安装包）或关闭自动删除（在安装目录旁保留安装包）。安全基线：每个大版本只推荐该厂商最新补丁；历史补丁标记为「历史」，后端默认拒绝，需 `allowOutdated` 显式放行。安装页选中构建后调用 `java.distributions.advisories`，展示 NVD/OSV 返回的 CVE 编号、严重度与摘要；存在 CVE 时必须勾选确认（红色勾选框），后端以同一查询结果校验 `acknowledgeCves`。安装前若存在 CVE 或目标平台不兼容，页面二次弹窗列出具体风险，确认后才发起下载；后端对不兼容目标另行要求 `allowIncompatible`，否则返回 `JAVA_PLATFORM_INCOMPATIBLE`。下载前会用归档 URL 的 `HEAD` 校正厂商元数据中的大小（Zulu 等会按千位取整，精确值由 CDN 给出），再交给 Rust 下载器。下载与解压由同一个原生任务承载，页面显示实时速率并可直接取消（同时仍可在任务中心取消）。
+- 安装流程：C# 重新解析 provider-native 版本 id → 生成 SHA-256 DownloadPlan → Rust 下载 → C# 安全解压（拒绝逃逸的 symlink/hardlink、设备节点、`..`/绝对路径、超限条目；允许 JDK 合法的相对 `legal/*` symlink）→ 识别 `bin/java`（含 macOS `Contents/Home`）→ 原子移动到目标目录。URL/哈希不进入 UI；Mojang runtime 计划仍保留为兜底。
 - 选择：`majorVersion` 必须匹配；Forge/NeoForge processors 用同一 JRE；不匹配时预检失败，不进入 processor。
 
 ### 8.8 账户与认证
@@ -1253,7 +1254,7 @@ JavaLocator
 |---|---|---|
 | 微软 | authorization code + PKCE → XBL → XSTS → Minecraft Services → profile；无法绑定 loopback 时回退 device code | refresh token 进本地加密凭据库（encrypted-file 模式）；元数据进 SQLite |
 | 离线 | 名称 + 可选 UUID；仅离线/局域网提示 | SQLite；不请求网络 |
-| 第三方 | authlib-injector + Yggdrasil；`-javaagent`（当前未接入） | 元数据 + 凭据库 |
+| 第三方 | authlib-injector + Yggdrasil；`-javaagent`（条款同意后下载） | 元数据 + 凭据库 |
 
 - 公共客户端，不内嵌 client secret；自有 Entra 应用。
 - OAuth 重定向：默认 **authorization code + PKCE（loopback）**；无法绑定 loopback 时回退 **Device Code Flow**（无 redirect URI）。自定义协议不作为微软登录主方案。
@@ -1281,7 +1282,8 @@ JavaLocator
 
 ### 8.11 整合包
 
-- 格式探测：CurseForge zip、`.mrpack`、MultiMC/Prism、ATLauncher、HMCL server；嵌套最多 2 层。
+- 格式探测：CurseForge zip、`.mrpack`、MultiMC/Prism、ATLauncher、Technic legacy（`bin/modpack.jar` 或 `bin/version.json`）、HMCL server；嵌套最多 2 层。
+- Technic 非 Solder 直链包：平台只给单个 zip 且无摘要；下载计划使用 `hash.algo=none` + 声明大小，整包下载后按 ZIP CRC 逐条校验并记录 SHA-256，再从包内 `bin/` 元数据推断 Forge/NeoForge/Fabric/Quilt。
 - 解析为 `ModpackDescriptor`；路径规范化；overrides 层序；`env`/optional/disabled 处理。
 - 下载：Rust；解压/后处理/事务：C#（见 `08/06-modpack-install.md`）。
 - 安全：Zip Slip、保留名、ADS、大小写冲突、symlink、zip bomb 全部显式拒绝。
@@ -1401,6 +1403,8 @@ JavaLocator
 
 > `post` 只是兼容字段；需要解压的 `extract_natives` 由 C# 在下载完成后的 continuation 中执行，避免第二套 Zip 安全实现。
 >
+> `hash.algo = none` 是唯一的无摘要模式，仅用于 Technic 非 Solder 直链整合包；必须声明 `size > 0`，C# 在解压时逐条校验 ZIP CRC，并在实例 `.archoera/pack-archive.sha256` 记录本次下载的 SHA-256。游戏、加载器、库和普通资源不得使用。
+>
 > **边缘节点优选**：`cdn.modrinth.com` 由 Fastly anycast 承载，不同 anycast 地址的跨境链路差异可达两个数量级（实测同刻 30 KB/s ↔ 3 MB/s，个别地址直接不可用）。Rust 在无代理时用 128 KiB Range 探测若干 Fastly anycast 地址与 DNS 结果，按实测吞吐排序后通过 `resolve_to_addrs` 交给 HTTP 客户端（`ARCHOERACX_DL_NO_EDGE=1` 可关闭）；全部探测失败则完全退回 DNS。
 >
 > `archoera_dl` 已实现单流 GET、**大文件 Range 分片并发**（阈值 `rangeThreshold`、分片 `chunkSize`，服务端不认 Range 时退回单流）、**分片级断点续传**（`<dest>.part.meta` 记录完成分片 + ETag/Last-Modified，命中 `If-Range` 才续传，validator 变化或任一 200 则丢弃重下）、**每 host 连接上限**（`options.perHostConcurrency`，默认 8，0 表示不限）、**显式代理**（`options.proxy`，由 C# 解析后下发）、按 chunk 重试、hash/size 校验、`.part` + 原子 rename、进度/取消。全局连接预算 = `plan.concurrency`（默认 16，1–64），分片与单流共用；先取全局许可再取 host 许可，避免锁序反转。`post[]` 仍是兼容字段（不执行；natives/overrides 由 C# continuation 处理）。生成物（`PATCHED` 等）**永远不进** `files[]`。
@@ -1409,7 +1413,7 @@ JavaLocator
 |---|---|
 | `root` | 绝对路径；canonicalize；所有 `dest` 必须落在其内。跨根需求拆成多个计划/效果 |
 | `dest` | 相对路径；拒绝绝对路径、`..`、空段、NUL、Windows 保留名/ADS/尾随点空格 |
-| `hash` | 必填；`sha1/sha256/sha512`；归一化旧字段 `sha1/sha256/sha512` |
+| `hash` | 必填；`md5/sha1/sha256/sha512`；归一化旧字段 `sha1/sha256/sha512`；md5 仅用于旧平台 manifest |
 | `size` | 必填（0 允许空文件）；用于预检/跳过/进度 |
 | `url/mirrors` | 仅 HTTPS（测试允许 loopback）；拒绝 userinfo；mirror 去重 |
 | `mode` | `ensure`/`replace`/`link`/`symlink`/`skip` |
@@ -1446,7 +1450,7 @@ JavaLocator
 |---|---|---|
 | 全局 streams | 16（1–64，设置页可调；>32 需显式确认） | 一个 plan 内所有流共享同一信号量；`DownloadPlanRunner` 执行前按 `settings.downloadConcurrency` 覆盖 |
 | 来源优先 | 自动 / 官方 / 镜像 | `settings.downloadSource`；自动按 `region.policy` 解析（中国大陆镜像优先），设置页把解析结果显示在「自动」行内。影响原版 client/库/资源、Forge/NeoForge installer、加载器元数据、Modrinth 文件（`cdn.modrinth.com` → `mod.mcimirror.top`）；另一侧始终作为回退 |
-| 每 host streams | 8（0–64，设置页可调，`options.perHostConcurrency`） | host = 小写 hostname；先全局后 host 取许可；`DownloadPlanRunner` 按 `settings.downloadPerHost` 覆盖；多文件 resource 计划在用户仍为默认 8 时提升到 `min(concurrency,16)`，显式更低值保留 |
+| 每 host streams | 8（0–64，设置页可调，`options.perHostConcurrency`） | host = 小写 hostname；先全局后 host 取许可；`DownloadPlanRunner` 按 `settings.downloadPerHost` 覆盖；多文件 resource 计划在用户仍为默认 8 时提升到 `min(concurrency,16)`；单文件 archive 计划在默认 8 时提升到 `concurrency`；显式更低值保留 |
 | 每文件 streams | 1 或 ⌈size/chunkSize⌉（受全局与 host 预算约束） | 默认 `rangeThreshold` 8 MiB、`chunkSize` 4 MiB，服务端返回 206 才分片；resource/modpack 计划把两者上限压到 1 MiB 并拆分最后 512 KiB 以上的尾段（最多 8 段，每段至少 128 KiB）；大多数库/资源仍保持单流，避免 5k 文件安装时的请求/TLS 握手风暴 |
 
 - 用单一 `Mutex<SchedState> + Notify` 的 permit broker，避免嵌套 Semaphore 持锁等待。
@@ -1488,6 +1492,7 @@ JavaLocator
 - 分片：未完成 chunk 整块重下；响应必须 206 且 `Content-Range` 精确；任一 200 则退回单流。
 - 续传（已实现于分片模式）：`<dest>.part.meta` 存 `{size, hashAlgo, hashHex, chunkSize, tailParts, etag, lastModified, completed[]}`；仅当 size/hash/chunkSize/tailParts 一致且 `.part` 长度正确时续传，请求带 `If-Range`；每完成一个分片原子更新 meta；提交或取消时删除。单流（小文件）失败仍整体丢弃。
 - **资源/模组计划**：C# 的 `DownloadProfile.Resource` 将其 chunk/range 上限压到 1 MiB、对多文件计划把默认 per-host 8 提升到 `min(concurrency,16)`，并使用 `fast` durability（文件损坏/丢失可重新下载并校验）；最后一段 ≥512 KiB 时 Rust 再拆成最多 8 个尾分片（每段至少 128 KiB），避免下载末尾只剩一个连接。`tailParts` 写入 `.part.meta`，续传按同一拆分重建。
+- **单文件归档计划**：JDK 等厂商归档使用 `DownloadProfile.Archive`；在只有一项文件且用户仍为默认 per-host 8 时提升到全局 `concurrency`，避免一个 200 MiB 的归档只用一半预算；显式更低的 per-host 设置仍然保留。
 - Windows：`MoveFileExW`/`FileRenameInfoEx`；占用时重试 5 次；仍失败 `FILE_LOCKED`，保留 `.part`。
 - macOS：真正落盘需 `F_FULLFSYNC`（可选增强）。
 
@@ -1959,7 +1964,7 @@ CREATE TABLE effective_versions (
 ) STRICT;
 
 CREATE TABLE file_objects (
-  algo         TEXT NOT NULL,                 -- sha1|sha256|sha512
+  algo         TEXT NOT NULL,                 -- md5|sha1|sha256|sha512
   hex          TEXT NOT NULL,
   size         INTEGER NOT NULL,
   rel_path     TEXT NOT NULL,                 -- 相对 <data>/downloads/objects
@@ -2412,6 +2417,7 @@ public interface IDownloadProvider {
 | `system.status.watch` | C++ | 启动原生采样线程，按 `intervalMs`（默认 5000，范围 1000–60000）推送 `system.status` 域事件；条件变量等待，不做 Dart 轮询 |
 | `system.status.unwatch` | C++ | 停止采样线程并 join |
 | `system.gpu` | C++ | 显示适配器快照：`platform`、`gpus[]`（`vendor`/`name`/`discrete`/`driverLoaded`）、`primaryVendor`、`hybrid`；Linux 读 `/sys/class/drm`，Windows 走 `EnumDisplayDevicesW`，macOS 返回空列表（系统自行切换）；进程内缓存，不做轮询 |
+| `system.elevation` | C++ | 超级用户探测：Linux/其它 POSIX 与 macOS 读 `geteuid()`（sudo/root 登录均为 0，macOS 无 Win32 式令牌提权），Windows 读令牌 `TokenElevation`（UAC 未提权的管理员返回 0）；返回 `elevated` 与 `kind`（`root`/`administrator`）。仅探测；启动拒绝与确认按钮在 Dart 启动门完成 |
 | `wiki.feed` | C# | Wiki 页社区流：Mojang 官方新闻、Java 版本补丁说明、Minecraft Wiki 最近编辑；逐源独立失败 + 5 分钟缓存 |
 | `system.diagnostics` | C++/C# | 生成诊断包 |
 | `system.openPath` | C++ | 打开本地目录（核心自有方法，不经 C#）：参数 `{"path":"/absolute/dir"}`，返回 `{"opened":bool}`；只接受已存在、绝对路径的目录，文件/不存在/非绝对路径返回 `E_INVALID`（`system.openPath requires an absolute existing directory`）；Linux 走 XDG Portal OpenURI 的 `file:` URI，Windows `ShellExecute`，macOS `NSWorkspace`，无实现返回 `opened:false` |
@@ -2424,7 +2430,7 @@ public interface IDownloadProvider {
 | `settings.reset` | C# | 恢复默认 |
 | `instance.list` | C# | 实例列表/分组/搜索 |
 | `instance.get` | C# | 详情 |
-| `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离） |
+| `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离）；目录名保留 Unicode，仅把 Windows 非法字符替换为 `-`，重名依次加 ` (2)`、` (3)`；手动创建时 UI 按 SJMCL 规则拒绝 `\ / : * ? " < > \|`、首尾点和保留设备名，其余符号/Unicode 原样保留 |
 | `instance.update` | C# | 名称/收藏/最后游玩/加载器版本/内存/Java/参数；`name` 仅改元数据与 `instance.json`，不移动实例目录；`loader` + `loaderVersion` 用于安装/升级加载器后同步实例元数据；`overrides` 走 merge patch（缺省不改、`null` 清除），返回实例始终带 `overrides` |
 | `instance.delete` | C# | 移除索引；`deleteFiles: true` 时同时删除实例目录（需 `.archoera/instance.json` 标记，且不与实例根或其它实例重叠，否则保留并在 `filesSkippedReason` 返回原因） |
 | `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |
@@ -2439,6 +2445,11 @@ public interface IDownloadProvider {
 | `maintenance.cleanPartials` | C# | 清理未完成下载的临时文件：参数 `{olderThanDays?: int}`（默认 3，范围 1–365），返回 `deletedFiles` / `freedBytes` / `scannedFiles`；递归扫描配置的实例根（最多 20 万条目），匹配 `.part` / `.part.meta` / `.part.lock`，只删超过 `olderThanDays` 未修改的文件；同组存在 10 分钟内修改的 `.part.lock` 则跳过；跳过 symlink 与无权限项 |
 | `java.scan` | C# | 扫描本机 Java |
 | `java.runtime.plan` | C# | 生成 Mojang 官方 Java 运行时下载计划：`{major}` 必填、`{root}` 可选（默认 `<dataRoot>`，计划内前缀为 `runtime/java-<major>/`），返回 `plan` / `component` / `version` / `fileCount` / `totalBytes`；落在 `runtime/java-<major>/`，`java.scan` 与自动选择都扫描该目录 |
+| `java.distributions` | C# | 返回 JDK 发行版注册表、当前 OS/arch、可选目标平台列表（linux/windows/macos × x64/aarch64，含 `current` 标记）与默认安装根；无网络请求 |
+| `java.distributions.majors` | C# | `{provider, os?, arch?, archive?}` → `{majors, recommendedMajor}`；按目标平台过滤，缺省当前设备；结果缓存 10 分钟 |
+| `java.distributions.versions` | C# | `{provider, major, os?, arch?, archive?}` → 全部可安装构建（`id` 为 provider-native id，不暴露 URL/哈希）；缓存 10 分钟 |
+| `java.distributions.advisories` | C# | `{provider, major, versionId, os?, arch?, archive?}` → 解析真实版本，按该大版本最新补丁的十位段（如 `21.0.1`、`8u5`）查询 NVD keyword search，解析 CPE 与 Oracle 描述中的受影响版本（GraalVM 按 `21.0` 整条线并额外查 GraalVM for JDK），失败时回退 CIRCL 的 NVD 镜像 + OSV；返回 `{status, reason?, sources, advisories:[{id, severity, score, summary, url, publishedAt, aliases}]}`；feed 失败返回 `status: "unavailable"`，不失败整个目录 |
+| `java.distributions.install` | C# | `{provider, versionId, directory?, autoExtract?, autoDelete?, allowOutdated?, acknowledgeCves?, os?, arch?, archive?, allowIncompatible?}` → 重新解析 HTTPS/SHA-256/大小，经 Rust 下载后由 C# 安全解压并原子移动；已知 CVE 未确认时返回 `JAVA_CVE_UNACKNOWLEDGED`；目标平台非本机且未显式 `allowIncompatible` 时返回 `JAVA_PLATFORM_INCOMPATIBLE`；任务取消会终止下载进程并清理 staging；返回 `{home, executable, version, major, bytes}` |
 | `java.list` | C# | 已知/托管 runtime |
 | `java.validate` | C# | 校验路径/版本/架构 |
 | `java.install` | C# | 下载/安装 runtime |
@@ -2727,7 +2738,7 @@ public interface IDownloadProvider {
 - 更新器目标：Ed25519 签名 manifest，公钥编译进二进制，签名失败整份丢弃；当前更新器尚未接入。
 - 发布签名目标：Windows Authenticode/Trusted Signing、macOS Developer ID + notarization、Linux SHA-256 + 包签名；当前 CI 尚未产出平台签名。
 - 更新器目标：下载 → 验签 → 关闭主程序 → 替换 → 失败回滚。
-- SBOM + `THIRD-PARTY-NOTICES` 为发布要求；CI 许可证白名单尚未接入；不引入 GPL/AGPL 代码（除独立进程的 authlib-injector）。
+- SBOM + `THIRD-PARTY-NOTICES` 为发布要求；CI 许可证白名单尚未接入；不引入 GPL/AGPL 代码（除以独立 jar / `-javaagent` 运行时下载使用的 authlib-injector）。
 
 ### 14.5 本地数据
 

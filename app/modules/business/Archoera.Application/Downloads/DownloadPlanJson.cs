@@ -512,8 +512,7 @@ public static class DownloadPlanJson
                 return false;
             }
 
-            if (!TryReadRequiredString(element, "algo", out var algo, out error)
-                || !TryReadRequiredString(element, "hex", out var hex, out error))
+            if (!TryReadRequiredString(element, "algo", out var algo, out error))
             {
                 error = new DownloadPlanIssue(
                     DownloadPlanErrorCode.InvalidHash,
@@ -521,6 +520,18 @@ public static class DownloadPlanJson
                 return false;
             }
 
+            // The `none` sentinel has an empty digest; every real algorithm
+            // still has to pass DownloadHash.IsCanonicalHex in the validator.
+            if (!element.TryGetProperty("hex", out var hexElement) ||
+                hexElement.ValueKind != JsonValueKind.String)
+            {
+                error = new DownloadPlanIssue(
+                    DownloadPlanErrorCode.InvalidHash,
+                    $"{dest}: hash.hex must be a string");
+                return false;
+            }
+
+            var hex = hexElement.GetString() ?? string.Empty;
             if (!DownloadHash.TryCreate(algo, hex, out hash))
             {
                 error = new DownloadPlanIssue(

@@ -11,6 +11,7 @@ namespace Archoera.Tests;
 internal sealed class FakeHttpMessageHandler : HttpMessageHandler
 {
     private readonly Queue<Func<HttpResponseMessage>> _responses = new();
+    private readonly object _gate = new();
 
     public List<CapturedRequest> Requests { get; } = [];
 
@@ -22,7 +23,10 @@ internal sealed class FakeHttpMessageHandler : HttpMessageHandler
 
     public void Enqueue(Func<HttpResponseMessage> response)
     {
-        _responses.Enqueue(response);
+        lock (_gate)
+        {
+            _responses.Enqueue(response);
+        }
     }
 
     public void EnqueueStatus(
@@ -60,20 +64,23 @@ internal sealed class FakeHttpMessageHandler : HttpMessageHandler
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        Requests.Add(new CapturedRequest(
-            request.RequestUri ?? new Uri("about:blank"),
-            request.Method.Method,
-            request.Headers.TryGetValues("User-Agent", out var agents)
-                ? string.Join(' ', agents)
-                : null));
-
-        if (_responses.Count == 0)
+        lock (_gate)
         {
-            throw new InvalidOperationException(
-                $"No fake response queued for {request.RequestUri}");
-        }
+            Requests.Add(new CapturedRequest(
+                request.RequestUri ?? new Uri("about:blank"),
+                request.Method.Method,
+                request.Headers.TryGetValues("User-Agent", out var agents)
+                    ? string.Join(' ', agents)
+                    : null));
 
-        return Task.FromResult(_responses.Dequeue()());
+            if (_responses.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No fake response queued for {request.RequestUri}");
+            }
+
+            return Task.FromResult(_responses.Dequeue()());
+        }
     }
 
     internal sealed record CapturedRequest(Uri Uri, string Method, string? UserAgent);

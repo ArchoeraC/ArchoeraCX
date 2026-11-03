@@ -264,7 +264,8 @@ internal static class LaunchPlanBuilder
         string userType = "legacy",
         LaunchMemoryPlan? memoryPlan = null,
         LaunchOptimizationPlan? optimizationPlan = null,
-        int cores = 0)
+        int cores = 0,
+        AuthlibLaunchArguments? authlib = null)
     {
         if (string.IsNullOrWhiteSpace(version.MainClass))
         {
@@ -330,6 +331,18 @@ internal static class LaunchPlanBuilder
             "-Dminecraft.launcher.version=0.0.1+1",
             "-Djava.library.path=" + paths.NativesRoot,
         };
+        if (authlib is not null)
+        {
+            // authlib-injector replaces the Yggdrasil endpoints in the game JVM;
+            // the jar was downloaded and hash-verified by C# after the user
+            // accepted the third-party server terms.
+            jvm.Add($"-javaagent:{authlib.JarPath}={authlib.Server}");
+            jvm.Add("-Dauthlibinjector.side=client");
+            jvm.Add(
+                "-Dauthlibinjector.yggdrasil.prefetched=" +
+                Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes(authlib.PrefetchedMetadata)));
+        }
         var gcFlag = settings.GcMode switch
         {
             "g1gc" => "-XX:+UseG1GC",

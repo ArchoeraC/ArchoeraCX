@@ -23,6 +23,7 @@ const _trackedMethods = <String>{
   'modpack.inspect',
   'modpack.install',
   'modpack.installLocal',
+  'pack.platform.install',
   'instance.duplicate',
   'launch.prepare',
   'launch.start',

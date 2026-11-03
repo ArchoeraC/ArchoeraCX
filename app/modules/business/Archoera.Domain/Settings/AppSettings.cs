@@ -26,6 +26,12 @@ namespace Archoera.Domain.Settings;
 /// game root so every instance of that loader build reuses them. When false,
 /// each instance keeps its own <c>libraries/</c> and <c>versions/&lt;id&gt;/</c>.
 /// </param>
+/// <param name="PreferPureJavaLoaderInstall">
+/// Default for the loader install dialog: run the official installer with
+/// <c>--installClient</c> instead of the launcher's native processor pipeline.
+/// The dialog still allows a per-install override; installers without a client
+/// CLI (Forge 1.7.10 and older) fall back to the native path.
+/// </param>
 /// <param name="MemoryMode">
 /// <c>auto</c> derives the heap from the game version, loader, mod count and
 /// installed RAM; <c>manual</c> uses <paramref name="MemoryMinMb"/> /
@@ -128,6 +134,7 @@ public sealed record AppSettings(
     int LogRetentionFiles = 10,
     int LogRetentionMegabytes = 32,
     bool ShareLoaderFiles = true,
+    bool PreferPureJavaLoaderInstall = true,
     string MemoryMode = "auto",
     bool GameOptimization = true,
     string? WrapperCommand = null,
@@ -145,7 +152,7 @@ public sealed record AppSettings(
     string? NativeSdlPath = null)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 15;
+    public const int CurrentSchemaVersion = 16;
 
     /// <summary>Supported heap sizing modes.</summary>
     public static class MemoryModes

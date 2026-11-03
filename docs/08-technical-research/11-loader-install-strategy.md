@@ -8,18 +8,41 @@
 
 ## 0. 一句话结论
 
-**只有需要改写客户端 jar 的加载器才需要 JVM。**
+**Forge/NeoForge 默认走“纯 Java 模式”：由官方安装器 `--installClient` 完成客户端安装；取消勾选后使用启动器的 plan → download → commit → repair（原生 processor + 按步 Java 回退）。Fabric/Quilt 仍不需要 JVM。**
 
 | 加载器 | 安装方式 | 需要 JVM |
 |---|---|---|
 | Fabric | 拉 meta profile / launcherMeta，合并版本 JSON，下载库 | 否 |
 | Quilt | 同 Fabric（Quilt meta v3，额外 hashed 库） | 否 |
-| Forge ≤ 1.12.2 | 解 installer zip，抽 universal jar + versionInfo | 否 |
-| Forge 1.13+ / NeoForge | installer + processors 生成 `-client.jar` | **是** |
+| Forge 1.12.2（spec 0，原生流程） | 读 `version.json`；`maven/` 内嵌 universal jar 由 repair 解压 | 否 |
+| Forge 1.12.2+ / NeoForge（纯 Java，默认） | `java -jar installer --installClient <root>`，再导入生成的版本 JSON | **是** |
+| Forge ≤ 1.7.10（旧 installer） | 读 `install_profile.json.versionInfo`；解压 `install.filePath` 的 universal，按旧库 `checksums` 下载 | 否（纯 Java 模式不可用） |
+| Forge 1.13+ / NeoForge（原生流程） | installer + processors 生成 `-client.jar` | **是**（主要步骤原生，剩余步骤回退 Java） |
 | OptiFine | Patcher | **是** |
 
-Fabric/Quilt 和 Forge spec 0 是真正的纯 HTTP + 解压路径；现代 Forge/NeoForge 的
-`ATR`（official→srg 重映射）和 `binarypatcher`（LZMA + delta）必须运行 Java 工具。
+纯 Java 模式在安装弹窗里默认勾选，由官方安装器负责下载、processor 和版本 JSON；
+镜像模式下会追加 `--mirror https://mirrors.ustc.edu.cn/bmclapi/`。取消勾选后走
+原生流程：`MCP_DATA`、`MERGE_MAPPING`、`jarsplitter`、`ART`、`binarypatcher` 已由 C# 原生实现，
+产物与官方 installer 逐字节一致；`DOWNLOAD_MOJMAPS`、`PROCESS_MINECRAFT_JAR` 等
+仍要求 Java，`loader.plan` 会在下载前标记 `requiresJava` 并让 UI 给出警告。
+
+> 2026-11-03 更正：1.7.10 / 1.6.4 / 1.5.2 的旧格式安装器现在也走原生流程：
+> `version.json` 缺失时读取 `install_profile.json.versionInfo`，repair 把
+> `install.filePath` 的 universal jar 解压到 `install.path` 坐标；旧库用
+> `checksums[0]`（缺失时 `.sha1` sidecar）和 HEAD `Content-Length` 补全 hash/size，
+> 并过滤与 vanilla 重复的库。旧安装器没有 `--installClient`，纯 Java 模式仍返回
+> `LOADER_JAVA_INSTALL_UNSUPPORTED`，UI 提示取消勾选后走原生路径。
+
+> 2026-11-02 更正：1.12.2 的 spec 0 安装器现在可以完成
+> `plan → download → commit → repair → verify`；`requiresJava=false`，
+> repair 从安装器的 `maven/` 条目解压 universal jar。1.7.10 及更早的安装器
+> 没有 `version.json`，也没有 `--installClient`，纯 Java 模式不可用；原生旧格式
+> 路径见上一条。
+
+> 2026-11-01 更正：`ART` 也已完成原生重写。Forge 1.20.1 与 NeoForge 21.1.248 的
+> `-mappings.txt`、`-mappings-merged.txt`、`-slim.jar`、`-extra.jar`、`-client.jar`
+> 均已逐字节校验通过。详见 [16-no-java-loader-processors.md](16-no-java-loader-processors.md)
+> 与 [17-art-rewrite-compatibility.md](17-art-rewrite-compatibility.md)。
 
 ---
 
@@ -141,7 +164,9 @@ NotInstalled → Downloading → Downloaded → Installing → Installed
 ## 4. 不建议做的事
 
 - 不下载/分发第三方预生成的 `-client.jar`（含 Mojang 版权 class）。
-- 不实现原生 ATR / binarypatcher 替代（ASM 级重映射 + LZMA delta，维护成本过高、版本覆盖低）。
+- 不实现原生 ATR 替代（ASM 级重映射；见 16 号文档的逐字节约束）。
+- `binarypatcher` 的 LZMA + GDIFF 已实测可原生复刻（23,526/23,526 条目一致），
+  不再列为“不建议”；但它的 clean 输入仍必须来自 ART。
 - 不在没有 `--sanitize` 判断的情况下替换 MOJMAPS。
 - 不把 processor 的退出码 0 当作安装成功；必须校验 outputs。
 - 不复制 SJMCL 的 GPL 代码/文案/图标。

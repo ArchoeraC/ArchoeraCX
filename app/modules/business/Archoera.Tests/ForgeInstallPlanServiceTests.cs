@@ -2,6 +2,7 @@ using System.Text;
 using Archoera.Application.Downloads;
 using Archoera.Application.Loaders;
 using Archoera.Application.Mojang;
+using Archoera.Domain.Downloads;
 using Archoera.Domain.Loaders;
 using Archoera.Domain.Mojang;
 using Archoera.Infrastructure.Loaders;
@@ -132,6 +133,169 @@ public sealed class ForgeInstallPlanServiceTests
                 // best effort on platforms with transient file handles
             }
         }
+    }
+
+    [Fact]
+    public async Task BuildAsync_plans_pre_1_7_libraries_without_downloading_the_universal()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-forge-install",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            const string universalRelative =
+                "net/minecraftforge/forge/1.7.10-10.13.4.1614-1.7.10/" +
+                "forge-1.7.10-10.13.4.1614-1.7.10.jar";
+            const string launchwrapper =
+                "libraries/net/minecraft/launchwrapper/1.12/launchwrapper-1.12.jar";
+            const string asm =
+                "libraries/org/ow2/asm/asm-all/5.0.3/asm-all-5.0.3.jar";
+
+            var installerBytes = ForgeInstallerFixture.CreateZip(
+                ("install_profile.json", """
+                    {
+                      "install": {
+                        "path": "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10",
+                        "filePath": "forge-1.7.10-10.13.4.1614-1.7.10-universal.jar"
+                      },
+                      "versionInfo": {
+                        "id": "1.7.10-Forge10.13.4.1614-1.7.10",
+                        "inheritsFrom": "1.7.10",
+                        "mainClass": "net.minecraft.launchwrapper.Launch",
+                        "libraries": [
+                          { "name": "net.minecraft:launchwrapper:1.12" },
+                          { "name": "org.ow2.asm:asm-all:5.0.3" },
+                          { "name": "com.example:serveronly:1.0", "clientreq": false },
+                          {
+                            "name": "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10",
+                            "url": "https://maven.minecraftforge.net/"
+                          }
+                        ]
+                      }
+                    }
+                    """),
+                ("forge-1.7.10-10.13.4.1614-1.7.10-universal.jar", "universal"));
+
+            var installerPath = Path.Combine(directory, "installer.jar");
+            await File.WriteAllBytesAsync(installerPath, installerBytes);
+            var root = Path.Combine(directory, "instance");
+            Directory.CreateDirectory(root);
+
+            var resolver = new RecordingLegacyResolver();
+            var service = new ForgeInstallPlanService(
+                new FakeLegacyMojangMetadata(),
+                legacyResolver: resolver);
+
+            var result = await service.BuildAsync(
+                root,
+                LoaderKind.Forge,
+                "1.7.10",
+                "10.13.4.1614-1.7.10",
+                installerPath,
+                MojangPlatform.LinuxX64);
+
+            var destinations = result.Plan.Files.Select(file => file.Dest).ToList();
+            Assert.Single(destinations, dest => dest == launchwrapper);
+            Assert.Contains(asm, destinations);
+            Assert.DoesNotContain(universalRelative, destinations);
+            Assert.DoesNotContain(
+                destinations,
+                dest => dest.Contains("serveronly", StringComparison.Ordinal));
+            Assert.Equal(["org.ow2.asm:asm-all:5.0.3"], resolver.Calls);
+
+            var libraries = result.Version.Version.Libraries
+                .Select(library => library.Name)
+                .ToList();
+            Assert.Single(libraries, name => name == "net.minecraft:launchwrapper:1.12");
+            Assert.Contains("org.ow2.asm:asm-all:5.0.3", libraries);
+            Assert.Contains(
+                "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10",
+                libraries);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch
+            {
+                // best effort on platforms with transient file handles
+            }
+        }
+    }
+
+    private sealed class RecordingLegacyResolver : ILegacyForgeLibraryResolver
+    {
+        public List<string> Calls { get; } = [];
+
+        public Task<LegacyForgeLibrary> ResolveAsync(
+            string name,
+            string? repository,
+            IReadOnlyList<string> checksums,
+            DownloadSourceMode sourceMode,
+            CancellationToken cancellationToken)
+        {
+            Calls.Add(name);
+            return Task.FromResult(new LegacyForgeLibrary(
+                $"https://maven.minecraftforge.net/{name.Replace(':', '/')}.jar",
+                [],
+                DownloadHash.Create(DownloadHashAlgorithm.Sha1, ForgeInstallerFixture.Sha('f')),
+                123));
+        }
+    }
+
+    private sealed class FakeLegacyMojangMetadata : IMojangMetadataClient
+    {
+        private static readonly string VanillaJson =
+            $$"""
+              {
+                "id": "1.7.10",
+                "mainClass": "net.minecraft.client.main.Main",
+                "assets": "1.7.10",
+                "downloads": {
+                  "client": {
+                    "url": "https://piston-data.mojang.com/v1/objects/client/1.7.10.jar",
+                    "sha1": "{{MojangTestData.Sha1('1')}}",
+                    "size": 1000
+                  }
+                },
+                "libraries": [
+                  {
+                    "name": "net.minecraft:launchwrapper:1.12",
+                    "downloads": {
+                      "artifact": {
+                        "path": "net/minecraft/launchwrapper/1.12/launchwrapper-1.12.jar",
+                        "url": "https://libraries.minecraft.net/net/minecraft/launchwrapper/1.12/launchwrapper-1.12.jar",
+                        "sha1": "{{MojangTestData.Sha1('2')}}",
+                        "size": 100
+                      }
+                    }
+                  }
+                ]
+              }
+              """;
+
+        public Task<MojangVersionManifest> GetManifestAsync(
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<MojangVersion> GetVersionAsync(
+            string versionId,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<byte[]> GetVersionJsonAsync(
+            string versionId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(Encoding.UTF8.GetBytes(VanillaJson));
+
+        public Task<MojangAssetIndex> GetAssetIndexAsync(
+            MojangAssetIndexRef index,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
     }
 
     private sealed class FakeMojangMetadata : IMojangMetadataClient

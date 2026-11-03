@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +7,6 @@ import '../l10n/generated/app_localizations.dart';
 import '../services/core/core_client.dart';
 import '../services/core/java/java_scan.dart';
 import '../services/core/java/java_path_store.dart';
-import '../stores/downloads.dart';
 import '../stores/java.dart';
 import '../stores/providers.dart';
 import '../stores/settings.dart';
@@ -134,6 +131,22 @@ class _JavaPageState extends ConsumerState<JavaPage> {
     }
   }
 
+  /// Picks up roots saved elsewhere (for example the standalone JDK installer)
+  /// before a manual scan, without dropping paths added on this page.
+  Future<void> _refreshSavedPaths() async {
+    try {
+      final roots = await _store.loadRoots();
+      final executables = await _store.loadExecutables();
+      if (!mounted) return;
+      setState(() {
+        _roots = _mergePaths(<String>[..._roots, ...roots]);
+        _executables = _mergePaths(<String>[..._executables, ...executables]);
+      });
+    } catch (_) {
+      // Best-effort; the current in-memory paths still scan.
+    }
+  }
+
   Future<void> _runScan({
     _ScanOrigin origin = _ScanOrigin.manual,
     String? executablePath,
@@ -142,6 +155,7 @@ class _JavaPageState extends ConsumerState<JavaPage> {
     if (_state == _JavaState.scanning) return;
 
     await _pathsReady;
+    await _refreshSavedPaths();
     if (!mounted) return;
 
     final roots = List<String>.unmodifiable(_roots);
@@ -403,69 +417,10 @@ class _JavaPageState extends ConsumerState<JavaPage> {
     }
   }
 
-  /// Installs a Mojang Java runtime in the background and rescans afterwards.
-  Future<void> _installJavaRuntime() async {
-    final l10n = AppLocalizations.of(context);
-    final major = await showDialog<int>(
-      context: context,
-      builder: (context) {
-        final textTheme = Theme.of(context).textTheme;
-        final tokens = context.tokens;
-        return SimpleDialog(
-          title: Text(l10n.javaInstallTitle),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                0,
-                AppSpacing.lg,
-                AppSpacing.sm,
-              ),
-              child: Text(
-                l10n.javaInstallHint,
-                style: textTheme.bodySmall?.copyWith(
-                  color: tokens.textTertiary,
-                ),
-              ),
-            ),
-            for (final value in const [8, 17, 21, 25])
-              SimpleDialogOption(
-                onPressed: () => Navigator.of(context).pop(value),
-                child: Row(
-                  children: [
-                    Icon(AppIcons.java, size: 18, color: tokens.accent),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text('Java $value', style: textTheme.titleSmall),
-                    if (value == 21) ...[
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(
-                        l10n.javaInstallRecommended,
-                        style: textTheme.labelSmall?.copyWith(
-                          color: tokens.accent,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-          ],
-        );
-      },
-    );
-    if (major == null || !mounted) return;
-
-    toast(l10n.javaInstallQueued(major), type: ToastType.success);
-    unawaited(() async {
-      await ref
-          .read(downloadsProvider.notifier)
-          .installJavaRuntime(
-            major,
-            successMessage: l10n.javaInstallDone(major),
-            failureMessage: l10n.javaInstallFailed(major),
-            cancelledMessage: l10n.javaInstallCancelled(major),
-          );
-      if (mounted) await _runScan();
-    }());
+  /// Opens the standalone installer. Vendor selection, version enumeration and
+  /// the custom directory live on that page instead of a four-option dialog.
+  void _openInstallPage() {
+    context.push('/settings/java/install');
   }
 
   @override
@@ -495,7 +450,7 @@ class _JavaPageState extends ConsumerState<JavaPage> {
             subtitle: l10n.javaPageSubtitle,
             actions: [
               OutlinedButton.icon(
-                onPressed: _installJavaRuntime,
+                onPressed: _openInstallPage,
                 icon: const Icon(AppIcons.download, size: 18),
                 label: Text(l10n.javaInstallAction),
               ),

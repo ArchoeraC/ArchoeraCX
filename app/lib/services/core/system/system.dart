@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'build_identity.dart';
 import '../core_transport.dart';
+import 'process_elevation.dart';
 import 'single_instance.dart';
 import 'system_appearance.dart';
 import 'system_memory.dart';
@@ -136,6 +137,20 @@ mixin CoreClientSystem on CoreTransport {
     paramsJson: jsonEncode(<String, Object?>{'title': title, 'body': body}),
     dataKey: 'sent',
   );
+
+  /// Read whether this process owns superuser rights.
+  ///
+  /// The C++ core probes the effective uid (POSIX) or the Win32 token
+  /// elevation; the launcher refuses an elevated start unless the user
+  /// explicitly confirms it.
+  Future<ProcessElevation?> getProcessElevation({
+    void Function(int done, int total)? onProgress,
+  }) async {
+    const methodName = 'system.elevation';
+    final jsonText = await runAsync(methodName, onProgress: onProgress);
+    final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+    return ProcessElevation.tryParse(decoded['data']);
+  }
 
   /// Read CPU/memory/disk/process load for the Wiki page.
   ///

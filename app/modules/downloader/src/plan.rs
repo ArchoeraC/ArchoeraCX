@@ -425,6 +425,12 @@ fn resolve_hash(file: &FileSpec) -> Result<(HashAlgorithm, String), DownloadErro
             file.dest, spec.algo
         ))
     })?;
+    if algorithm == HashAlgorithm::None && file.size == 0 {
+        return Err(DownloadError::InvalidHash(format!(
+            "{}: a file without a digest must declare its size",
+            file.dest
+        )));
+    }
     let hex = spec.hex.trim().to_ascii_lowercase();
     if hex.len() != algorithm.hex_len() || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return Err(DownloadError::InvalidHash(format!(
@@ -751,6 +757,35 @@ mod tests {
             files: Vec::new(),
             post: Vec::new(),
         }
+    }
+
+    #[test]
+    fn none_hash_is_allowed_only_with_a_declared_size() {
+        let mut plan = minimal_plan();
+        plan.files.push(FileSpec {
+            url: "https://example.test/pack.zip".into(),
+            mirrors: Vec::new(),
+            hash: Some(HashSpec {
+                algo: "none".into(),
+                hex: String::new(),
+            }),
+            sha1: None,
+            sha256: None,
+            sha512: None,
+            size: 123,
+            dest: "pack.zip".into(),
+            mode: FileMode::Ensure,
+            priority: 0,
+            executable: false,
+            headers: BTreeMap::new(),
+        });
+        let validated = validate_plan_inner(plan.clone()).expect("none is accepted");
+        assert_eq!(validated.files[0].algorithm, HashAlgorithm::None);
+        assert_eq!(validated.files[0].hash_hex, "");
+
+        plan.files[0].size = 0;
+        let error = validate_plan_inner(plan).expect_err("size is required");
+        assert_eq!(error.code().as_str(), "INVALID_HASH");
     }
 
     #[test]

@@ -23,6 +23,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
     private const string PollMicrosoftMethod = "account.login.microsoft.poll";
     private const string CancelMicrosoftMethod = "account.login.microsoft.cancel";
     private const string LoginOfflineMethod = "account.login.offline";
+    private const string LoginAuthlibMethod = "account.login.authlib";
     private const string RefreshMethod = "account.refresh";
     private const string RemoveMethod = "account.remove";
 
@@ -35,6 +36,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
         PollMicrosoftMethod,
         CancelMicrosoftMethod,
         LoginOfflineMethod,
+        LoginAuthlibMethod,
         RefreshMethod,
         RemoveMethod,
     ];
@@ -51,6 +53,8 @@ public sealed class AccountModuleService : IModuleMethodHandler
     private readonly IAccountCredentialStore _credentials;
     private readonly MicrosoftAuthClient _auth;
     private readonly MicrosoftAccountGate _premiumGate;
+    private readonly AuthlibInjectorClient _authlib;
+    private readonly AuthlibInjectorManager _injector;
     private readonly string? _diagnosticsPath;
     private readonly object _logGate = new();
     private readonly object _flowGate = new();
@@ -62,6 +66,17 @@ public sealed class AccountModuleService : IModuleMethodHandler
         IAccountCredentialStore? credentials = null,
         MicrosoftAuthClient? auth = null,
         string? dataRoot = null)
+        : this(accounts, credentials, auth, dataRoot, null, null)
+    {
+    }
+
+    internal AccountModuleService(
+        IAccountRepository? accounts,
+        IAccountCredentialStore? credentials,
+        MicrosoftAuthClient? auth,
+        string? dataRoot,
+        AuthlibInjectorClient? authlib,
+        AuthlibInjectorManager? injector)
     {
         if (accounts is null || credentials is null)
         {
@@ -74,6 +89,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
         _credentials = credentials;
         _auth = auth ?? new MicrosoftAuthClient(Http, new MicrosoftAuthOptions());
         _premiumGate = new MicrosoftAccountGate(_accounts, _credentials, _auth);
+        _authlib = authlib ?? new AuthlibInjectorClient(Http);
         _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
         {
             [ListMethod] = ListAsync,
@@ -83,6 +99,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
             [PollMicrosoftMethod] = PollMicrosoftAsync,
             [CancelMicrosoftMethod] = CancelMicrosoftAsync,
             [LoginOfflineMethod] = LoginOfflineAsync,
+            [LoginAuthlibMethod] = LoginAuthlibAsync,
             [RefreshMethod] = RefreshAsync,
             [RemoveMethod] = RemoveAsync,
         };
@@ -96,6 +113,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
         _diagnosticsPath = string.IsNullOrWhiteSpace(diagnosticRoot)
             ? null
             : Path.Combine(diagnosticRoot, "logs", "account.log");
+        _injector = injector ?? new AuthlibInjectorManager(diagnosticRoot);
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -125,6 +143,11 @@ public sealed class AccountModuleService : IModuleMethodHandler
         {
             Log(method, "E_INVALID", exception.Message);
             return ModuleJson.Error("E_INVALID", exception.Message);
+        }
+        catch (JsonException exception)
+        {
+            Log(method, "AUTHLIB_METADATA_INVALID", exception.Message);
+            return ModuleJson.Error("AUTHLIB_METADATA_INVALID", exception.Message);
         }
         catch (OperationCanceledException)
         {
@@ -454,8 +477,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
     private async Task<byte[]> LoginOfflineAsync(
         string? paramsJson,
         CancellationToken cancellationToken)
-    {
-        if (ReadBool(paramsJson, "requireMicrosoft"))
+    {        if (ReadBool(paramsJson, "requireMicrosoft"))
         {
             throw new AccountAuthException(
                 "MICROSOFT_ACCOUNT_ONLY",
@@ -490,6 +512,98 @@ public sealed class AccountModuleService : IModuleMethodHandler
             now,
             now);
         await _accounts.SaveAsync(account, cancellationToken).ConfigureAwait(false);
+        return ModuleJson.Envelope(writer =>
+        {
+            writer.WritePropertyName("account");
+            WriteAccount(writer, account);
+        });
+    }
+
+    /// <summary>
+    /// Third-party Yggdrasil login. The caller must have shown the server's
+    /// terms and sent <c>acceptedTerms: true</c>; authlib-injector is downloaded
+    /// only after that gate, never during startup or in the background.
+    /// </summary>
+    private async Task<byte[]> LoginAuthlibAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        if (ReadBool(paramsJson, "requireMicrosoft"))
+        {
+            throw new AccountAuthException(
+                "MICROSOFT_ACCOUNT_ONLY",
+                "Third-party accounts are disabled in this region.");
+        }
+
+        if (!ReadBool(paramsJson, "acceptedTerms"))
+        {
+            throw new AccountAuthException(
+                "AUTHLIB_TERMS_REQUIRED",
+                "The third-party server terms must be accepted before downloading or signing in.");
+        }
+
+        var termsUrl = RequireString(paramsJson, "termsUrl");
+        if (!Uri.TryCreate(termsUrl, UriKind.Absolute, out var terms) ||
+            terms.Scheme is not ("https" or "http"))
+        {
+            throw new ArgumentException("termsUrl must be an absolute http(s) URL");
+        }
+
+        var server = RequireString(paramsJson, "server").Trim();
+        var username = RequireString(paramsJson, "username").Trim();
+        var password = RequireString(paramsJson, "password");
+        if (username.Length == 0 || password.Length == 0)
+        {
+            throw new ArgumentException("username and password are required");
+        }
+
+        var metadata = await _authlib
+            .ResolveAsync(server, cancellationToken)
+            .ConfigureAwait(false);
+        // User has accepted the terms above; only now download the AGPL jar.
+        _ = await _injector.EnsureAsync(cancellationToken).ConfigureAwait(false);
+        var session = await _authlib
+            .AuthenticateAsync(metadata, username, password, cancellationToken)
+            .ConfigureAwait(false);
+
+        var all = await _accounts.ListAsync(cancellationToken).ConfigureAwait(false);
+        var existing = all.FirstOrDefault(item =>
+            item.Kind == AccountKind.Authlib &&
+            string.Equals(item.Uuid, session.Uuid, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(item.AuthlibServer, metadata.ServerUrl, StringComparison.OrdinalIgnoreCase));
+        var active = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false);
+        var now = DateTimeOffset.UtcNow;
+        var account = new AccountRecord(
+            existing?.Id ?? $"authlib-{Guid.NewGuid():N}"[..24],
+            AccountKind.Authlib,
+            session.Name,
+            session.Uuid,
+            null,
+            session.SkinUrl,
+            null,
+            existing?.Active ?? active is null,
+            existing?.CreatedAt ?? now,
+            now,
+            now,
+            metadata.ServerUrl);
+        await _accounts.SaveAsync(account, cancellationToken).ConfigureAwait(false);
+        await _credentials.SaveCredentialAsync(
+                new AccountCredential(
+                    account.Id,
+                    null,
+                    null,
+                    null,
+                    null,
+                    now,
+                    metadata.ServerUrl,
+                    session.AccessToken,
+                    session.ClientToken,
+                    metadata.RawJson,
+                    termsUrl,
+                    now),
+                cancellationToken)
+            .ConfigureAwait(false);
+        Log("account.login.authlib", "AUTHLIB_LOGIN_OK", metadata.ServerName);
         return ModuleJson.Envelope(writer =>
         {
             writer.WritePropertyName("account");
@@ -547,9 +661,14 @@ public sealed class AccountModuleService : IModuleMethodHandler
         CancellationToken cancellationToken)
     {
         var account = await ResolveAccountAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        if (account.Kind == AccountKind.Authlib)
+        {
+            return await RefreshAuthlibAsync(account, cancellationToken).ConfigureAwait(false);
+        }
+
         if (account.Kind != AccountKind.Microsoft)
         {
-            throw new ArgumentException("only Microsoft accounts can be refreshed");
+            throw new ArgumentException("only Microsoft or authlib accounts can be refreshed");
         }
 
         var credential = await _credentials
@@ -580,6 +699,74 @@ public sealed class AccountModuleService : IModuleMethodHandler
                 cancellationToken,
                 account)
             .ConfigureAwait(false);
+        return ModuleJson.Envelope(writer =>
+        {
+            writer.WritePropertyName("account");
+            WriteAccount(writer, updated);
+        });
+    }
+
+    private async Task<byte[]> RefreshAuthlibAsync(
+        AccountRecord account,
+        CancellationToken cancellationToken)
+    {
+        var credential = await _credentials
+            .GetCredentialAsync(account.Id, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new AccountAuthException(
+                "AUTH_REQUIRED",
+                "No stored third-party session for this account. Sign in again.");
+        if (!credential.HasAuthlibToken)
+        {
+            throw new AccountAuthException(
+                "AUTH_REQUIRED",
+                "No third-party access token is stored. Sign in again.");
+        }
+
+        var server = credential.AuthlibServer ?? account.AuthlibServer;
+        if (string.IsNullOrWhiteSpace(server))
+        {
+            throw new AccountAuthException(
+                "AUTH_REQUIRED",
+                "The account has no authlib server. Sign in again.");
+        }
+
+        var metadata = await _authlib
+            .ResolveAsync(server, cancellationToken)
+            .ConfigureAwait(false);
+        var session = await _authlib
+            .RefreshAsync(
+                metadata,
+                credential.AuthlibAccessToken!,
+                credential.AuthlibClientToken ?? string.Empty,
+                account.Uuid ?? string.Empty,
+                account.DisplayName,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        var now = DateTimeOffset.UtcNow;
+        var updated = account with
+        {
+            DisplayName = session.Name,
+            Uuid = session.Uuid,
+            SkinUrl = session.SkinUrl ?? account.SkinUrl,
+            AuthlibServer = metadata.ServerUrl,
+            UpdatedAt = now,
+            LastLoginAt = now,
+        };
+        await _accounts.SaveAsync(updated, cancellationToken).ConfigureAwait(false);
+        await _credentials.SaveCredentialAsync(
+                credential with
+                {
+                    AuthlibServer = metadata.ServerUrl,
+                    AuthlibAccessToken = session.AccessToken,
+                    AuthlibClientToken = session.ClientToken,
+                    AuthlibMetadataJson = metadata.RawJson,
+                    UpdatedAt = now,
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+        Log("account.refresh", "AUTHLIB_REFRESH_OK", metadata.ServerName);
         return ModuleJson.Envelope(writer =>
         {
             writer.WritePropertyName("account");
@@ -789,6 +976,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
         writer.WriteString("createdAt", account.CreatedAt.ToString("O"));
         writer.WriteString("updatedAt", account.UpdatedAt.ToString("O"));
         writer.WriteString("lastLoginAt", account.LastLoginAt?.ToString("O"));
+        writer.WriteString("authlibServer", account.AuthlibServer);
         writer.WriteEndObject();
     }
 

@@ -8,6 +8,8 @@
 #import <AppKit/AppKit.h>
 #import <UserNotifications/UserNotifications.h>
 
+#include <unistd.h>
+
 namespace archoera {
 namespace {
 
@@ -103,6 +105,19 @@ bool send_system_notification(const std::string& title,
              (void)failure;
            }];
   return true;
+}
+
+ProcessElevation query_process_elevation() {
+  ProcessElevation elevation;
+
+  // Darwin has no Win32-style token elevation: root and `sudo` are the only
+  // ways to gain superuser rights, and both leave the effective uid at 0.
+  // getuid() stays at the invoking user, so only geteuid() is checked.
+  if (geteuid() == 0) {
+    elevation.elevated = true;
+    elevation.kind = "root";
+  }
+  return elevation;
 }
 
 }  // namespace archoera

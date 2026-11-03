@@ -19,7 +19,7 @@
 | 7 | **Rust 只下载，C# 解压并管事务**：解压是业务/安全策略，必须与实例语义和 SQLite 单写者同侧；Rust 保持“字节→文件”可替换。 | [推断] 与 02/05 契约一致 |
 | 8 | 导入已有实例默认 **merge + managed 清单**；被移除文件进隔离区而非直接删；中断用 journal 回滚/续跑。 | [推断] 本项目设计 |
 
-> **当前状态（2026-10-25）**：CurseForge 在 API 访问配置前不可用，CF zip 只识别并拒绝。本文 §1.1/§2 的 CF 格式分析用于说明原因：CF zip 的 `files[]` 只有 `(projectID, fileID)`，安装每个文件都要调 CF API（需 key），所以“本地导入”也不是免 key 路径。当前只实现 Modrinth `.mrpack`。
+> **当前状态（2026-10-31）**：CurseForge 在 API 访问配置前不可用，CF zip 只识别并拒绝。本文 §1.1/§2 的 CF 格式分析用于说明原因：CF zip 的 `files[]` 只有 `(projectID, fileID)`，安装每个文件都要调 CF API（需 key），所以“本地导入”也不是免 key 路径。当前已实现 Modrinth `.mrpack`、MultiMC/Prism 实例导出和 ATLauncher 实例导出的本地导入；后两者是胖包，不需要认证或 API。
 
 ---
 
@@ -67,13 +67,22 @@ server:  overrides/  →  server-overrides/     （后者覆盖前者）
 
 MMC 原生包是**胖包**：mods 已在 `.minecraft/mods`，没有远端 `files[]`，也没有统一 hash；安装 = 安全解压 + 按 components 装加载器 + 注册。Prism 额外支持 CF、ATL、FTB Legacy、FTB App Import、Modrinth、Technic；MultiMC 官方 Wiki 只列 native/MR/Technic。**[事实/推断]**
 
+**当前实现（本地导入）**：
+
+- 探测：zip 根（或唯一外层目录）存在 `mmc-pack.json` 即为 MultiMC/Prism；`formatVersion` 必须为 `1`，读取 `components[]` 的 `uid`/`version`。
+- 映射：`net.minecraft` → 游戏版本；`net.fabricmc.fabric-loader` → Fabric；`org.quiltmc.quilt-loader` → Quilt；`net.minecraftforge` → Forge；`net.neoforged` / `net.neoforged.neoforge` → NeoForge。其他 UID 忽略；多个加载器组件直接拒绝。
+- 名称：优先 `instance.cfg` 的 `name=`，否则用压缩包文件名。
+- 游戏目录：优先 `.minecraft/`，其次 `minecraft/`，否则根目录；这些前缀会从目标路径剥离。
+- 跳过：`mmc-pack.json`、`instance.cfg`、`icon.*`、`patches/`、`__MACOSX/`、`.DS_Store`。
+- 所有剩余文件都按下方路径规则校验后解压；不读取 `JavaPath`/`JvmArgs` 等可执行配置，也不联网。
+
 ### 1.4 其他常见格式（能确认多少写多少）
 
 | 格式 | 可确认特征 | 处理与置信度 |
 |---|---|---|
-| ATLauncher 原生 | 实例根 `instance.json`，含 `launcher`（loader/loaderVersion）、`mods`；导出支持 CF/MR/MMC（源码 `Instance.export`） | 原生字段未逐一验证；导出格式复用 CF/MR/MMC 解析器 **[事实/未验证]** |
+| ATLauncher 原生 | 实例根 `instance.json`，含 `launcher`（loader/loaderVersion）、`mods`；导出支持 CF/MR/MMC（源码 `Instance.export`） | **已实现本地导入**：`id`=MC 版本；`launcher.name/description/version`=名称/简介/包版本；`launcher.loaderVersion.type`（Fabric/Quilt/Forge/NeoForge，大小写不敏感）与 `version`（缺失回退 `rawVersion`）；`launcher.vanillaInstance=true` 时按原版处理；跳过 `instance.json`、`icon.*`，其余文件按根目录路径解压。仍不支持远程 ATL/Solder 下载 **[事实-源码]** |
 | FTB App / Legacy | FTB App 通过 FTB API 装自家包，也支持 CF zip 导入；不支持 Modrinth；Legacy 包可能以 CF 兼容 manifest 分发 | 不把 FTB 平台包当通用 zip；先探测 CF，再走 FTB API **[事实/未验证]** |
-| Technic / Solder | Solder 返回 `{minecraft, forge, mods:[{name,version,md5,filesize,url}]}`；每个 mod 是小 zip，按顺序解到实例根；Forge 用 `bin/modpack.jar`，普通 mod 在 `mods/` | MD5 必校验；无中央 manifest 的旧包靠 `bin/modpack.jar` 嗅探 **[事实]** |
+| Technic / Solder | Solder 返回 `{minecraft, forge, mods:[{name,version,md5,filesize,url}]}`；每个 mod 是小 zip，按顺序解到实例根；Forge 用 `bin/modpack.jar`，普通 mod 在 `mods/`。非 Solder 包只给一个直链 zip | Solder manifest 的 MD5 必校验；直链包平台不发布摘要，使用 `hash.algo=none` + 声明 size，HTTPS 整包下载后逐条校验 ZIP CRC，并在实例记录 SHA-256；从 `bin/modpack.jar!/install_profile.json`、`bin/modpack.jar!/version.json` 或根 `bin/version.json` 嗅探 Forge/NeoForge/Fabric/Quilt **[事实/已实现]** |
 | HMCL / PCL2 | HMCL 标准导出可选 CF/MR，服务器自动更新包为 `server-manifest.json`+`overrides/`；PCL2 导入 `.zip`/`.mrpack`，自有导出格式未确认 | HMCL 旧 `pack.json` 不作主路径；PCL2 只按 CF/MR/MMC 探测 **[事实/未验证]** |
 | packwiz | `pack.toml` + `index.toml`（TOML，常见于 git/HTTP） | 可作后续格式；先识别并明确“不支持”，不要误判成 CF **[事实]** |
 
@@ -201,6 +210,7 @@ Import(path, mode, side)
 13. **符号链接祖先**：staging 必须是新建空目录；merge 时逐级检查父目录，`ReparsePoint`/symlink 拒绝；写入用 `FileMode.CreateNew`，绝不跟随已有链接。
 14. **macOS 垃圾**：跳过 `__MACOSX/`、`._*`、`.DS_Store`、`Thumbs.db`、`desktop.ini`；不保留 xattr/resource fork。
 15. **实际字节**：复制时累计 actual；超过 `entry.Length` 或全局预算立即 abort；声明长度不可信。
+16. **反斜杠清单路径**：`\` 一律按 `/` 处理；若 `modrinth.index.json` 的 `files[].path` 含 `\`，先备份为 `<包>.bak`，重写索引并通过严格校验后才替换原包。归一化后仍越界、命中保留根或重复的包不修补，直接拒绝。
 
 ### 4.3 解压伪代码（C#）
 

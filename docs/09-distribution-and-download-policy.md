@@ -68,7 +68,7 @@ AGPL 不要求 fork 保留功能；fork 可以移除下载门控，但必须继�
 | Provider 接口、策略引擎、Plan 结构 | 任何游戏文件、assets、libraries |
 | Mojang / Fabric / Quilt / Modrinth 官方接口实现 | 自建游戏文件镜像 |
 | Forge/NeoForge installer 下载与 processors 调度 | 任何 API key / 凭据 |
-| Java runtime 下载（Mojang；Adoptium 可选，尚未接入） | 打包的 Oracle JDK |
+| Java runtime 下载（Mojang；Adoptium/Zulu/Microsoft/GraalVM/Corretto/Liberica/SapMachine/Dragonwell 二进制 JDK） | 打包的 Oracle JDK |
 | 校验、断点、原子落盘（Rust） | 遥测端点、用户追踪 |
 
 > 仓库与构建产物不含任何凭据；CurseForge 在 API 访问配置前不可用。
@@ -81,9 +81,10 @@ AGPL 不要求 fork 保留功能；fork 可以移除下载门控，但必须继�
 | Fabric / Quilt Meta | 否 | 允许 | 设置可识别 UA；遵守速率 |
 | Forge / NeoForge Maven | 否 | 允许 | 只取 installer/库；processors 需本地 Java |
 | Modrinth | 否 | 允许（中国大陆需本地确认） | UA、速率、CDN 直链、hash 校验 |
+| Technic 直链包 | 否 | 允许（用户确认无官方哈希） | 平台只提供单个 zip、不发布 MD5/SHA；下载使用 `hash.algo = none` 但必须声明大小，解压逐条校验 ZIP CRC，安装后记录 SHA-256；仅限整合包归档，不用于游戏/加载器/库 |
 | CurseForge | 是 | API 访问配置前不可用 | 在线与 zip 导入都需要 API key；不发起请求 |
-| Java Runtime | 否 | 允许 | Mojang runtime 已接入；Adoptium 为可选源（尚未接入）；不打包 Oracle |
-| authlib-injector | 否 | 未启用 | 需完成服务条款、隐私与实名复核后再接入 |
+| Java Runtime | 否 | 允许 | Mojang runtime + Adoptium/Zulu/Microsoft/GraalVM/Corretto/Liberica/SapMachine/Dragonwell 二进制 JDK 压缩包；默认当前 OS/arch，允许用户显式确认后为其他 OS/arch 下载（标记不兼容、禁止在本机选用）；CVE 元数据来自 NVD 2.0（按该大版本最新补丁的十位段做 keyword search，解析 CPE 与 Oracle 描述，限流时回退 CIRCL 的 NVD 镜像）与 OSV（别名/摘要补充），只读、不参与下载内容；不打包 Oracle |
+| authlib-injector | 否 | 已接入（运行时下载） | 不随安装包分发；登录前展示第三方服务条款并要求勾选同意，同意后才从官方 artifact 下载并用 SHA-256 校验 |
 | 启动器更新检查 | 否 | 允许 | 只查询 GitHub Release，不自动下载或执行 |
 
 ### 2.3 当前策略求值（已实现）

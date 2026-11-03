@@ -10,6 +10,7 @@ import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -95,24 +96,63 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('opens the Java runtime install picker', (tester) async {
-    await pumpPage(
-      tester,
-      scan: _scanOf(
-        scanResult([runtime('/opt/jdk-21/bin/java', '21.0.1', 'amd64')]),
+  testWidgets('opens the standalone installer page instead of a dialog', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final container = ProviderContainer(
+      overrides: [coreClientProvider.overrideWithValue(null)],
+    );
+    addTearDown(container.dispose);
+    final router = GoRouter(
+      initialLocation: '/settings/java',
+      routes: [
+        GoRoute(
+          path: '/settings/java',
+          builder: (context, state) => Scaffold(
+            body: JavaPage(
+              scan: _scanOf(
+                scanResult([
+                  runtime('/opt/jdk-21/bin/java', '21.0.1', 'amd64'),
+                ]),
+              ),
+              pathStore: const JavaPathStore(),
+            ),
+          ),
+          routes: [
+            GoRoute(
+              path: 'install',
+              builder: (context, state) =>
+                  const Scaffold(body: Text('installer-page')),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.light,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
       ),
     );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Install Java'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Install a Java runtime'), findsOneWidget);
-    // Java 21 also labels the scanned runtime, so only assert presence.
-    expect(find.text('Java 8'), findsWidgets);
-    expect(find.text('Java 17'), findsWidgets);
-    expect(find.text('Java 21'), findsWidgets);
-    expect(find.text('Java 25'), findsWidgets);
-    expect(find.text('Recommended'), findsOneWidget);
+    expect(find.text('installer-page'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

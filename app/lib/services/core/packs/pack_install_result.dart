@@ -85,6 +85,10 @@ class PackInspection {
     required this.overrideFiles,
     required this.overrideBytes,
     required this.ignoredServerFiles,
+    this.format = 'modrinth',
+    this.repaired = false,
+    this.backupPath,
+    this.repairedPaths = 0,
   });
 
   final String name;
@@ -98,6 +102,19 @@ class PackInspection {
   final int overrideFiles;
   final int overrideBytes;
   final int ignoredServerFiles;
+
+  /// Parser that produced the preview: modrinth, multimc or atlauncher.
+  final String format;
+
+  /// True when the launcher normalized Windows path separators and rewrote
+  /// the archive before parsing it.
+  final bool repaired;
+
+  /// Copy of the original archive kept by the repair, when [repaired].
+  final String? backupPath;
+
+  /// Number of index paths rewritten by the repair, when [repaired].
+  final int repairedPaths;
 
   static PackInspection? tryParse(Object? value) {
     if (value is! Map) return null;
@@ -115,6 +132,10 @@ class PackInspection {
       overrideFiles: _int(value['overrideFiles']) ?? 0,
       overrideBytes: _int(value['overrideBytes']) ?? 0,
       ignoredServerFiles: _int(value['ignoredServerFiles']) ?? 0,
+      format: value['format']?.toString() ?? 'modrinth',
+      repaired: value['repaired'] == true,
+      backupPath: value['backupPath']?.toString(),
+      repairedPaths: _int(value['repairedPaths']) ?? 0,
     );
   }
 

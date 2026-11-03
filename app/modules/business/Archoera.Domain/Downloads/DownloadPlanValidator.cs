@@ -146,6 +146,13 @@ public static class DownloadPlanValidator
                     $"{file.Hash.ExpectedHexLength} lower-case hex characters");
             }
 
+            if (file.Hash.Algorithm == DownloadHashAlgorithm.None && file.Size <= 0)
+            {
+                return new DownloadPlanIssue(
+                    DownloadPlanErrorCode.InvalidHash,
+                    $"{file.Dest}: a file without a digest must declare its size");
+            }
+
             if (file.Size < 0)
             {
                 return new DownloadPlanIssue(
