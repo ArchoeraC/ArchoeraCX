@@ -864,7 +864,7 @@
       }
     }
   },
-  "settingsUnusedConfirmWord": "删除",
+  "settingsUnusedConfirmWord": "DELETE",
   "settingsUnusedNone": "没有可清理的无用依赖。",
   "settingsUnusedScanLimit": "扫描超出条目上限，未删除任何文件。",
   "settingsUnusedDone": "已删除 {count} 个文件，释放 {size}。",

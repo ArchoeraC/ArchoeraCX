@@ -1408,7 +1408,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get settingsUnusedConfirmWord => '删除';
+  String get settingsUnusedConfirmWord => 'DELETE';
 
   @override
   String get settingsUnusedNone => '没有可清理的无用依赖。';

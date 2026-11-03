@@ -606,7 +606,9 @@ class _UnusedDependenciesDialogState extends State<_UnusedDependenciesDialog> {
           ),
         ];
       case _confirm:
-        final matches = _word.text.trim() == l10n.settingsUnusedConfirmWord;
+        final matches =
+            _word.text.trim().toUpperCase() ==
+            l10n.settingsUnusedConfirmWord.toUpperCase();
         return [
           TextButton(
             onPressed: () => setState(() => _stage = _preview),
