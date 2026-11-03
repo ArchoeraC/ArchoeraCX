@@ -2,6 +2,7 @@ import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/app/shell.dart';
 import 'package:archoera_cx/services/core/downloads/build_policy.dart';
 import 'package:archoera_cx/services/core/downloads/download_policy.dart';
+import 'package:archoera_cx/stores/instances.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/icons/app_icons.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,47 @@ void main() {
     expect(find.text('Instances'), findsWidgets);
     expect(find.text('Download'), findsWidgets);
     expect(find.text('Settings'), findsWidgets);
+  });
+
+  testWidgets('the dashboard hero mark stays centered on the art panel', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coreClientProvider.overrideWithValue(null),
+          selectedInstanceProvider.overrideWithValue(null),
+        ],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The command bar also draws a small add glyph, so pick the hero mark by
+    // its 76px size.
+    final heroMarks = find
+        .byIcon(AppIcons.add)
+        .evaluate()
+        .where((element) => (element.widget as Icon).size == 76)
+        .toList();
+    expect(heroMarks, hasLength(1));
+
+    final markFinder = find.byWidget(heroMarks.single.widget);
+    // find.ancestor lists ancestors nearest-first; the art panel is the
+    // closest Stack above the mark.
+    final art = tester.getRect(
+      find.ancestor(of: markFinder, matching: find.byType(Stack)).first,
+    );
+    final mark = tester.getRect(markFinder);
+    // The caption hangs at the bottom edge; it must not lift the mark above
+    // the optical center of the art panel.
+    expect((mark.center.dx - art.center.dx).abs(), lessThan(1.0));
+    expect((mark.center.dy - art.center.dy).abs(), lessThan(1.0));
   });
 
   testWidgets('fits the shell on narrow windows', (tester) async {

@@ -153,35 +153,42 @@ class _HeroArt extends StatelessWidget {
           CustomPaint(
             painter: _GridPainter(color: tokens.border.withValues(alpha: 0.55)),
           ),
+          // The mark is centered on the whole panel while the caption hangs at
+          // the bottom edge; keeping them in one centered Column would lift
+          // the mark above the optical center by half the caption height.
           Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (loader == null)
-                  Icon(AppIcons.add, size: 76, color: tokens.accent)
-                else
-                  LoaderMark(loader: loader, size: 76),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  loader?.labelFor(AppLocalizations.of(context)) ??
-                      AppLocalizations.of(context).appName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelMedium?.copyWith(
-                    color: tokens.textSecondary,
-                  ),
-                ),
-                if (instance != null) ...[
-                  const SizedBox(height: AppSpacing.xxs),
+            child: loader == null
+                ? Icon(AppIcons.add, size: 76, color: tokens.accent)
+                : LoaderMark(loader: loader, size: 76),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    instance!.gameVersion,
-                    style: textTheme.headlineSmall?.copyWith(
-                      color: tokens.textPrimary,
-                      fontWeight: FontWeight.w500,
+                    loader?.labelFor(AppLocalizations.of(context)) ??
+                        AppLocalizations.of(context).appName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelMedium?.copyWith(
+                      color: tokens.textSecondary,
                     ),
                   ),
+                  if (instance != null) ...[
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      instance!.gameVersion,
+                      style: textTheme.headlineSmall?.copyWith(
+                        color: tokens.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],
