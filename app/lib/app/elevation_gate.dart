@@ -68,11 +68,35 @@ class _ElevationGateApp extends StatelessWidget {
   }
 }
 
-/// Headline and confirm label for one gate launch.
+/// Copy the gate rotates through: one headline plus one confirm label is
+/// drawn per launch.
 ///
-/// The body keeps the factual consequences; only the framing rotates. A user
-/// who starts the launcher elevated more than once would otherwise see the
-/// exact same dialog and stop reading it.
+/// Kept in one place so the picker and the rotation test cannot drift apart.
+/// The body keeps the factual consequences; only the framing rotates, because
+/// a user who starts the launcher elevated more than once would otherwise see
+/// the exact same dialog and stop reading it.
+({List<String> headlines, List<String> confirms}) elevationGateVariants(
+  AppLocalizations l10n,
+) => (
+  headlines: <String>[
+    l10n.elevationTitle,
+    l10n.elevationTitleJustKnew,
+    l10n.elevationTitleBegging,
+    l10n.elevationTitleAgain,
+    l10n.elevationTitleYourCall,
+    l10n.elevationTitleThinkTwice,
+  ],
+  confirms: <String>[
+    l10n.elevationContinue,
+    l10n.elevationContinueBegging,
+    l10n.elevationContinueInsist,
+    l10n.elevationContinueStopNagging,
+    l10n.elevationContinueMyProblem,
+    l10n.elevationContinueJustOnce,
+  ],
+);
+
+/// Headline and confirm label for one gate launch.
 class _ElevationGateCopy {
   const _ElevationGateCopy({required this.title, required this.confirm});
 
@@ -81,19 +105,10 @@ class _ElevationGateCopy {
 
   /// Picks one headline and one confirm label for this launch.
   static _ElevationGateCopy pick(AppLocalizations l10n, Random random) {
-    final titles = <String>[
-      l10n.elevationTitle,
-      l10n.elevationTitleJustKnew,
-      l10n.elevationTitleBegging,
-    ];
-    final confirms = <String>[
-      l10n.elevationContinue,
-      l10n.elevationContinueBegging,
-      l10n.elevationContinueInsist,
-    ];
+    final variants = elevationGateVariants(l10n);
     return _ElevationGateCopy(
-      title: titles[random.nextInt(titles.length)],
-      confirm: confirms[random.nextInt(confirms.length)],
+      title: variants.headlines[random.nextInt(variants.headlines.length)],
+      confirm: variants.confirms[random.nextInt(variants.confirms.length)],
     );
   }
 }

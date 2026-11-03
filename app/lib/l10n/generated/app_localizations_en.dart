@@ -3440,6 +3440,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get elevationTitleBegging => 'I\'m begging you';
 
   @override
+  String get elevationTitleAgain => 'Again?';
+
+  @override
+  String get elevationTitleYourCall => 'Fine, your call';
+
+  @override
+  String get elevationTitleThinkTwice => 'I\'d think twice';
+
+  @override
   String elevationBody(String kind) {
     return 'ArchoeraCX detected that this process is running as $kind. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.';
   }
@@ -3452,6 +3461,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get elevationContinueInsist => 'I still want to continue';
+
+  @override
+  String get elevationContinueStopNagging => 'I get it, stop nagging';
+
+  @override
+  String get elevationContinueMyProblem => 'My machine, my problem';
+
+  @override
+  String get elevationContinueJustOnce => 'Just this once';
 
   @override
   String get elevationExit => 'Exit';

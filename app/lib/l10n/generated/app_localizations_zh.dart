@@ -3238,6 +3238,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get elevationTitleBegging => '我真求你了';
 
   @override
+  String get elevationTitleAgain => '又来？';
+
+  @override
+  String get elevationTitleYourCall => '行吧，你说了算';
+
+  @override
+  String get elevationTitleThinkTwice => '我劝你三思';
+
+  @override
   String elevationBody(String kind) {
     return 'ArchoeraCX 检测到当前进程正以$kind权限运行。以超级管理员身份启动，实例、Mod 与游戏文件都会归该账户所有，下载或安装的恶意内容也会拥有更高的破坏力。\n\n启动器和 Minecraft 都不需要管理员权限。请用普通账户重新启动；只有在你清楚后果时才继续。';
   }
@@ -3250,6 +3259,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get elevationContinueInsist => '我还是要继续';
+
+  @override
+  String get elevationContinueStopNagging => '我知道了，别念了';
+
+  @override
+  String get elevationContinueMyProblem => '出事了算我的';
+
+  @override
+  String get elevationContinueJustOnce => '就这一次';
 
   @override
   String get elevationExit => '退出';

@@ -2849,6 +2849,9 @@
   "elevationTitle": "I know what you're trying to do",
   "elevationTitleJustKnew": "I knew it!",
   "elevationTitleBegging": "I'm begging you",
+  "elevationTitleAgain": "Again?",
+  "elevationTitleYourCall": "Fine, your call",
+  "elevationTitleThinkTwice": "I'd think twice",
   "elevationBody": "ArchoeraCX detected that this process is running as {kind}. Starting as a superuser hands ownership of every instance, mod and game file to that account, and gives downloaded content far more damage potential.\n\nNeither the launcher nor Minecraft needs administrator rights. Relaunch with a normal account; continue only if you understand the consequences.",
   "@elevationBody": {
     "placeholders": {
@@ -2858,6 +2861,9 @@
   "elevationContinue": "I know what I'm doing",
   "elevationContinueBegging": "I'm begging you too",
   "elevationContinueInsist": "I still want to continue",
+  "elevationContinueStopNagging": "I get it, stop nagging",
+  "elevationContinueMyProblem": "My machine, my problem",
+  "elevationContinueJustOnce": "Just this once",
   "elevationExit": "Exit",
   "elevationKindRoot": "root",
   "elevationKindAdministrator": "administrator"

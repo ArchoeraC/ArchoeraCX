@@ -27,18 +27,6 @@ Widget harness({
   );
 }
 
-List<String> headlines(AppLocalizations l10n) => <String>[
-  l10n.elevationTitle,
-  l10n.elevationTitleJustKnew,
-  l10n.elevationTitleBegging,
-];
-
-List<String> confirms(AppLocalizations l10n) => <String>[
-  l10n.elevationContinue,
-  l10n.elevationContinueBegging,
-  l10n.elevationContinueInsist,
-];
-
 /// Returns the one candidate the gate is currently showing.
 String shownVariant(WidgetTester tester, List<String> candidates) {
   final visible = candidates
@@ -51,6 +39,10 @@ String shownVariant(WidgetTester tester, List<String> candidates) {
 AppLocalizations gateL10n(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byType(ElevationGatePage)));
 
+({List<String> headlines, List<String> confirms}) gateVariants(
+  WidgetTester tester,
+) => elevationGateVariants(gateL10n(tester));
+
 void main() {
   testWidgets('exit refuses the elevated start', (tester) async {
     bool? decision;
@@ -62,7 +54,7 @@ void main() {
       ),
     );
 
-    shownVariant(tester, headlines(gateL10n(tester)));
+    shownVariant(tester, gateVariants(tester).headlines);
     expect(find.textContaining('running as root'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Exit'));
@@ -83,7 +75,7 @@ void main() {
     );
 
     expect(find.textContaining('running as administrator'), findsOneWidget);
-    final label = shownVariant(tester, confirms(gateL10n(tester)));
+    final label = shownVariant(tester, gateVariants(tester).confirms);
 
     await tester.tap(find.widgetWithText(FilledButton, label));
     expect(decision, isTrue);
@@ -95,7 +87,7 @@ void main() {
     final seenHeadlines = <String>{};
     final seenConfirms = <String>{};
 
-    for (var seed = 0; seed < 32; seed++) {
+    for (var seed = 0; seed < 64; seed++) {
       await tester.pumpWidget(
         harness(
           key: ValueKey<int>(seed),
@@ -104,14 +96,14 @@ void main() {
           random: Random(seed),
         ),
       );
-      final l10n = gateL10n(tester);
-      seenHeadlines.add(shownVariant(tester, headlines(l10n)));
-      seenConfirms.add(shownVariant(tester, confirms(l10n)));
+      final variants = gateVariants(tester);
+      seenHeadlines.add(shownVariant(tester, variants.headlines));
+      seenConfirms.add(shownVariant(tester, variants.confirms));
     }
 
-    final l10n = gateL10n(tester);
-    expect(seenHeadlines, headlines(l10n).toSet());
-    expect(seenConfirms, confirms(l10n).toSet());
+    final variants = gateVariants(tester);
+    expect(seenHeadlines, variants.headlines.toSet());
+    expect(seenConfirms, variants.confirms.toSet());
   });
 
   test('parses the native elevation payload', () {

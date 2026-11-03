@@ -5929,6 +5929,24 @@ abstract class AppLocalizations {
   /// **'I\'m begging you'**
   String get elevationTitleBegging;
 
+  /// No description provided for @elevationTitleAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Again?'**
+  String get elevationTitleAgain;
+
+  /// No description provided for @elevationTitleYourCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Fine, your call'**
+  String get elevationTitleYourCall;
+
+  /// No description provided for @elevationTitleThinkTwice.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'d think twice'**
+  String get elevationTitleThinkTwice;
+
   /// No description provided for @elevationBody.
   ///
   /// In en, this message translates to:
@@ -5952,6 +5970,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I still want to continue'**
   String get elevationContinueInsist;
+
+  /// No description provided for @elevationContinueStopNagging.
+  ///
+  /// In en, this message translates to:
+  /// **'I get it, stop nagging'**
+  String get elevationContinueStopNagging;
+
+  /// No description provided for @elevationContinueMyProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'My machine, my problem'**
+  String get elevationContinueMyProblem;
+
+  /// No description provided for @elevationContinueJustOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Just this once'**
+  String get elevationContinueJustOnce;
 
   /// No description provided for @elevationExit.
   ///
