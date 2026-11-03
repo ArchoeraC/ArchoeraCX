@@ -4,6 +4,7 @@ import 'package:archoera_cx/app/elevation_gate.dart';
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/services/core/system/process_elevation.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
+import 'package:archoera_cx/theme/tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -104,6 +105,42 @@ void main() {
     final variants = gateVariants(tester);
     expect(seenHeadlines, variants.headlines.toSet());
     expect(seenConfirms, variants.confirms.toSet());
+  });
+
+  testWidgets('the gate surface keeps the shared angular dialog shape', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      harness(
+        elevation: const ProcessElevation(elevated: true, kind: 'root'),
+        onDecision: (_) {},
+        random: Random(1),
+      ),
+    );
+
+    // The panel is the only container padded with the large spacing; the
+    // badge is the 44x44 warning square.
+    final panel = tester.widgetList<Container>(find.byType(Container)).firstWhere(
+      (container) => container.padding == const EdgeInsets.all(AppSpacing.lg),
+    );
+    final badge = tester.widgetList<Container>(find.byType(Container)).firstWhere(
+      (container) =>
+          container.constraints?.maxWidth == 44 &&
+          container.constraints?.maxHeight == 44,
+    );
+
+    expect(panel.decoration, isA<ShapeDecoration>());
+    expect(
+      (panel.decoration as ShapeDecoration).shape,
+      isA<BeveledRectangleBorder>(),
+      reason: 'the panel must use the shared beveled dialog shape',
+    );
+    expect(badge.decoration, isA<ShapeDecoration>());
+    expect(
+      (badge.decoration as ShapeDecoration).shape,
+      isA<BeveledRectangleBorder>(),
+      reason: 'the warning badge must be beveled like AccountMark',
+    );
   });
 
   test('parses the native elevation payload', () {

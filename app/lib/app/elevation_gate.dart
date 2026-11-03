@@ -9,6 +9,7 @@ import '../stores/locale.dart';
 import '../theme/app_theme.dart';
 import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
+import '../widgets/common/app_panel.dart';
 
 /// Runs the superuser refusal gate and completes true only after the user
 /// explicitly accepts the elevated start.
@@ -167,12 +168,14 @@ class _ElevationGatePageState extends State<ElevationGatePage> {
             constraints: const BoxConstraints(maxWidth: 560),
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
+              // The gate is hand-built instead of showDialog, so it must apply
+              // the shared angular dialog shape itself; a plain BoxDecoration
+              // with circular radii would read as a generic rounded card.
+              decoration: ShapeDecoration(
                 color: tokens.surface1,
-                border: Border.all(color: tokens.border),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(tokens.bevelL),
-                  bottomRight: Radius.circular(tokens.bevelS),
+                shape: AppShapes.dialog(
+                  tokens,
+                  side: BorderSide(color: tokens.border),
                 ),
               ),
               child: Column(
@@ -185,9 +188,17 @@ class _ElevationGatePageState extends State<ElevationGatePage> {
                       Container(
                         width: 44,
                         height: 44,
-                        decoration: BoxDecoration(
+                        alignment: Alignment.center,
+                        // Same beveled proportions as AccountMark so warning
+                        // badges match the angular mark used across the app.
+                        decoration: ShapeDecoration(
                           color: tokens.danger.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(tokens.radiusM),
+                          shape: BeveledRectangleBorder(
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(11.5),
+                              bottomLeft: Radius.circular(7),
+                            ),
+                          ),
                         ),
                         child: Icon(AppIcons.warning, color: tokens.danger),
                       ),
