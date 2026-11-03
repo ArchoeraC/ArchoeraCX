@@ -1,6 +1,7 @@
 import 'package:archoera_cx/l10n/generated/app_localizations.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:archoera_cx/theme/app_theme.dart';
+import 'package:archoera_cx/utils/app_paths.dart';
 import 'package:archoera_cx/widgets/common/toast.dart';
 import 'package:archoera_cx/widgets/instances/create_instance_dialog.dart';
 import 'package:archoera_cx/widgets/instances/loader_picker_panel.dart';
@@ -101,7 +102,10 @@ void main() {
 
     await tester.enterText(nameField, '1.21.4 · Fabric');
     await tester.pump();
-    expect(find.textContaining('versions/1.21.4 · Fabric'), findsOneWidget);
+    expect(
+      find.textContaining(joinPath('versions', '1.21.4 · Fabric')),
+      findsOneWidget,
+    );
     expect(
       tester
           .widget<FilledButton>(find.widgetWithText(FilledButton, 'Create'))

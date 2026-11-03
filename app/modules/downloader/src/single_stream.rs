@@ -170,8 +170,11 @@ pub(crate) async fn commit_part(
 
     // Flush once per file, after the last chunk and after verification, instead
     // of fsyncing every ranged chunk while it still holds a network permit.
+    // `FlushFileBuffers` requires GENERIC_WRITE on Windows, so the part file is
+    // reopened for writing; `File::open` is read-only and fails there with
+    // ERROR_ACCESS_DENIED.
     if engine.options.durability != Durability::Fast {
-        let flush = match tokio::fs::File::open(part).await {
+        let flush = match tokio::fs::OpenOptions::new().write(true).open(part).await {
             Ok(file) => file.sync_all().await,
             Err(err) => Err(err),
         };
@@ -185,6 +188,8 @@ pub(crate) async fn commit_part(
     }
 
     if engine.options.durability == Durability::Full {
+        // Directory fsync is a Unix concept: Windows cannot open a directory
+        // without FILE_FLAG_BACKUP_SEMANTICS, so this stays a no-op there.
         if let Some(parent) = file.dest_path.parent() {
             if let Ok(directory) = tokio::fs::File::open(parent).await {
                 let _ = directory.sync_all().await;

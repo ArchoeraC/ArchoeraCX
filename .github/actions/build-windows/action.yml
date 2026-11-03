@@ -90,15 +90,21 @@ runs:
       shell: pwsh
       working-directory: app
       run: |
+        # pwsh keeps going after a failed native command, so each step checks
+        # $LASTEXITCODE or a broken DevHost would hide behind the next run.
         dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Rust tests
       shell: pwsh
       working-directory: app
       run: |
         cargo test --locked --manifest-path modules/downloader/Cargo.toml
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         cargo test --locked --manifest-path core/vault-rs/Cargo.toml
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Flutter dependencies and localization
       shell: pwsh
