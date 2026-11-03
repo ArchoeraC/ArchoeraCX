@@ -178,8 +178,60 @@ def build_font(entries: list[tuple[str, int]]) -> None:
             ],
             check=True,
         )
+        recenter_glyphs(FONT_OUT, binary)
     finally:
         Path(unicodes).unlink(missing_ok=True)
+
+
+# The upstream webfont draws every glyph flush against the left edge of its
+# em box (plus spans [0, 666] of a 1000-unit advance, check [4, 712]). CSS
+# icon usage centers the text box itself so the bias goes unnoticed, but
+# Skia paints the outline at the pen position, so in Flutter the ink lands
+# ~15% left of its box — visible on badges like the accent-swatch check.
+# Re-center each glyph on its advance width so the ink centers in its box.
+_RECENTER = r"""
+import sys
+
+from fontTools.misc.transform import Transform
+from fontTools.pens.boundsPen import BoundsPen
+from fontTools.pens.transformPen import TransformPen
+from fontTools.pens.ttGlyphPen import TTGlyphPen
+from fontTools.ttLib import TTFont
+
+path = sys.argv[1]
+font = TTFont(path)
+glyph_set = font.getGlyphSet()
+hmtx = font["hmtx"]
+moved = 0
+for name in font.getGlyphOrder():
+    pen = BoundsPen(glyph_set)
+    glyph_set[name].draw(pen)
+    if pen.bounds is None:
+        continue
+    xmin, _, xmax, _ = pen.bounds
+    advance, _ = hmtx[name]
+    ink_width = xmax - xmin
+    # Re-center the outline on the advance and mirror that offset in hmtx:
+    # renderers that paint the outline at the pen (FreeType) and renderers
+    # that align the bitmap's left edge to pen + lsb (Skia) then both center
+    # the ink inside the glyph's box.
+    delta = advance / 2 - (xmin + xmax) / 2
+    if abs(delta) >= 0.5:
+        rebuild = TTGlyphPen(glyph_set)
+        glyph_set[name].draw(TransformPen(rebuild, Transform(1, 0, 0, 1, delta, 0)))
+        font["glyf"][name] = rebuild.glyph()
+        moved += 1
+    new_xmin = xmin + delta if abs(delta) >= 0.5 else xmin
+    hmtx[name] = (advance, round(new_xmin))
+font.save(path)
+print(f"  recentered {moved} glyphs on their advance")
+"""
+
+
+def recenter_glyphs(font_path: Path, subset_binary: str) -> None:
+    python = Path(subset_binary).with_name("python")
+    runner = python if python.exists() else Path(sys.executable)
+    subprocess.run([str(runner), "-c", _RECENTER, str(font_path)], check=True)
 
 
 def validate(entries: list[tuple[str, int]]) -> None:
