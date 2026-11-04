@@ -2,7 +2,7 @@
 
 `archoera_dl` 是一个独立的 **DownloadPlan 执行器**：把 C# 生成的只读文件清单变成文件。
 它不生成 URL、不理解 Mojang/Modrinth/加载器语义、不解压归档、不写 SQLite，也**尚未导出模块 ABI**
-（未接入 C++ ModuleHost）。crate 版本跟随 `app/pubspec.yaml`（`0.0.1+1`）。
+（未接入 C++ ModuleHost）。crate 版本跟随 `app/pubspec.yaml`（`0.1.0+1`）。
 
 参考 [`docs/10-architecture-design.md`](../../../docs/10-architecture-design.md) §9、
 [`docs/08-technical-research/05-download-engine.md`](../../../docs/08-technical-research/05-download-engine.md)、

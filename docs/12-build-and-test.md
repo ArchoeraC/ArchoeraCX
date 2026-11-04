@@ -54,29 +54,29 @@ macOS 的 Xcode 工程有一个 `Bundle Native Libraries` 阶段，调用 `tool/
 
 ```bash
 # Linux 原生格式（Ubuntu 24.04 构建）
-bash packaging/linux/package.sh all app/build/linux/x64/release/bundle 0.0.1+1 x64
+bash packaging/linux/package.sh all app/build/linux/x64/release/bundle 0.1.0+1 x64
 #   all = tar.gz + .deb + AppImage
 
 # 仅 Debian/Ubuntu .deb；DISTRO_TAG 决定文件名与 BUILD-INFO
 DISTRO_TAG=ubuntu24.04 BUILD_BASE="Ubuntu 24.04" \
-  bash packaging/linux/package.sh deb app/build/linux/x64/release/bundle 0.0.1+1 x64
+  bash packaging/linux/package.sh deb app/build/linux/x64/release/bundle 0.1.0+1 x64
 
 # Fedora/RHEL/openSUSE .rpm（需要 rpmbuild）
 DISTRO_TAG=fedora bash packaging/linux/package.sh rpm \
-  app/build/linux/x64/release/bundle 0.0.1+1 x64
+  app/build/linux/x64/release/bundle 0.1.0+1 x64
 
 # Arch/Manjaro：先预置工作目录，再在 Arch 上跑 makepkg
 DISTRO_TAG=arch bash packaging/linux/package.sh arch \
-  app/build/linux/x64/release/bundle 0.0.1+1 x64
+  app/build/linux/x64/release/bundle 0.1.0+1 x64
 (cd packaging/linux/work/arch && makepkg -f --skipinteg --nocheck --nodeps)
 
 # Flatpak（需要 flatpak + flathub）
 bash packaging/linux/package-flatpak.sh \
-  app/build/linux/x64/release/bundle 0.0.1+1 x64
+  app/build/linux/x64/release/bundle 0.1.0+1 x64
 
 # NixOS：预置工作目录后在 nix 环境构建
 bash packaging/linux/package.sh nix \
-  app/build/linux/x64/release/bundle 0.0.1+1 x64
+  app/build/linux/x64/release/bundle 0.1.0+1 x64
 # 路径含非 ASCII 字符时先复制到 /tmp（flake 的 path: 解析更稳）：
 #   cp -a packaging/linux/work/nix /tmp/archoera-nix
 #   (cd /tmp/archoera-nix && nix build "path:$PWD#default" --option sandbox false)
@@ -84,12 +84,12 @@ bash packaging/linux/package.sh nix \
 
 # macOS：便携 tar.gz、.dmg（必须在 macOS 上运行 hdiutil）
 bash packaging/macos/package.sh all \
-  app/build/macos/Build/Products/Release/archoera_cx.app 0.0.1+1 arm64
+  app/build/macos/Build/Products/Release/archoera_cx.app 0.1.0+1 arm64
 
 # Windows：便携 zip、Inno Setup 安装器（需要 ISCC.exe 在 PATH 或默认安装目录）
 pwsh packaging/windows/package.ps1 `
   -ReleaseDir app/build/windows/x64/runner/Release `
-  -Version 0.0.1+1 -Arch x64 -Installer
+  -Version 0.1.0+1 -Arch x64 -Installer
 ```
 
 Windows 的便携形态就是解压即用的 zip：runner 依赖旁加载的 `flutter_windows.dll`、引擎数据与原生模块侧车文件，Flutter 工具链不支持链接成单个 exe，故不做单文件打包（见 `09-distribution-and-download-policy.md` §2.7）。

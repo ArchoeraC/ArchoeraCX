@@ -1928,10 +1928,6 @@
   "@launchOnlineNotReady": {
     "description": "Online launch reserved message."
   },
-  "developmentBuildBadge": "DEV",
-  "@developmentBuildBadge": {
-    "description": "Development-build badge on the about page."
-  },
   "launchOnlineSessionExpired": "Your Minecraft session expired. Sign in again.",
   "launchMicrosoftAccountRequired": "Select a Microsoft account to launch online.",
   "launchOnlineNotConfigured": "Online launch is not configured in this build.",

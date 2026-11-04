@@ -2,7 +2,7 @@
 #
 # Usage:
 #   pwsh packaging/windows/package.ps1 -ReleaseDir app/build/windows/x64/runner/Release `
-#     -Version 0.0.1+1 [-Arch x64] [-Installer]
+#     -Version 0.1.0+1 [-Arch x64] [-Installer]
 #
 # The portable zip is always produced next to dist/. With -Installer, the same
 # staged tree is compiled into an Inno Setup installer (per-user by default).

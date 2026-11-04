@@ -10,7 +10,7 @@ class UpdateCheckResult {
     this.notes,
   });
 
-  /// Version of the running build, e.g. `0.0.1+1`.
+  /// Version of the running build, e.g. `0.1.0+1`.
   final String current;
 
   /// Newest published release tag without the leading `v`.

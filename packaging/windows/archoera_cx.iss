@@ -5,7 +5,7 @@
 ; place this app asks for elevation.
 ;
 ; Usage (CI):
-;   ISCC.exe /DVersion=0.0.1+1 /DAppDir=<staged-dir> /DOutputDir=<dist-dir> ^
+;   ISCC.exe /DVersion=0.1.0+1 /DAppDir=<staged-dir> /DOutputDir=<dist-dir> ^
 ;     packaging\windows\archoera_cx.iss
 
 #ifndef Version

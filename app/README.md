@@ -8,7 +8,7 @@ ArchoeraCX 的 Flutter 桌面外壳 + 原生切片。当前包含 UI 基础设�
 - `system.modules`：C++ `ModuleRegistry` 返回已加载模块；C++ `MethodRegistry` 与 C# `BusinessModuleRegistry` 显式登记方法
 - `system.openUrl` / `system.notify`：C++ 调用系统 API 打开默认浏览器、发送桌面通知；Microsoft 登录的授权页与登录成功提示均走该通道
 - `system.appearance`：C++ 读取系统深浅色与强调色（Linux XDG Portal / Windows 注册表 / macOS AppKit），变化通过 domain 事件推送；设置页“外观”下分“个性化 / 语言与区域”子菜单，个性化包含浅色/深色/跟随系统、跟随系统或自定义主题色、全局着色、界面密度与减少动效
-- 关于页：应用图标与开发版徽标、版本/系统/Dart/原生核心环境信息与一键复制、源码与问题反馈、许可证/第三方许可/隐私政策/安全策略入口
+- 关于页：应用图标、版本/系统/Dart/原生核心环境信息与一键复制、源码与问题反馈、许可证/第三方许可/隐私政策/安全策略入口
 - `java.scan`：C++ `ModuleRegistry` 加载 C# NativeAOT `archoera_cs` + 首页 Java status 卡；默认展示前 3 个，支持“查看全部”（本机 `/opt/java` 72/72 全部识别）；扫描为空时可手动选择目录搜索，仍为空再选择 JDK 目录或 `java` 可执行文件；路径会持久化，并用 `includeDefaults:false` 验证
 - Forge/NeoForge 生成物：`LoaderArtifactManifest` + 校验 + 按 processor 重跑修复；已通过 `loader.verify` / `loader.repair` 接入 C++ ModuleRegistry 和 Dart `CoreClient`，并有 Flutter 端到端测试（真实 installer 清单；尚未接 `launch.prepare`/UI）
 - Rust `archoera_dl`：`DownloadPlan` 执行器 MVP（单流 HTTP、hash、原子落盘、进度/取消；尚未接 C++ ModuleRegistry）

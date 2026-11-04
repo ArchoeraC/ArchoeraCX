@@ -302,7 +302,7 @@ params: {
 
 **安全与合规**
 
-- `User-Agent` 统一格式，例如 `ArchoeraCX/0.0.1+1 (+https://github.com/BetaStudio2/ArchoeraCX)`。
+- `User-Agent` 统一格式，例如 `ArchoeraCX/0.1.0+1 (+https://github.com/BetaStudio2/ArchoeraCX)`。
 - 不在客户端做全量抓取/镜像；遵守各平台速率与条款。
 
 **更新检查**

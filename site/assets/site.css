@@ -488,15 +488,6 @@ html.intro-pending {
   flex: none;
 }
 
-.dev-badge {
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  color: var(--text-3);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-}
-
 .topbar__github {
   color: var(--text-2);
   font-size: 13px;
@@ -1386,24 +1377,6 @@ html.intro-pending {
   border-color: var(--build-term-text-2);
 }
 
-.build__note {
-  max-width: 42em;
-  margin: 24px 0 0;
-  padding-left: 14px;
-  border-left: 2px solid var(--build-text);
-  color: var(--build-text-2);
-  font-size: 12.5px;
-  line-height: 1.8;
-}
-
-.build__note strong {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--build-text);
-  font-weight: 600;
-}
-
-.build__note a,
 .section--build .section__lead a {
   color: var(--build-text);
   text-decoration: underline;
@@ -2379,10 +2352,6 @@ html.intro-pending {
 @media (max-width: 720px) {
   :root {
     --gutter: 20px;
-  }
-
-  .dev-badge {
-    display: none;
   }
 
   .hero {

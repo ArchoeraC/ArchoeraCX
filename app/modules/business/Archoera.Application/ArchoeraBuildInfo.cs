@@ -8,5 +8,5 @@ namespace Archoera.Application;
 /// </summary>
 public static class ArchoeraBuildInfo
 {
-    public const string Version = "0.0.1+1";
+    public const string Version = "0.1.0+1";
 }

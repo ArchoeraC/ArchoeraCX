@@ -39,7 +39,7 @@
 
 namespace archoera {
 
-#define ARCHOERA_CORE_VERSION "0.0.1+1"
+#define ARCHOERA_CORE_VERSION "0.1.0+1"
 
 inline constexpr std::string_view kArchoeraVersion = ARCHOERA_CORE_VERSION;
 

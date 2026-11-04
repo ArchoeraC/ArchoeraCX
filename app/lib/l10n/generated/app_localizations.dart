@@ -4147,12 +4147,6 @@ abstract class AppLocalizations {
   /// **'Online launch is not enabled in this build yet.'**
   String get launchOnlineNotReady;
 
-  /// Development-build badge on the about page.
-  ///
-  /// In en, this message translates to:
-  /// **'DEV'**
-  String get developmentBuildBadge;
-
   /// Online launch session expired.
   ///
   /// In en, this message translates to:

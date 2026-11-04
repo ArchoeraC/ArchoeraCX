@@ -2405,9 +2405,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Online launch is not enabled in this build yet.';
 
   @override
-  String get developmentBuildBadge => 'DEV';
-
-  @override
   String get launchOnlineSessionExpired =>
       'Your Minecraft session expired. Sign in again.';
 

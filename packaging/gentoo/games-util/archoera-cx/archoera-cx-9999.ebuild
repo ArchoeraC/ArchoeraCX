@@ -3,7 +3,7 @@
 
 # Gentoo ebuild for the prebuilt release tarball.
 # Place in an overlay as games-util/archoera-cx/archoera-cx-9999.ebuild, or
-# rename it to the release version (for example archoera-cx-0.0.1.ebuild).
+# rename it to the release version (for example archoera-cx-0.1.0.ebuild).
 EAPI=8
 
 DESCRIPTION="Open-source Minecraft: Java Edition launcher"

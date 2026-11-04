@@ -121,14 +121,6 @@ class _AboutPanel extends ConsumerWidget {
                               color: tokens.accent,
                               background: tokens.accentSoft,
                             ),
-                            if (AppInfo.isDevelopmentBuild)
-                              _InfoChip(
-                                label: l10n.developmentBuildBadge,
-                                color: tokens.warning,
-                                background: tokens.warning.withValues(
-                                  alpha: 0.14,
-                                ),
-                              ),
                           ],
                         ),
                       ],

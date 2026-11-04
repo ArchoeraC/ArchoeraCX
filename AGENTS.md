@@ -70,7 +70,7 @@ python3 tool/check_icons.py
 
 ## 版本与协作
 
-- 版本唯一来源 `app/pubspec.yaml`（当前 `0.0.1+1`），与 `app_info.dart` 一致；C++ `build_info`、C# 模块表与 UA、`launcher_version`、Rust crate 版本跟随。
+- 版本唯一来源 `app/pubspec.yaml`（当前 `0.1.0+1`），与 `app_info.dart` 一致；C++ `build_info`、C# 模块表与 UA、`launcher_version`、Rust crate 版本跟随。
 - 应用 ID：Linux/Android `awa.archoera.archoera_cx`，macOS `awa.archoera.archoeraCx`；ABI 改动同步 `app/contracts/abi/archoera_abi.h`、C++、Dart、C harness 与测试。
 - 可按 C++/CMake、Dart/Flutter、文档/契约拆子代理并行，但不得同改一文件；契约先冻结，产物由主代理统一构建验证。子代理报告不等于验证，以工作区实际状态为准。
 - 不臆造进度或测试结果；未运行就写“未验证”。

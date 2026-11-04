@@ -1281,7 +1281,6 @@
   "accountsSubtitleMicrosoftOnly": "该地区仅支持微软验证账户。",
   "accountNoAccountsMicrosoftOnly": "添加微软账户后即可开始使用。",
   "launchOnlineNotReady": "当前版本尚未启用在线启动。",
-  "developmentBuildBadge": "开发版",
   "launchOnlineSessionExpired": "Minecraft 会话已过期，请重新登录。",
   "launchMicrosoftAccountRequired": "请选择微软账户进行在线启动。",
   "launchOnlineNotConfigured": "当前构建未配置在线启动。",

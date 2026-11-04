@@ -328,7 +328,7 @@ internal static class LaunchPlanBuilder
             $"-Xmx{memory.MaxMb}M",
             "-Dfile.encoding=UTF-8",
             "-Dminecraft.launcher.brand=ArchoeraCX",
-            "-Dminecraft.launcher.version=0.0.1+1",
+            "-Dminecraft.launcher.version=0.1.0+1",
             "-Djava.library.path=" + paths.NativesRoot,
         };
         if (authlib is not null)

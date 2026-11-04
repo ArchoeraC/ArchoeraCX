@@ -4,7 +4,7 @@
 # archoera-cx.desktop, the metainfo file and the 512px icon. The workflow then
 # runs makepkg as an unprivileged user (makepkg refuses root).
 pkgname=archoera-cx
-pkgver=0.0.1_1
+pkgver=0.1.0_1
 pkgrel=1
 pkgdesc="Open-source Minecraft: Java Edition launcher"
 arch=('x86_64')

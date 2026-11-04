@@ -74,7 +74,7 @@ public sealed class PackGameInstallService
         if (httpClient is null)
         {
             _http.DefaultRequestHeaders.UserAgent.ParseAdd(
-                "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)");
+                "ArchoeraCX/0.1.0+1 (https://github.com/BetaStudio2/ArchoeraCX)");
         }
 
         _endpoints = endpoints ?? LoaderProfileEndpoints.Default;
@@ -116,7 +116,7 @@ public sealed class PackGameInstallService
     }
 
     private const string ModrinthUserAgent =
-        "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)";
+        "ArchoeraCX/0.1.0+1 (https://github.com/BetaStudio2/ArchoeraCX)";
 
     /// <summary>
     /// BMCLAPI mirrors the Fabric profile document. Like the version lists, it

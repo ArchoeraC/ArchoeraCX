@@ -1,8 +1,8 @@
 # ArchoeraCX Privacy Policy
 
 **Last updated:** 2026-10-27
-**Status:** draft for the current development build. Formal operator and contact
-details must be confirmed before a store or commercial release.
+**Status:** draft. Formal operator and contact details must be confirmed before
+a store or commercial release.
 
 ArchoeraCX is a third-party desktop launcher for Minecraft: Java Edition. It is
 not an official Minecraft product and is not affiliated with Mojang Studios or
@@ -14,7 +14,7 @@ device.
 - Project: ArchoeraCX
 - Source/homepage: https://github.com/BetaStudio2/ArchoeraCX
 - Privacy contact: open an issue at https://github.com/BetaStudio2/ArchoeraCX/issues (do not include tokens, credentials or other sensitive data)
-- Operator/legal entity: the individual maintainer of the ArchoeraCX repository; no separate legal entity is declared for this development build
+- Operator/legal entity: the individual maintainer of the ArchoeraCX repository; no separate legal entity is declared
 
 ## 2. Scope
 

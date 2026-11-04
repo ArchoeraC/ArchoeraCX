@@ -18,8 +18,8 @@ public sealed class UpdateCheckTests
     {
         var handler = new FakeHttpMessageHandler();
         handler.EnqueueJson(ReleaseJson(
-            tag: "0.0.2",
-            name: "ArchoeraCX 0.0.2",
+            tag: "0.2.0",
+            name: "ArchoeraCX 0.2.0",
             body: new string('x', 5000)));
 
         using var document = JsonDocument.Parse(
@@ -27,13 +27,13 @@ public sealed class UpdateCheckTests
 
         Assert.True(document.RootElement.GetProperty("ok").GetBoolean());
         var data = document.RootElement.GetProperty("data");
-        Assert.Equal("0.0.1+1", data.GetProperty("current").GetString());
-        Assert.Equal("0.0.2", data.GetProperty("latest").GetString());
+        Assert.Equal("0.1.0+1", data.GetProperty("current").GetString());
+        Assert.Equal("0.2.0", data.GetProperty("latest").GetString());
         Assert.True(data.GetProperty("hasUpdate").GetBoolean());
         Assert.Equal(
-            "https://github.com/BetaStudio2/ArchoeraCX/releases/tag/0.0.2",
+            "https://github.com/BetaStudio2/ArchoeraCX/releases/tag/0.2.0",
             data.GetProperty("url").GetString());
-        Assert.Equal("ArchoeraCX 0.0.2", data.GetProperty("name").GetString());
+        Assert.Equal("ArchoeraCX 0.2.0", data.GetProperty("name").GetString());
         Assert.Equal("2026-10-20T12:00:00Z", data.GetProperty("publishedAt").GetString());
         // Release bodies are truncated to the contract limit.
         Assert.Equal(4000, data.GetProperty("notes").GetString()!.Length);
@@ -42,7 +42,7 @@ public sealed class UpdateCheckTests
         Assert.Equal(new Uri(LatestReleaseUrl), request.Uri);
         Assert.Equal("GET", request.Method);
         Assert.Equal(
-            "ArchoeraCX/0.0.1+1 (https://github.com/BetaStudio2/ArchoeraCX)",
+            "ArchoeraCX/0.1.0+1 (https://github.com/BetaStudio2/ArchoeraCX)",
             request.UserAgent);
     }
 
@@ -50,14 +50,14 @@ public sealed class UpdateCheckTests
     public async Task Same_version_is_not_an_update()
     {
         var handler = new FakeHttpMessageHandler();
-        handler.EnqueueJson(ReleaseJson(tag: "v0.0.1"));
+        handler.EnqueueJson(ReleaseJson(tag: "v0.1.0"));
 
         using var document = JsonDocument.Parse(
             await CreateService(handler).HandleAsync("update.check", "{}", CancellationToken.None));
 
         Assert.True(document.RootElement.GetProperty("ok").GetBoolean());
         var data = document.RootElement.GetProperty("data");
-        Assert.Equal("0.0.1", data.GetProperty("latest").GetString());
+        Assert.Equal("0.1.0", data.GetProperty("latest").GetString());
         Assert.False(data.GetProperty("hasUpdate").GetBoolean());
     }
 
@@ -65,15 +65,15 @@ public sealed class UpdateCheckTests
     public async Task Leading_v_prefix_is_stripped_before_comparison()
     {
         var handler = new FakeHttpMessageHandler();
-        handler.EnqueueJson(ReleaseJson(tag: "v0.1.0"));
+        handler.EnqueueJson(ReleaseJson(tag: "v0.2.0"));
 
         using var document = JsonDocument.Parse(
             await CreateService(handler).HandleAsync("update.check", "{\"ignored\":true}", CancellationToken.None));
 
         var data = document.RootElement.GetProperty("data");
-        Assert.Equal("0.1.0", data.GetProperty("latest").GetString());
+        Assert.Equal("0.2.0", data.GetProperty("latest").GetString());
         Assert.True(data.GetProperty("hasUpdate").GetBoolean());
-        Assert.DoesNotContain("v0.1.0", data.GetProperty("latest").GetString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("v0.2.0", data.GetProperty("latest").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -115,14 +115,14 @@ public sealed class UpdateCheckTests
     {
         var handler = new FakeHttpMessageHandler();
         handler.EnqueueStatus(HttpStatusCode.NotFound);
-        handler.EnqueueJson("[" + ReleaseJson(tag: "v0.0.2") + "]");
+        handler.EnqueueJson("[" + ReleaseJson(tag: "v0.2.0") + "]");
 
         using var document = JsonDocument.Parse(
             await CreateService(handler).HandleAsync("update.check", "{}", CancellationToken.None));
 
         Assert.True(document.RootElement.GetProperty("ok").GetBoolean());
         var data = document.RootElement.GetProperty("data");
-        Assert.Equal("0.0.2", data.GetProperty("latest").GetString());
+        Assert.Equal("0.2.0", data.GetProperty("latest").GetString());
         Assert.True(data.GetProperty("hasUpdate").GetBoolean());
         Assert.Equal(2, handler.Requests.Count);
         Assert.Equal(
@@ -142,7 +142,7 @@ public sealed class UpdateCheckTests
 
         Assert.True(document.RootElement.GetProperty("ok").GetBoolean());
         var data = document.RootElement.GetProperty("data");
-        Assert.Equal("0.0.1+1", data.GetProperty("latest").GetString());
+        Assert.Equal("0.1.0+1", data.GetProperty("latest").GetString());
         Assert.False(data.GetProperty("hasUpdate").GetBoolean());
         Assert.Equal(
             "https://github.com/BetaStudio2/ArchoeraCX/releases",

@@ -101,7 +101,7 @@ public sealed class PlatformPackClientTests
         }
 
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("ArchoeraCX/0.0.1+1 test");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("ArchoeraCX/0.1.0+1 test");
         var client = new TechnicPackClient(http);
         var archive = await client.ResolveArchiveAsync(
             "shivaxi-rlcraft",

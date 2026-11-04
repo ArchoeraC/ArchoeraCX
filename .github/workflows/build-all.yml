@@ -652,7 +652,7 @@ jobs:
           {
             echo "ArchoeraCX ${VER}"
             echo
-            echo "Development build for Linux x64, macOS arm64 and Windows x64."
+            echo "Release build for Linux x64, macOS arm64 and Windows x64."
             echo
             echo "- Linux: Ubuntu 24.04 tar.gz/.deb, Deepin 25 .deb, Fedora .rpm, Arch .pkg.tar.zst."
             echo "- Linux: portable .AppImage, .flatpak, NixOS store output."

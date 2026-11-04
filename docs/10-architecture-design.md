@@ -1008,7 +1008,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 ```json
 {
   "schemaVersion": 1,
-  "appVersion": "0.0.1+1",
+  "appVersion": "0.1.0+1",
   "coreDir": "/home/u/.local/share/archoera/lib",
   "dataDir": "/home/u/.local/share/archoera",
   "cacheDir": "/home/u/.cache/archoera",
@@ -1049,7 +1049,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 ```json
 {
   "name": "archoera_cs",
-  "version": "0.0.1+1",
+  "version": "0.1.0+1",
   "abiVersion": 1,
   "capabilities": ["instance", "java", "version", "account", "resource", "mod", "modpack", "launch", "policy", "crash"],
   "methods": ["instance.list", "java.scan", "version.install", "launch.start"],

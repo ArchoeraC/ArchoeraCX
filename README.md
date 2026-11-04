@@ -6,9 +6,6 @@
 
 > 开源、多端、面向 Minecraft: Java Edition 的混合架构启动器
 
-> [!WARNING]
-> **开发版**：功能不完整，可能损坏实例或配置数据；请勿用于正式环境或重要实例。
-
 ---
 
 ArchoeraCX 是一个开源的**跨平台 Minecraft: Java Edition 启动器**
