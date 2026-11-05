@@ -41,6 +41,7 @@ class AppSettings {
     this.logRetentionMegabytes = 32,
     this.shareLoaderFiles = true,
     this.preferPureJavaLoaderInstall = true,
+    this.backupBeforeUpdate = true,
     this.memoryMode = 'auto',
     this.gameOptimization = true,
   });
@@ -159,6 +160,11 @@ class AppSettings {
   /// The dialog can still override it for one install.
   final bool preferPureJavaLoaderInstall;
 
+  /// Copies the instance directory into `<instance>/.archoera/backups/` before
+  /// a loader or game update and rolls it back when the update fails. Turning
+  /// this off skips the copy, so a failed update has no rollback package.
+  final bool backupBeforeUpdate;
+
   /// `auto` derives the heap from the version, loader, mod count and installed
   /// RAM; `manual` uses [memoryMinMb] / [memoryMaxMb] and only warns when they
   /// are too small.
@@ -249,6 +255,7 @@ class AppSettings {
       shareLoaderFiles: value['shareLoaderFiles'] != false,
       preferPureJavaLoaderInstall:
           value['preferPureJavaLoaderInstall'] != false,
+      backupBeforeUpdate: value['backupBeforeUpdate'] != false,
       memoryMode: value['memoryMode'] == 'manual' ? 'manual' : 'auto',
       gameOptimization: value['gameOptimization'] != false,
     );

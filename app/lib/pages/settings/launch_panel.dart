@@ -186,10 +186,22 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     }
   }
 
-  Future<void> _setGameOptimization(bool enabled) async {    try {
+  Future<void> _setGameOptimization(bool enabled) async {
+    try {
       await ref
           .read(appSettingsProvider.notifier)
           .setRuntimeOptions(gameOptimization: enabled);
+    } catch (error) {
+      if (!mounted) return;
+      toast('$error', type: ToastType.error);
+    }
+  }
+
+  Future<void> _setBackupBeforeUpdate(bool enabled) async {
+    try {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setRuntimeOptions(backupBeforeUpdate: enabled);
     } catch (error) {
       if (!mounted) return;
       toast('$error', type: ToastType.error);
@@ -205,6 +217,7 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
     final preferPureJavaLoaderInstall =
         settings?.preferPureJavaLoaderInstall ?? true;
     final gameOptimization = settings?.gameOptimization ?? true;
+    final backupBeforeUpdate = settings?.backupBeforeUpdate ?? true;
     final desktop = ref.watch(desktopPlatformProvider);
     final prefs = ref.watch(preferencesProvider);
     final prefsNotifier = ref.read(preferencesProvider.notifier);
@@ -231,6 +244,16 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
             key: const ValueKey('settings-quit-after-game-exit'),
             value: prefs.quitAfterGameExit,
             onChanged: prefsNotifier.setQuitAfterGameExit,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.notifications,
+          title: l10n.settingsFocusMode,
+          subtitle: l10n.settingsFocusModeDesc,
+          trailing: Switch(
+            key: const ValueKey('settings-focus-mode'),
+            value: prefs.focusMode,
+            onChanged: prefsNotifier.setFocusMode,
           ),
         ),
         _AppearanceTile(
@@ -261,6 +284,16 @@ class _LaunchSettingsPanelState extends ConsumerState<_LaunchSettingsPanel> {
             key: const ValueKey('settings-prefer-pure-java-loader'),
             value: preferPureJavaLoaderInstall,
             onChanged: _setPreferPureJavaLoaderInstall,
+          ),
+        ),
+        _AppearanceTile(
+          icon: AppIcons.reset,
+          title: l10n.settingsBackupBeforeUpdate,
+          subtitle: l10n.settingsBackupBeforeUpdateDesc,
+          trailing: Switch(
+            key: const ValueKey('settings-backup-before-update'),
+            value: backupBeforeUpdate,
+            onChanged: _setBackupBeforeUpdate,
           ),
         ),
       ],

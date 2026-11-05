@@ -635,32 +635,14 @@ abstract class AppLocalizations {
   /// No description provided for @instanceDeleteFiles.
   ///
   /// In en, this message translates to:
-  /// **'Also delete local files'**
+  /// **'Also move local files to the trash'**
   String get instanceDeleteFiles;
 
-  /// No description provided for @instanceDeleteFilesHint.
+  /// Explains that local files go into the system trash when deleting an instance.
   ///
   /// In en, this message translates to:
-  /// **'Removes game files, mods, logs and configs in the instance folder. This cannot be undone.'**
+  /// **'Moves game files, mods, logs and configs in the instance folder into the system trash, where they can be restored.'**
   String get instanceDeleteFilesHint;
-
-  /// No description provided for @instanceDeleteFilesConfirmTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete local files?'**
-  String get instanceDeleteFilesConfirmTitle;
-
-  /// Second confirmation showing the instance folder that will be deleted.
-  ///
-  /// In en, this message translates to:
-  /// **'This permanently deletes the folder and everything inside it:\n{path}'**
-  String instanceDeleteFilesConfirmBody(String path);
-
-  /// No description provided for @instanceDeleteFilesConfirmAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete permanently'**
-  String get instanceDeleteFilesConfirmAction;
 
   /// No description provided for @instanceDeleteDone.
   ///
@@ -671,7 +653,7 @@ abstract class AppLocalizations {
   /// No description provided for @instanceDeleteDoneFiles.
   ///
   /// In en, this message translates to:
-  /// **'Instance and local files deleted.'**
+  /// **'Instance deleted and local files moved to the trash.'**
   String get instanceDeleteDoneFiles;
 
   /// No description provided for @instanceDeleteFilesKeptMissing.
@@ -683,25 +665,31 @@ abstract class AppLocalizations {
   /// No description provided for @instanceDeleteFilesKeptShared.
   ///
   /// In en, this message translates to:
-  /// **'Instance deleted, but the folder is shared with another instance or instance root, so it was kept.'**
+  /// **'Instance not deleted: the folder is shared with another instance or instance root, so it was kept.'**
   String get instanceDeleteFilesKeptShared;
 
   /// No description provided for @instanceDeleteFilesKeptUnsafe.
   ///
   /// In en, this message translates to:
-  /// **'Instance deleted, but the folder path is unsafe, so it was kept.'**
+  /// **'Instance not deleted: the folder path is unsafe.'**
   String get instanceDeleteFilesKeptUnsafe;
 
   /// No description provided for @instanceDeleteFilesKeptFailed.
   ///
   /// In en, this message translates to:
-  /// **'Instance deleted, but the local files could not be removed. Clean them up manually.'**
+  /// **'Instance not deleted: moving the local files failed. Check permissions and retry.'**
   String get instanceDeleteFilesKeptFailed;
+
+  /// No description provided for @instanceDeleteFilesKeptTrashFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance not deleted: the system trash is unavailable, so the local files were kept. Check the system trash configuration or disk permissions and retry.'**
+  String get instanceDeleteFilesKeptTrashFailed;
 
   /// No description provided for @instanceDeleteFilesKeptOutsideRoot.
   ///
   /// In en, this message translates to:
-  /// **'Instance deleted, but the folder is outside the managed instances directory, so it was kept.'**
+  /// **'Instance not deleted: the folder is outside the managed instances directory.'**
   String get instanceDeleteFilesKeptOutsideRoot;
 
   /// No description provided for @instanceCheckQuick.
@@ -823,6 +811,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Starting game…'**
   String get launchStarting;
+
+  /// No description provided for @launchProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting {name}'**
+  String launchProgressTitle(String name);
+
+  /// No description provided for @launchStageInstance.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading instance settings'**
+  String get launchStageInstance;
+
+  /// No description provided for @launchStageAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing account'**
+  String get launchStageAccount;
+
+  /// No description provided for @launchStageVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading game version'**
+  String get launchStageVersion;
+
+  /// No description provided for @launchStageJava.
+  ///
+  /// In en, this message translates to:
+  /// **'Selecting Java'**
+  String get launchStageJava;
+
+  /// No description provided for @launchStageFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking game files'**
+  String get launchStageFiles;
+
+  /// No description provided for @launchStageRepair.
+  ///
+  /// In en, this message translates to:
+  /// **'Repairing missing files'**
+  String get launchStageRepair;
+
+  /// No description provided for @launchStagePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Building launch arguments'**
+  String get launchStagePlan;
+
+  /// No description provided for @launchStageProcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting game process'**
+  String get launchStageProcess;
+
+  /// No description provided for @launchStageSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Not needed'**
+  String get launchStageSkipped;
+
+  /// No description provided for @launchFailureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch failed'**
+  String get launchFailureTitle;
+
+  /// No description provided for @launchFailureStage.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed stage'**
+  String get launchFailureStage;
+
+  /// No description provided for @launchFailureCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Error code'**
+  String get launchFailureCode;
+
+  /// No description provided for @launchFailureJava.
+  ///
+  /// In en, this message translates to:
+  /// **'Java'**
+  String get launchFailureJava;
+
+  /// No description provided for @launchFailureJavaRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires Java'**
+  String get launchFailureJavaRequired;
+
+  /// No description provided for @launchFailureInstallJava.
+  ///
+  /// In en, this message translates to:
+  /// **'Install a matching Java'**
+  String get launchFailureInstallJava;
+
+  /// No description provided for @launchFailureLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Log file'**
+  String get launchFailureLog;
+
+  /// No description provided for @launchFailureRetryable.
+  ///
+  /// In en, this message translates to:
+  /// **'You can retry, or repair the missing files first.'**
+  String get launchFailureRetryable;
+
+  /// No description provided for @launchFailureCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy diagnostics'**
+  String get launchFailureCopy;
+
+  /// No description provided for @launchFailureCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics copied'**
+  String get launchFailureCopied;
 
   /// No description provided for @launchNoAccount.
   ///
@@ -1538,6 +1646,18 @@ abstract class AppLocalizations {
   /// **'Applies to this desktop only. Game logs stay available from the instance menu (View logs) while the game runs.'**
   String get settingsBehaviorNote;
 
+  /// Desktop switch that blocks automatic sleep and screen locking while a game runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus mode'**
+  String get settingsFocusMode;
+
+  /// Explains the system-level effect and platform limitation of focus mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks automatic sleep and screen locking while the game runs, and restores them on exit. Some desktop environments may not support it.'**
+  String get settingsFocusModeDesc;
+
   /// Global selector for windowed, fullscreen or maximized launch.
   ///
   /// In en, this message translates to:
@@ -1729,6 +1849,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The loader install dialog starts with \"Use the official installer (pure Java)\" selected; each install can still switch to the standard Java flow. Installers without a client CLI (Forge 1.7.10 and older) fall back automatically.'**
   String get settingsPreferPureJavaLoaderInstallDesc;
+
+  /// Global switch for pre-update backups and failure rollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up before updates'**
+  String get settingsBackupBeforeUpdate;
+
+  /// No description provided for @settingsBackupBeforeUpdateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the instance directory to .archoera/backups before installing or updating the game and loaders. A failed update is rolled back automatically, and the backup is deleted only after the rollback is verified. Turning this off means updates no longer create a rollback package.'**
+  String get settingsBackupBeforeUpdateDesc;
 
   /// No description provided for @settingsSectionGameArgs.
   ///
@@ -5698,19 +5830,19 @@ abstract class AppLocalizations {
   /// No description provided for @crashRuleGraphicsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Graphics/OpenGL initialization failed'**
+  /// **'Graphics initialization failed'**
   String get crashRuleGraphicsTitle;
 
   /// No description provided for @crashRuleGraphicsDetail.
   ///
   /// In en, this message translates to:
-  /// **'The game could not create an OpenGL window.'**
+  /// **'The game could not create a graphics window (OpenGL or Vulkan).'**
   String get crashRuleGraphicsDetail;
 
   /// No description provided for @crashRuleGraphicsFix.
   ///
   /// In en, this message translates to:
-  /// **'Update the graphics driver, run on the dedicated GPU, and avoid remote desktop or virtual machines.'**
+  /// **'Update the graphics driver, run on the dedicated GPU, and make sure the driver supports the game\'s rendering backend (OpenGL or Vulkan); avoid remote desktop or virtual machines.'**
   String get crashRuleGraphicsFix;
 
   /// No description provided for @crashRuleModTitle.

@@ -164,18 +164,16 @@
   "instanceDuplicateInvalidName": "Enter an instance name.",
   "instanceDeleteConfirm": "Delete “{name}”?",
   "instanceDeleteBody": "The instance is removed from the launcher list.",
-  "instanceDeleteFiles": "Also delete local files",
-  "instanceDeleteFilesHint": "Removes game files, mods, logs and configs in the instance folder. This cannot be undone.",
-  "instanceDeleteFilesConfirmTitle": "Delete local files?",
-  "instanceDeleteFilesConfirmBody": "This permanently deletes the folder and everything inside it:\n{path}",
-  "instanceDeleteFilesConfirmAction": "Delete permanently",
+  "instanceDeleteFiles": "Also move local files to the trash",
+  "instanceDeleteFilesHint": "Moves game files, mods, logs and configs in the instance folder into the system trash, where they can be restored.",
   "instanceDeleteDone": "Instance deleted.",
-  "instanceDeleteDoneFiles": "Instance and local files deleted.",
+  "instanceDeleteDoneFiles": "Instance deleted and local files moved to the trash.",
   "instanceDeleteFilesKeptMissing": "Instance deleted; the local folder was already gone.",
-  "instanceDeleteFilesKeptShared": "Instance deleted, but the folder is shared with another instance or instance root, so it was kept.",
-  "instanceDeleteFilesKeptUnsafe": "Instance deleted, but the folder path is unsafe, so it was kept.",
-  "instanceDeleteFilesKeptFailed": "Instance deleted, but the local files could not be removed. Clean them up manually.",
-  "instanceDeleteFilesKeptOutsideRoot": "Instance deleted, but the folder is outside the managed instances directory, so it was kept.",
+  "instanceDeleteFilesKeptShared": "Instance not deleted: the folder is shared with another instance or instance root, so it was kept.",
+  "instanceDeleteFilesKeptUnsafe": "Instance not deleted: the folder path is unsafe.",
+  "instanceDeleteFilesKeptFailed": "Instance not deleted: moving the local files failed. Check permissions and retry.",
+  "instanceDeleteFilesKeptTrashFailed": "Instance not deleted: the system trash is unavailable, so the local files were kept. Check the system trash configuration or disk permissions and retry.",
+  "instanceDeleteFilesKeptOutsideRoot": "Instance not deleted: the folder is outside the managed instances directory.",
   "instanceCheckQuick": "Quick check",
   "instanceCheckFull": "Full check",
   "instanceCheckTitle": "Dependency check",
@@ -251,18 +249,41 @@
       }
     }
   },
-  "@instanceDeleteFilesConfirmBody": {
-    "description": "Second confirmation showing the instance folder that will be deleted.",
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
+  "@instanceDeleteFilesHint": {
+    "description": "Explains that local files go into the system trash when deleting an instance."
   },
+  "@instanceDeleteFilesKeptTrashFailed": {},
   "instanceLaunchNotReady": "Launch flow is not wired yet.",
   "launchStarted": "Game started (PID {pid}).",
   "launchFailed": "Launch failed.",
   "launchStarting": "Starting game…",
+  "launchProgressTitle": "Starting {name}",
+  "@launchProgressTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "launchStageInstance": "Reading instance settings",
+  "launchStageAccount": "Preparing account",
+  "launchStageVersion": "Loading game version",
+  "launchStageJava": "Selecting Java",
+  "launchStageFiles": "Checking game files",
+  "launchStageRepair": "Repairing missing files",
+  "launchStagePlan": "Building launch arguments",
+  "launchStageProcess": "Starting game process",
+  "launchStageSkipped": "Not needed",
+  "launchFailureTitle": "Launch failed",
+  "launchFailureStage": "Failed stage",
+  "launchFailureCode": "Error code",
+  "launchFailureJava": "Java",
+  "launchFailureJavaRequired": "Requires Java",
+  "launchFailureInstallJava": "Install a matching Java",
+  "launchFailureLog": "Log file",
+  "launchFailureRetryable": "You can retry, or repair the missing files first.",
+  "launchFailureCopy": "Copy diagnostics",
+  "launchFailureCopied": "Diagnostics copied",
   "launchNoAccount": "Add an account before launching.",
   "launchOfflineOnly": "Basic launch supports offline accounts only.",
   "launchAutoRepairFailed": "Launch files are missing and automatic repair failed. Reinstall the loader from the instance menu.",
@@ -563,6 +584,14 @@
   "@settingsBehaviorNote": {
     "description": "Note under the launcher behavior switches, pointing at the existing log viewer."
   },
+  "settingsFocusMode": "Focus mode",
+  "@settingsFocusMode": {
+    "description": "Desktop switch that blocks automatic sleep and screen locking while a game runs."
+  },
+  "settingsFocusModeDesc": "Blocks automatic sleep and screen locking while the game runs, and restores them on exit. Some desktop environments may not support it.",
+  "@settingsFocusModeDesc": {
+    "description": "Explains the system-level effect and platform limitation of focus mode."
+  },
   "settingsWindowMode": "Window mode",
   "@settingsWindowMode": {
     "description": "Global selector for windowed, fullscreen or maximized launch."
@@ -669,6 +698,12 @@
     "description": "Global default for the loader install mode."
   },
   "@settingsPreferPureJavaLoaderInstallDesc": {},
+  "settingsBackupBeforeUpdate": "Back up before updates",
+  "settingsBackupBeforeUpdateDesc": "Copies the instance directory to .archoera/backups before installing or updating the game and loaders. A failed update is rolled back automatically, and the backup is deleted only after the rollback is verified. Turning this off means updates no longer create a rollback package.",
+  "@settingsBackupBeforeUpdate": {
+    "description": "Global switch for pre-update backups and failure rollback."
+  },
+  "@settingsBackupBeforeUpdateDesc": {},
   "settingsSectionGameArgs": "Extra game arguments",
   "settingsGameArgsNote": "Appended after the vanilla arguments and split on spaces; leave empty for none.",
   "settingsSectionCommands": "Commands",
@@ -2810,9 +2845,9 @@
     }
   },
   "crashRuleMainClassFix": "Reinstall the loader or run loader repair, then try again.",
-  "crashRuleGraphicsTitle": "Graphics/OpenGL initialization failed",
-  "crashRuleGraphicsDetail": "The game could not create an OpenGL window.",
-  "crashRuleGraphicsFix": "Update the graphics driver, run on the dedicated GPU, and avoid remote desktop or virtual machines.",
+  "crashRuleGraphicsTitle": "Graphics initialization failed",
+  "crashRuleGraphicsDetail": "The game could not create a graphics window (OpenGL or Vulkan).",
+  "crashRuleGraphicsFix": "Update the graphics driver, run on the dedicated GPU, and make sure the driver supports the game's rendering backend (OpenGL or Vulkan); avoid remote desktop or virtual machines.",
   "crashRuleModTitle": "A mod failed to start",
   "crashRuleModDetail": "Mod {mod} threw an error during the {stage} stage.",
   "@crashRuleModDetail": {

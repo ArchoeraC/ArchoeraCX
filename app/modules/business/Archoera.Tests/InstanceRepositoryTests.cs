@@ -664,7 +664,7 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
-    public async Task Delete_with_files_removes_the_instance_directory()
+    public async Task Delete_removes_the_registry_but_keeps_the_directory()
     {
         var directory = TempDirectory();
         try
@@ -685,12 +685,13 @@ public sealed class InstanceRepositoryTests
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
                     "instance.delete",
-                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    $$"""{"id":"{{id}}"}""",
                     CancellationToken.None));
             var data = document.RootElement.GetProperty("data");
             Assert.True(data.GetProperty("deleted").GetBoolean());
-            Assert.True(data.GetProperty("filesDeleted").GetBoolean());
-            Assert.False(Directory.Exists(root));
+            // Moving files to the trash is a separate trashPlan + system.trash
+            // step; delete itself never touches the directory.
+            Assert.True(Directory.Exists(root));
         }
         finally
         {
@@ -699,7 +700,7 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
-    public async Task Delete_keeps_an_instance_outside_the_configured_root()
+    public async Task Trash_plan_rejects_an_instance_outside_the_configured_root()
     {
         var directory = TempDirectory();
         try
@@ -712,23 +713,21 @@ public sealed class InstanceRepositoryTests
                 settings);
 
             // A custom instance created outside the configured root still has
-            // the marker, but recursive deletion must not follow an arbitrary
-            // registry path.
+            // the marker, but moving an arbitrary registry path must be refused.
             var root = Path.Combine(directory, "custom-instance");
             var id = await CreateAsync(service, root, "Custom Root");
             Assert.True(File.Exists(Path.Combine(root, ".archoera", "instance.json")));
 
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
-                    "instance.delete",
-                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    "instance.trashPlan",
+                    $$"""{"id":"{{id}}"}""",
                     CancellationToken.None));
             var data = document.RootElement.GetProperty("data");
-            Assert.True(data.GetProperty("deleted").GetBoolean());
-            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.False(data.GetProperty("trashable").GetBoolean());
             Assert.Equal(
                 "outside_root",
-                data.GetProperty("filesSkippedReason").GetString());
+                data.GetProperty("skipReason").GetString());
             Assert.True(Directory.Exists(root));
         }
         finally
@@ -738,7 +737,7 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
-    public async Task Delete_keeps_a_shared_instance_root()
+    public async Task Trash_plan_rejects_a_shared_instance_root()
     {
         var directory = TempDirectory();
         try
@@ -757,15 +756,14 @@ public sealed class InstanceRepositoryTests
 
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
-                    "instance.delete",
-                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    "instance.trashPlan",
+                    $$"""{"id":"{{id}}"}""",
                     CancellationToken.None));
             var data = document.RootElement.GetProperty("data");
-            Assert.True(data.GetProperty("deleted").GetBoolean());
-            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.False(data.GetProperty("trashable").GetBoolean());
             Assert.Equal(
                 "shared_root",
-                data.GetProperty("filesSkippedReason").GetString());
+                data.GetProperty("skipReason").GetString());
             Assert.True(Directory.Exists(sharedRoot));
         }
         finally
@@ -775,7 +773,7 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
-    public async Task Delete_keeps_a_folder_without_the_instance_marker()
+    public async Task Trash_plan_rejects_a_folder_without_the_instance_marker()
     {
         var directory = TempDirectory();
         try
@@ -792,14 +790,14 @@ public sealed class InstanceRepositoryTests
 
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
-                    "instance.delete",
-                    $$"""{"id":"{{id}}","deleteFiles":true}""",
+                    "instance.trashPlan",
+                    $$"""{"id":"{{id}}"}""",
                     CancellationToken.None));
             var data = document.RootElement.GetProperty("data");
-            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.False(data.GetProperty("trashable").GetBoolean());
             Assert.Equal(
                 "not_managed",
-                data.GetProperty("filesSkippedReason").GetString());
+                data.GetProperty("skipReason").GetString());
             Assert.True(Directory.Exists(root));
         }
         finally
@@ -809,28 +807,30 @@ public sealed class InstanceRepositoryTests
     }
 
     [Fact]
-    public async Task Delete_keeps_files_unless_requested()
+    public async Task Trash_plan_accepts_a_managed_instance_directory()
     {
         var directory = TempDirectory();
         try
         {
             var dataRoot = Path.Combine(directory, "data");
             var settings = new JsonAppSettingsStore(dataRoot);
+            var instancesRoot = Path.Combine(directory, "instances");
+            await settings.SaveInstancesRootAsync(instancesRoot);
             var service = new InstanceModuleService(
                 new SqliteInstanceRepository(dataRoot, settings),
                 settings);
 
-            var root = Path.Combine(directory, "keep-me");
-            var id = await CreateAsync(service, root, "Keep Files");
+            var root = Path.Combine(instancesRoot, "trashable-instance");
+            var id = await CreateAsync(service, root, "Trashable");
 
             using var document = JsonDocument.Parse(
                 await service.HandleAsync(
-                    "instance.delete",
+                    "instance.trashPlan",
                     $$"""{"id":"{{id}}"}""",
                     CancellationToken.None));
             var data = document.RootElement.GetProperty("data");
-            Assert.True(data.GetProperty("deleted").GetBoolean());
-            Assert.False(data.GetProperty("filesDeleted").GetBoolean());
+            Assert.True(data.GetProperty("trashable").GetBoolean());
+            Assert.Equal(Path.GetFullPath(root), data.GetProperty("path").GetString());
             Assert.True(Directory.Exists(root));
         }
         finally

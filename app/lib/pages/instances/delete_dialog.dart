@@ -1,8 +1,8 @@
 part of '../instances_page.dart';
 
 /// First confirmation before deleting an instance. Pops `true` when the user
-/// also wants the local files removed, `false` for registry-only deletion and
-/// `null` on cancel.
+/// also wants the local files moved to the trash, `false` for registry-only
+/// deletion and `null` on cancel.
 class _InstanceDeleteDialog extends StatefulWidget {
   const _InstanceDeleteDialog({required this.l10n, required this.instance});
 
@@ -14,8 +14,9 @@ class _InstanceDeleteDialog extends StatefulWidget {
 }
 
 class _InstanceDeleteDialogState extends State<_InstanceDeleteDialog> {
-  // Off by default: deleting files is the irreversible part of this action.
-  bool _deleteFiles = false;
+  // Off by default: moving files is the destructive-looking part of the
+  // action, even though the trash keeps them recoverable.
+  bool _trashFiles = false;
 
   bool get _canDeleteFiles =>
       !widget.instance.missing && widget.instance.rootPath.isNotEmpty;
@@ -37,9 +38,9 @@ class _InstanceDeleteDialogState extends State<_InstanceDeleteDialog> {
             Text(l10n.instanceDeleteBody),
             const SizedBox(height: AppSpacing.sm),
             CheckboxListTile(
-              value: _deleteFiles,
+              value: _trashFiles,
               onChanged: _canDeleteFiles
-                  ? (value) => setState(() => _deleteFiles = value ?? false)
+                  ? (value) => setState(() => _trashFiles = value ?? false)
                   : null,
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
@@ -68,7 +69,7 @@ class _InstanceDeleteDialogState extends State<_InstanceDeleteDialog> {
             backgroundColor: tokens.danger,
             foregroundColor: tokens.onAccent,
           ),
-          onPressed: () => Navigator.of(context).pop(_deleteFiles),
+          onPressed: () => Navigator.of(context).pop(_trashFiles),
           child: Text(l10n.commonDelete),
         ),
       ],

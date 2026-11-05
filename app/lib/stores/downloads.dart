@@ -90,7 +90,7 @@ class DownloadsNotifier extends Notifier<void> {
     );
 
     _detach(
-      () async {
+      () => _runUpdate(instance, () async {
         final result = await client.executeDownload(
           plan.plan,
           label: '${instance.name} · ${instance.gameVersion}',
@@ -115,7 +115,7 @@ class DownloadsNotifier extends Notifier<void> {
           );
         }
         await ref.read(instancesProvider.notifier).reload();
-      },
+      }),
       successMessage: successMessage,
       failureMessage: failureMessage,
       cancelledMessage: cancelledMessage,
@@ -144,7 +144,7 @@ class DownloadsNotifier extends Notifier<void> {
     );
 
     _detach(
-      () async {
+      () => _runUpdate(instance, () async {
         final result = await client.executeDownload(plan.plan, label: label);
         if (!result.ok) {
           throw StateError(
@@ -161,7 +161,7 @@ class DownloadsNotifier extends Notifier<void> {
           label: instance.gameVersion,
         );
         await ref.read(instancesProvider.notifier).reload();
-      },
+      }),
       successMessage: successMessage,
       failureMessage: failureMessage,
       cancelledMessage: cancelledMessage,
@@ -370,7 +370,7 @@ class DownloadsNotifier extends Notifier<void> {
     if (usePureJava && (kind == 'forge' || kind == 'neoforge')) {
       final java = await client.selectJava(gameVersion: gameVersion);
       _detach(
-        () async {
+        () => _runUpdate(instance, () async {
           await client.installLoaderWithJava(
             root: instance.rootPath,
             installerPath: installerPath,
@@ -382,7 +382,7 @@ class DownloadsNotifier extends Notifier<void> {
             label: label,
           );
           await ref.read(instancesProvider.notifier).reload();
-        },
+        }),
         successMessage: successMessage,
         failureMessage: failureMessage,
         cancelledMessage: cancelledMessage,
@@ -427,7 +427,7 @@ class DownloadsNotifier extends Notifier<void> {
         : plan.installRoot;
 
     _detach(
-      () async {
+      () => _runUpdate(instance, () async {
         final result = await client.executeDownload(plan.plan, label: label);
         if (!result.ok) {
           throw StateError(
@@ -465,12 +465,65 @@ class DownloadsNotifier extends Notifier<void> {
           loaderVersion: loaderVersion,
         );
         await ref.read(instancesProvider.notifier).reload();
-      },
+      }),
       successMessage: successMessage,
       failureMessage: failureMessage,
       cancelledMessage: cancelledMessage,
       describeError: describeError,
     );
+  }
+
+  /// Runs an instance update with the pre-update backup and failure rollback.
+  ///
+  /// The setting is on by default. A backup that cannot be created aborts the
+  /// update before anything is written; a failed update restores the snapshot
+  /// and only the verified restore (performed by C#) removes it. If the rollback
+  /// itself fails, the snapshot is kept and its path is reported.
+  Future<void> _runUpdate(
+    GameInstance instance,
+    Future<void> Function() job,
+  ) async {
+    final backupEnabled =
+        ref.read(appSettingsProvider).value?.backupBeforeUpdate ?? true;
+    // A missing instance directory has nothing to snapshot; the update will
+    // recreate the files it needs.
+    if (!backupEnabled || instance.missing || instance.rootPath.isEmpty) {
+      await job();
+      return;
+    }
+
+    final client = _client();
+    final snapshot = await client.createInstanceBackup(instance.id);
+    try {
+      await job();
+    } catch (error) {
+      try {
+        final restore = await client.restoreInstanceBackup(
+          instance.id,
+          snapshot.backupId,
+        );
+        if (!restore.restored) {
+          throw StateError(
+            'The rollback did not complete: ${restore.error ?? 'unknown reason'}. '
+            'Backup kept at ${restore.path}.',
+          );
+        }
+      } catch (restoreError) {
+        throw StateError(
+          'Update failed and the rollback did not complete: $restoreError. '
+          'Original error: $error',
+        );
+      }
+      await ref.read(instancesProvider.notifier).reload();
+      throw StateError('$error');
+    }
+
+    // A leftover snapshot is harmless; the next failed update would just keep
+    // it. Do not turn a successful update into a failure because cleanup raced
+    // with an antivirus scanner or a file lock.
+    try {
+      await client.discardInstanceBackup(instance.id, snapshot.backupId);
+    } catch (_) {}
   }
 
   /// Copies [instance] into a new folder under [name], in the background.

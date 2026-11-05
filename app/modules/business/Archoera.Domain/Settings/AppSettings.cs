@@ -110,6 +110,13 @@ namespace Archoera.Domain.Settings;
 /// <c>-Dorg.lwjgl.sdl.libname</c>. Same gating as
 /// <paramref name="NativeGlfwPath"/>.
 /// </param>
+/// <param name="BackupBeforeUpdate">
+/// Copies the instance directory into
+/// <c>&lt;instance&gt;/.archoera/backups/</c> before a loader or game update.
+/// When the update fails the launcher restores that copy and only deletes it
+/// after the restore is verified. Turning this off skips the copy entirely;
+/// updates then have no rollback package.
+/// </param>
 public sealed record AppSettings(
     string InstancesRoot,
     string DataRoot,
@@ -149,10 +156,11 @@ public sealed record AppSettings(
     bool DeveloperMode = false,
     string? NativeGlfwPath = null,
     string? NativeOpenALPath = null,
-    string? NativeSdlPath = null)
+    string? NativeSdlPath = null,
+    bool BackupBeforeUpdate = true)
 {
     /// <summary>Current settings document schema.</summary>
-    public const int CurrentSchemaVersion = 16;
+    public const int CurrentSchemaVersion = 17;
 
     /// <summary>Supported heap sizing modes.</summary>
     public static class MemoryModes

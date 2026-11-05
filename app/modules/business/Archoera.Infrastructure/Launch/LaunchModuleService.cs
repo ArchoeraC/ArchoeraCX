@@ -559,7 +559,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     private async Task<byte[]> MemoryAsync(
         string? paramsJson,
         CancellationToken cancellationToken)
-    {        try
+    {
+        try
         {
             var instanceId = ReadRequired(paramsJson, "instanceId");
             var instance = (await _instances.ListAsync(cancellationToken).ConfigureAwait(false))
@@ -715,9 +716,13 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             return ModuleJson.Error("E_UNSUPPORTED", $"unsupported launch method '{method}'");
         }
 
+        var stage = LaunchProgress.StageInstance;
+        var instanceId = string.Empty;
+        JavaRuntimeInfo? java = null;
+        string? logPath = null;
         try
         {
-            var instanceId = ReadRequired(paramsJson, "instanceId");
+            instanceId = ReadRequired(paramsJson, "instanceId");
             var mode = (ReadOptional(paramsJson, "mode") ?? "offline").ToLowerInvariant();
             if (mode is not ("offline" or "online"))
             {
@@ -756,6 +761,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             await LaunchCommandRunner
                 .RunPreLoadAsync(instance, settings, cancellationToken)
                 .ConfigureAwait(false);
+
+            LaunchProgress.Report(LaunchProgress.Instance);
+            stage = LaunchProgress.StageAccount;
 
             var account = await _accounts.GetActiveAsync(cancellationToken).ConfigureAwait(false)
                 ?? throw new LaunchException("ACCOUNT_REQUIRED", "add an account before launching");
@@ -817,12 +825,18 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     "A verified Microsoft account is required before offline launch.");
             }
 
+            LaunchProgress.Report(LaunchProgress.Account);
+            stage = LaunchProgress.StageVersion;
+
             var paths = LaunchPaths.Resolve(instance.RootPath);
             var version = await LoadOrRepairVersionAsync(instance, paths, cancellationToken)
                 .ConfigureAwait(false);
 
+            LaunchProgress.Report(LaunchProgress.Version);
+            stage = LaunchProgress.StageJava;
+
             var instanceJavaPath = settings.JavaAuto ? null : settings.JavaPath;
-            var java = !string.IsNullOrWhiteSpace(version.InheritsFrom)
+            java = !string.IsNullOrWhiteSpace(version.InheritsFrom)
                 ? await _javaSelection
                     .SelectAsync(
                         null,
@@ -832,6 +846,9 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     .ConfigureAwait(false)
                 : await SelectJavaAsync(settings, version, cancellationToken)
                     .ConfigureAwait(false);
+
+            LaunchProgress.Report(LaunchProgress.Java);
+            stage = LaunchProgress.StageFiles;
 
             // Forge/NeoForge instances also need generated-artifact checks.
             // Forge lists its generated jars in the merged profile, so
@@ -858,6 +875,10 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                 !filesCheck.Ok ||
                 !loaderOk ||
                 !string.IsNullOrWhiteSpace(version.InheritsFrom);
+            var repairAttempted = needsRepair;
+
+            LaunchProgress.Report(LaunchProgress.Files);
+            stage = LaunchProgress.StageRepair;
 
             // Prefer repairing from an installer already on disk before asking
             // the network for anything. Only NeoForge hides generated jars from
@@ -898,6 +919,15 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     .ConfigureAwait(false);
             }
 
+            if (repairAttempted)
+            {
+                LaunchProgress.Report(LaunchProgress.Repair);
+            }
+
+            stage = repairAttempted
+                ? LaunchProgress.StageRepair
+                : LaunchProgress.StageFiles;
+
             var fileCheck = LaunchPlanBuilder.CheckFiles(version, paths);
             if (!fileCheck.Ok)
             {
@@ -913,6 +943,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
                     loaderCheck.Code ?? "LAUNCH_FILES_MISSING",
                     loaderCheck.Message ?? "loader files are missing");
             }
+
+            stage = LaunchProgress.StagePlan;
 
             // Optimization depends on the hardware the caller probed through
             // the C++ bridge (`system.gpu`). Without it we still get the
@@ -946,12 +978,17 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             await LaunchCommandRunner
                 .RunPreLaunchAsync(instance, settings, plan, cancellationToken)
                 .ConfigureAwait(false);
-            var (process, logPath) = LaunchProcessStarter.Start(
+
+            LaunchProgress.Report(LaunchProgress.Plan);
+            stage = LaunchProgress.StageProcess;
+
+            var (process, startedLogPath) = LaunchProcessStarter.Start(
                 instance.Id,
                 plan,
                 settings.LogRetentionFiles,
                 settings.LogRetentionMegabytes,
                 LaunchCommandRunner.CreatePostExitCallback(instance, settings, plan));
+            logPath = startedLogPath;
 
             // The process is running, so this session counts as played. The
             // write happens here (not in the UI) so hiding the launcher or
@@ -959,6 +996,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             await InstancePlayHistory
                 .MarkPlayedAsync(_instances, instance.Id, DateTimeOffset.UtcNow)
                 .ConfigureAwait(false);
+
+            LaunchProgress.Report(LaunchProgress.Process);
 
             return ModuleJson.Envelope(writer =>
             {
@@ -982,15 +1021,37 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         }
         catch (LaunchException exception)
         {
-            return ModuleJson.Error(exception.Code, exception.Message);
+            return LaunchFailureDetails.Error(
+                exception.Code,
+                exception.Message,
+                stage,
+                instanceId,
+                java?.Path,
+                java?.Version,
+                logPath,
+                exception.RequiredJavaMajor);
         }
         catch (CredentialVaultException exception)
         {
-            return ModuleJson.Error("E_VAULT", exception.Message);
+            return LaunchFailureDetails.Error(
+                "E_VAULT",
+                exception.Message,
+                stage,
+                instanceId,
+                java?.Path,
+                java?.Version,
+                logPath);
         }
         catch (ArgumentException exception)
         {
-            return ModuleJson.Error("E_INVALID", exception.Message);
+            return LaunchFailureDetails.Error(
+                "E_INVALID",
+                exception.Message,
+                stage,
+                instanceId,
+                java?.Path,
+                java?.Version,
+                logPath);
         }
         catch (OperationCanceledException)
         {
@@ -998,7 +1059,14 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         }
         catch (Exception exception)
         {
-            return ModuleJson.Error("LAUNCH_FAILED", exception.Message);
+            return LaunchFailureDetails.Error(
+                "LAUNCH_FAILED",
+                exception.Message,
+                stage,
+                instanceId,
+                java?.Path,
+                java?.Version,
+                logPath);
         }
     }
 
@@ -1031,13 +1099,15 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             {
                 throw new LaunchException(
                     "JAVA_MISSING",
-                    $"configured Java is not usable: {settings.JavaPath}");
+                    $"configured Java is not usable: {settings.JavaPath}",
+                    required);
             }
             if (required is not null && match.Major < required)
             {
                 throw new LaunchException(
                     "JAVA_VERSION_MISMATCH",
-                    $"Java {match.Major} is too old; this instance needs Java {required}");
+                    $"Java {match.Major} is too old; this instance needs Java {required}",
+                    required);
             }
             return match;
         }
@@ -1045,7 +1115,10 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         var runtimes = _java.Scan(JavaScanRequest.Default, cancellationToken);
         if (runtimes.Count == 0)
         {
-            throw new LaunchException("JAVA_MISSING", "no Java runtime found");
+            throw new LaunchException(
+                "JAVA_MISSING",
+                required is null ? "no Java runtime found" : $"no Java {required}+ runtime found",
+                required);
         }
 
         if (required is null) return runtimes[0];
@@ -1053,7 +1126,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         if (selected is not null) return selected;
         throw new LaunchException(
             "JAVA_VERSION_MISMATCH",
-            $"no Java {required}+ runtime found");
+            $"no Java {required}+ runtime found",
+            required);
     }
 
     private static int? InferMajor(string id)

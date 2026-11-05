@@ -313,42 +313,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instanceDeleteBody => '实例将从启动器列表中移除。';
 
   @override
-  String get instanceDeleteFiles => '同时删除本地文件';
+  String get instanceDeleteFiles => '同时把本地文件移到回收站';
 
   @override
-  String get instanceDeleteFilesHint => '删除实例目录中的游戏文件、Mod、日志与配置，无法恢复。';
-
-  @override
-  String get instanceDeleteFilesConfirmTitle => '确认删除本地文件？';
-
-  @override
-  String instanceDeleteFilesConfirmBody(String path) {
-    return '将永久删除以下目录及其全部内容：\n$path';
-  }
-
-  @override
-  String get instanceDeleteFilesConfirmAction => '永久删除';
+  String get instanceDeleteFilesHint => '把实例目录中的游戏文件、Mod、日志与配置移入系统回收站，可从回收站恢复。';
 
   @override
   String get instanceDeleteDone => '实例已删除。';
 
   @override
-  String get instanceDeleteDoneFiles => '实例及其本地文件已删除。';
+  String get instanceDeleteDoneFiles => '实例已删除，本地文件已移到回收站。';
 
   @override
-  String get instanceDeleteFilesKeptMissing => '实例已删除，但本地目录已不存在。';
+  String get instanceDeleteFilesKeptMissing => '实例已删除，本地目录此前已不存在。';
 
   @override
-  String get instanceDeleteFilesKeptShared => '实例已删除，但目录与其它实例或实例根共用，已保留。';
+  String get instanceDeleteFilesKeptShared => '实例未删除：目录与其它实例或实例根共用，已保留。';
 
   @override
-  String get instanceDeleteFilesKeptUnsafe => '实例已删除，但目录路径不安全，已保留。';
+  String get instanceDeleteFilesKeptUnsafe => '实例未删除：目录路径不安全。';
 
   @override
-  String get instanceDeleteFilesKeptFailed => '实例已删除，但本地文件删除失败，请手动清理。';
+  String get instanceDeleteFilesKeptFailed => '实例未删除：本地文件移动失败，请检查权限后重试。';
 
   @override
-  String get instanceDeleteFilesKeptOutsideRoot => '实例已删除，但目录不在受管理的实例根内，已保留。';
+  String get instanceDeleteFilesKeptTrashFailed =>
+      '实例未删除：系统回收站不可用，本地文件已保留。请检查系统回收站配置或磁盘权限后重试。';
+
+  @override
+  String get instanceDeleteFilesKeptOutsideRoot => '实例未删除：目录不在受管理的实例根内。';
 
   @override
   String get instanceCheckQuick => '快速检查';
@@ -417,6 +410,68 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get launchStarting => '正在启动游戏…';
+
+  @override
+  String launchProgressTitle(String name) {
+    return '正在启动 $name';
+  }
+
+  @override
+  String get launchStageInstance => '读取实例配置';
+
+  @override
+  String get launchStageAccount => '准备账户';
+
+  @override
+  String get launchStageVersion => '读取游戏版本';
+
+  @override
+  String get launchStageJava => '选择 Java';
+
+  @override
+  String get launchStageFiles => '校验游戏文件';
+
+  @override
+  String get launchStageRepair => '补全缺失文件';
+
+  @override
+  String get launchStagePlan => '生成启动参数';
+
+  @override
+  String get launchStageProcess => '启动游戏进程';
+
+  @override
+  String get launchStageSkipped => '无需此步';
+
+  @override
+  String get launchFailureTitle => '启动失败';
+
+  @override
+  String get launchFailureStage => '失败阶段';
+
+  @override
+  String get launchFailureCode => '错误代码';
+
+  @override
+  String get launchFailureJava => 'Java';
+
+  @override
+  String get launchFailureJavaRequired => '需要 Java';
+
+  @override
+  String get launchFailureInstallJava => '安装匹配的 Java';
+
+  @override
+  String get launchFailureLog => '日志文件';
+
+  @override
+  String get launchFailureRetryable => '可以直接重试，或先补全缺失文件。';
+
+  @override
+  String get launchFailureCopy => '复制诊断';
+
+  @override
+  String get launchFailureCopied => '诊断信息已复制';
 
   @override
   String get launchNoAccount => '请先添加账户。';
@@ -815,6 +870,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsBehaviorNote => '仅对当前桌面生效。游戏运行期间仍可从实例菜单（查看日志）打开游戏日志。';
 
   @override
+  String get settingsFocusMode => '专注模式';
+
+  @override
+  String get settingsFocusModeDesc =>
+      '游戏运行期间阻止系统自动休眠和锁屏；游戏退出后自动恢复。部分桌面环境可能不支持。';
+
+  @override
   String get settingsWindowMode => '窗口模式';
 
   @override
@@ -914,6 +976,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get settingsPreferPureJavaLoaderInstallDesc =>
       '加载器安装弹窗默认选中“使用官方安装器（纯 Java 模式）”；仍可在单次安装中改为标准 Java 流程。1.7.10 及更早的安装器没有客户端命令行，会自动回退到标准流程。';
+
+  @override
+  String get settingsBackupBeforeUpdate => '更新前自动备份';
+
+  @override
+  String get settingsBackupBeforeUpdateDesc =>
+      '安装或更新游戏与加载器之前，把实例目录复制到 .archoera/backups。更新失败时自动回滚；确认回滚成功后才会删除备份。关闭后更新将不再生成回滚包。';
 
   @override
   String get settingsSectionGameArgs => '附加游戏参数';
@@ -3116,13 +3185,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get crashRuleMainClassFix => '重新安装加载器或运行加载器修复后重试。';
 
   @override
-  String get crashRuleGraphicsTitle => '图形/OpenGL 初始化失败';
+  String get crashRuleGraphicsTitle => '图形初始化失败';
 
   @override
-  String get crashRuleGraphicsDetail => '游戏无法创建 OpenGL 窗口。';
+  String get crashRuleGraphicsDetail => '游戏无法创建图形窗口（OpenGL 或 Vulkan）。';
 
   @override
-  String get crashRuleGraphicsFix => '更新显卡驱动，改用独立显卡运行，并避免远程桌面或虚拟机。';
+  String get crashRuleGraphicsFix =>
+      '更新显卡驱动，改用独立显卡运行，并确认驱动支持游戏使用的渲染后端（OpenGL 或 Vulkan）；避免远程桌面或虚拟机。';
 
   @override
   String get crashRuleModTitle => '某个 Mod 启动失败';

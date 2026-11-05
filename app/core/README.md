@@ -8,6 +8,7 @@
 - 模块按 `ARCHOERACX_CS_MODULE` / `ARCHOERACX_DL_MODULE` 环境变量或 core 同目录加载；Debug 构建接受任意路径，Release 构建只接受指向 core 同目录的路径（环境变量不能从任意位置注入代码）；缺失时对应方法返回 `E_UNSUPPORTED`
 - `system.modules` 返回已加载模块；未知方法同步返回 `E_UNSUPPORTED`
 - `system.openUrl` / `system.notify`：通过系统 API 打开 http(s) 链接与发送桌面通知；Linux 走 XDG OpenURI / Notifications D-Bus，Windows 走 `ShellExecuteW` + `Shell_NotifyIcon`，macOS 走 `NSWorkspace` + UserNotifications；参数校验与执行在 C++，执行放 worker 线程，避免阻塞调用线程
+- `system.focusMode`：游戏运行时阻止系统空闲休眠/锁屏，参数 `{"enabled":bool}`，返回 `{"enabled":bool,"backend":string|null}`；Linux 走 `org.freedesktop.ScreenSaver.Inhibit/UnInhibit`（GNOME 回退），Windows 走 `PowerCreateRequest`，macOS 走 IOKit `IOPMAssertion`；无可用后端时返回 `enabled:false`，不阻塞启动
 - `system.appearance` 返回系统深浅色与强调色，并由 `platform_appearance_{linux,windows,macos}.cpp/.mm` 监听系统变化：
   - Linux：XDG Desktop Portal `org.freedesktop.appearance`（`color-scheme` / `accent-color`）
   - Windows：`AppsUseLightTheme` + DWM `AccentColor`，`RegNotifyChangeKeyValue` 推送变化

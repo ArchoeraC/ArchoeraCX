@@ -415,17 +415,56 @@ class InstanceRootStatus {
   final int instanceCount;
 }
 
-/// Result of `instance.delete`. [filesSkippedReason] carries a stable reason
-/// code when the caller asked to delete local files but the directory was kept.
+/// Snapshot created by `instance.backup.create` before an update.
+@immutable
+class InstanceBackupSnapshot {
+  const InstanceBackupSnapshot({
+    required this.backupId,
+    required this.path,
+    this.fileCount = 0,
+    this.byteCount = 0,
+  });
+
+  final String backupId;
+  final String path;
+  final int fileCount;
+  final int byteCount;
+}
+
+/// Result of `instance.backup.restore`. [restored] is true only when every
+/// restored file matched the manifest; [backupDiscarded] is true only when the
+/// verified restore also removed the snapshot.
+@immutable
+class InstanceBackupRestore {
+  const InstanceBackupRestore({
+    required this.restored,
+    this.backupDiscarded = false,
+    this.path = '',
+    this.error,
+  });
+
+  final bool restored;
+  final bool backupDiscarded;
+  final String path;
+  final String? error;
+}
+
+/// Result of `instance.delete`. [filesTrashed] reports whether the local
+/// directory was moved to the system trash; [filesMissing] means the directory
+/// was already gone, so the registry entry was removed without a move.
+/// [filesSkippedReason] carries a stable reason code when the caller asked to
+/// remove local files but the registry entry (and the directory) was kept.
 @immutable
 class InstanceDeleteOutcome {
   const InstanceDeleteOutcome({
-    required this.deleted,
-    this.filesDeleted = false,
+    this.deleted = false,
+    this.filesTrashed = false,
+    this.filesMissing = false,
     this.filesSkippedReason,
   });
 
   final bool deleted;
-  final bool filesDeleted;
+  final bool filesTrashed;
+  final bool filesMissing;
   final String? filesSkippedReason;
 }

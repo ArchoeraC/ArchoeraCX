@@ -176,7 +176,7 @@ public static class CrashAnalyzer
             "blocker",
             88,
             corpus,
-            @"GLFW error|Pixel format not accelerated|does not appear to support OpenGL|Failed to create window");
+            @"GLFW error|Pixel format not accelerated|does not appear to support OpenGL|Failed to create window|Failed to create Vulkan|Vulkan initialization failed|VK_ERROR_INCOMPATIBLE_DRIVER");
         AddRule(
             findings,
             "mods.entrypoint",

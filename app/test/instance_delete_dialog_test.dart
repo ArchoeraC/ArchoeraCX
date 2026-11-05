@@ -59,14 +59,14 @@ Future<void> openDeleteDialog(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('delete dialog offers local files but keeps them by default', (
+  testWidgets('delete dialog offers moving local files to the trash', (
     tester,
   ) async {
     await pumpInstances(tester);
     await openDeleteDialog(tester);
 
     expect(find.text('Delete “Deletable”?'), findsOneWidget);
-    expect(find.text('Also delete local files'), findsOneWidget);
+    expect(find.text('Also move local files to the trash'), findsOneWidget);
     expect(
       tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
       isFalse,
@@ -83,7 +83,7 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
   });
 
-  testWidgets('deleting local files asks for a second confirmation', (
+  testWidgets('moving local files to the trash needs no second confirmation', (
     tester,
   ) async {
     await pumpInstances(tester);
@@ -96,33 +96,23 @@ void main() {
       isTrue,
     );
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
-    await tester.pumpAndSettle();
-
-    // The second dialog names the folder and can be cancelled.
-    expect(find.text('Delete local files?'), findsOneWidget);
-    expect(
-      find.textContaining('/tmp/archoera-deletable'),
-      findsOneWidget,
-    );
-
     await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Deletable'), findsOneWidget);
+    // The move is reversible through the system trash, so one dialog is enough.
     expect(find.text('Delete local files?'), findsNothing);
+    expect(find.text('Deletable'), findsOneWidget);
   });
 
-  testWidgets('confirming twice removes the instance', (tester) async {
+  testWidgets('delete with the trash option removes the instance', (
+    tester,
+  ) async {
     await pumpInstances(tester);
     await openDeleteDialog(tester);
 
     await tester.tap(find.byType(CheckboxListTile));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete permanently'));
     await tester.pumpAndSettle();
 
     expect(find.text('Deletable'), findsNothing);

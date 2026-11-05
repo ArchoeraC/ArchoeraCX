@@ -129,6 +129,7 @@ public sealed class SettingsModuleService : IModuleMethodHandler
         int? logRetentionMb = null;
         bool? shareLoaderFiles = null;
         bool? preferPureJavaLoaderInstall = null;
+        bool? backupBeforeUpdate = null;
         string? memoryMode = null;
         bool? gameOptimization = null;
         string? wrapperCommand = null;
@@ -412,6 +413,15 @@ public sealed class SettingsModuleService : IModuleMethodHandler
                             "preferPureJavaLoaderInstall must be a boolean");
             }
 
+            if (root.TryGetProperty("backupBeforeUpdate", out var backupElement))
+            {
+                backupBeforeUpdate =
+                    backupElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                        ? backupElement.GetBoolean()
+                        : throw new ArgumentException(
+                            "backupBeforeUpdate must be a boolean");
+            }
+
             if (root.TryGetProperty("memoryMode", out var memoryModeElement))
             {
                 memoryMode = memoryModeElement.ValueKind == JsonValueKind.String
@@ -690,6 +700,11 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             };
         }
 
+        if (backupBeforeUpdate is not null)
+        {
+            current = current with { BackupBeforeUpdate = backupBeforeUpdate.Value };
+        }
+
         if (memoryMode is not null)
         {
             current = current with { MemoryMode = memoryMode };
@@ -755,6 +770,7 @@ public sealed class SettingsModuleService : IModuleMethodHandler
             logRetentionMb is null &&
             shareLoaderFiles is null &&
             preferPureJavaLoaderInstall is null &&
+            backupBeforeUpdate is null &&
             memoryMode is null &&
             gameOptimization is null &&
             !wrapperCommandPresent &&

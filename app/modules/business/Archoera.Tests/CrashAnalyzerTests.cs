@@ -116,6 +116,65 @@ public sealed class CrashAnalyzerTests
     }
 
     [Fact]
+    public void Analyze_detects_an_opengl_window_creation_failure()
+    {
+        var directory = NewDirectory();
+        try
+        {
+            var log = WriteLaunchLog(
+                directory,
+                """
+                GLFW error 65542: WGL: The driver does not appear to support OpenGL
+                Failed to create window
+                [exited with code 1]
+                """);
+
+            var analysis = CrashAnalyzer.Analyze(
+                directory,
+                log,
+                startedAt: DateTimeOffset.UtcNow.AddMinutes(-1));
+
+            Assert.Equal("crashed", analysis.Outcome);
+            Assert.Contains(
+                analysis.Findings,
+                finding => finding.RuleId == "gfx.glfw");
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public void Analyze_detects_a_vulkan_initialization_failure()
+    {
+        var directory = NewDirectory();
+        try
+        {
+            var log = WriteLaunchLog(
+                directory,
+                """
+                Vulkan initialization failed: VK_ERROR_INCOMPATIBLE_DRIVER
+                [exited with code 1]
+                """);
+
+            var analysis = CrashAnalyzer.Analyze(
+                directory,
+                log,
+                startedAt: DateTimeOffset.UtcNow.AddMinutes(-1));
+
+            Assert.Equal("crashed", analysis.Outcome);
+            Assert.Contains(
+                analysis.Findings,
+                finding => finding.RuleId == "gfx.glfw");
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
     public void Analyze_reports_a_clean_exit_without_findings()
     {
         var directory = NewDirectory();

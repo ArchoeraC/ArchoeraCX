@@ -31,7 +31,7 @@ public static class JsonEnvelope
     }
 
     /// <summary>Serializes a failure envelope with a stable code and schemaVersion meta.</summary>
-    public static byte[] Error(string code, string message)
+    public static byte[] Error(string code, string message, Action<Utf8JsonWriter>? details = null)
     {
         using var memory = new MemoryStream();
         using (var writer = new Utf8JsonWriter(memory))
@@ -41,6 +41,12 @@ public static class JsonEnvelope
             writer.WriteStartObject("error");
             writer.WriteString("code", code);
             writer.WriteString("message", message);
+            if (details is not null)
+            {
+                writer.WriteStartObject("details");
+                details(writer);
+                writer.WriteEndObject();
+            }
             writer.WriteEndObject();
             writer.WriteStartObject("meta");
             writer.WriteNumber("schemaVersion", 1);

@@ -39,9 +39,15 @@ typedef JavaInstallPickDirectory = Future<String?> Function();
 class JavaInstallPage extends ConsumerStatefulWidget {
   const JavaInstallPage({
     super.key,
+    this.initialMajor,
     this.pickDirectory,
     this.pathStore = const JavaPathStore(),
   });
+
+  /// Optional major version to select when the page opens. Used when a launch
+  /// failure already knows the requirement (for example Java 17) so the user
+  /// does not have to pick the right row manually.
+  final int? initialMajor;
 
   /// Optional folder picker; tests inject a deterministic path.
   final JavaInstallPickDirectory? pickDirectory;
@@ -246,7 +252,11 @@ class _JavaInstallPageState extends ConsumerState<JavaInstallPage> {
           !_isCurrentPlatform(platform)) {
         return;
       }
-      final preferred = majors.majors.contains(majors.recommendedMajor)
+      final requestedMajor = widget.initialMajor;
+      final preferred =
+          requestedMajor != null && majors.majors.contains(requestedMajor)
+          ? requestedMajor
+          : majors.majors.contains(majors.recommendedMajor)
           ? majors.recommendedMajor
           : (majors.majors.isEmpty ? null : majors.majors.last);
       setState(() {

@@ -84,6 +84,10 @@ constexpr const char* kMsgNotifyNeedsPayload =
     "system.notify requires a title or body";
 constexpr const char* kMsgNotifyTooLarge =
     "system.notify payload is too large";
+constexpr const char* kMsgFocusModeInvalid =
+    "system.focusMode requires a boolean enabled";
+constexpr const char* kMsgTrashPathInvalid =
+    "system.trash requires an absolute existing file or directory";
 constexpr const char* kMsgInstanceUnavailable =
     "the single-instance service is unavailable";
 

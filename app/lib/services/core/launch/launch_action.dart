@@ -22,6 +22,9 @@ import 'launch_post_actions.dart';
 import 'launch_result.dart';
 import 'welcome_back.dart';
 import '../../../widgets/common/toast.dart';
+import '../../../widgets/launch/launch_failure_dialog.dart';
+import '../../../widgets/launch/launch_progress_dialog.dart';
+import 'launch_progress.dart';
 
 /// Build and start a basic offline launch. UI code only calls this helper;
 /// business decisions remain in the C# launch module.
@@ -93,6 +96,24 @@ Future<void> launchInstance(
   }
 
   toast(l10n.launchStarting, duration: const Duration(seconds: 4));
+  if (!context.mounted) return;
+
+  // Show the stage checklist before the call so the first report is not lost.
+  // The dialog is modal but does not block the launch task itself.
+  final progress = LaunchProgressController();
+  final progressReady = Completer<void>();
+  final progressDialog = showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      if (!progressReady.isCompleted) progressReady.complete();
+      return LaunchProgressDialog(
+        instanceName: instance.name,
+        progress: progress,
+      );
+    },
+  );
+  await progressReady.future;
 
   try {
     final result = await client.launchInstance(
@@ -104,10 +125,18 @@ Future<void> launchInstance(
           policy.requirePremium && account?.kind != AccountKind.authlib,
       requireMicrosoft: policy.microsoftOnly,
       hardware: hardware,
+      onProgress: progress.report,
       label: instance.name,
     );
+    if (context.mounted) await _dismissProgress(context, progressDialog);
     if (context.mounted) {
       toast(l10n.launchStarted(result.pid), type: ToastType.success);
+    }
+
+    // Focus mode is best effort: a desktop without a usable system API must
+    // never turn a successful launch into a failure.
+    if (uiPrefs.focusMode) {
+      unawaited(client.setFocusMode(true));
     }
 
     // `launch.start` already persisted the timestamp; refresh the mirror so the
@@ -137,34 +166,55 @@ Future<void> launchInstance(
         instance,
         result,
         quitWhenDone: plan.monitorGameExit,
+        focusMode: uiPrefs.focusMode,
       ),
     );
   } catch (error) {
+    if (context.mounted) await _dismissProgress(context, progressDialog);
     if (!context.mounted) return;
-    final message = switch (error) {
-      CoreException(code: 'ACCOUNT_REQUIRED') => l10n.launchNoAccount,
-      CoreException(code: 'AUTH_REQUIRED') => l10n.launchOnlineSessionExpired,
-      CoreException(code: 'MICROSOFT_ACCOUNT_ONLY') =>
-        l10n.accountMicrosoftOnly,
-      CoreException(code: 'MICROSOFT_ACCOUNT_REQUIRED') =>
-        l10n.launchMicrosoftAccountRequired,
-      CoreException(code: 'MICROSOFT_CLIENT_ID_MISSING') =>
-        l10n.launchOnlineNotConfigured,
-      CoreException(code: 'ONLINE_LAUNCH_NOT_READY') =>
-        l10n.launchOnlineNotReady,
-      CoreException(code: 'PREMIUM_ACCOUNT_REQUIRED') =>
-        l10n.accountPremiumRequired,
-      CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
-        l10n.launchJavaMissing,
-      CoreException(code: 'LOADER_NOT_INSTALLED') =>
-        l10n.launchLoaderNotInstalled,
-      CoreException(code: 'AUTO_REPAIR_FAILED') => l10n.launchAutoRepairFailed,
-      CoreException(code: 'AUTO_REPAIR_BLOCKED') =>
-        l10n.launchAutoRepairBlocked,
-      _ => error.toString(),
-    };
+    final message = _launchErrorMessage(l10n, error);
+    if (error is CoreException) {
+      await showLaunchFailureDialog(
+        context,
+        l10n: l10n,
+        message: message,
+        error: error,
+      );
+      return;
+    }
     toast(message, type: ToastType.error, duration: const Duration(seconds: 4));
   }
+}
+
+String _launchErrorMessage(
+  AppLocalizations l10n,
+  Object error,
+) => switch (error) {
+  CoreException(code: 'ACCOUNT_REQUIRED') => l10n.launchNoAccount,
+  CoreException(code: 'AUTH_REQUIRED') => l10n.launchOnlineSessionExpired,
+  CoreException(code: 'MICROSOFT_ACCOUNT_ONLY') => l10n.accountMicrosoftOnly,
+  CoreException(code: 'MICROSOFT_ACCOUNT_REQUIRED') =>
+    l10n.launchMicrosoftAccountRequired,
+  CoreException(code: 'MICROSOFT_CLIENT_ID_MISSING') =>
+    l10n.launchOnlineNotConfigured,
+  CoreException(code: 'ONLINE_LAUNCH_NOT_READY') => l10n.launchOnlineNotReady,
+  CoreException(code: 'PREMIUM_ACCOUNT_REQUIRED') =>
+    l10n.accountPremiumRequired,
+  CoreException(code: 'JAVA_MISSING' || 'JAVA_VERSION_MISMATCH') =>
+    l10n.launchJavaMissing,
+  CoreException(code: 'LOADER_NOT_INSTALLED') => l10n.launchLoaderNotInstalled,
+  CoreException(code: 'AUTO_REPAIR_FAILED') => l10n.launchAutoRepairFailed,
+  CoreException(code: 'AUTO_REPAIR_BLOCKED') => l10n.launchAutoRepairBlocked,
+  _ => error.toString(),
+};
+
+/// Pops the progress dialog and waits for its route to finish so the next
+/// dialog (welcome back or failure) cannot stack behind it.
+Future<void> _dismissProgress(BuildContext context, Future<void> dialog) async {
+  if (!context.mounted) return;
+  final navigator = Navigator.of(context, rootNavigator: true);
+  if (navigator.canPop()) navigator.pop();
+  await dialog;
 }
 
 /// Shows the "welcome back" easter egg. Names a Microsoft account first, then
@@ -218,6 +268,7 @@ Future<void> _watchLaunchExit(
   GameInstance instance,
   LaunchResult result, {
   required bool quitWhenDone,
+  required bool focusMode,
 }) async {
   PendingCrashReportNotifier? reports;
   try {
@@ -253,6 +304,13 @@ Future<void> _watchLaunchExit(
       fallbackQuit = true;
     }
   } finally {
+    if (focusMode) {
+      try {
+        await client.setFocusMode(false);
+      } catch (error, stackTrace) {
+        _logPostLaunchFailure('cannot release focus mode', error, stackTrace);
+      }
+    }
     if (quitWhenDone && !fallbackQuit) await quitApplication();
   }
 }

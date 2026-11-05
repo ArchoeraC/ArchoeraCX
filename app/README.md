@@ -6,7 +6,7 @@ ArchoeraCX 的 Flutter 桌面外壳 + 原生切片。当前包含 UI 基础设�
 
 - `system.ping` / `system.pingAsync`：C++ ABI + wake 驱动 `EventPump` + 首页 Core status 卡
 - `system.modules`：C++ `ModuleRegistry` 返回已加载模块；C++ `MethodRegistry` 与 C# `BusinessModuleRegistry` 显式登记方法
-- `system.openUrl` / `system.notify`：C++ 调用系统 API 打开默认浏览器、发送桌面通知；Microsoft 登录的授权页与登录成功提示均走该通道
+- `system.openUrl` / `system.notify` / `system.focusMode`：C++ 调用系统 API 打开默认浏览器、发送桌面通知、游戏运行时阻止空闲休眠/锁屏；Microsoft 登录的授权页与登录成功提示均走该通道
 - `system.appearance`：C++ 读取系统深浅色与强调色（Linux XDG Portal / Windows 注册表 / macOS AppKit），变化通过 domain 事件推送；设置页“外观”下分“个性化 / 语言与区域”子菜单，个性化包含浅色/深色/跟随系统、跟随系统或自定义主题色、全局着色、界面密度与减少动效
 - 关于页：应用图标、版本/系统/Dart/原生核心环境信息与一键复制、源码与问题反馈、许可证/第三方许可/隐私政策/安全策略入口
 - `java.scan`：C++ `ModuleRegistry` 加载 C# NativeAOT `archoera_cs` + 首页 Java status 卡；默认展示前 3 个，支持“查看全部”（本机 `/opt/java` 72/72 全部识别）；扫描为空时可手动选择目录搜索，仍为空再选择 JDK 目录或 `java` 可执行文件；路径会持久化，并用 `includeDefaults:false` 验证

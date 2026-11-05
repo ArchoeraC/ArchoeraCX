@@ -3,12 +3,15 @@ find_package(Threads REQUIRED)
 # System appearance backend: native OS APIs only, no polling in Dart.
 set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_stub.cpp)
 set(ARCHOERA_SYSTEM_SOURCES src/platform_system_stub.cpp)
+set(ARCHOERA_TRASH_SOURCES src/platform_trash_posix.cpp)
+set(ARCHOERA_TRASH_DEFINE "")
 set(ARCHOERA_STATUS_SOURCES src/platform_status_stub.cpp)
 set(ARCHOERA_GPU_SOURCES src/platform_gpu_stub.cpp)
 set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_stub.cpp)
 if(WIN32)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_windows.cpp)
   set(ARCHOERA_SYSTEM_SOURCES src/platform_system_windows.cpp)
+  set(ARCHOERA_TRASH_SOURCES "")
   set(ARCHOERA_STATUS_SOURCES src/platform_status_windows.cpp)
   set(ARCHOERA_GPU_SOURCES src/platform_gpu_windows.cpp)
   set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_windows.cpp)
@@ -16,11 +19,14 @@ elseif(APPLE)
   enable_language(OBJCXX)
   set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_macos.mm)
   set(ARCHOERA_SYSTEM_SOURCES src/platform_system_macos.mm)
+  set(ARCHOERA_TRASH_SOURCES "")
   set(ARCHOERA_STATUS_SOURCES src/platform_status_macos.cpp)
   set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_posix.cpp)
   set_source_files_properties(src/platform_appearance_macos.mm
     src/platform_system_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 else()
+  set(ARCHOERA_TRASH_SOURCES src/platform_trash_posix.cpp)
+  set(ARCHOERA_TRASH_DEFINE ARCHOERA_HAVE_POSIX_TRASH=1)
   find_package(PkgConfig QUIET)
   if(PkgConfig_FOUND)
     pkg_check_modules(DBUS QUIET dbus-1)
@@ -53,6 +59,7 @@ add_library(archoera_core SHARED
   src/platform_status_common.cpp
   ${ARCHOERA_APPEARANCE_SOURCES}
   ${ARCHOERA_SYSTEM_SOURCES}
+  ${ARCHOERA_TRASH_SOURCES}
   ${ARCHOERA_STATUS_SOURCES}
   ${ARCHOERA_GPU_SOURCES}
   ${ARCHOERA_INSTANCE_SOURCES}
@@ -63,7 +70,7 @@ target_include_directories(archoera_core
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../contracts/abi"
   PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../contracts/module"
 )
-target_compile_definitions(archoera_core PRIVATE ARCHOERA_CORE_EXPORTS)
+target_compile_definitions(archoera_core PRIVATE ARCHOERA_CORE_EXPORTS ${ARCHOERA_TRASH_DEFINE})
 target_link_libraries(archoera_core PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
 
 # Keep every non-ABI symbol inside the .so: the ARCHOERA_API macro re-opens
@@ -75,10 +82,11 @@ set_target_properties(archoera_core PROPERTIES
 )
 
 if(WIN32)
-  target_link_libraries(archoera_core PRIVATE dwmapi advapi32 shell32)
+  target_link_libraries(archoera_core PRIVATE dwmapi advapi32 shell32 powrprof)
 elseif(APPLE)
   target_link_libraries(archoera_core PRIVATE
-    "-framework AppKit" "-framework Foundation" "-framework UserNotifications")
+    "-framework AppKit" "-framework Foundation" "-framework UserNotifications"
+    "-framework IOKit")
   set_target_properties(archoera_core PROPERTIES OBJCXX_STANDARD 20)
 elseif(DBUS_FOUND)
   target_include_directories(archoera_core PRIVATE ${DBUS_INCLUDE_DIRS})

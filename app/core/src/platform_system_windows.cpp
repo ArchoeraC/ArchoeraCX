@@ -16,6 +16,7 @@
 #endif
 
 #include <windows.h>
+#include <powrprof.h>
 #include <shellapi.h>
 
 #include <memory>
@@ -28,6 +29,9 @@ namespace {
 
 constexpr wchar_t kNotificationClass[] = L"ArchoeraCxNotification";
 constexpr UINT kNotificationId = 1;
+
+std::mutex g_focus_mutex;
+HANDLE g_focus_request = nullptr;
 
 std::wstring widen(const std::string& text) {
   if (text.empty()) return {};
@@ -172,6 +176,85 @@ bool send_system_notification(const std::string& title,
     if (error != nullptr) *error = "notification thread failed";
     return false;
   }
+  return true;
+}
+
+bool enter_focus_mode(std::string* backend, std::string* error) {
+  std::lock_guard<std::mutex> lock(g_focus_mutex);
+  if (g_focus_request != nullptr) {
+    if (backend != nullptr) *backend = "power-request";
+    return true;
+  }
+
+  POWER_REQUEST_CONTEXT context{};
+  context.Flags = POWER_REQUEST_CONTEXT_SIMPLE_STRING;
+  context.Reason.SimpleReasonString =
+      const_cast<LPWSTR>(L"ArchoeraCX is running a game");
+  HANDLE request = PowerCreateRequest(&context);
+  if (request == nullptr) {
+    if (error != nullptr) *error = "PowerCreateRequest failed";
+    return false;
+  }
+
+  if (!PowerSetRequest(request, PowerRequestSystemRequired)) {
+    CloseHandle(request);
+    if (error != nullptr) *error = "PowerSetRequest failed";
+    return false;
+  }
+  // Keep the display awake too; if the system rejects it, the system request
+  // still keeps the game running.
+  PowerSetRequest(request, PowerRequestDisplayRequired);
+
+  g_focus_request = request;
+  if (backend != nullptr) *backend = "power-request";
+  return true;
+}
+
+void leave_focus_mode() {
+  std::lock_guard<std::mutex> lock(g_focus_mutex);
+  if (g_focus_request == nullptr) return;
+  PowerClearRequest(g_focus_request, PowerRequestDisplayRequired);
+  PowerClearRequest(g_focus_request, PowerRequestSystemRequired);
+  CloseHandle(g_focus_request);
+  g_focus_request = nullptr;
+}
+
+bool move_to_trash(const std::string& path,
+                   std::string* backend,
+                   std::string* error) {
+  if (!is_safe_trash_path(path)) {
+    if (error != nullptr) *error = "invalid trash path";
+    return false;
+  }
+
+  const std::wstring wide = widen(path);
+  if (wide.empty()) {
+    if (error != nullptr) *error = "invalid encoding";
+    return false;
+  }
+
+  // SHFileOperationW is the documented Explorer delete path; FOF_ALLOWUNDO
+  // routes the item into the Recycle Bin instead of removing it.
+  SHFILEOPSTRUCTW operation{};
+  operation.wFunc = FO_DELETE;
+  // pFrom must be double-null terminated. The std::wstring already ends in
+  // one terminator, so appending another yields the required pair.
+  std::wstring from = wide;
+  from.push_back(L'\0');
+  operation.pFrom = from.c_str();
+  operation.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT |
+                     FOF_NOERRORUI;
+
+  const int result = SHFileOperationW(&operation);
+  if (result != 0 || operation.fAnyOperationsAborted != FALSE) {
+    if (error != nullptr) *error = "SHFileOperationW failed";
+    return false;
+  }
+  if (GetFileAttributesW(wide.c_str()) != INVALID_FILE_ATTRIBUTES) {
+    if (error != nullptr) *error = "item still present after recycle";
+    return false;
+  }
+  if (backend != nullptr) *backend = "shell";
   return true;
 }
 

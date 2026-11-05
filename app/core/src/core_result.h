@@ -34,6 +34,13 @@ std::string make_gpu_result();
 std::string make_elevation_result();
 std::string make_action_result(const char* field, bool value);
 std::string make_open_path_result(const std::string& path, bool opened);
+/* system.focusMode echoes the resulting inhibition state; [backend] is null
+ * when nothing was inhibited or the backend could not be entered. */
+std::string make_focus_result(bool enabled, const std::string& backend);
+/* system.trash echoes the path and whether the platform moved it. */
+std::string make_trash_result(const std::string& path,
+                              bool trashed,
+                              const std::string& backend);
 std::string make_appearance_data(const SystemAppearance& state);
 std::string make_appearance_result(const SystemAppearance& state);
 /* Error envelope stored as a failed task's result. ABI status codes are

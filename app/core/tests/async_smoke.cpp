@@ -102,6 +102,29 @@ int run_tests() {
 
   CHECK(archoera_set_wakeup(core, &async_smoke_wake, &wake) == ARCHOERA_OK);
 
+  // system.focusMode validates its boolean synchronously, so a missing
+  // parameter must fail without spawning a task (and without touching the
+  // platform backend).
+  {
+    uint64_t invalid_focus_task = 1;
+    CHECK(archoera_call(core, "system.focusMode", "{}", &invalid_focus_task,
+                        &err) == ARCHOERA_E_INVALID);
+    CHECK(invalid_focus_task == 0);
+  }
+
+  // system.trash rejects a missing and a relative path before spawning a
+  // worker, so no platform backend is touched.
+  {
+    uint64_t invalid_trash_task = 1;
+    CHECK(archoera_call(core, "system.trash", "{}", &invalid_trash_task,
+                        &err) == ARCHOERA_E_INVALID);
+    CHECK(invalid_trash_task == 0);
+    invalid_trash_task = 1;
+    CHECK(archoera_call(core, "system.trash", "{\"path\":\"relative\"}",
+                        &invalid_trash_task, &err) == ARCHOERA_E_INVALID);
+    CHECK(invalid_trash_task == 0);
+  }
+
   uint64_t task = 0;
   CHECK(archoera_call(core, "system.pingAsync", "{}", &task, &err) ==
         ARCHOERA_OK);

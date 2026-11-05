@@ -323,28 +323,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'The instance is removed from the launcher list.';
 
   @override
-  String get instanceDeleteFiles => 'Also delete local files';
+  String get instanceDeleteFiles => 'Also move local files to the trash';
 
   @override
   String get instanceDeleteFilesHint =>
-      'Removes game files, mods, logs and configs in the instance folder. This cannot be undone.';
-
-  @override
-  String get instanceDeleteFilesConfirmTitle => 'Delete local files?';
-
-  @override
-  String instanceDeleteFilesConfirmBody(String path) {
-    return 'This permanently deletes the folder and everything inside it:\n$path';
-  }
-
-  @override
-  String get instanceDeleteFilesConfirmAction => 'Delete permanently';
+      'Moves game files, mods, logs and configs in the instance folder into the system trash, where they can be restored.';
 
   @override
   String get instanceDeleteDone => 'Instance deleted.';
 
   @override
-  String get instanceDeleteDoneFiles => 'Instance and local files deleted.';
+  String get instanceDeleteDoneFiles =>
+      'Instance deleted and local files moved to the trash.';
 
   @override
   String get instanceDeleteFilesKeptMissing =>
@@ -352,19 +342,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instanceDeleteFilesKeptShared =>
-      'Instance deleted, but the folder is shared with another instance or instance root, so it was kept.';
+      'Instance not deleted: the folder is shared with another instance or instance root, so it was kept.';
 
   @override
   String get instanceDeleteFilesKeptUnsafe =>
-      'Instance deleted, but the folder path is unsafe, so it was kept.';
+      'Instance not deleted: the folder path is unsafe.';
 
   @override
   String get instanceDeleteFilesKeptFailed =>
-      'Instance deleted, but the local files could not be removed. Clean them up manually.';
+      'Instance not deleted: moving the local files failed. Check permissions and retry.';
+
+  @override
+  String get instanceDeleteFilesKeptTrashFailed =>
+      'Instance not deleted: the system trash is unavailable, so the local files were kept. Check the system trash configuration or disk permissions and retry.';
 
   @override
   String get instanceDeleteFilesKeptOutsideRoot =>
-      'Instance deleted, but the folder is outside the managed instances directory, so it was kept.';
+      'Instance not deleted: the folder is outside the managed instances directory.';
 
   @override
   String get instanceCheckQuick => 'Quick check';
@@ -436,6 +430,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get launchStarting => 'Starting game…';
+
+  @override
+  String launchProgressTitle(String name) {
+    return 'Starting $name';
+  }
+
+  @override
+  String get launchStageInstance => 'Reading instance settings';
+
+  @override
+  String get launchStageAccount => 'Preparing account';
+
+  @override
+  String get launchStageVersion => 'Loading game version';
+
+  @override
+  String get launchStageJava => 'Selecting Java';
+
+  @override
+  String get launchStageFiles => 'Checking game files';
+
+  @override
+  String get launchStageRepair => 'Repairing missing files';
+
+  @override
+  String get launchStagePlan => 'Building launch arguments';
+
+  @override
+  String get launchStageProcess => 'Starting game process';
+
+  @override
+  String get launchStageSkipped => 'Not needed';
+
+  @override
+  String get launchFailureTitle => 'Launch failed';
+
+  @override
+  String get launchFailureStage => 'Failed stage';
+
+  @override
+  String get launchFailureCode => 'Error code';
+
+  @override
+  String get launchFailureJava => 'Java';
+
+  @override
+  String get launchFailureJavaRequired => 'Requires Java';
+
+  @override
+  String get launchFailureInstallJava => 'Install a matching Java';
+
+  @override
+  String get launchFailureLog => 'Log file';
+
+  @override
+  String get launchFailureRetryable =>
+      'You can retry, or repair the missing files first.';
+
+  @override
+  String get launchFailureCopy => 'Copy diagnostics';
+
+  @override
+  String get launchFailureCopied => 'Diagnostics copied';
 
   @override
   String get launchNoAccount => 'Add an account before launching.';
@@ -852,6 +909,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Applies to this desktop only. Game logs stay available from the instance menu (View logs) while the game runs.';
 
   @override
+  String get settingsFocusMode => 'Focus mode';
+
+  @override
+  String get settingsFocusModeDesc =>
+      'Blocks automatic sleep and screen locking while the game runs, and restores them on exit. Some desktop environments may not support it.';
+
+  @override
   String get settingsWindowMode => 'Window mode';
 
   @override
@@ -959,6 +1023,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsPreferPureJavaLoaderInstallDesc =>
       'The loader install dialog starts with \"Use the official installer (pure Java)\" selected; each install can still switch to the standard Java flow. Installers without a client CLI (Forge 1.7.10 and older) fall back automatically.';
+
+  @override
+  String get settingsBackupBeforeUpdate => 'Back up before updates';
+
+  @override
+  String get settingsBackupBeforeUpdateDesc =>
+      'Copies the instance directory to .archoera/backups before installing or updating the game and loaders. A failed update is rolled back automatically, and the backup is deleted only after the rollback is verified. Turning this off means updates no longer create a rollback package.';
 
   @override
   String get settingsSectionGameArgs => 'Extra game arguments';
@@ -3304,15 +3375,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Reinstall the loader or run loader repair, then try again.';
 
   @override
-  String get crashRuleGraphicsTitle => 'Graphics/OpenGL initialization failed';
+  String get crashRuleGraphicsTitle => 'Graphics initialization failed';
 
   @override
   String get crashRuleGraphicsDetail =>
-      'The game could not create an OpenGL window.';
+      'The game could not create a graphics window (OpenGL or Vulkan).';
 
   @override
   String get crashRuleGraphicsFix =>
-      'Update the graphics driver, run on the dedicated GPU, and avoid remote desktop or virtual machines.';
+      'Update the graphics driver, run on the dedicated GPU, and make sure the driver supports the game\'s rendering backend (OpenGL or Vulkan); avoid remote desktop or virtual machines.';
 
   @override
   String get crashRuleModTitle => 'A mod failed to start';

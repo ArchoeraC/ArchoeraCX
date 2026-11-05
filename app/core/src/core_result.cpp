@@ -171,6 +171,40 @@ std::string make_open_path_result(const std::string& path, bool opened) {
   return json;
 }
 
+std::string make_focus_result(bool enabled, const std::string& backend) {
+  std::string json = "{\"ok\":true,\"data\":{\"enabled\":";
+  json.append(enabled ? "true" : "false");
+  json.append(",\"backend\":");
+  if (backend.empty()) {
+    json.append("null");
+  } else {
+    json.append("\"");
+    append_json_escaped(json, backend);
+    json.append("\"");
+  }
+  json.append("},\"meta\":{\"schemaVersion\":1}}");
+  return json;
+}
+
+std::string make_trash_result(const std::string& path,
+                              bool trashed,
+                              const std::string& backend) {
+  std::string json = "{\"ok\":true,\"data\":{\"path\":\"";
+  append_json_escaped(json, path);
+  json.append("\",\"trashed\":");
+  json.append(trashed ? "true" : "false");
+  json.append(",\"backend\":");
+  if (backend.empty()) {
+    json.append("null");
+  } else {
+    json.append("\"");
+    append_json_escaped(json, backend);
+    json.append("\"");
+  }
+  json.append("},\"meta\":{\"schemaVersion\":1}}");
+  return json;
+}
+
 std::string make_appearance_data(const SystemAppearance& state) {
   std::string json = "{\"theme\":\"";
   if (!state.theme_known) {

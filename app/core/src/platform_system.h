@@ -43,6 +43,27 @@ bool send_system_notification(const std::string& title,
                               const std::string& body,
                               std::string* error);
 
+// Inhibits idle sleep / screen locking while a game runs. Desktop backends
+// return false when the environment exposes no usable public API; callers
+// treat focus mode as best effort and never fail the launch.
+// [backend] receives a stable label ("screensaver", "power-assertion",
+// "power-request") for diagnostics.
+bool enter_focus_mode(std::string* backend, std::string* error);
+
+// Releases the inhibition created by enter_focus_mode. Safe to call when
+// nothing was inhibited and idempotent across repeated launches.
+void leave_focus_mode();
+
+// Moves an existing absolute file or directory to the platform trash so the
+// user can restore it from the file manager. The path is moved, not copied or
+// followed (symbolic links are trashed themselves). [backend] receives a stable
+// label ("freedesktop", "nsfilemanager", "shell") for diagnostics. Returns
+// false when the platform has no trash API or the move failed; callers must
+// keep the file in place and report the failure instead of hard-deleting.
+bool move_to_trash(const std::string& path,
+                   std::string* backend,
+                   std::string* error);
+
 // Shared validation used by every backend: only http(s) URLs without control
 // characters may leave the process.
 bool is_safe_external_url(const std::string& url);
@@ -56,5 +77,10 @@ bool is_safe_absolute_path(const std::string& path);
 // Shared validation used by every backend: only an existing absolute directory
 // with a bounded, control-character free path may be handed to the OS.
 bool is_safe_directory_path(const std::string& path);
+
+// Shared validation for trash targets: an existing absolute file or directory
+// with a bounded, control-character free path. Filesystem roots are rejected
+// because moving a volume root to the trash must never be possible.
+bool is_safe_trash_path(const std::string& path);
 
 }  // namespace archoera

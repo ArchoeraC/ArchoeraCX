@@ -13,6 +13,9 @@ public static class ModuleJson
     public static byte[] Envelope(Action<Utf8JsonWriter> data, bool ok = true)
         => JsonEnvelope.Envelope(data, ok);
 
-    public static byte[] Error(string code, string message)
-        => JsonEnvelope.Error(code, message);
+    public static byte[] Error(
+        string code,
+        string message,
+        Action<Utf8JsonWriter>? details = null)
+        => JsonEnvelope.Error(code, message, details);
 }

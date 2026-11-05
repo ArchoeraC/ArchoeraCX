@@ -167,6 +167,12 @@ public sealed class JsonAppSettingsStore
                 !root.TryGetProperty("preferPureJavaLoaderInstall", out var pureJavaElement) ||
                 pureJavaElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
                 pureJavaElement.GetBoolean();
+            // Schema 17 adds automatic pre-update backups. A missing field (all
+            // older documents) keeps the safe default: on.
+            var backupBeforeUpdate =
+                !root.TryGetProperty("backupBeforeUpdate", out var backupElement) ||
+                backupElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                backupElement.GetBoolean();
             var downloadProxy = ReadString(root, "downloadProxy")?.Trim();
             if (!string.IsNullOrEmpty(downloadProxy) &&
                 (!Uri.TryCreate(downloadProxy, UriKind.Absolute, out var proxyUri) ||
@@ -220,6 +226,7 @@ public sealed class JsonAppSettingsStore
                 LogRetentionMegabytes = logRetentionMb,
                 ShareLoaderFiles = shareLoaderFiles,
                 PreferPureJavaLoaderInstall = preferPureJavaLoaderInstall,
+                BackupBeforeUpdate = backupBeforeUpdate,
                 MemoryMode = memoryMode,
                 GameOptimization = gameOptimization,
                 WrapperCommand = wrapperCommand,
@@ -401,6 +408,7 @@ public sealed class JsonAppSettingsStore
             writer.WriteBoolean(
                 "preferPureJavaLoaderInstall",
                 settings.PreferPureJavaLoaderInstall);
+            writer.WriteBoolean("backupBeforeUpdate", settings.BackupBeforeUpdate);
             writer.WriteString("memoryMode", settings.MemoryMode);
             writer.WriteBoolean("gameOptimization", settings.GameOptimization);
             if (!string.IsNullOrWhiteSpace(settings.WrapperCommand))

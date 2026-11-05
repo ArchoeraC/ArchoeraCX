@@ -15,9 +15,20 @@
 #include <dbus/dbus.h>
 
 #include <cstdint>
+#include <mutex>
+#include <string>
 
 namespace archoera {
 namespace {
+
+std::mutex g_focus_mutex;
+DBusConnection* g_focus_connection = nullptr;
+bool g_focus_active = false;
+uint32_t g_focus_cookie = 0;
+std::string g_focus_service;
+std::string g_focus_path;
+std::string g_focus_interface;
+std::string g_focus_backend;
 
 DBusConnection* open_session_bus() {
   DBusError error;
@@ -256,6 +267,118 @@ bool send_system_notification(const std::string& title,
   }
   dbus_message_unref(reply);
   return true;
+}
+
+// Calls Inhibit on one screen-saver service. Both the freedesktop and GNOME
+// interfaces share the same (ss) -> u signature, so one helper covers both.
+namespace {
+
+bool inhibit_screensaver(DBusConnection* connection,
+                         const char* service,
+                         const char* path,
+                         const char* interface,
+                         uint32_t* cookie) {
+  DBusMessage* message =
+      dbus_message_new_method_call(service, path, interface, "Inhibit");
+  if (message == nullptr) return false;
+
+  const char* app_name = "ArchoeraCX";
+  const char* reason = "A game is running";
+  DBusMessageIter iterator;
+  dbus_message_iter_init_append(message, &iterator);
+  dbus_message_iter_append_basic(&iterator, DBUS_TYPE_STRING, &app_name);
+  dbus_message_iter_append_basic(&iterator, DBUS_TYPE_STRING, &reason);
+
+  DBusMessage* reply = call_with_reply(connection, message, 1500);
+  dbus_message_unref(message);
+  if (reply == nullptr) return false;
+
+  uint32_t value = 0;
+  DBusError error;
+  dbus_error_init(&error);
+  const bool parsed = dbus_message_get_args(
+      reply, &error, DBUS_TYPE_UINT32, &value, DBUS_TYPE_INVALID);
+  if (dbus_error_is_set(&error)) dbus_error_free(&error);
+  dbus_message_unref(reply);
+  if (!parsed) return false;
+
+  *cookie = value;
+  return true;
+}
+
+}  // namespace
+
+bool enter_focus_mode(std::string* backend, std::string* error) {
+  std::lock_guard<std::mutex> lock(g_focus_mutex);
+  if (g_focus_active) {
+    if (backend != nullptr) *backend = g_focus_backend;
+    return true;
+  }
+
+  DBusConnection* connection = open_session_bus();
+  if (connection == nullptr) {
+    if (error != nullptr) *error = "session bus unavailable";
+    return false;
+  }
+
+  uint32_t cookie = 0;
+  if (inhibit_screensaver(connection,
+                          "org.freedesktop.ScreenSaver",
+                          "/ScreenSaver",
+                          "org.freedesktop.ScreenSaver",
+                          &cookie)) {
+    g_focus_service = "org.freedesktop.ScreenSaver";
+    g_focus_path = "/ScreenSaver";
+    g_focus_interface = "org.freedesktop.ScreenSaver";
+    g_focus_backend = "screensaver";
+  } else if (inhibit_screensaver(connection,
+                                 "org.gnome.ScreenSaver",
+                                 "/org/gnome/ScreenSaver",
+                                 "org.gnome.ScreenSaver",
+                                 &cookie)) {
+    g_focus_service = "org.gnome.ScreenSaver";
+    g_focus_path = "/org/gnome/ScreenSaver";
+    g_focus_interface = "org.gnome.ScreenSaver";
+    g_focus_backend = "gnome-screensaver";
+  } else {
+    close_session_bus(connection);
+    if (error != nullptr) *error = "screen saver service unavailable";
+    return false;
+  }
+
+  g_focus_connection = connection;
+  g_focus_cookie = cookie;
+  g_focus_active = true;
+  if (backend != nullptr) *backend = g_focus_backend;
+  return true;
+}
+
+void leave_focus_mode() {
+  std::lock_guard<std::mutex> lock(g_focus_mutex);
+  if (!g_focus_active || g_focus_connection == nullptr) {
+    g_focus_active = false;
+    return;
+  }
+
+  DBusMessage* message = dbus_message_new_method_call(
+      g_focus_service.c_str(),
+      g_focus_path.c_str(),
+      g_focus_interface.c_str(),
+      "UnInhibit");
+  if (message != nullptr) {
+    DBusMessageIter iterator;
+    dbus_message_iter_init_append(message, &iterator);
+    dbus_message_iter_append_basic(
+        &iterator, DBUS_TYPE_UINT32, &g_focus_cookie);
+    DBusMessage* reply = call_with_reply(g_focus_connection, message, 1000);
+    if (reply != nullptr) dbus_message_unref(reply);
+    dbus_message_unref(message);
+  }
+
+  close_session_bus(g_focus_connection);
+  g_focus_connection = nullptr;
+  g_focus_active = false;
+  g_focus_cookie = 0;
 }
 
 }  // namespace archoera

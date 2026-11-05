@@ -7,7 +7,8 @@ using Archoera.Infrastructure.Settings;
 
 namespace Archoera.Infrastructure.Instances;
 
-/// <summary>JSON facade for instance.list/create/update/delete/duplicate.</summary>
+/// <summary>JSON facade for instance.list/create/update/delete/duplicate plus
+/// trash planning and pre-update backups.</summary>
 public sealed partial class InstanceModuleService : IModuleMethodHandler
 {
     private const string ListMethod = "instance.list";
@@ -19,17 +20,24 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
     private const string ModsListMethod = "instance.mods.list";
     private const string ModsSetEnabledMethod = "instance.mods.setEnabled";
     private const string ModsRemoveMethod = "instance.mods.remove";
+    private const string TrashPlanMethod = "instance.trashPlan";
+    private const string BackupCreateMethod = "instance.backup.create";
+    private const string BackupRestoreMethod = "instance.backup.restore";
+    private const string BackupDiscardMethod = "instance.backup.discard";
 
     private static readonly string[] SupportedMethods =
         [
             ListMethod, CreateMethod, UpdateMethod, DeleteMethod, DuplicateMethod,
             SyncMethod, ModsListMethod, ModsSetEnabledMethod, ModsRemoveMethod,
+            TrashPlanMethod, BackupCreateMethod, BackupRestoreMethod,
+            BackupDiscardMethod,
         ];
 
     private static StringComparison PathComparison => PathSemantics.Comparison;
 
     private readonly IInstanceRepository _repository;
     private readonly JsonAppSettingsStore _settings;
+    private readonly InstanceBackupService _backups;
     private readonly Dictionary<string, ModuleMethodDelegate> _handlers;
 
     public InstanceModuleService(
@@ -38,6 +46,7 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
     {
         _settings = settings ?? new JsonAppSettingsStore();
         _repository = repository ?? new SqliteInstanceRepository(settings: _settings);
+        _backups = new InstanceBackupService(_repository, _settings);
         _handlers = new Dictionary<string, ModuleMethodDelegate>(StringComparer.Ordinal)
         {
             [ListMethod] = ListAsync,
@@ -49,6 +58,10 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
             [ModsListMethod] = ListModsAsync,
             [ModsSetEnabledMethod] = SetModEnabledAsync,
             [ModsRemoveMethod] = RemoveModAsync,
+            [TrashPlanMethod] = TrashPlanAsync,
+            [BackupCreateMethod] = BackupCreateAsync,
+            [BackupRestoreMethod] = BackupRestoreAsync,
+            [BackupDiscardMethod] = BackupDiscardAsync,
         };
     }
 
@@ -516,39 +529,98 @@ public sealed partial class InstanceModuleService : IModuleMethodHandler
         using var document = Parse(paramsJson);
         var rootElement = document.RootElement;
         var id = ReadString(rootElement, "id") ?? throw new ArgumentException("id is required");
-        var deleteFiles = rootElement.TryGetProperty("deleteFiles", out var deleteFilesElement) &&
-                          deleteFilesElement.ValueKind is JsonValueKind.True or JsonValueKind.False &&
-                          deleteFilesElement.GetBoolean();
 
-        // Read the record first: the registry row disappears below and the
-        // cleaner needs the original path plus every sibling instance path.
-        var items = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
-        var record = items.FirstOrDefault(item => item.Id == id);
-
+        // This method only removes the registry row. Moving files to the trash
+        // is a separate step: instance.trashPlan validates the directory and
+        // the native core performs the platform move before this call.
         var deleted = await _repository.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
 
-        var filesDeleted = false;
-        string? filesSkippedReason = null;
-        if (deleteFiles && record is not null)
+        return BuildEnvelope(writer => writer.WriteBoolean("deleted", deleted));
+    }
+
+    private async Task<byte[]> TrashPlanAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        using var document = Parse(paramsJson);
+        var rootElement = document.RootElement;
+        var id = ReadString(rootElement, "id") ?? throw new ArgumentException("id is required");
+        var items = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
+        var record = items.FirstOrDefault(item => item.Id == id);
+        if (record is null)
         {
-            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
-            var siblings = items
-                .Where(item => !string.Equals(item.Id, id, StringComparison.Ordinal))
-                .Select(item => item.RootPath)
-                .ToArray();
-            filesDeleted = InstanceDirectoryCleaner.TryDelete(
-                record.RootPath,
-                settings.Roots,
-                siblings,
-                out filesSkippedReason);
+            throw new ArgumentException("instance not found");
         }
+
+        var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var siblings = items
+            .Where(item => !string.Equals(item.Id, id, StringComparison.Ordinal))
+            .Select(item => item.RootPath)
+            .ToArray();
+        var trashable = InstanceDirectoryCleaner.TryResolveForTrash(
+            record.RootPath,
+            settings.Roots,
+            siblings,
+            out var path,
+            out var skipReason);
 
         return BuildEnvelope(writer =>
         {
-            writer.WriteBoolean("deleted", deleted);
-            writer.WriteBoolean("filesDeleted", filesDeleted);
-            writer.WriteString("filesSkippedReason", filesSkippedReason);
+            writer.WriteBoolean("trashable", trashable);
+            writer.WriteString("path", path);
+            writer.WriteString("skipReason", skipReason);
         });
+    }
+
+    private async Task<byte[]> BackupCreateAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        using var document = Parse(paramsJson);
+        var rootElement = document.RootElement;
+        var id = ReadString(rootElement, "id") ?? throw new ArgumentException("id is required");
+        var snapshot = await _backups.CreateAsync(id, cancellationToken).ConfigureAwait(false);
+        return BuildEnvelope(writer =>
+        {
+            writer.WriteString("backupId", snapshot.BackupId);
+            writer.WriteString("path", snapshot.BackupPath);
+            writer.WriteNumber("fileCount", snapshot.FileCount);
+            writer.WriteNumber("byteCount", snapshot.ByteCount);
+        });
+    }
+
+    private async Task<byte[]> BackupRestoreAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        using var document = Parse(paramsJson);
+        var rootElement = document.RootElement;
+        var id = ReadString(rootElement, "id") ?? throw new ArgumentException("id is required");
+        var backupId = ReadString(rootElement, "backupId")
+                       ?? throw new ArgumentException("backupId is required");
+        var outcome = await _backups.RestoreAsync(id, backupId, cancellationToken)
+            .ConfigureAwait(false);
+        return BuildEnvelope(writer =>
+        {
+            writer.WriteBoolean("restored", outcome.Restored);
+            writer.WriteBoolean("backupDiscarded", outcome.BackupDiscarded);
+            writer.WriteString("path", outcome.BackupPath);
+            writer.WriteString("error", outcome.Error);
+        });
+    }
+
+    private async Task<byte[]> BackupDiscardAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        using var document = Parse(paramsJson);
+        var rootElement = document.RootElement;
+        var id = ReadString(rootElement, "id") ?? throw new ArgumentException("id is required");
+        var backupId = ReadString(rootElement, "backupId")
+                       ?? throw new ArgumentException("backupId is required");
+        var deleted = await _backups.DiscardAsync(id, backupId, cancellationToken)
+            .ConfigureAwait(false);
+        return BuildEnvelope(writer => writer.WriteBoolean("deleted", deleted));
     }
 
     private static JsonDocument Parse(string? paramsJson)

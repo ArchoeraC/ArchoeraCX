@@ -134,18 +134,16 @@
   "instanceDuplicateInvalidName": "请输入实例名称。",
   "instanceDeleteConfirm": "删除“{name}”？",
   "instanceDeleteBody": "实例将从启动器列表中移除。",
-  "instanceDeleteFiles": "同时删除本地文件",
-  "instanceDeleteFilesHint": "删除实例目录中的游戏文件、Mod、日志与配置，无法恢复。",
-  "instanceDeleteFilesConfirmTitle": "确认删除本地文件？",
-  "instanceDeleteFilesConfirmBody": "将永久删除以下目录及其全部内容：\n{path}",
-  "instanceDeleteFilesConfirmAction": "永久删除",
+  "instanceDeleteFiles": "同时把本地文件移到回收站",
+  "instanceDeleteFilesHint": "把实例目录中的游戏文件、Mod、日志与配置移入系统回收站，可从回收站恢复。",
   "instanceDeleteDone": "实例已删除。",
-  "instanceDeleteDoneFiles": "实例及其本地文件已删除。",
-  "instanceDeleteFilesKeptMissing": "实例已删除，但本地目录已不存在。",
-  "instanceDeleteFilesKeptShared": "实例已删除，但目录与其它实例或实例根共用，已保留。",
-  "instanceDeleteFilesKeptUnsafe": "实例已删除，但目录路径不安全，已保留。",
-  "instanceDeleteFilesKeptFailed": "实例已删除，但本地文件删除失败，请手动清理。",
-  "instanceDeleteFilesKeptOutsideRoot": "实例已删除，但目录不在受管理的实例根内，已保留。",
+  "instanceDeleteDoneFiles": "实例已删除，本地文件已移到回收站。",
+  "instanceDeleteFilesKeptMissing": "实例已删除，本地目录此前已不存在。",
+  "instanceDeleteFilesKeptShared": "实例未删除：目录与其它实例或实例根共用，已保留。",
+  "instanceDeleteFilesKeptUnsafe": "实例未删除：目录路径不安全。",
+  "instanceDeleteFilesKeptFailed": "实例未删除：本地文件移动失败，请检查权限后重试。",
+  "instanceDeleteFilesKeptTrashFailed": "实例未删除：系统回收站不可用，本地文件已保留。请检查系统回收站配置或磁盘权限后重试。",
+  "instanceDeleteFilesKeptOutsideRoot": "实例未删除：目录不在受管理的实例根内。",
   "instanceCheckQuick": "快速检查",
   "instanceCheckFull": "完整检查",
   "instanceCheckTitle": "依赖检查",
@@ -192,18 +190,41 @@
       }
     }
   },
-  "@instanceDeleteFilesConfirmBody": {
-    "description": "二次确认弹窗中展示即将永久删除的实例目录。",
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
+  "@instanceDeleteFilesHint": {
+    "description": "删除实例时把本地目录移入系统回收站的说明。"
   },
+  "@instanceDeleteFilesKeptTrashFailed": {},
   "instanceLaunchNotReady": "启动流程尚未接线。",
   "launchStarted": "游戏已启动（PID {pid}）。",
   "launchFailed": "启动失败。",
   "launchStarting": "正在启动游戏…",
+  "launchProgressTitle": "正在启动 {name}",
+  "@launchProgressTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "launchStageInstance": "读取实例配置",
+  "launchStageAccount": "准备账户",
+  "launchStageVersion": "读取游戏版本",
+  "launchStageJava": "选择 Java",
+  "launchStageFiles": "校验游戏文件",
+  "launchStageRepair": "补全缺失文件",
+  "launchStagePlan": "生成启动参数",
+  "launchStageProcess": "启动游戏进程",
+  "launchStageSkipped": "无需此步",
+  "launchFailureTitle": "启动失败",
+  "launchFailureStage": "失败阶段",
+  "launchFailureCode": "错误代码",
+  "launchFailureJava": "Java",
+  "launchFailureJavaRequired": "需要 Java",
+  "launchFailureInstallJava": "安装匹配的 Java",
+  "launchFailureLog": "日志文件",
+  "launchFailureRetryable": "可以直接重试，或先补全缺失文件。",
+  "launchFailureCopy": "复制诊断",
+  "launchFailureCopied": "诊断信息已复制",
   "launchNoAccount": "请先添加账户。",
   "launchOfflineOnly": "当前基础启动仅支持离线账户。",
   "launchAutoRepairFailed": "启动文件缺失，自动修复失败。请在实例菜单中重新安装加载器。",
@@ -498,6 +519,14 @@
   "@settingsBehaviorNote": {
     "description": "启动器行为开关下方指向现有日志查看器的说明。"
   },
+  "settingsFocusMode": "专注模式",
+  "@settingsFocusMode": {
+    "description": "游戏运行时阻止系统自动休眠和锁屏的桌面开关。"
+  },
+  "settingsFocusModeDesc": "游戏运行期间阻止系统自动休眠和锁屏；游戏退出后自动恢复。部分桌面环境可能不支持。",
+  "@settingsFocusModeDesc": {
+    "description": "说明专注模式的系统级效果与平台限制。"
+  },
   "settingsWindowMode": "窗口模式",
   "@settingsWindowMode": {
     "description": "全局窗口模式选择器（窗口化/全屏/最大化）。"
@@ -604,6 +633,12 @@
     "description": "加载器安装方式的全局默认值。"
   },
   "@settingsPreferPureJavaLoaderInstallDesc": {},
+  "settingsBackupBeforeUpdate": "更新前自动备份",
+  "settingsBackupBeforeUpdateDesc": "安装或更新游戏与加载器之前，把实例目录复制到 .archoera/backups。更新失败时自动回滚；确认回滚成功后才会删除备份。关闭后更新将不再生成回滚包。",
+  "@settingsBackupBeforeUpdate": {
+    "description": "实例更新前自动备份与失败回滚的全局开关。"
+  },
+  "@settingsBackupBeforeUpdateDesc": {},
   "settingsSectionGameArgs": "附加游戏参数",
   "settingsGameArgsNote": "追加到原版参数之后，按空格拆分；留空表示不加。",
   "settingsSectionCommands": "启动命令",
@@ -1716,9 +1751,9 @@
     }
   },
   "crashRuleMainClassFix": "重新安装加载器或运行加载器修复后重试。",
-  "crashRuleGraphicsTitle": "图形/OpenGL 初始化失败",
-  "crashRuleGraphicsDetail": "游戏无法创建 OpenGL 窗口。",
-  "crashRuleGraphicsFix": "更新显卡驱动，改用独立显卡运行，并避免远程桌面或虚拟机。",
+  "crashRuleGraphicsTitle": "图形初始化失败",
+  "crashRuleGraphicsDetail": "游戏无法创建图形窗口（OpenGL 或 Vulkan）。",
+  "crashRuleGraphicsFix": "更新显卡驱动，改用独立显卡运行，并确认驱动支持游戏使用的渲染后端（OpenGL 或 Vulkan）；避免远程桌面或虚拟机。",
   "crashRuleModTitle": "某个 Mod 启动失败",
   "crashRuleModDetail": "Mod {mod} 在 {stage} 阶段抛出异常。",
   "@crashRuleModDetail": {

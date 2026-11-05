@@ -6,12 +6,19 @@
 #include "platform_system.h"
 
 #import <AppKit/AppKit.h>
+#import <IOKit/pwr_mgt/IOPMLib.h>
 #import <UserNotifications/UserNotifications.h>
 
+#include <mutex>
+#include <string>
 #include <unistd.h>
 
 namespace archoera {
 namespace {
+
+std::mutex g_focus_mutex;
+IOPMAssertionID g_system_assertion = kIOPMNullAssertionID;
+IOPMAssertionID g_display_assertion = kIOPMNullAssertionID;
 
 NSString* to_nsstring(const std::string& text) {
   return [[NSString alloc] initWithBytes:text.data()
@@ -104,6 +111,86 @@ bool send_system_notification(const std::string& title,
            withCompletionHandler:^(NSError* failure) {
              (void)failure;
            }];
+  return true;
+}
+
+bool enter_focus_mode(std::string* backend, std::string* error) {
+  std::lock_guard<std::mutex> lock(g_focus_mutex);
+  if (g_system_assertion != kIOPMNullAssertionID) {
+    if (backend != nullptr) *backend = "power-assertion";
+    return true;
+  }
+
+  IOReturn result = IOPMAssertionCreateWithName(
+      CFSTR("PreventUserIdleSystemSleep"),
+      kIOPMAssertionLevelOn,
+      CFSTR("ArchoeraCX is running a game"),
+      &g_system_assertion);
+  if (result != kIOReturnSuccess) {
+    g_system_assertion = kIOPMNullAssertionID;
+    if (error != nullptr) *error = "power assertion refused";
+    return false;
+  }
+
+  // Display sleep is optional: some Macs reject it while the lid is closed,
+  // but keeping the system awake is enough for the game to continue.
+  if (IOPMAssertionCreateWithName(
+          CFSTR("PreventUserIdleDisplaySleep"),
+          kIOPMAssertionLevelOn,
+          CFSTR("ArchoeraCX is running a game"),
+          &g_display_assertion) != kIOReturnSuccess) {
+    g_display_assertion = kIOPMNullAssertionID;
+  }
+
+  if (backend != nullptr) *backend = "power-assertion";
+  return true;
+}
+
+void leave_focus_mode() {
+  std::lock_guard<std::mutex> lock(g_focus_mutex);
+  if (g_display_assertion != kIOPMNullAssertionID) {
+    IOPMAssertionRelease(g_display_assertion);
+    g_display_assertion = kIOPMNullAssertionID;
+  }
+  if (g_system_assertion != kIOPMNullAssertionID) {
+    IOPMAssertionRelease(g_system_assertion);
+    g_system_assertion = kIOPMNullAssertionID;
+  }
+}
+
+bool move_to_trash(const std::string& path,
+                   std::string* backend,
+                   std::string* error) {
+  if (!is_safe_trash_path(path)) {
+    if (error != nullptr) *error = "invalid trash path";
+    return false;
+  }
+
+  NSString* text = to_nsstring(path);
+  if (text == nil) {
+    if (error != nullptr) *error = "invalid encoding";
+    return false;
+  }
+  NSURL* target = [NSURL fileURLWithPath:text];
+  if (target == nil) {
+    if (error != nullptr) *error = "invalid path";
+    return false;
+  }
+
+  NSURL* resulting = nil;
+  NSError* failure = nil;
+  const BOOL moved = [[NSFileManager defaultManager] trashItemAtURL:target
+                                                   resultingItemURL:&resulting
+                                                              error:&failure];
+  if (!moved) {
+    if (error != nullptr) {
+      *error = failure.localizedDescription != nil
+                   ? failure.localizedDescription.UTF8String
+                   : "trashItemAtURL failed";
+    }
+    return false;
+  }
+  if (backend != nullptr) *backend = "nsfilemanager";
   return true;
 }
 

@@ -32,4 +32,9 @@ bool extract_json_int(std::string_view json,
                       std::string_view key,
                       long long* out);
 
+/* Decodes the boolean member `key`; false when missing or not a boolean. */
+bool extract_json_bool(std::string_view json,
+                       std::string_view key,
+                       bool* out);
+
 }  // namespace archoera

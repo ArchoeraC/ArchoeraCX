@@ -638,6 +638,7 @@ Flutter 热重启
 | 窗口 | Flutter 插件 + C++ 平台调用 | 无边框、Mica/Acrylic、DPI |
 | 打开路径/URL | C++ | `system.openUrl` 只允许 `https` 白名单；`system.openPath` 只接受已存在、绝对路径的目录，用于打开数据目录/实例目录；`system.revealPath` 进一步走系统文件管理器定位 API（Linux `org.freedesktop.FileManager1.ShowItems`，回退 XDG Portal；Windows Explorer；macOS Finder），`file:` 只用于目录定位，不作为可执行入口 |
 | 通知 | C++/系统 API | 下载完成、崩溃、更新 |
+| 专注模式 | C++/系统 API | 游戏运行时 `system.focusMode` 阻止空闲休眠/锁屏；退出或失败释放，不影响启动 |
 
 - 托盘与窗口是 Flutter 进程内能力：托盘菜单、显示/隐藏窗口与关闭行为都由 Dart 处理，不经过 C#，也不新增 ABI 方法；C++ 只保留单实例、深链、文件关联与更新。
 - 单实例在 `runApp` 前判定：`platform.singleInstance` 返回 `primary:true` 时 C++ 启动监听；返回 `primary:false` 的进程只转发激活并退出，不显示第二个窗口、不创建托盘或 widget tree（探测用的 core 在退出前关闭）。监听线程只发布 `platform.activate` 域事件，由 Dart 显示/聚焦已有窗口（含托盘隐藏与最小化），不使用定时轮询。
@@ -1225,6 +1226,8 @@ public sealed record LaunchPlan(
 ```
 
 - `launch.start` 在进程成功 spawn 后返回 `{pid, startedAt}`，不等待游戏退出。
+- `launch.start` 通过 `ModuleProgress` 上报 8 个阶段（实例/账户/版本/Java/文件/补全/参数/进程），Dart 据此展示可理解的进度清单；未触发的可选“补全”阶段显示为“无需此步”。
+- 启动失败的 `error.details` 携带 `stage`/`instanceId`/`retryable`/`javaPath`/`javaVersion`/`javaRequired`/`logPath`，UI 显示失败阶段并支持复制诊断（不含 token 等凭据）；缺 Java 或版本不符时 `javaRequired` 给出所需大版本，失败弹窗可直接跳转 `/settings/java/install?major=N` 预选该版本。
 - `launch.stop`：Minecraft 客户端没有优雅退出通道，因此直接强杀本次启动登记的进程树（Windows `TerminateProcess`、Unix `SIGKILL`）；pid 只来自启动登记表，UI 不能指定任意进程；日志查看器连续两次警告后才调用。
 - 命令行包含 token，属于官方启动器同样存在的限制；**绝不**把完整 argv 写日志/显示在 UI。
 
@@ -1831,7 +1834,7 @@ void _drain() {
 
 - `instance.update` 新增可选 `overrides` 对象，语义是 **merge patch**：键缺省 = 不改变，显式 `null` = 清除，有值 = 设置；`instance.list` / `instance.create` / `instance.update` 返回的实例对象**始终**带 `overrides`（无覆盖为 `{}`）。
 - `loader.plan` / `loader.commit` / `loader.repair` 成功后，客户端调用 `instance.update` 同步 `loader` / `loaderVersion`；否则实例卡片、依赖检查和启动预检会继续读旧加载器版本。
-- 全局 `settings.json`（schema 15）另有 `wrapperCommand`（string ≤ 4096）、`environment`（object ≤ 64 项）、`preLoadCommand` / `preLaunchCommand` / `postExitCommand`（string ≤ 4096）、`maximized`（与 `fullscreen` 互斥）、`enableGameMode` / `enableMangoHud` / `useZink`（Linux 预设），以及仅用于高级原生库的 `developerMode` + `nativeGlfwPath` / `nativeOpenALPath` / `nativeSdlPath`。开发者模式与下载合规的开发者模式无关。启动环境合并顺序：自动优化（dGPU）→ 性能预设 → 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
+- 全局 `settings.json`（schema 17）另有 `wrapperCommand`（string ≤ 4096）、`environment`（object ≤ 64 项）、`preLoadCommand` / `preLaunchCommand` / `postExitCommand`（string ≤ 4096）、`maximized`（与 `fullscreen` 互斥）、`enableGameMode` / `enableMangoHud` / `useZink`（Linux 预设）、`backupBeforeUpdate`（bool，默认 `true`，更新前快照与失败回滚开关），以及仅用于高级原生库的 `developerMode` + `nativeGlfwPath` / `nativeOpenALPath` / `nativeSdlPath`。开发者模式与下载合规的开发者模式无关。启动环境合并顺序：自动优化（dGPU）→ 性能预设 → 全局 → 实例；实例 `{}` 清空全局环境。`JAVA_TOOL_OPTIONS` / `_JAVA_OPTIONS` / `JDK_JAVA_OPTIONS` / `CLASSPATH` 一律拒绝并在子进程中剥离。
 - 启动时 C# 用 `InstanceOverrides.ApplyTo(AppSettings)` 把实例覆盖合到全局设置，再选 Java、构建 LaunchPlan。
 - SQLite 只做索引，**不存** `overrides`；权威源仍是 `<instance root>/.archoera/instance.json`。
 
@@ -2107,7 +2110,8 @@ crashes/
 
 ### 11.8 回收站与 GC
 
-- 删除实例：移到 `trash/<timestamp>/`，保留 7 天；可恢复。
+- 删除实例：由 C# `instance.trashPlan` 做托管根/共享目录/符号链接校验，再由 C++ `system.trash` 交给系统回收站（Linux freedesktop Trash、macOS `trashItemAtURL`、Windows `SHFileOperationW` + `FOF_ALLOWUNDO`），注册表行只在移动成功后移除；回收站由系统保留策略管理，用户可原样恢复。
+- 更新实例前自动备份到 `<instance>/.archoera/backups/<id>/`（`manifest.json` 记录每个文件 SHA-256）；更新失败自动恢复，只有恢复后逐文件校验通过才删除回滚包，否则保留并在错误中给出路径。设置项 `backupBeforeUpdate` 可关闭。
 - 整合包删除的旧文件：`.archoera/removed/<txid>/`，保留 30 天。
 - 内容库 GC：30 天未用且 `nlink<=1`；与下载提交用读写锁。
 - 备份保留：最近 3 份 `instance.json`、最近 5 份 DB 迁移备份。
@@ -2408,6 +2412,7 @@ public interface IDownloadProvider {
 | `system.appearance` | C++ | 系统深浅色与强调色；Linux 强调色优先读 DE 配置（`kdeglobals [General] AccentColor` → GNOME `accent-color`），再回退 XDG Portal `accent-color`；Portal 读取为非阻塞（异步 DBus + 缓存），变化以 `system.appearance` domain 事件推送；Dart 侧对快照做合并（known 字段覆盖 unknown），避免“首次读取的空值”晚于事件到达时把已知主题色冲掉 |
 | `system.openUrl` | C++ | 用系统 API 打开 http(s) 链接（默认浏览器） |
 | `system.notify` | C++ | 发送系统桌面通知（登录成功等） |
+| `system.focusMode` | C++ | 专注模式：游戏运行时阻止空闲休眠/锁屏；参数 `{"enabled":bool}`，返回 `{"enabled":bool,"backend":string|null}`；Linux `org.freedesktop.ScreenSaver.Inhibit`（GNOME 回退）、Windows `PowerCreateRequest`、macOS IOKit `IOPMAssertion`；无后端时 `enabled:false`，启动不受影响 |
 | `system.snapshot` | C++ | 活跃任务 + 事件 seq |
 | `system.log.tail` | C++ | 环形缓冲分页 |
 | `system.log.export` | C++ | 导出诊断日志 |
@@ -2420,6 +2425,7 @@ public interface IDownloadProvider {
 | `system.elevation` | C++ | 超级用户探测：Linux/其它 POSIX 与 macOS 读 `geteuid()`（sudo/root 登录均为 0，macOS 无 Win32 式令牌提权），Windows 读令牌 `TokenElevation`（UAC 未提权的管理员返回 0）；返回 `elevated` 与 `kind`（`root`/`administrator`）。仅探测；启动拒绝与确认按钮在 Dart 启动门完成 |
 | `wiki.feed` | C# | Wiki 页社区流：Mojang 官方新闻、Java 版本补丁说明、Minecraft Wiki 最近编辑；逐源独立失败 + 5 分钟缓存 |
 | `system.diagnostics` | C++/C# | 生成诊断包 |
+| `system.trash` | C++ | 把文件/目录移动到系统回收站（核心自有方法）：参数 `{"path":"/absolute/path"}`，返回 `{"path","trashed","backend"}`；只接受绝对路径且非文件系统根，Linux freedesktop Trash、macOS `trashItemAtURL`、Windows `SHFileOperationW`+`FOF_ALLOWUNDO`；不可用时返回 `trashed:false` |
 | `system.openPath` | C++ | 打开本地目录（核心自有方法，不经 C#）：参数 `{"path":"/absolute/dir"}`，返回 `{"opened":bool}`；只接受已存在、绝对路径的目录，文件/不存在/非绝对路径返回 `E_INVALID`（`system.openPath requires an absolute existing directory`）；Linux 走 XDG Portal OpenURI 的 `file:` URI，Windows `ShellExecute`，macOS `NSWorkspace`，无实现返回 `opened:false` |
 | `system.revealPath` | C++ | 在系统文件管理器中定位本地目录（核心自有方法，不经 C#）：参数与返回同 `system.openPath`；Linux 优先 `org.freedesktop.FileManager1.ShowItems`，失败回退 Portal；Windows Explorer / macOS Finder；校验规则相同 |
 | `system.openUrl` | C++ | 打开 https 白名单 |
@@ -2432,7 +2438,11 @@ public interface IDownloadProvider {
 | `instance.get` | C# | 详情 |
 | `instance.create` | C# | 创建空实例/从版本创建；未传 `rootPath` 时默认落在 `versions/<name>`（版本隔离）；目录名保留 Unicode，仅把 Windows 非法字符替换为 `-`，重名依次加 ` (2)`、` (3)`；手动创建时 UI 按 SJMCL 规则拒绝 `\ / : * ? " < > \|`、首尾点和保留设备名，其余符号/Unicode 原样保留 |
 | `instance.update` | C# | 名称/收藏/最后游玩/加载器版本/内存/Java/参数；`name` 仅改元数据与 `instance.json`，不移动实例目录；`loader` + `loaderVersion` 用于安装/升级加载器后同步实例元数据；`overrides` 走 merge patch（缺省不改、`null` 清除），返回实例始终带 `overrides` |
-| `instance.delete` | C# | 移除索引；`deleteFiles: true` 时同时删除实例目录（需 `.archoera/instance.json` 标记，且不与实例根或其它实例重叠，否则保留并在 `filesSkippedReason` 返回原因） |
+| `instance.delete` | C# | 只移除注册表行，返回 `{"deleted":bool}`；不碰实例目录。移入回收站由 Dart 先 `instance.trashPlan` 校验、再 `system.trash` 执行，成功后才调用本方法 |
+| `instance.trashPlan` | C# | 只读预检：返回 `trashable` / `path` / `skipReason`（`missing` / `outside_root` / `shared_root` / `not_managed` / `nested_instance` / `symlink` / `unsafe_path`）；Dart 仅在 `trashable` 时把 `path` 交给 `system.trash`，成功后再调用 `instance.delete` 删注册表；`missing` 直接删注册表 |
+| `instance.backup.create` | C# | 更新前快照：复制实例目录（排除既往备份与符号链接）到 `<root>/.archoera/backups/<id>/`，最后写 `manifest.json`（schema 1、实例元数据、每文件 SHA-256）；返回 `backupId` / `path` / `fileCount` / `bytes` |
+| `instance.backup.restore` | C# | 回滚：先校验备份全部文件 → 清理实例目录（保留 `.archoera/backups`）→ 复制 → 再逐文件校验 → 回写实例元数据；只有全部成功才删除回滚包，否则返回失败并保留备份路径 |
+| `instance.backup.discard` | C# | 更新成功后删除指定快照；`backupId` 拒绝 `/`、`\`、`.` |
 | `instance.sync` | C# | 扫描配置的实例根，采纳/刷新/标记缺失（不删文件） |
 | `instance.mods.list` | C# | 列出实例 `mods/` 中的 jar 与 `.disabled` 文件 |
 | `instance.mods.setEnabled` | C# | 通过 `.disabled` 后缀启停 Mod |
@@ -2746,7 +2756,7 @@ public interface IDownloadProvider {
 
 - 配置/日志/DB 权限：用户可读写；不要求管理员。
 - 便携模式不写注册表/系统目录（除用户显式选择）。
-- 删除账户时清 token；删除实例移入 trash，不立即物理删除。
+- 删除账户时清 token；删除实例移入系统回收站，不立即物理删除。
 - 诊断包导出前展示内容清单，默认不含账户/存档。
 
 ---

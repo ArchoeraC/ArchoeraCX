@@ -208,30 +208,163 @@ mixin CoreClientInstances on CoreTransport {
     return _parseInstance(this, jsonText, methodName);
   }
 
-  /// Remove the registry entry. Pass [deleteFiles] to also remove the
-  /// instance's own game directory; the C# owner refuses when the directory is
-  /// shared with a configured root or another instance.
+  /// Remove the registry entry. Pass [trashFiles] to also move the instance's
+  /// own game directory to the system trash through the native core; the C#
+  /// owner refuses when the directory is shared with a configured root or
+  /// another instance. A failed move keeps the registry entry so the user can
+  /// retry or clean up manually.
   Future<InstanceDeleteOutcome> deleteInstance(
     String id, {
-    bool deleteFiles = false,
+    bool trashFiles = false,
     void Function(int done, int total)? onProgress,
   }) async {
     const methodName = 'instance.delete';
+    if (!trashFiles) {
+      final jsonText = await runAsync(
+        methodName,
+        paramsJson: jsonEncode(<String, Object?>{'id': id}),
+        onProgress: onProgress,
+      );
+      final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+      final data = asMap(decoded['data'], methodName);
+      return InstanceDeleteOutcome(deleted: data['deleted'] == true);
+    }
+
+    // The C# side owns the safety checks (marker, configured roots, siblings)
+    // but cannot reach the platform trash API, so it returns the validated
+    // path and Dart asks the native core to move it.
+    const planMethod = 'instance.trashPlan';
+    final planText = await runAsync(
+      planMethod,
+      paramsJson: jsonEncode(<String, Object?>{'id': id}),
+    );
+    final plan = asMap(
+      asMap(decodeEnvelope(planText, fallbackMethod: planMethod), planMethod)['data'],
+      planMethod,
+    );
+    final path = plan['path']?.toString();
+    final trashable = plan['trashable'] == true && path != null && path.isNotEmpty;
+    if (!trashable) {
+      final reason = plan['skipReason']?.toString();
+      // A directory that is already gone means there is nothing left to lose;
+      // removing the registry entry is still correct.
+      if (reason == 'missing') {
+        return _deleteRegistryOnly(
+          id,
+          methodName,
+          onProgress,
+          filesMissing: true,
+        );
+      }
+      return InstanceDeleteOutcome(filesSkippedReason: reason ?? 'unsafe_path');
+    }
+
+    const trashMethod = 'system.trash';
+    final trashText = await runAsync(
+      trashMethod,
+      paramsJson: jsonEncode(<String, Object?>{'path': path}),
+    );
+    final trash = asMap(
+      asMap(decodeEnvelope(trashText, fallbackMethod: trashMethod), trashMethod)['data'],
+      trashMethod,
+    );
+    if (trash['trashed'] != true) {
+      return const InstanceDeleteOutcome(
+        filesSkippedReason: 'trash_failed',
+      );
+    }
+
+    return _deleteRegistryOnly(
+      id,
+      methodName,
+      onProgress,
+      filesTrashed: true,
+    );
+  }
+
+  Future<InstanceDeleteOutcome> _deleteRegistryOnly(
+    String id,
+    String methodName,
+    void Function(int done, int total)? onProgress, {
+    bool filesTrashed = false,
+    bool filesMissing = false,
+  }) async {
     final jsonText = await runAsync(
       methodName,
-      paramsJson: jsonEncode(<String, Object?>{
-        'id': id,
-        'deleteFiles': deleteFiles,
-      }),
+      paramsJson: jsonEncode(<String, Object?>{'id': id}),
       onProgress: onProgress,
     );
     final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
     final data = asMap(decoded['data'], methodName);
     return InstanceDeleteOutcome(
       deleted: data['deleted'] == true,
-      filesDeleted: data['filesDeleted'] == true,
-      filesSkippedReason: data['filesSkippedReason']?.toString(),
+      filesTrashed: filesTrashed,
+      filesMissing: filesMissing,
     );
+  }
+
+  /// Copies the instance directory into
+  /// `<instance>/.archoera/backups/<id>` and returns the snapshot id. Throws
+  /// when the instance is not managed or the copy fails.
+  Future<InstanceBackupSnapshot> createInstanceBackup(String id) async {
+    const methodName = 'instance.backup.create';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{'id': id}),
+    );
+    final data = asMap(
+      asMap(decodeEnvelope(jsonText, fallbackMethod: methodName), methodName)['data'],
+      methodName,
+    );
+    return InstanceBackupSnapshot(
+      backupId: data['backupId']?.toString() ?? '',
+      path: data['path']?.toString() ?? '',
+      fileCount: (data['fileCount'] as num?)?.toInt() ?? 0,
+      byteCount: (data['byteCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// Restores a snapshot over the instance directory. The snapshot is only
+  /// deleted when the C# owner verified every restored file.
+  Future<InstanceBackupRestore> restoreInstanceBackup(
+    String id,
+    String backupId,
+  ) async {
+    const methodName = 'instance.backup.restore';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'id': id,
+        'backupId': backupId,
+      }),
+    );
+    final data = asMap(
+      asMap(decodeEnvelope(jsonText, fallbackMethod: methodName), methodName)['data'],
+      methodName,
+    );
+    return InstanceBackupRestore(
+      restored: data['restored'] == true,
+      backupDiscarded: data['backupDiscarded'] == true,
+      path: data['path']?.toString() ?? '',
+      error: data['error']?.toString(),
+    );
+  }
+
+  /// Removes a snapshot after a successful update.
+  Future<bool> discardInstanceBackup(String id, String backupId) async {
+    const methodName = 'instance.backup.discard';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'id': id,
+        'backupId': backupId,
+      }),
+    );
+    final data = asMap(
+      asMap(decodeEnvelope(jsonText, fallbackMethod: methodName), methodName)['data'],
+      methodName,
+    );
+    return data['deleted'] == true;
   }
 
   /// List mod files in an instance's `mods` directory.

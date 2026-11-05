@@ -163,19 +163,26 @@ class InstancesNotifier extends AsyncNotifier<List<GameInstance>> {
     await reload();
   }
 
-  /// Remove an instance. When [deleteFiles] is set the C# owner also deletes
-  /// the instance directory, unless it is shared with another instance.
+  /// Remove an instance. When [trashFiles] is set the instance directory is
+  /// moved to the system trash first, and the registry entry is only removed
+  /// after that succeeds.
   Future<InstanceDeleteOutcome?> delete(
     String id, {
-    bool deleteFiles = false,
+    bool trashFiles = false,
   }) async {
     final client = ref.read(coreClientProvider);
     InstanceDeleteOutcome? outcome;
     if (client != null) {
       try {
-        outcome = await client.deleteInstance(id, deleteFiles: deleteFiles);
+        outcome = await client.deleteInstance(id, trashFiles: trashFiles);
       } catch (_) {
         // Keep the local mirror consistent even if the registry is busy.
+      }
+
+      // A refused trash move keeps both the registry row and the directory, so
+      // the local list must not drop the instance either.
+      if (trashFiles && outcome?.filesTrashed != true) {
+        return outcome;
       }
     }
 

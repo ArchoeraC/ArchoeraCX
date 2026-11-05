@@ -778,13 +778,18 @@ class CoreTransport {
     if (decoded['ok'] == false) {
       final error = decoded['error'];
       if (error is Map) {
+        final rawDetails = error['details'];
         throw CoreException(
           status: CoreStatusCodes.ok,
           code: error['code']?.toString() ?? 'ERROR',
           message:
               error['message']?.toString() ??
               '$fallbackMethod reported failure.',
-          detail: error['details']?.toString(),
+          detail: rawDetails is String
+              ? rawDetails
+              : rawDetails == null
+              ? null
+              : jsonEncode(rawDetails),
         );
       }
       throw CoreException(

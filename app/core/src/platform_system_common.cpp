@@ -113,4 +113,30 @@ bool is_safe_directory_path(const std::string& path) {
   return directory && !code;
 }
 
+bool is_safe_trash_path(const std::string& path) {
+  if (!is_safe_absolute_path(path)) {
+    return false;
+  }
+
+  const std::filesystem::path fs_path(
+      std::u8string(path.begin(), path.end()));
+  std::error_code code;
+  // A missing path is a no-op the caller should report, but never a valid
+  // trash request. exists does not follow symbolic links for the path itself,
+  // so a link can still be trashed on its own.
+  if (!std::filesystem::exists(fs_path, code) || code) {
+    return false;
+  }
+
+  // Moving a filesystem root to the trash would move the whole volume. The
+  // lexical form is enough: the caller passes an already normalized absolute
+  // path and trailing separators are trimmed before comparing.
+  const std::filesystem::path normalized = fs_path.lexically_normal();
+  const std::filesystem::path root = normalized.root_path();
+  if (!root.empty() && normalized == root) {
+    return false;
+  }
+  return true;
+}
+
 }  // namespace archoera

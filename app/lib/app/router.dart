@@ -168,7 +168,13 @@ GoRouter buildAppRouter({String? initialLocation}) {
                         pageBuilder: (context, state) => _fadeSlidePage(
                           context,
                           state,
-                          const AppPageSurface(child: JavaInstallPage()),
+                          AppPageSurface(
+                            child: JavaInstallPage(
+                              initialMajor: int.tryParse(
+                                state.uri.queryParameters['major'] ?? '',
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],

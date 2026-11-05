@@ -64,6 +64,7 @@ class UiPreferences {
     this.closeToTray = false,
     this.hideAfterLaunch = false,
     this.quitAfterGameExit = false,
+    this.focusMode = false,
     this.startPage = '/',
   });
 
@@ -91,6 +92,9 @@ class UiPreferences {
   /// Quit the launcher when the started game process exits.
   final bool quitAfterGameExit;
 
+  /// Keep the desktop awake while a game is running.
+  final bool focusMode;
+
   /// Route opened on launch; one of [startPageOptions].
   final String startPage;
 
@@ -103,6 +107,7 @@ class UiPreferences {
     bool? closeToTray,
     bool? hideAfterLaunch,
     bool? quitAfterGameExit,
+    bool? focusMode,
     String? startPage,
   }) {
     return UiPreferences(
@@ -115,6 +120,7 @@ class UiPreferences {
       closeToTray: closeToTray ?? this.closeToTray,
       hideAfterLaunch: hideAfterLaunch ?? this.hideAfterLaunch,
       quitAfterGameExit: quitAfterGameExit ?? this.quitAfterGameExit,
+      focusMode: focusMode ?? this.focusMode,
       startPage: startPage ?? this.startPage,
     );
   }
@@ -134,6 +140,9 @@ final class PreferencesController extends Notifier<UiPreferences> {
 
   /// Persistence key for quitting once the started game process exits.
   static const quitAfterGameExitKey = 'ui.quitAfterGameExit';
+
+  /// Persistence key for keeping the desktop awake during a game.
+  static const focusModeKey = 'ui.focusMode';
 
   static const _taskHistoryKey = 'ui.taskHistory';
   static const _logLinesKey = 'ui.logLines';
@@ -160,6 +169,7 @@ final class PreferencesController extends Notifier<UiPreferences> {
         closeToTray: prefs.getBool(closeToTrayKey) ?? false,
         hideAfterLaunch: prefs.getBool(hideAfterLaunchKey) ?? false,
         quitAfterGameExit: prefs.getBool(quitAfterGameExitKey) ?? false,
+        focusMode: prefs.getBool(focusModeKey) ?? false,
         startPage: _sanitizeStartPage(prefs.getString(_startPageKey)),
       );
       state = restored;
@@ -216,6 +226,12 @@ final class PreferencesController extends Notifier<UiPreferences> {
   Future<void> setQuitAfterGameExit(bool enabled) async {
     state = state.copyWith(quitAfterGameExit: enabled);
     await _writeBool(quitAfterGameExitKey, enabled);
+  }
+
+  /// Persists whether the desktop stays awake while a game runs.
+  Future<void> setFocusMode(bool enabled) async {
+    state = state.copyWith(focusMode: enabled);
+    await _writeBool(focusModeKey, enabled);
   }
 
   /// Persists the startup page; unknown routes are ignored.

@@ -20,26 +20,19 @@ public static class InstanceDirectoryCleaner
 {
 
     /// <summary>
-    /// Try to remove <paramref name="rootPath"/> recursively.
-    /// Returns true when the directory is gone, otherwise false with a stable
-    /// <paramref name="skipReason"/> code from <see cref="InstanceDeleteSkipReason"/>.
+    /// Validate <paramref name="rootPath"/> and return its full path when it is
+    /// provably the directory of this instance. The same guard rails as
+    /// <see cref="TryDelete"/> apply, but nothing is removed.
     /// </summary>
-    /// <param name="rootPath">Candidate instance directory.</param>
-    /// <param name="configuredRoots">Roots configured by the user; the instance
-    /// must live inside one of them.</param>
-    /// <param name="otherInstanceRoots">Every other registered instance path.</param>
-    /// <param name="skipReason">Stable reason code when the delete is skipped.</param>
-    /// <param name="allowOutsideConfiguredRoots">
-    /// Only for a directory this process just created itself (duplicate
-    /// rollback); user-driven deletes must stay inside the configured roots.
-    /// </param>
-    public static bool TryDelete(
+    public static bool TryResolveForTrash(
         string rootPath,
         IReadOnlyList<string> configuredRoots,
         IReadOnlyList<string> otherInstanceRoots,
+        out string? fullPath,
         out string? skipReason,
         bool allowOutsideConfiguredRoots = false)
     {
+        fullPath = null;
         skipReason = null;
         if (string.IsNullOrWhiteSpace(rootPath))
         {
@@ -83,10 +76,10 @@ public static class InstanceDirectoryCleaner
             return false;
         }
 
-        // Recursive deletion is only allowed for a directory that lives inside
-        // a configured instances root. A registry row alone is not proof of
-        // ownership: a stale or imported path could otherwise target any
-        // folder that happens to carry a marker file.
+        // Moving is only allowed for a directory that lives inside a configured
+        // instances root. A registry row alone is not proof of ownership: a
+        // stale or imported path could otherwise move any folder that happens
+        // to carry a marker file.
         if (!allowOutsideConfiguredRoots &&
             !IsInsideConfiguredRoot(full, configuredRoots))
         {
@@ -96,7 +89,7 @@ public static class InstanceDirectoryCleaner
 
         // An instance normally lives inside a configured root
         // (<root>/versions/<name>), so only a root that *is* the instance
-        // directory, or that sits inside it, vetoes the delete.
+        // directory, or that sits inside it, vetoes the move.
         foreach (var root in configuredRoots)
         {
             if (Contains(full, root))
@@ -106,7 +99,7 @@ public static class InstanceDirectoryCleaner
             }
         }
 
-        // Same rule for sibling instances: never remove a directory that hosts
+        // Same rule for sibling instances: never move a directory that hosts
         // another registered instance.
         foreach (var other in otherInstanceRoots)
         {
@@ -117,9 +110,45 @@ public static class InstanceDirectoryCleaner
             }
         }
 
+        fullPath = full;
+        return true;
+    }
+
+    /// <summary>
+    /// Try to remove <paramref name="rootPath"/> recursively.
+    /// Returns true when the directory is gone, otherwise false with a stable
+    /// <paramref name="skipReason"/> code from <see cref="InstanceDeleteSkipReason"/>.
+    /// </summary>
+    /// <param name="rootPath">Candidate instance directory.</param>
+    /// <param name="configuredRoots">Roots configured by the user; the instance
+    /// must live inside one of them.</param>
+    /// <param name="otherInstanceRoots">Every other registered instance path.</param>
+    /// <param name="skipReason">Stable reason code when the delete is skipped.</param>
+    /// <param name="allowOutsideConfiguredRoots">
+    /// Only for a directory this process just created itself (duplicate
+    /// rollback); user-driven deletes must stay inside the configured roots.
+    /// </param>
+    public static bool TryDelete(
+        string rootPath,
+        IReadOnlyList<string> configuredRoots,
+        IReadOnlyList<string> otherInstanceRoots,
+        out string? skipReason,
+        bool allowOutsideConfiguredRoots = false)
+    {
+        if (!TryResolveForTrash(
+                rootPath,
+                configuredRoots,
+                otherInstanceRoots,
+                out var full,
+                out skipReason,
+                allowOutsideConfiguredRoots))
+        {
+            return false;
+        }
+
         try
         {
-            Directory.Delete(full, recursive: true);
+            Directory.Delete(full!, recursive: true);
         }
         catch (Exception exception) when (exception is IOException
                                               or UnauthorizedAccessException

@@ -138,6 +138,31 @@ mixin CoreClientSystem on CoreTransport {
     dataKey: 'sent',
   );
 
+  /// Asks the native core to keep the desktop awake while a game runs.
+  ///
+  /// The platform backend inhibits the idle screen saver (Linux), idle/display
+  /// sleep (macOS) or the corresponding power request (Windows). It is best
+  /// effort: an unsupported desktop returns false instead of failing the
+  /// launch, and disabling is safe even when nothing was inhibited.
+  Future<bool> setFocusMode(bool enabled) => tryRunBool(
+    'system.focusMode',
+    paramsJson: jsonEncode(<String, Object?>{'enabled': enabled}),
+    dataKey: 'enabled',
+  );
+
+  /// Moves an existing absolute file or directory to the platform trash.
+  ///
+  /// Linux uses the freedesktop trash specification, macOS
+  /// `NSFileManager.trashItemAtURL` and Windows the Explorer recycle path
+  /// (`SHFileOperationW` with `FOF_ALLOWUNDO`). Returns false when the core is
+  /// unavailable or the platform refused the move; callers keep the file and
+  /// report the failure rather than hard-deleting.
+  Future<bool> moveToTrash(String path) => tryRunBool(
+    'system.trash',
+    paramsJson: jsonEncode(<String, Object?>{'path': path}),
+    dataKey: 'trashed',
+  );
+
   /// Read whether this process owns superuser rights.
   ///
   /// The C++ core probes the effective uid (POSIX) or the Win32 token
@@ -176,17 +201,15 @@ mixin CoreClientSystem on CoreTransport {
   /// Starts the core-owned load sampler. The core pushes `system.status`
   /// domain events every [intervalMs] while the watch is active; Dart never
   /// polls. Idempotent: calling it again only updates the interval/path.
-  Future<bool> startSystemStatusWatch({
-    int intervalMs = 5000,
-    String? path,
-  }) => tryRunBool(
-    'system.status.watch',
-    paramsJson: jsonEncode(<String, Object?>{
-      'intervalMs': intervalMs,
-      'path': ?path,
-    }),
-    dataKey: 'watching',
-  );
+  Future<bool> startSystemStatusWatch({int intervalMs = 5000, String? path}) =>
+      tryRunBool(
+        'system.status.watch',
+        paramsJson: jsonEncode(<String, Object?>{
+          'intervalMs': intervalMs,
+          'path': ?path,
+        }),
+        dataKey: 'watching',
+      );
 
   /// Stops the core-owned load sampler. Safe to call when no watch is active
   /// or when the core has already been closed.

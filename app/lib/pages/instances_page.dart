@@ -400,57 +400,32 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
   }
 
   Future<void> _delete(GameInstance instance, AppLocalizations l10n) async {
-    final deleteFiles = await showDialog<bool>(
+    final trashFiles = await showDialog<bool>(
       context: context,
       builder: (context) =>
           _InstanceDeleteDialog(l10n: l10n, instance: instance),
     );
-    if (deleteFiles == null || !mounted) return;
-
-    // Removing files is irreversible, so it needs its own confirmation that
-    // spells out the folder being deleted.
-    if (deleteFiles) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) {
-          final tokens = context.tokens;
-          return AlertDialog(
-            icon: Icon(AppIcons.warning, color: tokens.danger),
-            title: Text(l10n.instanceDeleteFilesConfirmTitle),
-            content: Text(
-              l10n.instanceDeleteFilesConfirmBody(instance.rootPath),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(l10n.commonCancel),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: tokens.danger,
-                  foregroundColor: tokens.onAccent,
-                ),
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text(l10n.instanceDeleteFilesConfirmAction),
-              ),
-            ],
-          );
-        },
-      );
-      if (confirmed != true || !mounted) return;
-    }
+    if (trashFiles == null || !mounted) return;
 
     final outcome = await ref
         .read(instancesProvider.notifier)
-        .delete(instance.id, deleteFiles: deleteFiles);
+        .delete(instance.id, trashFiles: trashFiles);
     if (!mounted) return;
 
-    if (!deleteFiles) {
+    if (!trashFiles) {
       _notify(context, l10n.instanceDeleteDone, type: ToastType.success);
       return;
     }
-    if (outcome?.filesDeleted == true) {
+    if (outcome?.filesTrashed == true) {
       _notify(context, l10n.instanceDeleteDoneFiles, type: ToastType.success);
+      return;
+    }
+    if (outcome?.filesMissing == true) {
+      _notify(
+        context,
+        l10n.instanceDeleteFilesKeptMissing,
+        type: ToastType.success,
+      );
       return;
     }
     _notify(
@@ -468,6 +443,7 @@ class _InstancesPageState extends ConsumerState<InstancesPage> {
         'nested_instance' ||
         'not_managed' => l10n.instanceDeleteFilesKeptShared,
         'symlink' || 'unsafe_path' => l10n.instanceDeleteFilesKeptUnsafe,
+        'trash_failed' => l10n.instanceDeleteFilesKeptTrashFailed,
         _ => l10n.instanceDeleteFilesKeptFailed,
       };
 

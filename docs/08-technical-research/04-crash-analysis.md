@@ -23,7 +23,7 @@
 | `bootstrap` | `Could not find or load main class` | 版本 JSON 缺库、加载器装坏 |
 | `mixin` | `Mixin apply failed` / `MixinTransformerError` | mod 与 MC/加载器版本不匹配 |
 | `mod_init` | `LoaderExceptionModCrash` / Fabric entrypoint | 依赖、重复 mod |
-| `graphics` | `GLFW error` / `Pixel format not accelerated` | 驱动、OpenGL 版本、远程桌面 |
+| `graphics` | `GLFW error` / `Pixel format not accelerated` / `Vulkan initialization failed` | 驱动、OpenGL/Vulkan 版本、远程桌面 |
 | `game` / `world` | crash-report `Description:`、`-- Affected level --` | 实体/方块 tick、区块损坏 |
 | `runtime` | hs_err、退出码 | 原生崩溃、OOM、被系统终止 |
 
@@ -122,7 +122,7 @@ OnExit(code): wait 1200ms（重试 glob 3 次）→ Locate（崩溃标记优先�
 | 加载器 | `loader.native_missing` | `UnsatisfiedLinkError: Failed to locate library` | 阻断 |
 | 加载器 | `loader.forge_incomplete` | `Invalid paths argument, contained no existing paths` | 阻断 |
 | 加载器 | `loader.jar_modified` | `SecurityException: SHA1 digest error for` | 阻断 |
-| 图形 | `gfx.glfw_init` | `GLFW error`、`Pixel format not accelerated` | 阻断 |
+| 图形 | `gfx.glfw_init` | `GLFW error`、`Pixel format not accelerated`、`Vulkan initialization failed` | 阻断 |
 | 图形 | `gfx.driver_crash` | hs_err 帧在 `nvoglv64.dll` 等 | 崩溃 |
 | 图形 | `gfx.gl_error` | `GL_INVALID_OPERATION`、`1282: Invalid operation` | 降级 |
 | Mod | `mods.optifine_conflict` | `NoSuchMethodError` + `net.optifine` 栈 | 崩溃 |
@@ -276,8 +276,8 @@ score = base(blocker 80 / crash 70 / degraded 40 / info 10)
    why: '原生库 {lib} 缺失（natives 解压失败或被杀软隔离）', fix: '重新下载版本；检查杀软隔离区与目录权限'}
 - {id: loader.forge_incomplete, sev: blocker, re: '(?:Invalid paths argument, contained no existing paths:.*?(?:forge-.+?-client\.jar|fmlcore-.+?\.jar)|Cannot find launch target fmlclient)',
    why: 'Forge 安装文件缺失（forge-client.jar/fmlcore）', fix: '删除该 Forge 版本重装；检查磁盘与下载源'}
-- {id: gfx.glfw_init, sev: blocker, re: '(?:GLFW error|Failed to create window|Pixel format not accelerated|The driver does not appear to support OpenGL|GLXBadFBConfig|Couldn.t set pixel format)',
-   why: '无法创建 OpenGL 上下文：驱动过旧、远程桌面、虚拟机', fix: '更新驱动；用独显运行；确认支持 OpenGL 3.2+'}
+- {id: gfx.glfw_init, sev: blocker, re: '(?:GLFW error|Failed to create window|Pixel format not accelerated|The driver does not appear to support OpenGL|GLXBadFBConfig|Couldn.t set pixel format|Failed to create Vulkan|Vulkan initialization failed|VK_ERROR_INCOMPATIBLE_DRIVER)',
+   why: '无法创建图形上下文（OpenGL 或 Vulkan）：驱动过旧、远程桌面、虚拟机', fix: '更新驱动；用独显运行；确认驱动支持游戏使用的渲染后端（OpenGL 3.2+ 或 Vulkan）'}
 - {id: gfx.driver_crash, sev: crash, re: 'Problematic frame:[\s\S]{0,200}?(?<lib>nvoglv64\.dll|atio6axx\.dll|igdumdim64\.dll|libGL\.so|swrast_dri\.so)',
    why: 'JVM 原生崩溃在显卡驱动 {lib}', fix: '清洁安装驱动；关闭超频/覆盖层（RTSS、Discord、Steam）'}
 - {id: mods.optifine_conflict, sev: crash, re: '(?:NoSuchMethodError: \x27.*?(?:net\.minecraft\.client\.renderer|com\.mojang\.blaze3d)|net\.optifine\.reflect\.Reflector|Invalid Services found OptiFine|Shaders Mod detected\. Please remove it)',
@@ -310,6 +310,7 @@ score = base(blocker 80 / crash 70 / degraded 40 / info 10)
 | T10 | `debug.log` offset 之前有 OOM，之后无异常 | 本次正常 | **不命中** `java.oom_heap` |
 | T11 | `FileSystemException: C:\Users\张三\...\x.jar: ... being used` | Windows | `io.file_locked`；证据路径 `<redacted>` |
 | T12 | hs_err `SIGSEGV` + `Problematic frame: C [nvoglv64.dll+...]` | NVIDIA | `gfx.driver_crash` |
+| T13 | `Vulkan initialization failed: VK_ERROR_INCOMPATIBLE_DRIVER` | Vulkan 后端的版本 | `gfx.glfw_init`（OpenGL/Vulkan 共用图形初始化规则） |
 
 非功能测试：每条规则在 NonBacktracking 下编译，1 MB 随机串 + 对抗串单条 <50 ms；脱敏回归（token/邮箱/UUID/IP/MAC/三种用户目录，输出无原文且幂等）；i18n key 缺失即构建失败；每条规则 ≥1 正例/≥1 反例。
 

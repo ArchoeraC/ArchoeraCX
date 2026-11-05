@@ -247,4 +247,43 @@ bool extract_json_int(std::string_view json,
   return true;
 }
 
+bool extract_json_bool(std::string_view json,
+                       std::string_view key,
+                       bool* out) {
+  if (out == nullptr) {
+    return false;
+  }
+  size_t cursor = 0;
+  if (!jump_after_key(json, key, &cursor)) {
+    return false;
+  }
+  if (!skip_spaces(json, &cursor) || json[cursor] != ':') {
+    return false;
+  }
+  ++cursor;
+  if (!skip_spaces(json, &cursor)) {
+    return false;
+  }
+
+  constexpr std::string_view kTrue = "true";
+  constexpr std::string_view kFalse = "false";
+  const auto matches = [&](std::string_view literal) {
+    if (json.substr(cursor, literal.size()) != literal) return false;
+    const size_t end = cursor + literal.size();
+    if (end >= json.size()) return false;
+    const char next = json[end];
+    return next == ',' || next == '}' || next == ' ' || next == '\t' ||
+           next == '\n' || next == '\r';
+  };
+  if (matches(kTrue)) {
+    *out = true;
+    return true;
+  }
+  if (matches(kFalse)) {
+    *out = false;
+    return true;
+  }
+  return false;
+}
+
 }  // namespace archoera

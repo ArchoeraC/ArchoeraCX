@@ -92,7 +92,7 @@ void main() {
 
       final deletion = await client.deleteInstance(created.id);
       expect(deletion.deleted, isTrue);
-      expect(deletion.filesDeleted, isFalse);
+      expect(deletion.filesTrashed, isFalse);
       expect(Directory(root).existsSync(), isTrue);
       final remaining = await client.listInstances();
       expect(remaining.any((instance) => instance.id == created.id), isFalse);
@@ -116,7 +116,12 @@ void main() {
         loader: 'vanilla',
         loaderVersion: '',
       );
-      addTearDown(() => client.deleteInstance(created.id, deleteFiles: true));
+      addTearDown(() async {
+        await client.deleteInstance(created.id);
+        if (Directory(created.rootPath).existsSync()) {
+          Directory(created.rootPath).deleteSync(recursive: true);
+        }
+      });
 
       expect(created.name, name);
       expect(Directory(created.rootPath).existsSync(), isTrue);
@@ -146,7 +151,12 @@ void main() {
         loaderVersion: '0.16.10',
         rootPath: root,
       );
-      addTearDown(() => client.deleteInstance(created.id, deleteFiles: true));
+      addTearDown(() async {
+        await client.deleteInstance(created.id);
+        if (Directory(created.rootPath).existsSync()) {
+          Directory(created.rootPath).deleteSync(recursive: true);
+        }
+      });
 
       final logDirectory = Directory('$root/.archoera/logs')
         ..createSync(recursive: true);
@@ -171,13 +181,13 @@ void main() {
   );
 
   test(
-    'instance.delete with deleteFiles removes a managed instance directory',
+    'instance.delete with trashFiles moves a managed instance directory to the trash',
     () async {
       final client = CoreClient.openDefault();
       addTearDown(client.close);
 
       // No explicit rootPath: the instance lands under the configured
-      // instances root, which is the only place recursive deletion is allowed.
+      // instances root, which is the only place moving to the trash is allowed.
       final created = await client.createInstance(
         name: 'Files Instance ${DateTime.now().microsecondsSinceEpoch}',
         gameVersion: '1.21.4',
@@ -190,10 +200,10 @@ void main() {
 
       final deletion = await client.deleteInstance(
         created.id,
-        deleteFiles: true,
+        trashFiles: true,
       );
       expect(deletion.deleted, isTrue);
-      expect(deletion.filesDeleted, isTrue);
+      expect(deletion.filesTrashed, isTrue);
       expect(deletion.filesSkippedReason, isNull);
       expect(Directory(root).existsSync(), isFalse);
     },
@@ -204,7 +214,7 @@ void main() {
   );
 
   test(
-    'instance.delete keeps files for a custom root outside the managed root',
+    'instance.delete keeps the registry entry when the root is outside the managed root',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'archoera-instance-outside-',
@@ -225,10 +235,12 @@ void main() {
 
       final deletion = await client.deleteInstance(
         created.id,
-        deleteFiles: true,
+        trashFiles: true,
       );
-      expect(deletion.deleted, isTrue);
-      expect(deletion.filesDeleted, isFalse);
+      // The C# owner refuses to hand a directory outside the configured roots
+      // to the trash, so the registry row stays for a manual retry.
+      expect(deletion.deleted, isFalse);
+      expect(deletion.filesTrashed, isFalse);
       expect(deletion.filesSkippedReason, 'outside_root');
       expect(Directory(root).existsSync(), isTrue);
     },

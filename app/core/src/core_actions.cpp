@@ -17,7 +17,15 @@
 namespace archoera {
 namespace {
 
-enum class SystemActionKind { kOpenUrl, kOpenPath, kRevealPath, kNotify };
+enum class SystemActionKind {
+  kOpenUrl,
+  kOpenPath,
+  kRevealPath,
+  kNotify,
+  kFocusOn,
+  kFocusOff,
+  kTrash,
+};
 
 struct SystemAction {
   SystemActionKind kind = SystemActionKind::kOpenUrl;
@@ -28,7 +36,16 @@ struct SystemAction {
 };
 
 std::string make_system_action_result(const SystemAction& action,
-                                      const bool success) {
+                                      const bool success,
+                                      const std::string& action_backend) {
+  if (action.kind == SystemActionKind::kFocusOn ||
+      action.kind == SystemActionKind::kFocusOff) {
+    return make_focus_result(
+        success && action.kind == SystemActionKind::kFocusOn, action_backend);
+  }
+  if (action.kind == SystemActionKind::kTrash) {
+    return make_trash_result(action.path, success, action_backend);
+  }
   if (action.kind == SystemActionKind::kOpenPath ||
       action.kind == SystemActionKind::kRevealPath) {
     return make_open_path_result(action.path, success);
@@ -47,6 +64,7 @@ void system_action_worker(archoera_core* core,
   std::unique_ptr<SystemActionPayload> held(payload);
   try {
     bool success = false;
+    std::string action_backend;
     {
       std::string error;
       try {
@@ -56,6 +74,14 @@ void system_action_worker(archoera_core* core,
           success = open_path(held->action.path, &error);
         } else if (held->action.kind == SystemActionKind::kRevealPath) {
           success = reveal_path(held->action.path, &error);
+        } else if (held->action.kind == SystemActionKind::kFocusOn) {
+          success = enter_focus_mode(&action_backend, &error);
+        } else if (held->action.kind == SystemActionKind::kFocusOff) {
+          // Releasing is idempotent: nothing held means there is nothing to do.
+          leave_focus_mode();
+          success = true;
+        } else if (held->action.kind == SystemActionKind::kTrash) {
+          success = move_to_trash(held->action.path, &action_backend, &error);
         } else {
           success = send_system_notification(held->action.title,
                                              held->action.body, &error);
@@ -84,7 +110,8 @@ void system_action_worker(archoera_core* core,
                            0, nullptr);
       } else {
         settle_task_locked(*core, task, ARCHOERA_TASK_COMPLETED,
-                           make_system_action_result(held->action, success),
+                           make_system_action_result(held->action, success,
+                                                     action_backend),
                            0, nullptr);
       }
 
@@ -180,6 +207,52 @@ archoera_status handle_system_notify(archoera_core& core,
   }
   if (action.title.size() > 200 || action.body.size() > 2000) {
     set_error(err, ARCHOERA_E_INVALID, kMsgNotifyTooLarge);
+    return ARCHOERA_E_INVALID;
+  }
+
+  TaskRecord record;
+  record.method = std::string(route.name);
+  return spawn_async_task<SystemActionPayload>(
+      &core, std::move(record), &system_action_worker,
+      SystemActionPayload{std::move(action)}, out_task_id, err);
+}
+
+archoera_status handle_system_focus_mode(archoera_core& core,
+                                         const MethodRoute& route,
+                                         const std::string_view params,
+                                         std::string&,
+                                         uint64_t* out_task_id,
+                                         archoera_error* err) {
+  SystemAction action;
+  bool enabled = false;
+  if (!extract_json_bool(params, "enabled", &enabled)) {
+    set_error(err, ARCHOERA_E_INVALID, kMsgFocusModeInvalid);
+    return ARCHOERA_E_INVALID;
+  }
+  action.kind =
+      enabled ? SystemActionKind::kFocusOn : SystemActionKind::kFocusOff;
+
+  TaskRecord record;
+  record.method = std::string(route.name);
+  return spawn_async_task<SystemActionPayload>(
+      &core, std::move(record), &system_action_worker,
+      SystemActionPayload{std::move(action)}, out_task_id, err);
+}
+
+archoera_status handle_system_trash(archoera_core& core,
+                                    const MethodRoute& route,
+                                    const std::string_view params,
+                                    std::string&,
+                                    uint64_t* out_task_id,
+                                    archoera_error* err) {
+  SystemAction action;
+  action.kind = SystemActionKind::kTrash;
+  // Validation runs on the ABI thread: a missing, relative or root path never
+  // reaches the backend. The move itself runs on a worker because the trash
+  // API may take a moment on a large directory.
+  if (!extract_json_string(params, "path", &action.path) ||
+      !is_safe_trash_path(action.path)) {
+    set_error(err, ARCHOERA_E_INVALID, kMsgTrashPathInvalid);
     return ARCHOERA_E_INVALID;
   }
 

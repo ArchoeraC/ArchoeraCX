@@ -122,6 +122,7 @@ internal static class SettingsModuleJson
             writer.WriteBoolean(
                 "preferPureJavaLoaderInstall",
                 settings.PreferPureJavaLoaderInstall);
+            writer.WriteBoolean("backupBeforeUpdate", settings.BackupBeforeUpdate);
             writer.WriteString("memoryMode", settings.MemoryMode);
             writer.WriteBoolean("gameOptimization", settings.GameOptimization);
             if (string.IsNullOrWhiteSpace(settings.DownloadProxy))
