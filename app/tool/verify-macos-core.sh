@@ -50,10 +50,10 @@ command -v ld64.lld >/dev/null 2>&1 || { echo "error: ld64.lld not found" >&2; e
 CORE_SRC="${APP}/core/src"
 CORE_SOURCES=(
   archoera_core method_registry module_host module_registry core_json
-  core_result core_tasks core_status core_actions core_appearance
+  core_result core_tasks core_status core_actions core_appearance core_instance
   core_module_bridge platform_system_common platform_status_common
   platform_gpu_stub platform_appearance_macos platform_system_macos
-  platform_status_macos
+  platform_status_macos platform_instance_posix
 )
 INCLUDES=(-I "${APP}/contracts/abi" -I "${APP}/contracts/module" -I "${CORE_SRC}")
 
@@ -79,7 +79,8 @@ for arch in "${ARCHS[@]}"; do
   echo "── ${arch} core dylib"
   clang++ -target "${target}" -isysroot "${SDK}" -dynamiclib -fuse-ld=lld \
     -o "${out}/libarchoera_core.dylib" "${out}"/*.o \
-    -framework AppKit -framework Foundation -framework UserNotifications
+    -framework AppKit -framework Foundation -framework UserNotifications \
+    -framework IOKit
 
   echo "── ${arch} C ABI smoke tests"
   for test in abi_smoke async_smoke module_smoke event_queue_smoke; do
