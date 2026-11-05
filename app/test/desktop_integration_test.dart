@@ -2,41 +2,32 @@ import 'package:archoera_cx/app/desktop_integration.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('Windows closes normally after dropping close interception', () async {
-    final calls = <String>[];
+  test('closing the window uses the platform close path', () async {
+    var closed = false;
+    final exits = <int>[];
+
     await closeMainWindowForQuit(
-      isWindows: true,
-      setPreventClose: (prevent) async {
-        calls.add('preventClose:$prevent');
+      closeWindow: () {
+        closed = true;
+        return true;
       },
-      close: () async {
-        calls.add('close');
-      },
-      destroy: () async {
-        calls.add('destroy');
-      },
+      quitProcess: exits.add,
     );
 
-    // The close path is what lets the Windows runner destroy the Flutter
-    // controller from WM_DESTROY instead of from its destructor.
-    expect(calls, ['preventClose:false', 'close']);
+    // Approving the close request is what lets every desktop runner quit with
+    // its last window, including the Windows runner's WM_DESTROY path.
+    expect(closed, isTrue);
+    expect(exits, isEmpty);
   });
 
-  test('other platforms keep destroy', () async {
-    final calls = <String>[];
+  test('ends the process when the host cannot close a window', () async {
+    final exits = <int>[];
+
     await closeMainWindowForQuit(
-      isWindows: false,
-      setPreventClose: (prevent) async {
-        calls.add('preventClose:$prevent');
-      },
-      close: () async {
-        calls.add('close');
-      },
-      destroy: () async {
-        calls.add('destroy');
-      },
+      closeWindow: () => false,
+      quitProcess: exits.add,
     );
 
-    expect(calls, ['destroy']);
+    expect(exits, [0]);
   });
 }

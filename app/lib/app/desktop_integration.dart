@@ -26,16 +26,24 @@ bool _trayReady = false;
 /// back to the launcher.
 bool get isTrayAvailable => _trayReady;
 
-/// Set before tearing the window down so the close event we trigger ourselves
+/// Set before tearing the window down so the close request we trigger ourselves
 /// is not intercepted again.
 bool _quitRequested = false;
+
+/// The launcher's own window, resolved on first use and then reused.
+///
+/// nativeapi finds the window the platform considers the app's current one;
+/// before the runner has shown it the lookup answers null and the next caller
+/// retries.
+Window? _mainWindow;
+
+/// Whether the native close-request subscription is installed.
+bool _closeInterceptionAttached = false;
 
 // The native wrappers free their handle when collected, so every object the
 // tray still points at is kept reachable for the life of the process.
 final List<Object> _trayResources = <Object>[];
 final List<tray.ListenerId> _trayListenerIds = <tray.ListenerId>[];
-
-final _WindowCloseListener _windowCloseListener = _WindowCloseListener();
 
 /// Wires up the system tray and the "close to tray" window behaviour.
 ///
@@ -48,22 +56,53 @@ Future<void> setupDesktopIntegration() async {
   _setupStarted = true;
   if (kIsWeb) return;
 
-  try {
-    await windowManager.ensureInitialized();
-  } catch (error, stackTrace) {
-    _logFailure('window manager unavailable', error, stackTrace);
-    return;
-  }
-
   await _setUpTray();
 
   // Without a tray icon there would be no way back to a hidden window, so the
   // close button keeps its default behaviour instead of trapping the user.
   if (!_trayReady) return;
 
+  // Resolving attaches the close-request handler, which is what turns the
+  // close button into "hide to tray"; without a window the platform default
+  // (quit) stays in place.
   try {
-    await windowManager.setPreventClose(true);
-    windowManager.addListener(_windowCloseListener);
+    if (_resolveMainWindow() == null) {
+      _logFailure('window unavailable', 'no native window', StackTrace.current);
+    }
+  } catch (error, stackTrace) {
+    _logFailure('window manager unavailable', error, stackTrace);
+  }
+}
+
+/// Resolves the launcher window, or null outside a desktop app.
+///
+/// Resolving also subscribes the close-request handler, so a late first frame
+/// still gets "close to tray": the next window action retries the lookup.
+/// Widget tests run without the native library, where the FFI lookup throws
+/// [ArgumentError]; every window action then degrades to a no-op.
+Window? _resolveMainWindow() {
+  final cached = _mainWindow;
+  if (cached != null) return cached;
+  try {
+    final window = WindowManager.instance.getCurrent();
+    if (window == null) return null;
+    _mainWindow = window;
+    _attachCloseListener(window);
+    return window;
+  } on ArgumentError {
+    return null;
+  }
+}
+
+/// Subscribes the close handler once, when a tray icon can restore the window.
+///
+/// A close request reaches this window's own listeners and is approved unless
+/// the listener cancels it, which is what "close to tray" does.
+void _attachCloseListener(Window window) {
+  if (!_trayReady || _closeInterceptionAttached) return;
+  try {
+    window.addListener(_onWindowEvent);
+    _closeInterceptionAttached = true;
   } catch (error, stackTrace) {
     _logFailure('window close interception unavailable', error, stackTrace);
   }
@@ -171,18 +210,25 @@ void _onTrayEvent(tray.TrayIconEvent event) {
 Future<void> activateMainWindow() async {
   if (_quitRequested) return;
   try {
-    await windowManager.ensureInitialized();
-    try {
-      if (await windowManager.isMinimized()) {
-        await windowManager.restore();
-      }
-    } catch (_) {
-      // show()/focus() below still work on platforms without minimize state.
-    }
-    await windowManager.show();
-    await windowManager.focus();
+    final window = _resolveMainWindow();
+    if (window == null) return;
+    if (window.isMinimized) window.restore();
+    window.show();
+    window.focus();
   } catch (error, stackTrace) {
     _logFailure('cannot show the main window', error, stackTrace);
+  }
+}
+
+/// Hides the launcher window, for example while a launched game runs.
+///
+/// Callers must check [isTrayAvailable] first: without a tray icon a hidden
+/// window could not be brought back.
+Future<void> hideMainWindow() async {
+  try {
+    _resolveMainWindow()?.hide();
+  } catch (error, stackTrace) {
+    _logFailure('cannot hide the main window', error, stackTrace);
   }
 }
 
@@ -191,23 +237,22 @@ Future<void> activateMainWindow() async {
 /// The primary has already received the activation message. Exiting here
 /// prevents a second visible window, tray icon and widget tree from being
 /// created.
-/// Window plugin calls are bounded because the only requirement is to exit; a
-/// stuck compositor (for example a restricted remote display) must not keep a
-/// second launcher alive.
 Future<void> exitSecondaryInstance() async {
   try {
-    await windowManager.ensureInitialized().timeout(
-      const Duration(milliseconds: 500),
-    );
-    await windowManager.hide().timeout(const Duration(milliseconds: 500));
+    _resolveMainWindow()?.hide();
   } catch (_) {
     // The process must exit even when the window plugin is unavailable.
   }
   exit(0);
 }
 
-/// Handles the window close button while [windowManager] intercepts it.
-Future<void> _handleWindowClose() async {
+/// Answers a close request from the title bar or the platform.
+///
+/// Runs on the close request's own callback, so cancelling [event] there is
+/// what keeps the window alive. A request started by [quitApplication] is
+/// approved instead of being intercepted again.
+Future<void> _onWindowEvent(WindowEvent event) async {
+  if (event is! WindowCloseRequestedEvent) return;
   if (_quitRequested) return;
 
   var closeToTray = false;
@@ -219,43 +264,29 @@ Future<void> _handleWindowClose() async {
 
   if (closeToTray && _trayReady) {
     // Hiding keeps the engine, the task pump and every download alive.
-    try {
-      await windowManager.hide();
-    } catch (error, stackTrace) {
-      _logFailure('cannot hide the main window', error, stackTrace);
-    }
+    event.request.cancel();
+    await hideMainWindow();
     return;
   }
 
   await quitApplication();
 }
 
-/// Sends the platform quit request without tearing the Flutter controller down
-/// while the native window is still alive.
+/// Sends the platform close request through the window's normal close path.
 ///
-/// On Windows `window_manager.destroy()` posts `WM_QUIT` before destroying the
-/// window. The runner then runs `FlutterViewController::~FlutterViewController`
-/// while the window still receives messages, which can access freed state and
-/// leave the window in the "Not responding" state for several seconds. Dropping
-/// close interception and sending the normal `SC_CLOSE` path lets `WM_DESTROY`
-/// tear the controller down first.
-///
-/// Linux `destroy` already drops interception before closing the GTK window;
-/// macOS needs `destroy` because closing the last window does not terminate the
-/// application.
+/// `Window.close()` continues the host's own handling (WM_CLOSE, GTK
+/// delete-event, `performClose`), which is also the path that tears the
+/// Windows runner down in the right order. Approving the request is what ends
+/// the process, because every desktop runner quits with its last window.
 @visibleForTesting
 Future<void> closeMainWindowForQuit({
-  required bool isWindows,
-  required Future<void> Function(bool preventClose) setPreventClose,
-  required Future<void> Function() close,
-  required Future<void> Function() destroy,
+  required bool Function() closeWindow,
+  required void Function(int exitCode) quitProcess,
 }) async {
-  if (!isWindows) {
-    await destroy();
-    return;
-  }
-  await setPreventClose(false);
-  await close();
+  if (closeWindow()) return;
+  // Some hosts cannot close a window; end the process the way the platform
+  // quit path would instead of leaving a window that refuses to disappear.
+  quitProcess(0);
 }
 
 /// Closes the launcher through the same path the tray uses.
@@ -267,11 +298,10 @@ Future<void> quitApplication() async {
   if (_quitRequested) return;
   _quitRequested = true;
   try {
+    final window = _resolveMainWindow();
     await closeMainWindowForQuit(
-      isWindows: Platform.isWindows,
-      setPreventClose: windowManager.setPreventClose,
-      close: windowManager.close,
-      destroy: windowManager.destroy,
+      closeWindow: () => window?.close() ?? false,
+      quitProcess: exit,
     );
   } catch (error, stackTrace) {
     _quitRequested = false;
@@ -282,11 +312,4 @@ Future<void> quitApplication() async {
 void _logFailure(String message, Object error, StackTrace stackTrace) {
   if (!kDebugMode) return;
   debugPrint('desktop integration: $message: $error\n$stackTrace');
-}
-
-final class _WindowCloseListener extends WindowListener {
-  @override
-  void onWindowClose() {
-    unawaited(_handleWindowClose());
-  }
 }

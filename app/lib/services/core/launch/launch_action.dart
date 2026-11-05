@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:window_manager/window_manager.dart';
 
 import '../../../app/desktop_integration.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -326,15 +325,8 @@ Future<void> _hideLauncherAfterStart() async {
     );
     return;
   }
-  try {
-    await windowManager.hide();
-  } catch (error, stackTrace) {
-    _logPostLaunchFailure(
-      'cannot hide the launcher after launch',
-      error,
-      stackTrace,
-    );
-  }
+  // Failures are logged by the window owner; hiding never throws.
+  await hideMainWindow();
 }
 
 void _logPostLaunchFailure(

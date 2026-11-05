@@ -70,22 +70,35 @@ Size? _usable(Size? size) {
   return size;
 }
 
+/// One display's geometry, in logical pixels.
+///
+/// [workArea] is the usable area (panels and taskbars excluded) and is
+/// preferred over the full [size] when approximating a maximized game window.
+typedef DisplayGeometry = ({Size size, Size? workArea});
+
 /// Loads the primary display through `screen_retriever`.
 ///
 /// Kept injectable so widget tests and unusual Linux sessions can substitute a
-/// fake without starting the platform channel.
-typedef PrimaryDisplayLoader = Future<Display> Function();
+/// fake without touching the native display list.
+typedef PrimaryDisplayLoader = Future<DisplayGeometry> Function();
 
-/// Resolves the maximized window size; any platform-channel failure returns
-/// null instead of breaking the settings page.
+/// Resolves the maximized window size; any native display failure returns null
+/// instead of breaking the settings page.
 Future<({int width, int height})?> resolveMaximizedWindowSize({
   PrimaryDisplayLoader? loadDisplay,
 }) async {
   try {
-    final display =
-        await (loadDisplay ?? ScreenRetriever.instance.getPrimaryDisplay)();
-    return maximizedWindowSizeFor(display.size, display.visibleSize);
+    final display = await (loadDisplay ?? _loadPrimaryDisplay)();
+    return maximizedWindowSizeFor(display.size, display.workArea);
   } catch (_) {
     return null;
   }
+}
+
+/// Reads the primary display's size and work area from the native display list.
+Future<DisplayGeometry> _loadPrimaryDisplay() async {
+  final display = DisplayManager.instance.getPrimary();
+  if (display == null) throw StateError('no primary display');
+  final workArea = display.workArea.toRect();
+  return (size: display.size.toSize(), workArea: workArea.size);
 }

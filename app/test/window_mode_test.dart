@@ -2,7 +2,6 @@ import 'dart:ui';
 
 import 'package:archoera_cx/utils/window_mode.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:screen_retriever/screen_retriever.dart';
 
 void main() {
   group('maximized window size', () {
@@ -55,14 +54,22 @@ void main() {
 
     test('reads the primary display through the injected loader', () async {
       final size = await resolveMaximizedWindowSize(
-        loadDisplay: () async => const Display(
-          id: 'primary',
-          size: Size(2560, 1440),
-          visibleSize: Size(1920, 1080),
+        loadDisplay: () async => (
+          size: const Size(2560, 1440),
+          workArea: const Size(1920, 1080),
         ),
       );
 
       expect(size, (width: 1920, height: 1080));
+    });
+
+    test('a display without a work area falls back to its size', () async {
+      final size = await resolveMaximizedWindowSize(
+        loadDisplay: () async =>
+            (size: const Size(2560, 1440), workArea: null),
+      );
+
+      expect(size, (width: 2560, height: 1440));
     });
 
     test('a display lookup failure keeps the caller size', () async {
