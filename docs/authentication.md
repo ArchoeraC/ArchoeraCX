@@ -141,6 +141,16 @@ device_code=<device_code>
 
 轮询使用可取消的 `Task.Delay`，不使用后台定时器。UI 取消后停止轮询并清除 device code。
 
+取消是即时动作：对话框先关闭，授权码监听器立即停止并释放本地端口（迟到的回调必须被拒绝），取消令牌随后中止正在进行的令牌交换，且不再发起 Xbox Live / XSTS / Minecraft 的后续请求。取消流程不得等待浏览器回调或任何在途网络请求。
+
+实现顺序：
+
+1. UI 先把对话框弹出，再在下一帧发取消请求；浏览器打开与轮询并行，轮询不会因为浏览器慢而延后。
+2. C# 同步关闭 loopback 监听器（释放端口，允许立即重试），把 `CancellationTokenSource.Cancel()` 与对象释放投递到线程池后立刻返回。
+3. 轮询在拿到回调后、交换授权码前再次检查 `CancelRequested`；即使回调与取消同时到达，也以取消为准。
+4. C++ `archoera_cancel` 对模块任务只做标记并把模块取消投递到核心自管线程，ABI 调用本身不做 socket/回调清理。
+5. 取消后不写账户、不弹成功通知；UI 的 `_completed` 门禁防止晚到的轮询结果再次 `pop` 路由。
+
 ## 4. Xbox Live / XSTS / Minecraft
 
 ### 4.1 Xbox Live

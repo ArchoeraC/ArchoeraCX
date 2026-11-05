@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -224,6 +225,125 @@ public sealed class AccountAuthorizationCodeFlowTests
         }
     }
 
+    [Fact]
+    public async Task Cancel_unblocks_the_poll_without_waiting_for_a_callback()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var handler = new FakeHttpMessageHandler();
+            var store = new JsonAccountStore(directory);
+            var auth = new MicrosoftAuthClient(new HttpClient(handler), Options());
+            var service = new AccountModuleService(store, store, auth);
+
+            var start = await service.HandleAsync(
+                "account.login.microsoft.start",
+                """{"flow":"authorization_code"}""",
+                CancellationToken.None);
+            using var startDocument = JsonDocument.Parse(start);
+            var flowId = startDocument.RootElement
+                .GetProperty("data")
+                .GetProperty("flowId")
+                .GetString();
+            Assert.NotNull(flowId);
+
+            var pollTask = service.HandleAsync(
+                "account.login.microsoft.poll",
+                $$"""{"flowId":"{{flowId}}"}""",
+                CancellationToken.None);
+            await Task.Delay(100);
+
+            var cancelled = await service
+                .HandleAsync(
+                    "account.login.microsoft.cancel",
+                    $$"""{"flowId":"{{flowId}}"}""",
+                    CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(2));
+            using var cancelledDocument = JsonDocument.Parse(cancelled);
+            Assert.True(
+                cancelledDocument.RootElement
+                    .GetProperty("data")
+                    .GetProperty("cancelled")
+                    .GetBoolean());
+
+            var pollException = await Record.ExceptionAsync(
+                () => pollTask.WaitAsync(TimeSpan.FromSeconds(2)));
+            Assert.IsAssignableFrom<OperationCanceledException>(pollException);
+            Assert.Empty(handler.Requests);
+            Assert.Empty(await store.ListAsync());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task Cancel_aborts_a_token_exchange_that_is_already_in_flight()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var handler = new BlockingHttpMessageHandler();
+            var store = new JsonAccountStore(directory);
+            var auth = new MicrosoftAuthClient(new HttpClient(handler), Options());
+            var service = new AccountModuleService(store, store, auth);
+
+            var start = await service.HandleAsync(
+                "account.login.microsoft.start",
+                """{"flow":"authorization_code"}""",
+                CancellationToken.None);
+            using var startDocument = JsonDocument.Parse(start);
+            var data = startDocument.RootElement.GetProperty("data");
+            var flowId = data.GetProperty("flowId").GetString();
+            var redirectUri = data.GetProperty("redirectUri").GetString();
+            var authorizationUrl = data.GetProperty("authorizationUrl").GetString();
+            Assert.NotNull(flowId);
+            Assert.NotNull(redirectUri);
+            Assert.NotNull(authorizationUrl);
+            var state = QueryValue(new Uri(authorizationUrl!), "state");
+
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var pollTask = service.HandleAsync(
+                "account.login.microsoft.poll",
+                $$"""{"flowId":"{{flowId}}"}""",
+                CancellationToken.None);
+            await SendCallbackAsync(
+                new Uri(redirectUri!),
+                $"code=test-code&state={Uri.EscapeDataString(state)}",
+                timeout.Token);
+
+            // The token request is now pending inside the fake handler. Cancel
+            // must not wait for it to finish, and it must not create an account.
+            await handler.Entered.Task.WaitAsync(timeout.Token);
+            var cancelWatch = Stopwatch.StartNew();
+            var cancelled = await service
+                .HandleAsync(
+                    "account.login.microsoft.cancel",
+                    $$"""{"flowId":"{{flowId}}"}""",
+                    CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(2));
+            cancelWatch.Stop();
+
+            using var cancelledDocument = JsonDocument.Parse(cancelled);
+            Assert.True(
+                cancelledDocument.RootElement
+                    .GetProperty("data")
+                    .GetProperty("cancelled")
+                    .GetBoolean());
+            Assert.True(cancelWatch.Elapsed < TimeSpan.FromSeconds(2));
+
+            var pollException = await Record.ExceptionAsync(
+                () => pollTask.WaitAsync(TimeSpan.FromSeconds(2)));
+            Assert.IsAssignableFrom<OperationCanceledException>(pollException);
+            Assert.Empty(await store.ListAsync());
+        }
+        finally
+        {
+            Delete(directory);
+        }
+    }
+
     private static async Task SendCallbackAsync(
         Uri redirectUri,
         string query,
@@ -292,6 +412,27 @@ public sealed class AccountAuthorizationCodeFlowTests
         catch
         {
             // best effort
+        }
+    }
+
+    /// <summary>
+    /// Holds a token request open until its cancellation token fires, so a test
+    /// can cancel at the exact point where a real server request would be in
+    /// flight.
+    /// </summary>
+    private sealed class BlockingHttpMessageHandler : HttpMessageHandler
+    {
+        public TaskCompletionSource Entered { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Entered.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken)
+                .ConfigureAwait(false);
+            throw new InvalidOperationException("the token request was not cancelled");
         }
     }
 }

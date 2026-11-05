@@ -2007,6 +2007,30 @@
   "settingsThemeAccentInvalid": "Enter a valid hex color.",
   "settingsGlobalTint": "Global tint",
   "settingsGlobalTintDesc": "Shift panels and backgrounds slightly toward the accent color.",
+  "settingsSectionBackground": "Background",
+  "settingsAppearanceStyle": "Background style",
+  "settingsAppearanceStyleDesc": "Use the flat theme canvas or a picture behind the launcher.",
+  "settingsAppearanceStyleSolid": "Solid",
+  "settingsAppearanceStyleImage": "Image",
+  "settingsBackgroundImage": "Background image",
+  "settingsBackgroundImageDesc": "PNG, JPEG, WebP or BMP. The file stays on this computer.",
+  "settingsBackgroundImageSelect": "Choose image",
+  "settingsBackgroundImageReplace": "Replace",
+  "settingsBackgroundImageClear": "Remove background image",
+  "settingsBackgroundImageNoPath": "Choose an image to activate the background. The solid theme stays active until then.",
+  "settingsBackgroundImageNote": "Image backgrounds use dark text contrast, force dark mode and enable global tint so light text stays readable over the dimmed photo.",
+  "settingsBackgroundImagePicked": "Background image updated.",
+  "settingsBackgroundImageCleared": "Background image removed.",
+  "settingsBackgroundImageUnsupported": "Choose a PNG, JPEG, WebP or BMP image.",
+  "settingsBackgroundImagePickFailed": "Could not open the image picker.",
+  "settingsBackgroundBlur": "Blur",
+  "settingsBackgroundBlurDesc": "Soften the image so page content stays in focus.",
+  "settingsBackgroundDim": "Dim",
+  "settingsBackgroundDimDesc": "Darken the image; a stronger scrim keeps text readable.",
+  "settingsBackgroundScale": "Zoom",
+  "settingsBackgroundScaleDesc": "Crop tighter around the centre of the image.",
+  "settingsThemeModeImageForced": "Image backgrounds use dark colors so text stays readable.",
+  "settingsGlobalTintImageForced": "Global tint is always on over a background image.",
   "settingsResetAppearance": "Reset appearance",
   "settingsAppearanceResetDone": "Appearance reset.",
   "settingsAboutDesc": "Version, runtime, licenses and community links.",
@@ -2174,6 +2198,10 @@
   "navWiki": "Wiki",
   "@navWiki": {
     "description": "Bottom navigation entry for the community/wiki page."
+  },
+  "navStats": "Statistics",
+  "@navStats": {
+    "description": "Bottom navigation entry for the statistics page."
   },
   "wikiSubtitle": "Minecraft community news and machine load.",
   "@wikiSubtitle": {
@@ -2965,5 +2993,231 @@
     }
   },
   "welcomeBackGreetingAnonymous": "Welcome back",
-  "welcomeBackContinue": "Let's play"
+  "welcomeBackContinue": "Let's play",
+  "statsTitle": "Statistics",
+  "@statsTitle": {
+    "description": "Statistics page title."
+  },
+  "statsSubtitle": "Playtime, activity and the instances you return to.",
+  "@statsSubtitle": {
+    "description": "Statistics page subtitle."
+  },
+  "statsRefresh": "Refresh statistics",
+  "@statsRefresh": {
+    "description": "Tooltip of the refresh button on the statistics page."
+  },
+  "statsLoadFailed": "Statistics are unavailable.",
+  "@statsLoadFailed": {
+    "description": "Inline error title when stats.get fails."
+  },
+  "statsLoadFailedHint": "The native core could not return the play history.",
+  "@statsLoadFailedHint": {
+    "description": "Inline error detail when stats.get fails."
+  },
+  "statsRetry": "Try again",
+  "@statsRetry": {
+    "description": "Retry button for a failed statistics request."
+  },
+  "statsEmptyTitle": "No play sessions yet",
+  "@statsEmptyTitle": {
+    "description": "Heading shown before the first recorded session."
+  },
+  "statsEmptyMessage": "Launch an instance; its playtime and activity will show up here.",
+  "@statsEmptyMessage": {
+    "description": "Explanation shown before the first recorded session."
+  },
+  "statsTotalPlaytime": "Total playtime",
+  "@statsTotalPlaytime": {
+    "description": "Overview card label for all recorded playtime."
+  },
+  "statsThisWeek": "This week",
+  "@statsThisWeek": {
+    "description": "Overview card label for this week's playtime."
+  },
+  "statsSessions": "Game sessions",
+  "@statsSessions": {
+    "description": "Overview card label for the number of recorded launches."
+  },
+  "statsStreak": "Day streak",
+  "@statsStreak": {
+    "description": "Overview card label for consecutive active days."
+  },
+  "statsInstances": "Instances",
+  "@statsInstances": {
+    "description": "Overview card label for the current instance count."
+  },
+  "statsHoursShort": "h",
+  "@statsHoursShort": {
+    "description": "Short hour unit used in compact duration numbers."
+  },
+  "statsMinutesShort": "m",
+  "@statsMinutesShort": {
+    "description": "Short minute unit used in compact duration numbers."
+  },
+  "statsDaysShort": "d",
+  "@statsDaysShort": {
+    "description": "Short day unit used in compact numbers."
+  },
+  "statsLastWeek": "Last week {duration}",
+  "@statsLastWeek": {
+    "description": "Secondary line on the weekly playtime card.",
+    "placeholders": {
+      "duration": { "type": "String" }
+    }
+  },
+  "statsTodayPlayed": "Today {duration}",
+  "@statsTodayPlayed": {
+    "description": "Secondary line on the streak card.",
+    "placeholders": {
+      "duration": { "type": "String" }
+    }
+  },
+  "statsWeekSessionCount": "{count, plural, =0{No sessions this week} =1{1 session this week} other{{count} sessions this week}}",
+  "@statsWeekSessionCount": {
+    "description": "Secondary line on the weekly playtime card.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsActiveDaysCount": "{count, plural, =0{No active days yet} =1{1 active day} other{{count} active days}}",
+  "@statsActiveDaysCount": {
+    "description": "Secondary line on the sessions card.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsModTotal": "{count, plural, =0{No mods} =1{1 mod} other{{count} mods}}",
+  "@statsModTotal": {
+    "description": "Secondary line on the instances card.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsActivityTitle": "Play activity",
+  "@statsActivityTitle": {
+    "description": "Heatmap card title."
+  },
+  "statsLast90Days": "Last 90 days",
+  "@statsLast90Days": {
+    "description": "Heatmap range label."
+  },
+  "statsLess": "Less",
+  "@statsLess": {
+    "description": "Low end of the heatmap legend."
+  },
+  "statsMore": "More",
+  "@statsMore": {
+    "description": "High end of the heatmap legend."
+  },
+  "statsDayTooltip": "{date} · {duration} · {sessions}",
+  "@statsDayTooltip": {
+    "description": "Hover text of one heatmap cell.",
+    "placeholders": {
+      "date": { "type": "String" },
+      "duration": { "type": "String" },
+      "sessions": { "type": "String" }
+    }
+  },
+  "statsHoursTitle": "When you play",
+  "@statsHoursTitle": {
+    "description": "Hourly distribution card title."
+  },
+  "statsPeakHour": "Peak {hour}:00",
+  "@statsPeakHour": {
+    "description": "Badge over the busiest hour of the day.",
+    "placeholders": {
+      "hour": { "type": "String" }
+    }
+  },
+  "statsBySessions": "By launch count",
+  "@statsBySessions": {
+    "description": "Shown when the hourly chart falls back to launch counts."
+  },
+  "statsNoSessions": "No sessions yet",
+  "@statsNoSessions": {
+    "description": "Empty state inside activity cards."
+  },
+  "statsLoadersTitle": "Instance mix",
+  "@statsLoadersTitle": {
+    "description": "Loader distribution card title."
+  },
+  "statsLoaderKinds": "{count, plural, =0{No loaders yet} =1{1 loader} other{{count} loaders}}",
+  "@statsLoaderKinds": {
+    "description": "Secondary label of the loader distribution card.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsNoInstances": "No instances yet",
+  "@statsNoInstances": {
+    "description": "Empty state inside the loader distribution card."
+  },
+  "statsInstanceCount": "{count, plural, =1{1 instance} other{{count} instances}}",
+  "@statsInstanceCount": {
+    "description": "Total count shown in the loader donut center.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsSessionCount": "{count, plural, =1{1 session} other{{count} sessions}}",
+  "@statsSessionCount": {
+    "description": "Session count beside one playtime row.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsTopInstances": "Most played",
+  "@statsTopInstances": {
+    "description": "Top instances card title."
+  },
+  "statsTopCount": "TOP {count}",
+  "@statsTopCount": {
+    "description": "Count label of the top instances card.",
+    "placeholders": {
+      "count": { "type": "String" }
+    }
+  },
+  "statsRecentSessions": "Recent sessions",
+  "@statsRecentSessions": {
+    "description": "Recent sessions card title."
+  },
+  "statsRecentEmpty": "Your launch history will appear here.",
+  "@statsRecentEmpty": {
+    "description": "Empty state of the recent sessions card."
+  },
+  "statsRunning": "Running",
+  "@statsRunning": {
+    "description": "Badge for a session whose game process is still running."
+  },
+  "statsNoPlaytime": "No playtime recorded",
+  "@statsNoPlaytime": {
+    "description": "Row caption when a session has zero recorded duration."
+  },
+  "statsFootnote": "Recorded locally from launch history. Nothing is uploaded.",
+  "@statsFootnote": {
+    "description": "Privacy note under the statistics content."
+  },
+  "accountSwitchHint": "Long-press or scroll to switch account",
+  "@accountSwitchHint": {
+    "description": "Accessibility hint on the bottom account button."
+  },
+  "accountSwitchEmpty": "No accounts yet",
+  "@accountSwitchEmpty": {
+    "description": "Shown in the quick account switcher before any account exists."
+  },
+  "accountManage": "Manage accounts",
+  "@accountManage": {
+    "description": "Entry in the quick account switcher that opens the accounts page."
+  },
+  "accountSwitched": "Switched to {name}",
+  "@accountSwitched": {
+    "description": "Toast after switching the active account.",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "accountSwitchFailed": "Could not switch account.",
+  "@accountSwitchFailed": {
+    "description": "Toast when selecting another account fails."
+  }
 }

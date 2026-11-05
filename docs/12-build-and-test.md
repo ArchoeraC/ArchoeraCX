@@ -173,6 +173,8 @@ ARCHOERACX_INSTANCE_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-instance \
   flutter test test/instance_integration_test.dart
 ARCHOERACX_ACCOUNT_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-account \
   flutter test test/account_integration_test.dart
+ARCHOERACX_STATS_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-stats \
+  flutter test test/stats_integration_test.dart
 ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
 ARCHOERACX_MICROSOFT_START_TESTS=1 \
 ARCHOERACX_MICROSOFT_CLIENT_ID="<client id>" \

@@ -48,6 +48,12 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
     end: const Offset(0, 1),
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
 
+  /// Exit motion for leaving the home page: the old page slides up and out.
+  late final Animation<Offset> _upOutOffset = Tween<Offset>(
+    begin: Offset.zero,
+    end: const Offset(0, -1),
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
+
   late final Animation<Offset> _liftOffset = Tween<Offset>(
     begin: const Offset(0, 0.02),
     end: Offset.zero,
@@ -125,6 +131,44 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
     final previous = _previous;
     if (previous == null) return current;
 
+    // With a wallpaper the page canvas is transparent, so a snapshot and the
+    // live page would show through each other. Between the home page and any
+    // branch the outgoing content slides out (up when leaving home, down when
+    // returning) and the incoming page is revealed by a clip that follows the
+    // vacated edge. The wallpaper never moves, and no opaque backing sheet is
+    // needed. Switches between two non-home branches keep the normal lift
+    // transition below.
+    if (context.tokens.imageBackground && _mode != _PageTransitionMode.lift) {
+      final fromTop = _mode == _PageTransitionMode.retract;
+      final exit = fromTop ? _outOffset : _upOutOffset;
+      return ClipRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: SlideTransition(
+                position: exit,
+                child: _Snapshot(image: previous),
+              ),
+            ),
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: exit,
+                builder: (context, child) => ClipRect(
+                  clipper: _RevealClipper(
+                    progress: fromTop ? exit.value.dy : -exit.value.dy,
+                    fromTop: fromTop,
+                  ),
+                  child: child,
+                ),
+                child: current,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
@@ -168,6 +212,10 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
 
 /// Snapshot of the page that is leaving, scaled to the page width and pinned to
 /// the top so it lines up with the live page under the finger.
+///
+/// The snapshot keeps its transparent canvas: in image mode the incoming page
+/// is clipped to the area the snapshot has already vacated, so the two layouts
+/// never paint on top of each other and the shared wallpaper stays behind both.
 class _Snapshot extends StatelessWidget {
   const _Snapshot({required this.image});
 
@@ -181,4 +229,27 @@ class _Snapshot extends StatelessWidget {
       alignment: Alignment.topCenter,
     );
   }
+}
+
+/// Clips the incoming page to the region the outgoing snapshot has vacated.
+class _RevealClipper extends CustomClipper<Rect> {
+  const _RevealClipper({required this.progress, required this.fromTop});
+
+  /// 0 = outgoing page still covers the viewport, 1 = fully gone.
+  final double progress;
+
+  /// Returning home reveals the page from the top edge downwards.
+  final bool fromTop;
+
+  @override
+  Rect getClip(Size size) {
+    final distance = size.height * progress.clamp(0.0, 1.0);
+    return fromTop
+        ? Rect.fromLTRB(0, 0, size.width, distance)
+        : Rect.fromLTRB(0, size.height - distance, size.width, size.height);
+  }
+
+  @override
+  bool shouldReclip(_RevealClipper oldClipper) =>
+      oldClipper.progress != progress || oldClipper.fromTop != fromTop;
 }

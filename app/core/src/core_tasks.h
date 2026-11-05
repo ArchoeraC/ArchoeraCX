@@ -49,6 +49,16 @@ void settle_task_terminal(archoera_core* core,
 /* Worker fast-fail: move an in-flight task to FAILED without a result. */
 void fail_async_task(archoera_core* core, uint64_t task_id) noexcept;
 
+/*
+ * Forwards a cooperative cancel to the module on a core-owned worker so the
+ * ABI caller (the UI isolate) never blocks on socket teardown or on a module's
+ * cancellation callbacks. The worker is joined by shutdown like every other
+ * core thread. Never throws.
+ */
+void dispatch_module_cancel(archoera_core* core,
+                            std::string module,
+                            uint64_t task_id) noexcept;
+
 /* Requires core.mutex to be held. A released/missing task is a stop signal
  * for its worker because there is no longer anywhere to publish progress or
  * state. */

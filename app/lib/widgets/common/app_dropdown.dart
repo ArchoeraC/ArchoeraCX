@@ -51,7 +51,11 @@ class AppDropdown<T> extends StatelessWidget {
               bottom: 5,
             ),
             decoration: BoxDecoration(
-              color: tokens.surface2,
+              // Match the themed text fields in image mode: the control stays
+              // translucent so the frosted panel under it shows through.
+              color: tokens.imageBackground
+                  ? tokens.surface2.withValues(alpha: 0.52)
+                  : tokens.surface2,
               borderRadius: BorderRadius.circular(tokens.radiusM),
               border: Border.all(color: tokens.border),
             ),

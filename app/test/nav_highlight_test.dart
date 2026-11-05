@@ -63,6 +63,7 @@ void main() {
     final paths = [
       '/',
       '/instances',
+      '/stats',
       '/download',
       '/accounts',
       '/wiki',

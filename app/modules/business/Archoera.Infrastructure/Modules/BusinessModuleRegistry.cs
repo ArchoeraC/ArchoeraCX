@@ -11,6 +11,7 @@ using Archoera.Infrastructure.Mojang;
 using Archoera.Infrastructure.Packs;
 using Archoera.Infrastructure.Resources;
 using Archoera.Infrastructure.Settings;
+using Archoera.Infrastructure.Stats;
 using Archoera.Infrastructure.SystemInfo;
 using Archoera.Infrastructure.Update;
 
@@ -36,6 +37,9 @@ public static class BusinessModuleRegistry
         var instances = dataRoot is null
             ? null
             : new SqliteInstanceRepository(dataRoot, settings);
+        // One store for launch recording and the statistics query so both use
+        // the same database path and schema.
+        var playSessions = new SqlitePlaySessionStore(dataRoot);
         var accounts = new JsonAccountStore(dataRoot);
         var credentials = new VaultCredentialStore(dataRoot);
         var auth = new MicrosoftAuthClient(AuthHttp, new MicrosoftAuthOptions());
@@ -53,12 +57,15 @@ public static class BusinessModuleRegistry
                 regionPolicy: region),
             new LaunchModuleService(
                 dataRoot: dataRoot,
+                instances: instances,
                 accounts: accounts,
                 credentials: credentials,
-                auth: auth),
+                auth: auth,
+                playSessions: playSessions),
             new LaunchLogModuleService(instances),
             new LaunchStopModuleService(),
             new DiagnosticsModuleService(instances),
+            new StatsModuleService(instances, playSessions),
             new LoaderVersionService(policy: policy, regionPolicy: region),
             new LoaderModuleService(
                 policy: policy,

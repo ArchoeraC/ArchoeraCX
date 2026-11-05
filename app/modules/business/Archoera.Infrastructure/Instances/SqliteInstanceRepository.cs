@@ -438,6 +438,9 @@ public sealed class SqliteInstanceRepository : IInstanceRepository
                     );
                     INSERT OR IGNORE INTO schema_migrations(version, applied_at)
                     VALUES (1, strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+                    """ + PlaySessionSchema.CreateSql + """
+                    INSERT OR IGNORE INTO schema_migrations(version, applied_at)
+                    VALUES (2, strftime('%Y-%m-%dT%H:%M:%fZ','now'));
                     """;
                 await schema.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }

@@ -397,10 +397,11 @@ ARCHOERA_API archoera_status archoera_cancel(archoera_core* core,
     if (notify_worker) {
       core->worker_cv.notify_all();
     }
-    // Module calls must never run while core.mutex is held. The module host
-    // serializes this with in-flight call/shutdown internally.
-    if (module_task && core->module_registry != nullptr) {
-      core->module_registry->cancel(module, task_id);
+    // Module calls must never run while core.mutex is held, and the ABI call
+    // must not wait for a module's socket teardown. Dispatch the cooperative
+    // cancel on a core-owned worker; shutdown joins it like every other thread.
+    if (module_task) {
+      archoera::dispatch_module_cancel(core, std::move(module), task_id);
     }
     if (notify_wake_now) {
       archoera::notify_wake(wake);

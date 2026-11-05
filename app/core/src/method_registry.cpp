@@ -114,6 +114,8 @@ constexpr MethodRoute kRoutes[] = {
     {"instance.backup.restore", &handle_module_method, kCsModule},
     {"instance.backup.discard", &handle_module_method, kCsModule},
 
+    {"stats.get", &handle_module_method, kCsModule},
+
     {"account.list", &handle_module_method, kCsModule},
     {"account.current", &handle_module_method, kCsModule},
     {"account.select", &handle_module_method, kCsModule},

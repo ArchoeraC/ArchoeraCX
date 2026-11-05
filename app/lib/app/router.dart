@@ -12,6 +12,7 @@ import '../pages/java_page.dart';
 import '../pages/platform_pack_page.dart';
 import '../pages/resource_detail_page.dart';
 import '../pages/settings_page.dart';
+import '../pages/stats_page.dart';
 import '../pages/wiki_page.dart';
 import '../services/core/packs/platform_pack_models.dart';
 import '../services/core/resources/resource_models.dart';
@@ -63,6 +64,16 @@ GoRouter buildAppRouter({String? initialLocation}) {
                 name: 'instances',
                 builder: (context, state) =>
                     const AppPageSurface(child: InstancesPage()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/stats',
+                name: 'stats',
+                builder: (context, state) =>
+                    const AppPageSurface(child: StatsPage()),
               ),
             ],
           ),

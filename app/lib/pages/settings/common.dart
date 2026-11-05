@@ -151,6 +151,7 @@ class _AppearanceTile extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.enabled = true,
   });
 
   final IconData icon;
@@ -159,6 +160,9 @@ class _AppearanceTile extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
 
+  /// Disabled rows stay visible but dim their control and reject input.
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -166,48 +170,51 @@ class _AppearanceTile extends StatelessWidget {
     final subtitleText = subtitle;
     final control = trailing;
 
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: tokens.accent.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(tokens.radiusM),
+    final content = Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: tokens.accent.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(tokens.radiusM),
+              ),
+              child: Icon(icon, size: 18, color: tokens.accent),
             ),
-            child: Icon(icon, size: 18, color: tokens.accent),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: textTheme.titleSmall),
-                if (subtitleText != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitleText,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: tokens.textTertiary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (control != null) ...[
             const SizedBox(width: AppSpacing.sm),
-            control,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: textTheme.titleSmall),
+                  if (subtitleText != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitleText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: tokens.textTertiary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (control != null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              if (enabled) control else IgnorePointer(child: control),
+            ],
           ],
-        ],
+        ),
       ),
     );
 

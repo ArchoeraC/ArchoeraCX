@@ -2562,6 +2562,89 @@ class AppLocalizationsEn extends AppLocalizations {
       'Shift panels and backgrounds slightly toward the accent color.';
 
   @override
+  String get settingsSectionBackground => 'Background';
+
+  @override
+  String get settingsAppearanceStyle => 'Background style';
+
+  @override
+  String get settingsAppearanceStyleDesc =>
+      'Use the flat theme canvas or a picture behind the launcher.';
+
+  @override
+  String get settingsAppearanceStyleSolid => 'Solid';
+
+  @override
+  String get settingsAppearanceStyleImage => 'Image';
+
+  @override
+  String get settingsBackgroundImage => 'Background image';
+
+  @override
+  String get settingsBackgroundImageDesc =>
+      'PNG, JPEG, WebP or BMP. The file stays on this computer.';
+
+  @override
+  String get settingsBackgroundImageSelect => 'Choose image';
+
+  @override
+  String get settingsBackgroundImageReplace => 'Replace';
+
+  @override
+  String get settingsBackgroundImageClear => 'Remove background image';
+
+  @override
+  String get settingsBackgroundImageNoPath =>
+      'Choose an image to activate the background. The solid theme stays active until then.';
+
+  @override
+  String get settingsBackgroundImageNote =>
+      'Image backgrounds use dark text contrast, force dark mode and enable global tint so light text stays readable over the dimmed photo.';
+
+  @override
+  String get settingsBackgroundImagePicked => 'Background image updated.';
+
+  @override
+  String get settingsBackgroundImageCleared => 'Background image removed.';
+
+  @override
+  String get settingsBackgroundImageUnsupported =>
+      'Choose a PNG, JPEG, WebP or BMP image.';
+
+  @override
+  String get settingsBackgroundImagePickFailed =>
+      'Could not open the image picker.';
+
+  @override
+  String get settingsBackgroundBlur => 'Blur';
+
+  @override
+  String get settingsBackgroundBlurDesc =>
+      'Soften the image so page content stays in focus.';
+
+  @override
+  String get settingsBackgroundDim => 'Dim';
+
+  @override
+  String get settingsBackgroundDimDesc =>
+      'Darken the image; a stronger scrim keeps text readable.';
+
+  @override
+  String get settingsBackgroundScale => 'Zoom';
+
+  @override
+  String get settingsBackgroundScaleDesc =>
+      'Crop tighter around the centre of the image.';
+
+  @override
+  String get settingsThemeModeImageForced =>
+      'Image backgrounds use dark colors so text stays readable.';
+
+  @override
+  String get settingsGlobalTintImageForced =>
+      'Global tint is always on over a background image.';
+
+  @override
   String get settingsResetAppearance => 'Reset appearance';
 
   @override
@@ -2794,6 +2877,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navWiki => 'Wiki';
+
+  @override
+  String get navStats => 'Statistics';
 
   @override
   String get wikiSubtitle => 'Minecraft community news and machine load.';
@@ -3648,4 +3734,213 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeBackContinue => 'Let\'s play';
+
+  @override
+  String get statsTitle => 'Statistics';
+
+  @override
+  String get statsSubtitle =>
+      'Playtime, activity and the instances you return to.';
+
+  @override
+  String get statsRefresh => 'Refresh statistics';
+
+  @override
+  String get statsLoadFailed => 'Statistics are unavailable.';
+
+  @override
+  String get statsLoadFailedHint =>
+      'The native core could not return the play history.';
+
+  @override
+  String get statsRetry => 'Try again';
+
+  @override
+  String get statsEmptyTitle => 'No play sessions yet';
+
+  @override
+  String get statsEmptyMessage =>
+      'Launch an instance; its playtime and activity will show up here.';
+
+  @override
+  String get statsTotalPlaytime => 'Total playtime';
+
+  @override
+  String get statsThisWeek => 'This week';
+
+  @override
+  String get statsSessions => 'Game sessions';
+
+  @override
+  String get statsStreak => 'Day streak';
+
+  @override
+  String get statsInstances => 'Instances';
+
+  @override
+  String get statsHoursShort => 'h';
+
+  @override
+  String get statsMinutesShort => 'm';
+
+  @override
+  String get statsDaysShort => 'd';
+
+  @override
+  String statsLastWeek(String duration) {
+    return 'Last week $duration';
+  }
+
+  @override
+  String statsTodayPlayed(String duration) {
+    return 'Today $duration';
+  }
+
+  @override
+  String statsWeekSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sessions this week',
+      one: '1 session this week',
+      zero: 'No sessions this week',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsActiveDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count active days',
+      one: '1 active day',
+      zero: 'No active days yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsModTotal(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mods',
+      one: '1 mod',
+      zero: 'No mods',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsActivityTitle => 'Play activity';
+
+  @override
+  String get statsLast90Days => 'Last 90 days';
+
+  @override
+  String get statsLess => 'Less';
+
+  @override
+  String get statsMore => 'More';
+
+  @override
+  String statsDayTooltip(String date, String duration, String sessions) {
+    return '$date · $duration · $sessions';
+  }
+
+  @override
+  String get statsHoursTitle => 'When you play';
+
+  @override
+  String statsPeakHour(String hour) {
+    return 'Peak $hour:00';
+  }
+
+  @override
+  String get statsBySessions => 'By launch count';
+
+  @override
+  String get statsNoSessions => 'No sessions yet';
+
+  @override
+  String get statsLoadersTitle => 'Instance mix';
+
+  @override
+  String statsLoaderKinds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count loaders',
+      one: '1 loader',
+      zero: 'No loaders yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsNoInstances => 'No instances yet';
+
+  @override
+  String statsInstanceCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count instances',
+      one: '1 instance',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sessions',
+      one: '1 session',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsTopInstances => 'Most played';
+
+  @override
+  String statsTopCount(String count) {
+    return 'TOP $count';
+  }
+
+  @override
+  String get statsRecentSessions => 'Recent sessions';
+
+  @override
+  String get statsRecentEmpty => 'Your launch history will appear here.';
+
+  @override
+  String get statsRunning => 'Running';
+
+  @override
+  String get statsNoPlaytime => 'No playtime recorded';
+
+  @override
+  String get statsFootnote =>
+      'Recorded locally from launch history. Nothing is uploaded.';
+
+  @override
+  String get accountSwitchHint => 'Long-press or scroll to switch account';
+
+  @override
+  String get accountSwitchEmpty => 'No accounts yet';
+
+  @override
+  String get accountManage => 'Manage accounts';
+
+  @override
+  String accountSwitched(String name) {
+    return 'Switched to $name';
+  }
+
+  @override
+  String get accountSwitchFailed => 'Could not switch account.';
 }

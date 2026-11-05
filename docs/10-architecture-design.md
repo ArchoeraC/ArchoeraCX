@@ -553,6 +553,7 @@ C++ 行为：
 | 机制 | 规则 |
 |---|---|
 | 取消 | 协作式；每个长任务检查 token；C# `CancellationToken`、Rust `CancellationToken` |
+| 取消调用 | `archoera_cancel` 只标记任务并把模块取消投递到核心自管线程；ABI 调用绝不在 UI isolate 上等待 socket/回调清理 |
 | 超时 | 每个 task 可设 deadline；到期转 `Cancelled` 并记录 `TIMEOUT` 原因 |
 | 子任务 | 父取消级联；子完成不自动完成父（由编排逻辑决定） |
 | 幂等 | `planId` 重复提交复用；同一 `dest` 加锁；`cancel` 对终态返回 OK |
@@ -1653,6 +1654,9 @@ void _drain() {
 
 - 统一 token：颜色（surface/onSurface/accent/danger）、字号阶梯、间距、圆角、动效曲线/时长。
 - 明暗主题 + 强调色；背景：纯色/图片/Mica/Acrylic + 模糊缓存。
+- 自定义背景图：用户选择本地绝对路径，按屏幕物理尺寸解码，模糊/缩放/暗化后一次性烘焙为静态纹理；缺图或解码失败回退纯色画布，不阻塞界面。
+- 图片模式下卡片使用「背景模糊 + 半透明填充」的毛玻璃面板（`AppPanel`）；输入框、下拉框、右键菜单等浮层通过主题使用半透明填充（弹窗保持更实的底色）。主页与其它页面之间切换为「上切/下切」：离开主页时旧页向上滑出，返回主页时旧页向下滑出，新页由跟随滑出边缘的裁剪区域露出；壁纸保持不动，也不需要给快照垫不透明底色。其它页面之间的切换保持原有抬升/溶解转场。
+- 图片模式强制深色 + 全局着色（保留用户原先选择的颜色模式，移除图片后恢复），并禁用颜色模式/全局着色开关；提示条和 Tooltip 使用不透明反色前景，避免透明画布色导致文字不可见。
 - 不混搭 `fluent_ui`/`macos_ui`；自研组件层。
 - 150% 缩放、中文长文本、RTL 预留；对比度 4.5:1。
 - 减少动效设置；骨架屏/空态/错误态统一组件。
@@ -2447,6 +2451,7 @@ public interface IDownloadProvider {
 | `instance.mods.list` | C# | 列出实例 `mods/` 中的 jar 与 `.disabled` 文件 |
 | `instance.mods.setEnabled` | C# | 通过 `.disabled` 后缀启停 Mod |
 | `instance.mods.remove` | C# | 删除实例中的单个 Mod 文件 |
+| `stats.get` | C# | 本机游玩统计快照：汇总（总时长、今日/本周/上周、会话数、活跃天、连续天数、实例与 Mod 数）、近 90 天每日时长、24 小时分布、最常游玩实例、最近启动与加载器构成；总时长/每日/每小时按所有会话运行区间的**并集**计算（多实例同时启动只计一次墙钟时间，不叠加），单实例时长也按该实例区间并集；跨午夜会话把时长拆到覆盖的每一天（启动次数只记启动当天）；启动 60 秒内非零退出的失败启动既不计时长也不计次数；启动时写入 `play_sessions`，进程退出时补 `ended_at`/`duration_ms`/`exit_code`，不观测到退出或启动器崩溃留下的悬挂会话直接丢弃。数据只在本机 SQLite，不上传 |
 | `instance.duplicate` | C# | 复制实例：参数 `{"id":"<源实例>","name":"<新实例名>"}`，返回 `{"instance":{...含 overrides...}}`；按源实例的 gameVersion/loader/loaderVersion 经仓储创建新实例（默认实例根），递归复制源目录但排除 `.archoera/logs` 与 `.archoera/instance.json`，保留每实例 `overrides`；失败时尽力清理新目录；拒绝复制到自身/自身内部；名称校验沿用 `instance.create` |
 | `instance.import` | C# | 导入现有目录/压缩包 |
 | `instance.export` | C# | 导出整合包/目录 |

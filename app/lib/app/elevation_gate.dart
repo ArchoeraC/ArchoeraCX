@@ -23,9 +23,13 @@ Future<bool> runElevationGate(ProcessElevation elevation) async {
   final decision = Completer<bool>();
 
   runApp(
-    _ElevationGateApp(elevation: elevation, locale: locale, onDecision: (proceed) {
-      if (!decision.isCompleted) decision.complete(proceed);
-    }),
+    _ElevationGateApp(
+      elevation: elevation,
+      locale: locale,
+      onDecision: (proceed) {
+        if (!decision.isCompleted) decision.complete(proceed);
+      },
+    ),
   );
 
   return decision.future;
@@ -152,7 +156,7 @@ class _ElevationGatePageState extends State<ElevationGatePage> {
         : l10n.elevationKindRoot;
 
     return Scaffold(
-      backgroundColor: tokens.bg,
+      backgroundColor: tokens.imageBackground ? AppTokens.dark.bg : tokens.bg,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.lg),

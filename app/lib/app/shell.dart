@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,7 @@ import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/accounts/account_avatar.dart';
 import '../widgets/common/task_center_button.dart';
+import '../widgets/common/toast.dart';
 import '../widgets/instances/crash_report_dialog.dart';
 import '../widgets/layout/app_background.dart';
 
@@ -46,10 +48,11 @@ typedef OpenAppBranch = void Function(int index);
 abstract final class AppBranch {
   static const int dashboard = 0;
   static const int instances = 1;
-  static const int download = 2;
-  static const int accounts = 3;
-  static const int wiki = 4;
-  static const int settings = 5;
+  static const int stats = 2;
+  static const int download = 3;
+  static const int accounts = 4;
+  static const int wiki = 5;
+  static const int settings = 6;
 }
 
 /// Exposes the shell's animated branch switch to descendant pages.
@@ -190,6 +193,13 @@ class _AppShellState extends ConsumerState<AppShell> {
         icon: AppIcons.instances,
         selectedIcon: AppIcons.instances,
       ),
+      AppDestination(
+        path: '/stats',
+        branchIndex: AppBranch.stats,
+        label: l10n.navStats,
+        icon: AppIcons.stats,
+        selectedIcon: AppIcons.stats,
+      ),
       if (ref.watch(downloadEnabledProvider))
         AppDestination(
           path: '/download',
@@ -225,11 +235,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     final index = navigationShell.currentIndex;
     final selectedInstance = ref.watch(selectedInstanceProvider);
     final account = ref.watch(currentAccountProvider);
+    final appearance = ref.watch(appearanceProvider);
     final contentMaxWidth = AppLayout.contentMaxWidthFor(
       MediaQuery.sizeOf(context).width,
     );
 
     return AppBackground(
+      imagePath: appearance.hasImageBackground
+          ? appearance.backgroundImage
+          : null,
+      imageBlur: appearance.backgroundBlur,
+      imageDim: appearance.backgroundDim,
+      imageScale: appearance.backgroundScale,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Column(

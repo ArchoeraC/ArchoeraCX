@@ -11,6 +11,7 @@ abstract final class AppTheme {
     bool globalTint = false,
     bool reduceMotion = false,
     VisualDensity density = VisualDensity.standard,
+    bool imageBackground = false,
   }) {
     return _build(
       AppTokens.light.withAccent(
@@ -18,6 +19,7 @@ abstract final class AppTheme {
         brightness: Brightness.light,
         tinted: globalTint,
         reduceMotion: reduceMotion,
+        imageBackground: imageBackground,
       ),
       Brightness.light,
       density,
@@ -29,6 +31,7 @@ abstract final class AppTheme {
     bool globalTint = false,
     bool reduceMotion = false,
     VisualDensity density = VisualDensity.standard,
+    bool imageBackground = false,
   }) {
     return _build(
       AppTokens.dark.withAccent(
@@ -36,6 +39,7 @@ abstract final class AppTheme {
         brightness: Brightness.dark,
         tinted: globalTint,
         reduceMotion: reduceMotion,
+        imageBackground: imageBackground,
       ),
       Brightness.dark,
       density,
@@ -83,6 +87,27 @@ abstract final class AppTheme {
       extensions: [tokens],
     );
 
+    // In image mode the canvas token is transparent; anything drawn *on*
+    // `textPrimary` (snackbars, tooltips) needs an opaque contrast colour.
+    final inverseForeground = tokens.imageBackground
+        ? AppTokens.dark.bg
+        : tokens.bg;
+
+    // Floating surfaces sit directly on the wallpaper instead of on an
+    // [AppPanel], so they cannot use its backdrop filter. Give them their own
+    // translucent tint: enough wallpaper to look like glass, enough tint to
+    // keep menu rows and field text readable.
+    final imageMode = tokens.imageBackground;
+    final popupFill = imageMode
+        ? tokens.surface1.withValues(alpha: 0.86)
+        : tokens.surface1;
+    final inputFill = imageMode
+        ? tokens.surface2.withValues(alpha: 0.52)
+        : tokens.surface2;
+    final dialogFill = imageMode
+        ? tokens.surface1.withValues(alpha: 0.92)
+        : tokens.surface1;
+
     final panelCut = BorderRadius.only(
       topRight: Radius.circular(tokens.bevelL),
       bottomLeft: Radius.circular(tokens.bevelS),
@@ -102,7 +127,9 @@ abstract final class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: tokens.surface1,
+        color: imageMode
+            ? tokens.surface1.withValues(alpha: 0.58)
+            : tokens.surface1,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.radiusL),
@@ -111,7 +138,7 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: tokens.surface1,
+        backgroundColor: dialogFill,
         surfaceTintColor: Colors.transparent,
         shape: BeveledRectangleBorder(
           side: BorderSide(color: tokens.border),
@@ -119,8 +146,8 @@ abstract final class AppTheme {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: tokens.surface1,
-        modalBackgroundColor: tokens.surface1,
+        backgroundColor: dialogFill,
+        modalBackgroundColor: dialogFill,
         surfaceTintColor: Colors.transparent,
         shape: BeveledRectangleBorder(
           side: BorderSide(color: tokens.border),
@@ -131,7 +158,7 @@ abstract final class AppTheme {
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: tokens.surface1,
+        color: popupFill,
         surfaceTintColor: Colors.transparent,
         shape: BeveledRectangleBorder(
           side: BorderSide(color: tokens.border),
@@ -141,7 +168,7 @@ abstract final class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: tokens.textPrimary,
-        contentTextStyle: TextStyle(color: tokens.bg),
+        contentTextStyle: TextStyle(color: inverseForeground),
         shape: BeveledRectangleBorder(
           side: BorderSide(color: tokens.border),
           borderRadius: panelCut,
@@ -194,7 +221,7 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: tokens.surface2,
+        fillColor: inputFill,
         hintStyle: TextStyle(color: tokens.textTertiary),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -218,7 +245,7 @@ abstract final class AppTheme {
           color: tokens.textPrimary,
           borderRadius: BorderRadius.circular(tokens.radiusS),
         ),
-        textStyle: TextStyle(color: tokens.bg, fontSize: 12),
+        textStyle: TextStyle(color: inverseForeground, fontSize: 12),
         waitDuration: const Duration(milliseconds: 500),
       ),
       scrollbarTheme: ScrollbarThemeData(

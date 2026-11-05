@@ -143,6 +143,7 @@ public sealed class MicrosoftAuthClient
     {
         EnsureClientId();
         ArgumentNullException.ThrowIfNull(challenge);
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(code))
         {
             throw new AccountAuthException(
@@ -295,24 +296,30 @@ public sealed class MicrosoftAuthClient
         MicrosoftTokenSet microsoftTokens,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var xbl = await AuthenticateXboxLiveAsync(
                 microsoftTokens.AccessToken,
                 cancellationToken)
             .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         var xsts = await AuthorizeXstsAsync(xbl.Token, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         var minecraft = await LoginWithXboxAsync(
                 xsts.Token,
                 xsts.UserHash,
                 cancellationToken)
             .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         await VerifyEntitlementAsync(
                 minecraft.AccessToken,
                 cancellationToken)
             .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         var profile = await GetProfileAsync(
                 minecraft.AccessToken,
                 cancellationToken)
             .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         var certificates = await TryGetCertificatesAsync(
                 minecraft.AccessToken,
                 cancellationToken)
