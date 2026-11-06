@@ -77,6 +77,42 @@ public sealed class LoaderVersionServiceTests
     }
 
     [Fact]
+    public async Task NeoForge_1_20_1_reads_the_legacy_forge_artifact()
+    {
+        var handler = new RoutingHandler()
+            .Route(
+                "test.local/neoforge/maven-metadata.xml",
+                () => TextResponse(
+                    """
+                    <metadata><versioning><versions>
+                      <version>21.1.209</version>
+                    </versions></versioning></metadata>
+                    """))
+            .Route(
+                "test.local/neoforge-legacy/maven-metadata.xml",
+                () => TextResponse(
+                    """
+                    <metadata><versioning><versions>
+                      <version>1.20.1-47.1.106</version>
+                      <version>1.20.1-47.1.100</version>
+                      <version>1.20.1-47.1.99-beta</version>
+                    </versions></versioning></metadata>
+                    """));
+        var service = CreateService(
+            new HttpClient(handler),
+            neoForgeLegacy: new Uri(
+                "https://test.local/neoforge-legacy/maven-metadata.xml"));
+
+        var versions = await service.ListAsync("neoforge", "1.20.1");
+
+        Assert.Equal(
+            ["47.1.106", "47.1.100", "47.1.99-beta"],
+            versions.Select(item => item.Version));
+        Assert.True(versions[0].Recommended);
+        Assert.False(versions[2].Stable);
+    }
+
+    [Fact]
     public async Task NeoForge_falls_back_to_the_mirror_when_the_primary_fails()
     {
         var handler = new RoutingHandler()
@@ -195,7 +231,8 @@ public sealed class LoaderVersionServiceTests
         Uri? forgeMetaMirror = null,
         Uri? neoForgeMirror = null,
         Uri? fabricMirror = null,
-        string? regionOverride = null)
+        string? regionOverride = null,
+        Uri? neoForgeLegacy = null)
         => new(
             client,
             new LoaderVersionEndpoints(
@@ -206,7 +243,8 @@ public sealed class LoaderVersionServiceTests
                 new Uri("https://test.local/neoforge/maven-metadata.xml"),
                 FabricMirror: fabricMirror,
                 ForgeMetaMirrorBase: forgeMetaMirror,
-                NeoForgeMetadataMirror: neoForgeMirror),
+                NeoForgeMetadataMirror: neoForgeMirror,
+                NeoForgeLegacyMetadata: neoForgeLegacy),
             regionPolicy: regionOverride is null
                 ? null
                 : new RegionPolicy(regionOverride: regionOverride));

@@ -27,7 +27,9 @@ public sealed record LoaderVersionEndpoints(
     Uri? FabricMirror = null,
     Uri? ForgeMetaMirrorBase = null,
     Uri? ForgePromotionsMirror = null,
-    Uri? NeoForgeMetadataMirror = null)
+    Uri? NeoForgeMetadataMirror = null,
+    Uri? NeoForgeLegacyMetadata = null,
+    Uri? NeoForgeLegacyMetadataMirror = null)
 {
     /// <summary>
     /// Official endpoints first, with BMCLAPI mirrors as fallbacks. The
@@ -46,7 +48,12 @@ public sealed record LoaderVersionEndpoints(
         ForgePromotionsMirror: new Uri(
             "https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/promotions_slim.json"),
         NeoForgeMetadataMirror: new Uri(
-            "https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml"));
+            "https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml"),
+        // NeoForge 1.20.1 was published as net.neoforged:forge, not :neoforge.
+        NeoForgeLegacyMetadata: new Uri(
+            "https://maven.neoforged.net/releases/net/neoforged/forge/maven-metadata.xml"),
+        NeoForgeLegacyMetadataMirror: new Uri(
+            "https://bmclapi2.bangbang93.com/maven/net/neoforged/forge/maven-metadata.xml"));
 }
 
 /// <summary>
@@ -497,7 +504,68 @@ public sealed class LoaderVersionService : IModuleMethodHandler
             .Select(value => (Version: value, Stable: !value.Contains('-')))
             .ToList();
 
+        if (string.Equals(gameVersion.Trim(), "1.20.1", StringComparison.Ordinal))
+        {
+            versions.AddRange(
+                await NeoForgeLegacyVersionsAsync(preferNeoForgeMirror, cancellationToken)
+                    .ConfigureAwait(false));
+        }
+
         return BuildItems(versions);
+    }
+
+    /// <summary>
+    /// NeoForge 1.20.1 builds live under the old <c>net.neoforged:forge</c>
+    /// artifact id, so the <c>:neoforge</c> metadata has no 1.20.1 entry at all.
+    /// Read the legacy list and strip the game prefix, matching the bare build
+    /// numbers used by the installer path and the version picker.
+    /// </summary>
+    private async Task<IReadOnlyList<(string Version, bool Stable)>> NeoForgeLegacyVersionsAsync(
+        bool preferMirror,
+        CancellationToken cancellationToken)
+    {
+        var primary = _endpoints.NeoForgeLegacyMetadata;
+        if (primary is null) return [];
+
+        try
+        {
+            var mirror = _endpoints.NeoForgeLegacyMetadataMirror;
+            var (legacyMetadata, _) = preferMirror && mirror is not null
+                ? await WithMirrorAsync(
+                        mirror,
+                        primary,
+                        cancellationToken,
+                        GetStringAsync)
+                    .ConfigureAwait(false)
+                : await WithMirrorAsync(
+                        primary,
+                        mirror,
+                        cancellationToken,
+                        GetStringAsync,
+                        PrimaryTimeout)
+                    .ConfigureAwait(false);
+
+            const string legacyPrefix = "1.20.1-";
+            return XDocument
+                .Parse(legacyMetadata)
+                .Descendants()
+                .Where(element => element.Name.LocalName == "version")
+                .Select(element => element.Value.Trim())
+                .Where(value => value.StartsWith(legacyPrefix, StringComparison.OrdinalIgnoreCase))
+                .Select(value => value[legacyPrefix.Length..])
+                .Where(value => value.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(value => (Version: value, Stable: !value.Contains('-')))
+                .ToList();
+        }
+        catch (Exception exception) when (
+            !cancellationToken.IsCancellationRequested &&
+            exception is HttpRequestException or IOException or TaskCanceledException
+                or System.Xml.XmlException)
+        {
+            // The modern list is still useful if the legacy artifact is gone.
+            return [];
+        }
     }
 
     private static string NeoForgePrefix(string gameVersion)
