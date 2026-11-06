@@ -51,7 +51,7 @@ class _SettingsNav extends StatelessWidget {
                   dense: true,
                   selected: item.section == selected,
                   selectedTileColor: tokens.accentSoft,
-                  hoverColor: tokens.surface2,
+                  hoverColor: tokens.hoverFill,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm,
                   ),
@@ -152,7 +152,7 @@ class _SettingsTabsState extends State<_SettingsTabs> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => widget.onSelected(item.section),
-        hoverColor: tokens.surface2,
+        hoverColor: tokens.hoverFill,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
           decoration: BoxDecoration(

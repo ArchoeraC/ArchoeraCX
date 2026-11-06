@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/services/core/system/system_status.dart';
 import 'package:archoera_cx/services/core/wiki/wiki_feed.dart';
@@ -9,6 +12,13 @@ import 'package:archoera_cx/stores/wiki.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// 1×1 transparent PNG, enough for `FileImage` to decode in widget tests.
+final _pixelPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8A'
+  'AQUBAScY42YAAAAASUVORK5CYII=',
+);
 
 class _FixedFeed extends WikiFeedNotifier {
   _FixedFeed(this.feed);
@@ -97,7 +107,9 @@ Future<void> _pumpWiki(
   WikiFeed? feed,
   SystemStatus? status,
   Size size = const Size(1440, 900),
+  Map<String, Object> preferences = const <String, Object>{},
 }) async {
+  SharedPreferences.setMockInitialValues(preferences);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -247,9 +259,7 @@ void main() {
           locale: const Locale('zh'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const Scaffold(
-            body: SingleChildScrollView(child: WikiPage()),
-          ),
+          home: const Scaffold(body: SingleChildScrollView(child: WikiPage())),
         ),
       ),
     );
@@ -283,5 +293,32 @@ void main() {
     expect(find.text('Nothing to show right now.'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('feed rows use the shared hover wash on a wallpaper', (
+    tester,
+  ) async {
+    final directory = Directory.systemTemp.createTempSync('archoera-wiki');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    await _pumpWiki(
+      tester,
+      feed: _feed(),
+      status: _status,
+      preferences: <String, Object>{
+        'ui.appearanceStyle': 'image',
+        'ui.backgroundImage': image.path,
+      },
+    );
+
+    final row = find.ancestor(
+      of: find.text('Enter the Marketplace, if you dare'),
+      matching: find.byType(InkWell),
+    );
+    expect(row, findsWidgets);
+    final ink = tester.widget<InkWell>(row.first);
+    expect(ink.hoverColor?.a, closeTo(0.10, 0.01));
   });
 }

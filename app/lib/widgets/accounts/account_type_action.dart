@@ -32,7 +32,7 @@ class AccountTypeAction extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        hoverColor: tokens.surface2,
+        hoverColor: tokens.hoverFill,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,

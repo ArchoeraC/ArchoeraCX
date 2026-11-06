@@ -176,7 +176,7 @@ class AccountRow extends StatelessWidget {
         color: active ? tokens.accentSoft : Colors.transparent,
         child: InkWell(
           onTap: onSelect,
-          hoverColor: tokens.surface2,
+          hoverColor: tokens.hoverFill,
           child: Container(
             decoration: BoxDecoration(
               border: Border(

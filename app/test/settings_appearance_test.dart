@@ -188,6 +188,11 @@ void main() {
     expect(slider.min, closeTo(0.55, 0.01));
     expect(slider.value, closeTo(0.55, 0.01));
 
+    // The sidebar rows use the same wash as the command bar instead of an
+    // opaque surface2 plate on the wallpaper.
+    final tile = tester.widget<ListTile>(find.byType(ListTile).first);
+    expect(tile.hoverColor?.a, closeTo(0.10, 0.01));
+
     // A value below the floor is clamped; the stored intent never goes under.
     await container.read(appearanceProvider.notifier).setBackgroundDim(0.32);
     expect(

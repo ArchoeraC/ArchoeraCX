@@ -263,7 +263,7 @@ class _FeedRow extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _open(context, l10n, url),
-          hoverColor: tokens.surface2,
+          hoverColor: tokens.hoverFill,
           child: content,
         ),
       ),

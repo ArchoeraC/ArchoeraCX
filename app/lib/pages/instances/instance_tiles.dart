@@ -60,7 +60,7 @@ class _InstanceRow extends StatelessWidget {
         color: selected ? tokens.accentSoft : Colors.transparent,
         child: InkWell(
           onTap: onSelect,
-          hoverColor: tokens.surface2,
+          hoverColor: tokens.hoverFill,
           child: Container(
             decoration: BoxDecoration(
               border: Border(

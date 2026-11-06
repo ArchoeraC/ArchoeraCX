@@ -22,7 +22,7 @@ class _ResourceRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        hoverColor: tokens.surface2,
+        hoverColor: tokens.hoverFill,
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.xs,

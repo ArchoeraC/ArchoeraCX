@@ -70,6 +70,19 @@ class AppTokens extends ThemeExtension<AppTokens> {
   /// read this flag instead of watching the appearance store.
   final bool imageBackground;
 
+  /// Hover fill for tappable rows, list tiles and menu items.
+  ///
+  /// Solid mode keeps the raised [surface2] plate. Image mode cannot: at 0.86
+  /// alpha it reads as a solid block stuck on the wallpaper, so every control
+  /// uses the command bar's light foreground wash instead.
+  Color get hoverFill =>
+      imageBackground ? textPrimary.withValues(alpha: 0.10) : surface2;
+
+  /// Pressed fill paired with [hoverFill]; null keeps the theme's own ink.
+  Color? get pressedFill => imageBackground
+      ? textPrimary.withValues(alpha: 0.16)
+      : null;
+
   final double radiusS;
   final double radiusM;
   final double radiusL;

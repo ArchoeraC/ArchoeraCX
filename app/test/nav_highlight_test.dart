@@ -118,7 +118,7 @@ void main() {
     expect(homeIcon.height, instancesIcon.height);
   });
 
-  testWidgets('the home destination never shows hover or press ink', (
+  testWidgets('the home footer never paints hover or press ink', (
     tester,
   ) async {
     await pumpApp(tester);
@@ -129,6 +129,20 @@ void main() {
         matching: find.byType(InkWell),
       ),
     );
+
+    // The home footer is the page canvas: no destination paints a plate there,
+    // the home destination included.
+    for (final path in const ['/', '/instances', '/settings']) {
+      final ink = inkFor(path);
+      expect(ink.hoverColor, Colors.transparent, reason: path);
+      expect(ink.highlightColor, Colors.transparent, reason: path);
+      expect(ink.splashColor, Colors.transparent, reason: path);
+    }
+
+    // On another page the home destination stays flat while the rest keep the
+    // theme's normal ink response.
+    await tester.tap(find.byKey(const ValueKey('nav-/settings')));
+    await tester.pumpAndSettle();
 
     final home = inkFor('/');
     expect(home.hoverColor, Colors.transparent);
@@ -144,7 +158,14 @@ void main() {
   testWidgets('a wallpaper swaps the hover plate for a light wash', (
     tester,
   ) async {
-    await pumpApp(tester);
+    final directory = Directory.systemTemp.createTempSync('archoera-nav');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+    await pumpAppWith(tester, <String, Object>{
+      'ui.appearanceStyle': 'image',
+      'ui.backgroundImage': image.path,
+    });
 
     InkWell inkFor(String path) => tester.widget<InkWell>(
       find.descendant(
@@ -153,27 +174,21 @@ void main() {
       ),
     );
 
-    // Solid canvas: the home footer is the page colour, so other destinations
-    // keep the regular hover feedback.
-    expect(inkFor('/').hoverColor, Colors.transparent);
-    expect(inkFor('/instances').hoverColor, isNot(Colors.transparent));
-
-    // Wallpaper: the chrome is translucent, so every item (home included) gets
-    // a light wash instead of the opaque panel colour.
-    final directory = Directory.systemTemp.createTempSync('archoera-nav');
-    final image = File('${directory.path}/wall.png')
-      ..writeAsBytesSync(_pixelPng);
-    addTearDown(() => directory.deleteSync(recursive: true));
-    await tester.pumpWidget(const SizedBox.shrink());
-    await pumpAppWith(tester, <String, Object>{
-      'ui.appearanceStyle': 'image',
-      'ui.backgroundImage': image.path,
-    });
+    // Home footer over the photo: still no ink anywhere.
     for (final path in const ['/', '/instances', '/settings']) {
+      expect(inkFor(path).hoverColor, Colors.transparent, reason: path);
+    }
+
+    // On the frosted bar the opaque plate would read as a block on the photo,
+    // so the other destinations use the 10 % foreground wash instead.
+    await tester.tap(find.byKey(const ValueKey('nav-/settings')));
+    await tester.pumpAndSettle();
+    expect(inkFor('/').hoverColor, Colors.transparent);
+    for (final path in const ['/instances', '/settings']) {
       final ink = inkFor(path);
-      expect(ink.hoverColor, isNot(Colors.transparent));
-      expect(ink.hoverColor!.a, lessThan(0.2));
-      expect(ink.highlightColor, isNot(Colors.transparent));
+      expect(ink.hoverColor, isNot(Colors.transparent), reason: path);
+      expect(ink.hoverColor!.a, closeTo(0.10, 0.01), reason: path);
+      expect(ink.highlightColor, isNot(Colors.transparent), reason: path);
     }
   });
 

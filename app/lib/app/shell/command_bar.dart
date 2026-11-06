@@ -420,6 +420,9 @@ class _NavTabsState extends State<_NavTabs> {
                       widget.destinations[index].path != '/',
                   compact: widget.compact,
                   dense: widget.dense,
+                  // The home footer has no plate to sit on: with a wallpaper it
+                  // floats over the photo, so no destination paints ink there.
+                  hoverable: widget.currentIndex != AppBranch.dashboard,
                   onTap: () =>
                       widget.onSelected(widget.destinations[index].branchIndex),
                 ),
@@ -467,6 +470,7 @@ class _NavItem extends StatelessWidget {
     required this.highlighted,
     required this.compact,
     required this.dense,
+    required this.hoverable,
     required this.onTap,
   });
 
@@ -482,30 +486,23 @@ class _NavItem extends StatelessWidget {
   final bool compact;
   final bool dense;
 
+  /// Whether hovering this item paints feedback. Off on the home footer.
+  final bool hoverable;
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final foreground = highlighted ? tokens.accent : tokens.textSecondary;
-    // The home destination is the page canvas itself on a solid canvas: it
-    // never draws the plate and grows no ink block, otherwise the bar implies a
-    // selected/hovered tab that is intentionally absent. Over a wallpaper the
-    // chrome is translucent, so every item uses a light wash instead of the
-    // opaque panel colour — including home, whose footer is fully transparent.
+    // The home destination is the page canvas itself, so it never grows a
+    // hover plate; on the home footer no destination paints one either, because
+    // there is no chrome plate under the pointer. [hoverFill] keeps the other
+    // pages' feedback light over a wallpaper instead of an opaque block.
     final isHome = destination.path == '/';
-    final glass = tokens.imageBackground;
-    final flat = isHome && !glass;
-    final hoverTint = flat
-        ? Colors.transparent
-        : glass
-        ? tokens.textPrimary.withValues(alpha: 0.10)
-        : tokens.surface2;
-    final pressTint = flat
-        ? Colors.transparent
-        : glass
-        ? tokens.textPrimary.withValues(alpha: 0.16)
-        : null;
+    final flat = isHome || !hoverable;
+    final hoverTint = flat ? Colors.transparent : tokens.hoverFill;
+    final pressTint = flat ? Colors.transparent : tokens.pressedFill;
     final shape = BeveledRectangleBorder(
       borderRadius: BorderRadius.only(
         topRight: Radius.circular(tokens.bevelS),
@@ -636,9 +633,7 @@ class _AccountButtonState extends ConsumerState<_AccountButton> {
             key: _buttonKey,
             onTap: widget.onTap,
             onLongPress: () => _showAccountSwitcher(context, accounts, l10n),
-            hoverColor: tokens.imageBackground
-                ? tokens.textPrimary.withValues(alpha: 0.10)
-                : tokens.surface2,
+            hoverColor: tokens.hoverFill,
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.xs,
