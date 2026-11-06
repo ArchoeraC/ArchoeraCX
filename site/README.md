@@ -14,6 +14,19 @@ The version stamps (topbar badge, hero label, system-map legend) follow
 rewrites the `data-app-version` spans in `index.html`. The committed page always
 holds a concrete value, so it keeps working without running the script.
 
+## Deployment
+
+Pushes to `main` that touch `site/**` (or the workflow itself) publish the
+folder to GitHub Pages through `.github/workflows/pages.yml`:
+<https://archoerac.github.io/ArchoeraCX/>. The repository uses the
+"GitHub Actions" Pages source rather than a branch, because a branch source can
+only serve the repository root or `/docs`.
+
+The job re-checks the version stamps against `app/pubspec.yaml` and fails when
+`index.html` still carries an older value, so bumping the launcher version
+means running `tool/sync-version.sh` in the same change. `workflow_dispatch`
+re-publishes the current tree without a content change.
+
 ## Design language
 
 The page is built from the launcher's own viewfinder mark, not a generic landing
