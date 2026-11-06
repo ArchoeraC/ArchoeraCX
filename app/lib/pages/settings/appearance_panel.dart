@@ -140,9 +140,10 @@ extension _AppearancePanelX on _SettingsPageState {
             value: appearance.backgroundBlur,
             min: 0,
             max: 80,
-            divisions: 16,
+            divisions: 80,
             label: '${appearance.backgroundBlur.round()}px',
             valueFormatter: (value) => '${value.round()}px',
+            marks: {0.0: '0', 40.0: '40', 80.0: '80'},
             onChanged: notifier.setBackgroundBlur,
           ),
           _AppearanceSlider(
@@ -152,9 +153,10 @@ extension _AppearancePanelX on _SettingsPageState {
             value: appearance.backgroundDim,
             min: 0.3,
             max: 0.9,
-            divisions: 12,
+            divisions: 60,
             label: '${(appearance.backgroundDim * 100).round()}%',
             valueFormatter: (value) => '${(value * 100).round()}%',
+            marks: {0.3: '30%', 0.6: '60%', 0.9: '90%'},
             onChanged: notifier.setBackgroundDim,
           ),
           _AppearanceSlider(
@@ -164,9 +166,10 @@ extension _AppearancePanelX on _SettingsPageState {
             value: appearance.backgroundScale,
             min: 1,
             max: 2,
-            divisions: 20,
+            divisions: 50,
             label: '${appearance.backgroundScale.toStringAsFixed(1)}x',
             valueFormatter: (value) => '${value.toStringAsFixed(1)}x',
+            marks: {1.0: '1.0x', 1.5: '1.5x', 2.0: '2.0x'},
             onChanged: notifier.setBackgroundScale,
           ),
         ],
@@ -576,6 +579,7 @@ class _AppearanceSlider extends StatelessWidget {
     required this.label,
     required this.onChanged,
     this.valueFormatter,
+    this.marks,
   });
 
   final IconData icon;
@@ -591,72 +595,110 @@ class _AppearanceSlider extends StatelessWidget {
   /// Formats arbitrary slider values for accessibility announcements.
   final String Function(double value)? valueFormatter;
 
+  /// Range labels shown under the track.
+  final Map<double, String>? marks;
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
+
+    final heading = Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: tokens.accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(tokens.radiusM),
+          ),
+          child: Icon(icon, size: 18, color: tokens.accent),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: textTheme.titleSmall),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall?.copyWith(
+                  color: tokens.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    final valueText = Text(
+      label,
+      style: textTheme.labelMedium?.copyWith(color: tokens.textSecondary),
+    );
+
+    final slider = AppSlider(
+      value: value.clamp(min, max),
+      min: min,
+      max: max,
+      divisions: divisions,
+      valueLabel: label,
+      valueFormatter: valueFormatter,
+      semanticLabel: title,
+      marks: marks,
+      onChanged: onChanged,
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.sm,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: tokens.accent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(tokens.radiusM),
-                ),
-                child: Icon(icon, size: 18, color: tokens.accent),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Narrow panels stack the control under the text; wide panels keep it
+          // in a fixed column on the right instead of stretching the track
+          // across the whole row.
+          if (constraints.maxWidth < 720) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   children: [
-                    Text(title, style: textTheme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: tokens.textTertiary,
-                      ),
-                    ),
+                    Expanded(child: heading),
+                    const SizedBox(width: AppSpacing.sm),
+                    valueText,
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                slider,
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: heading),
+              const SizedBox(width: AppSpacing.lg),
+              SizedBox(
+                width: 320,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(alignment: Alignment.centerRight, child: valueText),
+                    const SizedBox(height: AppSpacing.xxs),
+                    slider,
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                label,
-                style: textTheme.labelMedium?.copyWith(
-                  color: tokens.textSecondary,
-                ),
-              ),
             ],
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.xs),
-            child: AppSlider(
-              value: value.clamp(min, max),
-              min: min,
-              max: max,
-              divisions: divisions,
-              valueLabel: label,
-              valueFormatter: valueFormatter,
-              semanticLabel: title,
-              onChanged: onChanged,
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
+
 }

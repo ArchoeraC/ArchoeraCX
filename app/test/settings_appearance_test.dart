@@ -1,16 +1,27 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/stores/appearance.dart';
 import 'package:archoera_cx/stores/providers.dart';
+import 'package:archoera_cx/widgets/common/app_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// 1×1 transparent PNG, enough for `FileImage` to decode in widget tests.
+final _pixelPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8A'
+  'AQUBAScY42YAAAAASUVORK5CYII=',
+);
+
 Future<ProviderContainer> pumpSettings(
   WidgetTester tester, {
   Size size = const Size(1380, 900),
+  Map<String, Object> preferences = const <String, Object>{},
 }) async {
-  SharedPreferences.setMockInitialValues(<String, Object>{});
+  SharedPreferences.setMockInitialValues(preferences);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -109,11 +120,66 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('background sliders use a fixed column on wide windows', (
+    tester,
+  ) async {
+    final directory = Directory.systemTemp.createTempSync('archoera-slider');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    await pumpSettings(
+      tester,
+      preferences: <String, Object>{
+        'ui.appearanceStyle': 'image',
+        'ui.backgroundImage': image.path,
+      },
+    );
+    await tester.ensureVisible(find.byType(AppSlider).first);
+    await tester.pumpAndSettle();
+
+    final rects = [
+      for (final element in find.byType(AppSlider).evaluate())
+        tester.getRect(find.byWidget(element.widget)),
+    ];
+    expect(rects, hasLength(3));
+    // The track no longer runs the full row width: every control keeps the
+    // same 320 px column and the same right edge.
+    for (final rect in rects) {
+      expect(rect.width, 320);
+      expect(rect.right, closeTo(rects.first.right, 0.5));
+    }
+    // Range labels are printed under the track.
+    expect(find.text('80'), findsOneWidget);
+    expect(find.text('90%'), findsOneWidget);
+    expect(find.text('2.0x'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('appearance options fit a narrow window', (tester) async {
-    await pumpSettings(tester, size: const Size(720, 800));
+    final directory = Directory.systemTemp.createTempSync('archoera-slider');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    await pumpSettings(
+      tester,
+      size: const Size(720, 800),
+      preferences: <String, Object>{
+        'ui.appearanceStyle': 'image',
+        'ui.backgroundImage': image.path,
+      },
+    );
 
     expect(find.text('Theme'), findsOneWidget);
     expect(find.text('Interface density'), findsOneWidget);
+
+    // Narrow panels stack the control under the text instead of squeezing the
+    // fixed column, so the track uses the row width again.
+    await tester.ensureVisible(find.byType(AppSlider).first);
+    await tester.pumpAndSettle();
+    final rect = tester.getRect(find.byType(AppSlider).first);
+    expect(rect.width, greaterThan(320));
     expect(tester.takeException(), isNull);
   });
 }

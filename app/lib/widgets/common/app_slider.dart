@@ -7,11 +7,11 @@ import '../../theme/tokens.dart';
 ///
 /// [Slider] is not used here on purpose: the Material 3 slider paints tick
 /// dots for [divisions], a value bubble and a wide overlay halo, which reads as
-/// a different visual language inside the settings panels. This slider keeps
-/// the settings look: a 4 px rounded track, a 14 px accent thumb that grows
-/// slightly while hovered or dragged, and no markers — the current value is
-/// already printed on the row. Dragging still snaps to [divisions] so the
-/// value stays on the same grid as before.
+/// a different visual language inside the settings panels. This slider follows
+/// the reference player's look instead: a 4 px rounded track, a 16 px
+/// surface-coloured thumb with an accent ring (so it stays readable on top of
+/// the filled part), and optional range labels under the track. Dragging snaps
+/// to [divisions] so the value grid is explicit.
 class AppSlider extends StatefulWidget {
   const AppSlider({
     super.key,
@@ -23,6 +23,7 @@ class AppSlider extends StatefulWidget {
     this.valueLabel,
     this.valueFormatter,
     this.semanticLabel,
+    this.marks,
   });
 
   /// Current value; clamped into `[min, max]` before painting.
@@ -46,14 +47,20 @@ class AppSlider extends StatefulWidget {
   /// Optional label announcing what this slider controls.
   final String? semanticLabel;
 
+  /// Labels under the track, keyed by the value they mark.
+  ///
+  /// The row is informational: taps still land on the track, never on a label.
+  final Map<double, String>? marks;
+
   @override
   State<AppSlider> createState() => _AppSliderState();
 }
 
 class _AppSliderState extends State<AppSlider> {
   static const double _trackHeight = 4;
-  static const double _thumbSize = 14;
-  static const double _height = 28;
+  static const double _thumbSize = 16;
+  static const double _rowHeight = 28;
+  static const double _marksHeight = 20;
 
   final FocusNode _focusNode = FocusNode();
 
@@ -141,9 +148,10 @@ class _AppSliderState extends State<AppSlider> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final active = _hovering || _dragging || _focused;
-    final track = tokens.textPrimary.withValues(alpha: 0.14);
-    final thumbGlow = tokens.accent.withValues(alpha: _dragging ? 0.28 : 0.18);
+    final track = tokens.textPrimary.withValues(alpha: 0.18);
+    final thumbGlow = tokens.accent.withValues(alpha: _dragging ? 0.32 : 0.20);
     final formatter = widget.valueFormatter;
+    final marks = widget.marks;
 
     return Semantics(
       slider: true,
@@ -153,103 +161,173 @@ class _AppSliderState extends State<AppSlider> {
       decreasedValue: formatter?.call(_stepValue(-1)),
       onIncrease: formatter == null ? null : () => _nudge(1),
       onDecrease: formatter == null ? null : () => _nudge(-1),
-      child: Focus(
-        focusNode: _focusNode,
-        onFocusChange: (value) => setState(() => _focused = value),
-        onKeyEvent: _onKey,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _hovering = true),
-          onExit: (_) => setState(() => _hovering = false),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (details) {
-              _focusNode.requestFocus();
-              setState(() => _dragging = true);
-              _emit(details.localPosition);
-            },
-            onTapUp: (_) => setState(() => _dragging = false),
-            onTapCancel: () => setState(() => _dragging = false),
-            onHorizontalDragStart: (details) {
-              _focusNode.requestFocus();
-              setState(() => _dragging = true);
-              _emit(details.localPosition);
-            },
-            onHorizontalDragUpdate: (details) => _emit(details.localPosition),
-            onHorizontalDragEnd: (_) => setState(() => _dragging = false),
-            onHorizontalDragCancel: () => setState(() => _dragging = false),
-            child: SizedBox(
-              height: _height,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Focus(
+            focusNode: _focusNode,
+            onFocusChange: (value) => setState(() => _focused = value),
+            onKeyEvent: _onKey,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => setState(() => _hovering = true),
+              onExit: (_) => setState(() => _hovering = false),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (details) {
+                  _focusNode.requestFocus();
+                  setState(() => _dragging = true);
+                  _emit(details.localPosition);
+                },
+                onTapUp: (_) => setState(() => _dragging = false),
+                onTapCancel: () => setState(() => _dragging = false),
+                onHorizontalDragStart: (details) {
+                  _focusNode.requestFocus();
+                  setState(() => _dragging = true);
+                  _emit(details.localPosition);
+                },
+                onHorizontalDragUpdate: (details) =>
+                    _emit(details.localPosition),
+                onHorizontalDragEnd: (_) => setState(() => _dragging = false),
+                onHorizontalDragCancel: () => setState(() => _dragging = false),
+                child: SizedBox(
+                  height: _rowHeight,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      _width = width;
+                      final position = _ratio * width;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.centerLeft,
+                        children: [
+                          // Track.
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: (_rowHeight - _trackHeight) / 2,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: track,
+                                borderRadius: BorderRadius.circular(
+                                  _trackHeight,
+                                ),
+                              ),
+                              child: const SizedBox(height: _trackHeight),
+                            ),
+                          ),
+                          // Filled part.
+                          Positioned(
+                            left: 0,
+                            top: (_rowHeight - _trackHeight) / 2,
+                            width: position,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: tokens.accent,
+                                borderRadius: BorderRadius.circular(
+                                  _trackHeight,
+                                ),
+                              ),
+                              child: const SizedBox(height: _trackHeight),
+                            ),
+                          ),
+                          // Thumb. The surface-coloured core keeps the dot
+                          // readable where it overlaps the accent fill.
+                          Positioned(
+                            left: (position - _thumbSize / 2).clamp(
+                              0.0,
+                              (width - _thumbSize).clamp(0.0, double.infinity),
+                            ),
+                            top: (_rowHeight - _thumbSize) / 2,
+                            child: AnimatedScale(
+                              scale: _dragging
+                                  ? 1.12
+                                  : (_hovering || _focused ? 1.06 : 1),
+                              duration: tokens.fast,
+                              curve: tokens.curve,
+                              child: Container(
+                                key: const ValueKey('app-slider-thumb'),
+                                width: _thumbSize,
+                                height: _thumbSize,
+                                decoration: BoxDecoration(
+                                  color: tokens.surface1,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: tokens.accent,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: thumbGlow,
+                                      blurRadius: active ? 10 : 4,
+                                      spreadRadius: active ? 2 : 0,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (marks != null && marks.isNotEmpty)
+            SizedBox(
+              height: _marksHeight,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
-                  _width = width;
-                  final position = _ratio * width;
                   return Stack(
                     clipBehavior: Clip.none,
-                    alignment: Alignment.centerLeft,
                     children: [
-                      // Track.
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        top: (_height - _trackHeight) / 2,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: track,
-                            borderRadius: BorderRadius.circular(_trackHeight),
-                          ),
-                          child: const SizedBox(height: _trackHeight),
+                      for (final mark in marks.entries)
+                        _Mark(
+                          ratio: _span == 0
+                              ? 0
+                              : ((mark.key - widget.min) / _span).clamp(0.0, 1.0),
+                          label: mark.value,
+                          width: width,
                         ),
-                      ),
-                      // Filled part.
-                      Positioned(
-                        left: 0,
-                        top: (_height - _trackHeight) / 2,
-                        width: position,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: tokens.accent,
-                            borderRadius: BorderRadius.circular(_trackHeight),
-                          ),
-                          child: const SizedBox(height: _trackHeight),
-                        ),
-                      ),
-                      // Thumb.
-                      Positioned(
-                        left: (position - _thumbSize / 2).clamp(
-                          0.0,
-                          (width - _thumbSize).clamp(0.0, double.infinity),
-                        ),
-                        top: (_height - _thumbSize) / 2,
-                        child: AnimatedScale(
-                          scale: _dragging ? 1.2 : (_hovering || _focused ? 1.08 : 1),
-                          duration: tokens.fast,
-                          curve: tokens.curve,
-                          child: Container(
-                            key: const ValueKey('app-slider-thumb'),
-                            width: _thumbSize,
-                            height: _thumbSize,
-                            decoration: BoxDecoration(
-                              color: tokens.accent,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                if (active)
-                                  BoxShadow(
-                                    color: thumbGlow,
-                                    blurRadius: _dragging ? 12 : 8,
-                                    spreadRadius: _dragging ? 3 : 1,
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   );
                 },
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One range label under the track, clamped to the slider's own width.
+class _Mark extends StatelessWidget {
+  const _Mark({required this.ratio, required this.label, required this.width});
+
+  final double ratio;
+  final String label;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Positioned(
+      left: ratio * width,
+      top: 4,
+      child: FractionalTranslation(
+        translation: Offset(ratio <= 0 ? 0 : (ratio >= 1 ? -1 : -0.5), 0),
+        child: Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: tokens.textTertiary,
+            fontSize: 11,
+            height: 1,
           ),
         ),
       ),
