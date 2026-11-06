@@ -97,12 +97,20 @@ void openAppBranch(BuildContext context, int index, {String? fallbackPath}) {
 
 class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey _pageKey = GlobalKey();
+
+  /// Cover captured for the next branch switch.
+  ///
+  /// Only valid until the transition adopts it (which happens during the build
+  /// right after [`_selectBranch`]). Once adopted the transition owns the
+  /// texture, so this stays null and only a cover that never reached the widget
+  /// is disposed here.
   ui.Image? _coverImage;
-  _PageTransitionMode _mode = _PageTransitionMode.pushUp;
+  _PageTransitionMode _mode = _PageTransitionMode.cover;
 
   @override
   void dispose() {
     _coverImage?.dispose();
+    _coverImage = null;
     super.dispose();
   }
 
@@ -144,10 +152,13 @@ class _AppShellState extends ConsumerState<AppShell> {
       image?.dispose();
       return;
     }
+    // A cover that is still here was never adopted by the transition (the
+    // branch swapped before the widget could take it), so the shell owns it.
+    _coverImage?.dispose();
     final mode = current == AppBranch.dashboard
-        ? _PageTransitionMode.pushUp
+        ? _PageTransitionMode.cover
         : index == AppBranch.dashboard
-        ? _PageTransitionMode.pushDown
+        ? _PageTransitionMode.retract
         : _PageTransitionMode.lift;
     setState(() {
       _coverImage = image;
@@ -157,14 +168,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     navigationShell.goBranch(index);
   }
 
-  void _finishCover(ui.Image image) {
-    if (identical(_coverImage, image)) {
-      if (mounted) setState(() => _coverImage = null);
-      // RawImage may still be in the tree for this frame.
-      WidgetsBinding.instance.addPostFrameCallback((_) => image.dispose());
-    } else {
-      image.dispose();
-    }
+  /// Drops the shell's reference once the transition adopts the texture.
+  ///
+  /// Ownership moves to [_PageTransition], which disposes it exactly once; the
+  /// field is cleared without `setState` because this runs while the
+  /// transition builds and the snapshot it needs is already in hand.
+  void _adoptCover(ui.Image image) {
+    if (identical(_coverImage, image)) _coverImage = null;
   }
 
   @override
@@ -270,7 +280,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                         index: index,
                         coverImage: _coverImage,
                         mode: _mode,
-                        onCoverFinished: _finishCover,
+                        onCoverAdopted: _adoptCover,
                         child: AppBranchScope(
                           index: index,
                           open: _selectBranch,

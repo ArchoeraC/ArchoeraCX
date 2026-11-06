@@ -1,6 +1,6 @@
 part of '../shell.dart';
 
-enum _PageTransitionMode { pushUp, pushDown, lift }
+enum _PageTransitionMode { cover, retract, lift }
 
 /// Key on the outgoing page snapshot, used by tests to check that it keeps
 /// sliding with the incoming page instead of staying put.
@@ -12,14 +12,18 @@ class _PageTransition extends ConsumerStatefulWidget {
     required this.child,
     required this.coverImage,
     required this.mode,
-    required this.onCoverFinished,
+    required this.onCoverAdopted,
   });
 
   final int index;
   final Widget child;
   final ui.Image? coverImage;
   final _PageTransitionMode mode;
-  final ValueChanged<ui.Image> onCoverFinished;
+
+  /// Called during the build that adopts [coverImage] so the shell can drop its
+  /// own reference: the transition becomes the only owner from here on and is
+  /// responsible for disposing the texture exactly once.
+  final ValueChanged<ui.Image> onCoverAdopted;
 
   @override
   ConsumerState<_PageTransition> createState() => _PageTransitionState();
@@ -42,26 +46,44 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
     )..addStatusListener(_onStatusChanged);
   }
 
-  /// Shared timing for the sliding pages. `CurveTween` keeps this allocation
+  /// Shared timing for the entering layers. `CurveTween` keeps this allocation
   /// free of a disposable `CurvedAnimation`.
   late final Animation<double> _curve = _controller.drive(
     CurveTween(curve: Curves.easeOutCubic),
   );
 
+  /// Leaving layers accelerate away instead of easing out, so the outgoing page
+  /// is clearly on its way out while the incoming one settles.
+  late final Animation<double> _exitCurve = _controller.drive(
+    CurveTween(curve: Curves.easeInCubic),
+  );
+
+  /// Covering the dashboard (solid canvas): the branch page rises from the
+  /// bottom edge over the frozen dashboard snapshot.
+  late final Animation<Offset> _offset = Tween<Offset>(
+    begin: const Offset(0, 1),
+    end: Offset.zero,
+  ).animate(_curve);
+
+  /// Returning to the dashboard (solid canvas): the frozen branch snapshot
+  /// slides back down over the live dashboard.
+  late final Animation<Offset> _outOffset = Tween<Offset>(
+    begin: Offset.zero,
+    end: const Offset(0, 1),
+  ).animate(_exitCurve);
+
+  /// Wallpaper mode: the two pages tile the viewport and travel one viewport in
+  /// lockstep, sharing [_curve] so the seam never opens or double-paints.
   late final Animation<Offset> _enterFromBottom = Tween<Offset>(
     begin: const Offset(0, 1),
     end: Offset.zero,
   ).animate(_curve);
 
-  /// Entering home when the page above is pushed back down.
   late final Animation<Offset> _enterFromTop = Tween<Offset>(
     begin: const Offset(0, -1),
     end: Offset.zero,
   ).animate(_curve);
 
-  /// Outgoing page shares [_curve] with the entering page so the two tiles
-  /// stay exactly adjacent: no gap to the wallpaper and no double-painted
-  /// strip in the middle of the push.
   late final Animation<Offset> _leaveUp = Tween<Offset>(
     begin: Offset.zero,
     end: const Offset(0, -1),
@@ -78,64 +100,55 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
   ).animate(_curve);
 
   ui.Image? _previous;
-  bool _finishing = false;
-  _PageTransitionMode _mode = _PageTransitionMode.pushUp;
+  _PageTransitionMode _mode = _PageTransitionMode.cover;
 
   @override
   void didUpdateWidget(covariant _PageTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.index == widget.index) return;
 
-    // A second branch switch can interrupt an unfinished transition. The old
-    // snapshot is no longer referenced by the shell (it already swapped in the
-    // new cover image), so hand it back on the next frame instead of leaking
-    // the GPU texture.
+    // A second branch switch can interrupt an unfinished transition; the stale
+    // snapshot is not painted after this build, so release it once the frame
+    // that stops referencing it has been rasterized.
     final stale = _previous;
-    if (stale != null) {
-      _previous = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onCoverFinished(stale);
-      });
-    }
+    _previous = null;
+    _disposeAfterFrame(stale);
 
-    if (widget.coverImage == null) {
-      _clearPrevious();
+    final cover = widget.coverImage;
+    if (cover == null) {
       _controller.value = 1;
       return;
     }
 
-    _previous = widget.coverImage;
+    _previous = cover;
+    widget.onCoverAdopted(cover);
     _mode = widget.mode;
-    _finishing = false;
     _controller.forward(from: 0);
   }
 
   void _onStatusChanged(AnimationStatus status) {
-    if (status == AnimationStatus.completed) _finishPrevious();
-  }
-
-  void _finishPrevious() {
+    if (status != AnimationStatus.completed) return;
     final image = _previous;
-    if (image == null || _finishing) return;
-    _finishing = true;
+    if (image == null) return;
     _previous = null;
     if (mounted) setState(() {});
-    widget.onCoverFinished(image);
+    _disposeAfterFrame(image);
   }
 
-  void _clearPrevious() {
-    final image = _previous;
-    _previous = null;
-    if (image != null) {
-      _finishing = true;
-      widget.onCoverFinished(image);
-    }
+  /// Releases a texture after the current frame, when the snapshot layer that
+  /// still samples it has been composited.
+  void _disposeAfterFrame(ui.Image? image) {
+    if (image == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => image.dispose());
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _clearPrevious();
+    // No frame is painted after this point, so the texture can go immediately;
+    // the transition is the only owner of every adopted cover.
+    _previous?.dispose();
+    _previous = null;
     super.dispose();
   }
 
@@ -178,26 +191,60 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
       );
     }
 
-    // Home and branch pages swap like consecutive slides: the outgoing page
-    // and the incoming page travel the same vertical distance in lockstep, so
-    // the old page is still visible while it leaves instead of being covered.
-    // With a wallpaper the page canvas is transparent, but the two tiles never
-    // overlap or separate, so the wallpaper simply stays behind both.
-    final leavingHome = _mode == _PageTransitionMode.pushUp;
-    final enter = leavingHome ? _enterFromBottom : _enterFromTop;
-    final exit = leavingHome ? _leaveUp : _leaveDown;
+    // Wallpaper mode: the page canvas is transparent, so the outgoing page and
+    // the incoming page travel together like consecutive slides. They share one
+    // curve and one viewport of travel, which keeps the seam closed and lets the
+    // wallpaper stay visible behind both. This is the recent behaviour; only the
+    // solid canvas keeps the older cover/retract motion.
+    final snapshot = _Snapshot(key: pageTransitionSnapshotKey, image: previous);
+    if (context.tokens.imageBackground) {
+      final leavingHome = _mode == _PageTransitionMode.cover;
+      return ClipRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: SlideTransition(
+                position: leavingHome ? _leaveUp : _leaveDown,
+                child: snapshot,
+              ),
+            ),
+            Positioned.fill(
+              child: SlideTransition(
+                position: leavingHome ? _enterFromBottom : _enterFromTop,
+                child: current,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_mode == _PageTransitionMode.retract) {
+      // Returning to the dashboard on a solid canvas: the branch page stays and
+      // the dashboard snapshot slides down over it.
+      return ClipRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(child: current),
+            Positioned.fill(
+              child: SlideTransition(position: _outOffset, child: snapshot),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Entering a branch on a solid canvas: the dashboard snapshot stays put and
+    // the branch page covers it from below.
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
         children: [
+          Positioned.fill(child: snapshot),
           Positioned.fill(
-            child: SlideTransition(
-              position: exit,
-              child: _Snapshot(key: pageTransitionSnapshotKey, image: previous),
-            ),
-          ),
-          Positioned.fill(
-            child: SlideTransition(position: enter, child: current),
+            child: SlideTransition(position: _offset, child: current),
           ),
         ],
       ),
@@ -226,3 +273,4 @@ class _Snapshot extends StatelessWidget {
     );
   }
 }
+

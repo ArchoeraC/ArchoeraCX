@@ -44,19 +44,18 @@ class _CommandBar extends StatelessWidget {
         curve: Curves.easeOutCubic,
         height: onHome ? AppLayout.homeBarHeight : AppLayout.bottomBarHeight,
         decoration: BoxDecoration(
-          // A wallpaper needs a readable chrome plate even on the dashboard;
-          // the flat canvas blend only applies without an image.
-          color: tokens.imageBackground
-              ? tokens.surface1.withValues(alpha: 0.78)
-              : onHome
+          // The home footer is part of the page canvas: it paints the canvas
+          // colour with no hairline. In solid mode that colour is the canvas
+          // itself; with a wallpaper the canvas is transparent, so the nav
+          // floats directly over the photo. Other branches keep the chrome
+          // plate that separates the page from the controls.
+          color: onHome
               ? tokens.bg
+              : tokens.imageBackground
+              ? tokens.surface1.withValues(alpha: 0.78)
               : tokens.surface1.withValues(alpha: 0.86),
           border: Border(
-            top: BorderSide(
-              color: onHome && !tokens.imageBackground
-                  ? Colors.transparent
-                  : tokens.border,
-            ),
+            top: BorderSide(color: onHome ? Colors.transparent : tokens.border),
           ),
         ),
         child: Center(
@@ -406,6 +405,12 @@ class _NavTabsState extends State<_NavTabs> {
                       widget.destinations[index].path != '/',
                   compact: widget.compact,
                   dense: widget.dense,
+                  // The home bar is transparent in image mode: an ink plate
+                  // under the pointer would read as a leftover block on the
+                  // wallpaper. Solid mode keeps the normal hover feedback.
+                  hoverable:
+                      widget.currentIndex != AppBranch.dashboard ||
+                      !context.tokens.imageBackground,
                   onTap: () =>
                       widget.onSelected(widget.destinations[index].branchIndex),
                 ),
@@ -453,6 +458,7 @@ class _NavItem extends StatelessWidget {
     required this.highlighted,
     required this.compact,
     required this.dense,
+    required this.hoverable,
     required this.onTap,
   });
 
@@ -467,6 +473,10 @@ class _NavItem extends StatelessWidget {
 
   final bool compact;
   final bool dense;
+
+  /// Whether the item paints hover/press ink. Off on the transparent home bar.
+  final bool hoverable;
+
   final VoidCallback onTap;
 
   @override
@@ -478,8 +488,9 @@ class _NavItem extends StatelessWidget {
     // a selected/hovered tab that is intentionally absent. Other items keep the
     // theme's normal ink response.
     final isHome = destination.path == '/';
-    final hoverTint = isHome ? Colors.transparent : tokens.surface2;
-    final pressTint = isHome ? Colors.transparent : null;
+    final flat = isHome || !hoverable;
+    final hoverTint = flat ? Colors.transparent : tokens.surface2;
+    final pressTint = flat ? Colors.transparent : null;
     final shape = BeveledRectangleBorder(
       borderRadius: BorderRadius.only(
         topRight: Radius.circular(tokens.bevelS),

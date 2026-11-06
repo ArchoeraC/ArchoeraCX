@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:flutter/material.dart';
@@ -7,11 +10,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _highlight = ValueKey('nav-highlight');
 
+/// 1×1 transparent PNG, enough for `FileImage` to decode in widget tests.
+final _pixelPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8A'
+  'AQUBAScY42YAAAAASUVORK5CYII=',
+);
+
 Future<void> pumpApp(
   WidgetTester tester, {
   Size size = const Size(1440, 900),
+}) => pumpAppWith(tester, const <String, Object>{}, size: size);
+
+/// Pumps the app with [preferences] preloaded, for appearance-dependent tests.
+Future<void> pumpAppWith(
+  WidgetTester tester,
+  Map<String, Object> preferences, {
+  Size size = const Size(1440, 900),
 }) async {
-  SharedPreferences.setMockInitialValues(<String, Object>{});
+  SharedPreferences.setMockInitialValues(preferences);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -123,6 +139,41 @@ void main() {
     expect(other.hoverColor, isNot(Colors.transparent));
     expect(other.highlightColor, isNull);
     expect(other.splashColor, isNull);
+  });
+
+  testWidgets('the home bar drops hover ink only on a wallpaper', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    InkWell inkFor(String path) => tester.widget<InkWell>(
+      find.descendant(
+        of: find.byKey(ValueKey('nav-$path')),
+        matching: find.byType(InkWell),
+      ),
+    );
+
+    // Solid canvas: the home footer is the page colour, so other destinations
+    // keep the regular hover feedback.
+    expect(inkFor('/').hoverColor, Colors.transparent);
+    expect(inkFor('/instances').hoverColor, isNot(Colors.transparent));
+
+    // Wallpaper: the footer is transparent, an ink plate would read as a
+    // leftover block over the photo.
+    final directory = Directory.systemTemp.createTempSync('archoera-nav');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await pumpAppWith(
+      tester,
+      <String, Object>{
+        'ui.appearanceStyle': 'image',
+        'ui.backgroundImage': image.path,
+      },
+    );
+    expect(inkFor('/instances').hoverColor, Colors.transparent);
+    expect(inkFor('/instances').highlightColor, Colors.transparent);
   });
 
   testWidgets('the accent plate slides between destinations', (tester) async {
