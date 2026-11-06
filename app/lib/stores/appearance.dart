@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -139,8 +140,21 @@ final appearanceProvider =
 /// real file inside the fake-async zone.
 final wallpaperLuminanceProvider =
     Provider<Future<double?> Function(String path)>(
-      (ref) => sampleWallpaperLuminance,
+      (ref) => _sampleLuminanceOrDefaults,
     );
+
+/// Real sampler, skipped inside widget tests.
+///
+/// A test tears its temporary wallpaper down as soon as the pumps finish; if
+/// the read is still in flight, Windows keeps the file locked and the delete
+/// fails. Tests that need a measured floor override
+/// [wallpaperLuminanceProvider] with a fixed value instead.
+Future<double?> _sampleLuminanceOrDefaults(String path) {
+  if (Platform.environment.containsKey('FLUTTER_TEST')) {
+    return Future<double?>.value();
+  }
+  return sampleWallpaperLuminance(path);
+}
 
 final class AppearanceController extends Notifier<AppearanceSettings> {
   static const _themeModeKey = 'ui.themeMode';

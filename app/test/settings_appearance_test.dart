@@ -218,6 +218,28 @@ void main() {
     expect(appearance.effectiveBackgroundDim, closeTo(0.4, 0.001));
   });
 
+  testWidgets('widget tests never sample the wallpaper file', (tester) async {
+    final directory = Directory.systemTemp.createTempSync('archoera-sample');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    final container = await pumpSettings(
+      tester,
+      preferences: <String, Object>{
+        'ui.appearanceStyle': 'image',
+        'ui.backgroundImage': image.path,
+      },
+    );
+
+    // Reading the file inside the fake-async zone keeps the handle open past
+    // teardown, which fails the delete on Windows. The default sampler must
+    // stay inert; real measurements come from an explicit override.
+    final sampler = container.read(wallpaperLuminanceProvider);
+    expect(await tester.runAsync(() => sampler(image.path)), isNull);
+    expect(container.read(appearanceProvider).backgroundDimFloor, 0.3);
+  });
+
   testWidgets('appearance options fit a narrow window', (tester) async {
     final directory = Directory.systemTemp.createTempSync('archoera-slider');
     final image = File('${directory.path}/wall.png')
