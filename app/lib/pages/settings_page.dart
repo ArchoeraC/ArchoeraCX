@@ -34,6 +34,7 @@ import '../utils/absolute_path.dart';
 import '../utils/window_mode.dart';
 import '../widgets/common/app_progress_bar.dart';
 import '../widgets/common/app_dropdown.dart';
+import '../widgets/common/app_slider.dart';
 import '../widgets/common/safe_url.dart';
 import '../utils/app_info.dart';
 import '../utils/format.dart';

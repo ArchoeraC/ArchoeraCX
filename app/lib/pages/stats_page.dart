@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -23,25 +24,59 @@ part 'stats/top_instances.dart';
 
 /// Local play history, aggregated by C# into one snapshot.
 ///
-/// The provider is watched only while the bottom bar selects this branch:
-/// other pages stay offstage in the shell's indexed stack, and a background
-/// `stats.get` would re-read the instance index at startup for nothing.
-class StatsPage extends ConsumerWidget {
+/// The notifier keeps the last snapshot across branch switches, so re-entering
+/// the page repaints the previous numbers and refreshes in the background
+/// instead of flashing [_StatsSkeleton] for a frame. The first visit still
+/// loads lazily: branches are created on demand, so nothing is queried at
+/// startup.
+class StatsPage extends ConsumerStatefulWidget {
   const StatsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatsPage> createState() => _StatsPageState();
+}
+
+class _StatsPageState extends ConsumerState<StatsPage> {
+  bool _active = false;
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = AppBranchScope.maybeOf(context)?.index == AppBranch.stats;
+    if (active == _active) return;
+    _active = active;
+    if (!active) return;
+    // The first activation loads through the `ref.watch` in build. Later
+    // activations refresh after the frame that paints the retained snapshot,
+    // so the provider is never updated while this page is building.
+    if (!_loaded) {
+      _loaded = true;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(playStatsProvider).hasValue) {
+        unawaited(ref.read(playStatsProvider.notifier).refresh());
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final active = AppBranchScope.maybeOf(context)?.index == AppBranch.stats;
-    final statsAsync = active ? ref.watch(playStatsProvider) : null;
-    final refreshing =
-        statsAsync != null && statsAsync.isLoading && statsAsync.hasValue;
+    final statsAsync = ref.watch(playStatsProvider);
+    final stats = statsAsync.value;
+    final refreshing = statsAsync.isLoading && stats != null;
 
     final Widget body;
-    if (statsAsync?.hasValue ?? false) {
-      body = _StatsBody(stats: statsAsync!.requireValue);
-    } else if (statsAsync?.hasError ?? false) {
+    if (stats != null) {
+      // A failed background refresh keeps the last snapshot visible; the error
+      // page is reserved for the first load that never produced data.
+      body = _StatsBody(stats: stats);
+    } else if (statsAsync.hasError) {
       body = _StatsError(
         title: l10n.statsLoadFailed,
         message: l10n.statsLoadFailedHint,

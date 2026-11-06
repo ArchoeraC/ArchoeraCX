@@ -142,6 +142,7 @@ extension _AppearancePanelX on _SettingsPageState {
             max: 80,
             divisions: 16,
             label: '${appearance.backgroundBlur.round()}px',
+            valueFormatter: (value) => '${value.round()}px',
             onChanged: notifier.setBackgroundBlur,
           ),
           _AppearanceSlider(
@@ -153,6 +154,7 @@ extension _AppearancePanelX on _SettingsPageState {
             max: 0.9,
             divisions: 12,
             label: '${(appearance.backgroundDim * 100).round()}%',
+            valueFormatter: (value) => '${(value * 100).round()}%',
             onChanged: notifier.setBackgroundDim,
           ),
           _AppearanceSlider(
@@ -164,6 +166,7 @@ extension _AppearancePanelX on _SettingsPageState {
             max: 2,
             divisions: 20,
             label: '${appearance.backgroundScale.toStringAsFixed(1)}x',
+            valueFormatter: (value) => '${value.toStringAsFixed(1)}x',
             onChanged: notifier.setBackgroundScale,
           ),
         ],
@@ -572,6 +575,7 @@ class _AppearanceSlider extends StatelessWidget {
     required this.divisions,
     required this.label,
     required this.onChanged,
+    this.valueFormatter,
   });
 
   final IconData icon;
@@ -583,6 +587,9 @@ class _AppearanceSlider extends StatelessWidget {
   final int divisions;
   final String label;
   final ValueChanged<double> onChanged;
+
+  /// Formats arbitrary slider values for accessibility announcements.
+  final String Function(double value)? valueFormatter;
 
   @override
   Widget build(BuildContext context) {
@@ -635,15 +642,18 @@ class _AppearanceSlider extends StatelessWidget {
               ),
             ],
           ),
-          Slider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
-            label: label,
-            activeColor: tokens.accent,
-            inactiveColor: tokens.surface3,
-            onChanged: onChanged,
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: AppSlider(
+              value: value.clamp(min, max),
+              min: min,
+              max: max,
+              divisions: divisions,
+              valueLabel: label,
+              valueFormatter: valueFormatter,
+              semanticLabel: title,
+              onChanged: onChanged,
+            ),
           ),
         ],
       ),

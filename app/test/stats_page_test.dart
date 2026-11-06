@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/pages/stats_page.dart';
 import 'package:archoera_cx/services/core/stats/stats.dart';
@@ -104,7 +106,7 @@ void main() {
       ProviderScope(
         overrides: [
           coreClientProvider.overrideWithValue(null),
-          playStatsProvider.overrideWith((ref) async => value),
+          playStatsProvider.overrideWith(() => _FixedStatsNotifier(value)),
         ],
         child: const ArchoeraApp(),
       ),
@@ -113,6 +115,51 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-/stats')));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('revisiting the page keeps the loaded snapshot', (tester) async {
+    // Regression: the auto-disposed provider used to drop back to the
+    // placeholder skeleton for the first frames of every visit. Those three
+    // flat blocks flash over the wallpaper during the branch transition.
+    final pending = <Completer<PlayStats>>[];
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coreClientProvider.overrideWithValue(null),
+          playStatsProvider.overrideWith(() => _PendingStatsNotifier(pending)),
+        ],
+        child: const ArchoeraApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('nav-/stats')));
+    await tester.pump();
+    expect(pending, hasLength(1));
+    pending.first.complete(stats());
+    await tester.pumpAndSettle();
+    expect(find.text('Most played'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-/instances')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('nav-/stats')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+
+    // The new request is still pending, so this is the window where the old
+    // code painted the skeleton. The last snapshot must stay on screen.
+    expect(pending.length, greaterThanOrEqualTo(2));
+    expect(find.text('Most played'), findsOneWidget);
+
+    pending.last.complete(stats());
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('renders the overview, activity and ranking cards', (
     tester,
@@ -194,4 +241,29 @@ void main() {
     expect(find.text('No instances yet'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+/// Returns [value] immediately; stands in for the C# `stats.get` call.
+class _FixedStatsNotifier extends PlayStatsNotifier {
+  _FixedStatsNotifier(this.value);
+
+  final PlayStats value;
+
+  @override
+  Future<PlayStats> build() async => value;
+}
+
+/// Keeps each request pending so the test can inspect the frames a refresh
+/// spends loading.
+class _PendingStatsNotifier extends PlayStatsNotifier {
+  _PendingStatsNotifier(this.pending);
+
+  final List<Completer<PlayStats>> pending;
+
+  @override
+  Future<PlayStats> build() {
+    final completer = Completer<PlayStats>();
+    pending.add(completer);
+    return completer.future;
+  }
 }
