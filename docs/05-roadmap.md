@@ -236,7 +236,7 @@
 
 - 自动更新（独立 updater，替换时释放自身占用）
 - Windows 代码签名（EV / Azure Trusted Signing）
-- macOS arm64 签名 + notarization（仅 Apple Silicon）
+- macOS arm64 与 x64 签名 + notarization（两套产物分别 notarize）
 - 安装包：MSI/EXE、AppImage/Flatpak、DMG
 - 官网 + 下载页 + 文档
 - 合规：`THIRD-PARTY-NOTICES`、EULA、隐私政策、免责声明

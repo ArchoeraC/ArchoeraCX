@@ -4,6 +4,10 @@ description: >-
   client-id identity verification, and the release .app bundle verification.
   Packaging (tar.gz + dmg) stays in the calling job.
 inputs:
+  arch:
+    description: Expected native slice, arm64 or x64.
+    required: false
+    default: arm64
   client_id:
     description: Microsoft OAuth client id injected into the C# module.
     required: false
@@ -68,6 +72,40 @@ runs:
         ARCHOERACX_MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
       run: ./tool/build-native.sh
 
+    - name: Verify build architecture
+      shell: bash
+      working-directory: app
+      env:
+        EXPECTED_ARCH: ${{ inputs.arch }}
+      run: |
+        set -euo pipefail
+        case "${EXPECTED_ARCH}" in
+          arm64) expected="arm64" ;;
+          x64) expected="x86_64" ;;
+          *) echo "::error::unsupported macOS arch '${EXPECTED_ARCH}'"; exit 1 ;;
+        esac
+        host="$(uname -m)"
+        [[ "${host}" == "${expected}" ]] || {
+          echo "::error::runner is ${host}, expected ${expected} for the ${EXPECTED_ARCH} job"
+          exit 1
+        }
+        # Flutter, NativeAOT, Cargo and CMake all build the host slice; verify
+        # the modules before they are copied into the bundle so a wrong runner
+        # label cannot produce a mislabeled package.
+        for file in \
+          build/native/libarchoera_core.dylib \
+          build/native/libarchoera_cs.dylib \
+          build/native/libarchoera_dl.dylib \
+          build/native/archoera-dl \
+          build/native/archoera-vault; do
+          actual="$(lipo -archs "${file}")"
+          [[ "${actual}" == "${expected}" ]] || {
+            echo "::error::${file} is ${actual}, expected ${expected}"
+            exit 1
+          }
+        done
+        echo "native modules: ${expected}"
+
     - name: C++ ABI smoke tests
       shell: bash
       working-directory: app
@@ -126,13 +164,38 @@ runs:
     - name: Build Flutter macOS bundle
       shell: bash
       working-directory: app
-      run: flutter build macos --release
+      env:
+        EXPECTED_ARCH: ${{ inputs.arch }}
+      run: |
+        set -euo pipefail
+        # Pin the target slice explicitly instead of relying on Flutter's
+        # release default (universal, later arm64-only). The two jobs publish
+        # separate arm64 and x64 packages, so a universal shell in either one
+        # would let the wrong Mac launch natively and then fail to load the
+        # other architecture's native modules.
+        if [[ "${EXPECTED_ARCH}" == "arm64" ]]; then
+          export FLUTTER_MACOS_ARM64_ONLY=true
+        else
+          # Keep the x64 target enabled even after Flutter flips the
+          # arm64-only default; Stage 4 of Flutter's Intel deprecation will
+          # make this build fail, which is the signal to drop macOS x64.
+          export FLUTTER_MACOS_ARM64_ONLY=false
+          export FLUTTER_XCODE_ARCHS=x86_64
+        fi
+        flutter build macos --release
 
     - name: Verify native slice
       shell: bash
       working-directory: app
+      env:
+        EXPECTED_ARCH: ${{ inputs.arch }}
       run: |
         set -euo pipefail
+        case "${EXPECTED_ARCH}" in
+          arm64) expected="arm64" ;;
+          x64) expected="x86_64" ;;
+          *) echo "::error::unsupported macOS arch '${EXPECTED_ARCH}'"; exit 1 ;;
+        esac
         app_path=build/macos/Build/Products/Release/archoera_cx.app
         native="${app_path}/Contents/Frameworks"
         for file in \
@@ -143,6 +206,24 @@ runs:
           archoera-dl \
           archoera-vault; do
           [[ -f "${native}/${file}" ]] || { echo "::error::missing ${file}"; exit 1; }
+        done
+        exe="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "${app_path}/Contents/Info.plist")"
+        # Both jobs force a single target slice, so the runner must match
+        # exactly; a universal runner means the arch pinning silently stopped
+        # working (for example after a Flutter upgrade).
+        runner_archs="$(lipo -archs "${app_path}/Contents/MacOS/${exe}")"
+        [[ "${runner_archs}" == "${expected}" ]] || {
+          echo "::error::${app_path}/Contents/MacOS/${exe} is ${runner_archs}, expected ${expected}"
+          exit 1
+        }
+        for file in "${native}/libarchoera_core.dylib" \
+          "${native}/libarchoera_cs.dylib" "${native}/libe_sqlite3.dylib" \
+          "${native}/libarchoera_dl.dylib" "${native}/archoera-dl" "${native}/archoera-vault"; do
+          actual="$(lipo -archs "${file}")"
+          [[ "${actual}" == "${expected}" ]] || {
+            echo "::error::${file} is ${actual}, expected ${expected}"
+            exit 1
+          }
         done
         codesign --verify --deep --strict "${app_path}"
         python tool/check_icons.py \

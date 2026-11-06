@@ -130,7 +130,7 @@ region != CN  → 默认启用
 
 - **单一发行版**：不存在 `official-cn` / `official-global` 两套二进制；`app/tool/build-cn.sh` 仅为旧命令兼容保留，产物与普通构建相同。
 - 唯一发布渠道：GitHub Releases；不提交应用商店，不做第三方二进制分发。
-- 发布由 `.github/workflows/build-all.yml` 在 Linux/macOS/Windows 三个 runner 原生构建；推送 `v*` tag 后才汇总三端产物发版。
+- 发布由 `.github/workflows/build-all.yml` 在 Linux、macOS（arm64 与 x64 各一个 job）和 Windows runner 上原生构建；推送 `v*` tag 后才汇总三端产物发版。
 - Microsoft Entra client ID 仅通过 GitHub Actions secret 在构建时注入 NativeAOT 模块；本地维护者构建可使用环境变量，但不提交到仓库。
 - CurseForge 在 API 访问配置前不可用：在线接口与其整合包 zip 导入都依赖 API key。`resource.*`/`modpack.install` 对 `provider=curseforge` 在发起 HTTP 前返回 `PROVIDER_UNAVAILABLE`，不发起任何 CF 请求。
 - Release 附件应包含源码归档（tag）、SHA-256、`THIRD-PARTY-NOTICES.md`、字体/图标许可正文和 AGPL 源码获取方式。
@@ -191,7 +191,7 @@ region != CN  → 默认启用
 
 | 项 | 要求 |
 |---|---|
-| 安装包 | 发布要求：代码签名（Windows Authenticode / macOS arm64 notarization）与 SHA-256；当前 CI 尚未产出平台签名 |
+| 安装包 | 发布要求：代码签名（Windows Authenticode / macOS arm64 与 x64 notarization）与 SHA-256；当前 CI 尚未产出平台签名 |
 | 版本说明 | 明确默认地区策略与下载门控状态 |
 | 许可 | 根目录 `LICENSE`（AGPL-3.0 全文）+ `THIRD-PARTY-NOTICES.md`；MIT/Apache 代码仍保留原许可 |
 | 免责声明 | “非官方 Minecraft 产品”；不提供游戏本体；不保证可用性 |

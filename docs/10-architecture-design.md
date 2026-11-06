@@ -88,7 +88,7 @@
 | 可靠性 | 下载中断、进程被杀、磁盘满 | 可续传/可回滚，不产生幽灵实例 |
 | 可恢复 | SQLite 损坏、实例目录被手改 | 从 `instance.json`/磁盘重建索引，不删除用户数据 |
 | 安全 | 恶意整合包、脏镜像、token 泄漏 | 路径逃逸/zip bomb/日志泄漏全部有明确拒绝点 |
-| 可移植 | Windows 10/11 x64、Linux x64、macOS arm64 | 三平台同一 ABI；平台差异集中在 C++/C# |
+| 可移植 | Windows 10/11 x64、Linux x64、macOS arm64/x64 | 三平台同一 ABI；平台差异集中在 C++/C# |
 | 合规 | 中国大陆网络 | 单一发行版 + 运行期地区默认 + 本地风险确认；不改 UI 灰按钮 |
 | 可观测 | 用户报障 | 一键导出日志、模块版本、任务快照、minidump |
 
@@ -172,7 +172,7 @@
 | A21 | **遥测默认关闭** | 已定 | 任何上传必须 opt-in；崩溃转储默认本地 |
 | A22 | **契约版本化** | 已定 | ABI、JSON schema、DB migration、模块版本各自独立演进 |
 | A23 | **门控只是默认值与风险确认** | 已定 | 不宣称合规认证/防破解；fork 可以移除；控制点在签名、商标与发布渠道 |
-| A24 | **macOS 仅支持 Apple Silicon（arm64）** | 已定 | 降低构建/签名/测试矩阵；x64 Mac 暂不支持，下载页与关于页明确标注 |
+| A24 | **macOS 支持 arm64 与 x64，各自独立产物** | 已定（x64 为兼容目标） | 两套安装包分别单切片构建；x64 只承诺到 Flutter 停止 x64 目标或 `macos-15-intel` 退役（2027-08）中较早者，之后移除而不冻结 Flutter |
 
 **被否决的方案（存档）**
 
@@ -277,7 +277,7 @@
 |---|---|---|---|
 | Windows 10/11 x64 | `ArchoeraCX.exe` + Flutter 数据 | `archoera_core.dll`、`archoera_cs.dll`、`archoera_dl.dll` | 应用目录绝对路径加载；禁止 PATH 搜索 |
 | Linux x64 | `archoeracx` + `lib/` | `libarchoera_core.so` 等 | `$ORIGIN` RPATH；AppImage/Flatpak |
-| macOS arm64 | `ArchoeraCX.app` | `libarchoera_core.dylib` 等 | 仅 Apple Silicon；arm64 构建；嵌套库逐个签名 |
+| macOS arm64 / x64 | `ArchoeraCX.app` | `libarchoera_core.dylib` 等 | 按目标架构分别构建；嵌套库逐个签名 |
 | 便携模式 | 目录内 `data/` | 同上 | `--portable` 或标记文件；需可写 |
 
 ### 3.7 进程与线程总览
@@ -2870,7 +2870,7 @@ C# DownloadPolicy.ReadAsync()
 
 ### 16.3 测量方法
 
-- 固定参考机（Windows 11 x64 / Ubuntu 24.04 / macOS arm64）；记录 CPU/磁盘/网络。
+- 固定参考机（Windows 11 x64 / Ubuntu 24.04 / macOS arm64；Intel x64 作为兼容性抽测）；记录 CPU/磁盘/网络。
 - 每次发布跑启动、安装、搜索、UI 滚动、内存基线；回归 >20% 阻断。
 - 性能数据写入 `build-info.json` 的基准段，便于对比。
 
@@ -2974,6 +2974,7 @@ diagnostics-<timestamp>.zip
 | Windows 11 | x64 | ABI/集成/E2E/签名冒烟 |
 | Ubuntu 24.04 | x64 | ABI/集成/E2E/ASan |
 | macOS 14/15 | arm64 | ABI/集成/E2E/签名冒烟 |
+| macOS 15 | x64 | ABI/集成/E2E/签名冒烟（Intel 构建机） |
 | Linux | arm64（可选） | 构建/单测 |
 
 - 每次 PR：lint、单测、契约。
@@ -3024,7 +3025,7 @@ dotnet publish app/modules/business/Archoera.Exports -c Release -r win-x64 \
 flutter build windows --release
 ```
 
-> macOS 使用 `-r osx-arm64` 与 `flutter build macos --release`；不做 x64/universal。
+> macOS 使用 `-r osx-arm64` 或 `-r osx-x64`（与构建机架构一致）配合 `flutter build macos --release`；两套产物独立，不合并原生模块。
 > 具体 flag 以实际 AOT/链接器验证为准；CI 必须锁版本，不使用“最新”。
 
 ### 19.3 产物布局
@@ -3048,7 +3049,7 @@ ArchoeraCX/
 |---|---|
 | Windows | 统一 CRT；`/DELAYLOAD` 可选；导出 `.def`；`LoadLibraryEx` 安全搜索；签名 |
 | Linux | `-fvisibility=hidden` + version script 只导出 `archoera_*`；`$ORIGIN` RPATH；AppImage/Flatpak |
-| macOS | 仅 arm64；`@rpath`；嵌套 dylib 逐个签名后再签 App；notarization |
+| macOS | arm64/x64 各自构建；`@rpath`；嵌套 dylib 逐个签名后再签 App；notarization |
 | 便携 | 数据目录可写；不写系统目录；卸载不删用户数据（可选） |
 
 ### 19.5 更新器
@@ -3159,7 +3160,7 @@ ArchoeraCX/
 | # | 约定 | 内容 |
 |---|---|---|
 | D1 | 发行模型 | **单一发行版 + 运行期地区门控**；中国大陆默认禁用下载，非中国大陆默认启用；不维护 `official-cn` / `official-global` 两套二进制 |
-| D2 | macOS 架构 | **仅 Apple Silicon arm64**；不做 x64/universal，下载页明确标注 |
+| D2 | macOS 架构 | **arm64 与 x64 各出一套单切片产物**；x64 是兼容目标，Flutter Stage 3/4 或 Intel runner 退役后移除；包名与 `BUILD-INFO.txt` 标注切片，发布页分别提供 |
 | D3 | 微软 OAuth 重定向 | **默认 authorization code + PKCE（loopback）**；Device Code 作为无法绑定 loopback 时的 fallback；自定义协议不作为主方案 |
 | D4 | SQLite 归属 | **只由 C# 持有**；Flutter 不引入数据库插件/不直接读 SQLite；C++ 只路由。各平台随 C# 模块分发 SQLitePCLRaw `e_sqlite3` 并按绝对路径加载，不使用宿主 `libsqlite3` |
 | D5 | 账户凭据 | authorization code/access/refresh token **不跨 ABI、不写日志**；C# `VaultCredentialStore` 经 `archoera-vault` 加密存储，旧 `accounts.credentials.json` 首次迁移后删除 |
@@ -3228,13 +3229,14 @@ contracts/
 | 11 | `README` 文档索引缺少 10、顺序不自然 | 增加 10 并调整顺序 |
 | 12 | `07` 把 C# 模块写成可加载 C#/Rust/C | 去掉已取消的 C |
 | 13 | 默认发行通道未定 | 定为单一发行版 + 运行期地区门控（见 §15） |
-| 14 | macOS 架构未定 | 仅支持 Apple Silicon arm64 |
+| 14 | macOS 架构未定 | 提供 arm64 与 x64 两套独立产物（2026-11-06 决定，取代原“仅 Apple Silicon”） |
 
 ### 22.5 变更记录
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-10-20 | Draft v1 | 初版：总体架构、ABI v1、模块协议、C#/Rust/Flutter 分层、数据模型、关键流程、安全/测试/构建；同时修正跨文档一致性问题（见 22.4） |
+| 2026-11-06 | Draft v2 | macOS 增加 x64 兼容构建与发布（A24/D2），新增 `macos-15-intel` CI job；单切片产物，不合并原生模块 |
 
 ---
 
