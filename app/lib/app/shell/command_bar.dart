@@ -37,7 +37,7 @@ class _CommandBar extends StatelessWidget {
     // full-height bar with the account + launch cluster.
     final onHome = currentIndex == 0;
 
-    return SafeArea(
+    final bar = SafeArea(
       top: false,
       child: AnimatedContainer(
         duration: context.tokens.normal,
@@ -48,11 +48,12 @@ class _CommandBar extends StatelessWidget {
           // colour with no hairline. In solid mode that colour is the canvas
           // itself; with a wallpaper the canvas is transparent, so the nav
           // floats directly over the photo. Other branches keep the chrome
-          // plate that separates the page from the controls.
+          // plate that separates the page from the controls, kept frosted so
+          // the wallpaper still reads through it.
           color: onHome
               ? tokens.bg
               : tokens.imageBackground
-              ? tokens.surface1.withValues(alpha: 0.78)
+              ? tokens.surface1.withValues(alpha: 0.52)
               : tokens.surface1.withValues(alpha: 0.86),
           border: Border(
             top: BorderSide(color: onHome ? Colors.transparent : tokens.border),
@@ -166,6 +167,20 @@ class _CommandBar extends StatelessWidget {
         ),
       ),
     );
+
+    // Frosted glass over the wallpaper: one clipped backdrop blur behind the
+    // translucent plate. The home footer stays fully transparent, and solid
+    // themes keep the plain canvas-coloured bar.
+    if (tokens.imageBackground && !onHome) {
+      return ClipRect(
+        child: BackdropFilter(
+          key: const ValueKey('command-bar-glass'),
+          filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: bar,
+        ),
+      );
+    }
+    return bar;
   }
 }
 
@@ -405,12 +420,6 @@ class _NavTabsState extends State<_NavTabs> {
                       widget.destinations[index].path != '/',
                   compact: widget.compact,
                   dense: widget.dense,
-                  // The home bar is transparent in image mode: an ink plate
-                  // under the pointer would read as a leftover block on the
-                  // wallpaper. Solid mode keeps the normal hover feedback.
-                  hoverable:
-                      widget.currentIndex != AppBranch.dashboard ||
-                      !context.tokens.imageBackground,
                   onTap: () =>
                       widget.onSelected(widget.destinations[index].branchIndex),
                 ),
@@ -458,7 +467,6 @@ class _NavItem extends StatelessWidget {
     required this.highlighted,
     required this.compact,
     required this.dense,
-    required this.hoverable,
     required this.onTap,
   });
 
@@ -474,23 +482,30 @@ class _NavItem extends StatelessWidget {
   final bool compact;
   final bool dense;
 
-  /// Whether the item paints hover/press ink. Off on the transparent home bar.
-  final bool hoverable;
-
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final foreground = highlighted ? tokens.accent : tokens.textSecondary;
-    // The home destination is the page canvas itself: it never draws the plate
-    // and must not grow any press/hover block either, otherwise the bar implies
-    // a selected/hovered tab that is intentionally absent. Other items keep the
-    // theme's normal ink response.
+    // The home destination is the page canvas itself on a solid canvas: it
+    // never draws the plate and grows no ink block, otherwise the bar implies a
+    // selected/hovered tab that is intentionally absent. Over a wallpaper the
+    // chrome is translucent, so every item uses a light wash instead of the
+    // opaque panel colour — including home, whose footer is fully transparent.
     final isHome = destination.path == '/';
-    final flat = isHome || !hoverable;
-    final hoverTint = flat ? Colors.transparent : tokens.surface2;
-    final pressTint = flat ? Colors.transparent : null;
+    final glass = tokens.imageBackground;
+    final flat = isHome && !glass;
+    final hoverTint = flat
+        ? Colors.transparent
+        : glass
+        ? tokens.textPrimary.withValues(alpha: 0.10)
+        : tokens.surface2;
+    final pressTint = flat
+        ? Colors.transparent
+        : glass
+        ? tokens.textPrimary.withValues(alpha: 0.16)
+        : null;
     final shape = BeveledRectangleBorder(
       borderRadius: BorderRadius.only(
         topRight: Radius.circular(tokens.bevelS),
@@ -621,7 +636,9 @@ class _AccountButtonState extends ConsumerState<_AccountButton> {
             key: _buttonKey,
             onTap: widget.onTap,
             onLongPress: () => _showAccountSwitcher(context, accounts, l10n),
-            hoverColor: tokens.surface2,
+            hoverColor: tokens.imageBackground
+                ? tokens.textPrimary.withValues(alpha: 0.10)
+                : tokens.surface2,
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.xs,

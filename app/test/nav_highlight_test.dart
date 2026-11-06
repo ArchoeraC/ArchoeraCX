@@ -141,7 +141,7 @@ void main() {
     expect(other.splashColor, isNull);
   });
 
-  testWidgets('the home bar drops hover ink only on a wallpaper', (
+  testWidgets('a wallpaper swaps the hover plate for a light wash', (
     tester,
   ) async {
     await pumpApp(tester);
@@ -158,22 +158,61 @@ void main() {
     expect(inkFor('/').hoverColor, Colors.transparent);
     expect(inkFor('/instances').hoverColor, isNot(Colors.transparent));
 
-    // Wallpaper: the footer is transparent, an ink plate would read as a
-    // leftover block over the photo.
+    // Wallpaper: the chrome is translucent, so every item (home included) gets
+    // a light wash instead of the opaque panel colour.
     final directory = Directory.systemTemp.createTempSync('archoera-nav');
     final image = File('${directory.path}/wall.png')
       ..writeAsBytesSync(_pixelPng);
     addTearDown(() => directory.deleteSync(recursive: true));
     await tester.pumpWidget(const SizedBox.shrink());
-    await pumpAppWith(
-      tester,
-      <String, Object>{
-        'ui.appearanceStyle': 'image',
-        'ui.backgroundImage': image.path,
-      },
+    await pumpAppWith(tester, <String, Object>{
+      'ui.appearanceStyle': 'image',
+      'ui.backgroundImage': image.path,
+    });
+    for (final path in const ['/', '/instances', '/settings']) {
+      final ink = inkFor(path);
+      expect(ink.hoverColor, isNot(Colors.transparent));
+      expect(ink.hoverColor!.a, lessThan(0.2));
+      expect(ink.highlightColor, isNot(Colors.transparent));
+    }
+  });
+
+  testWidgets('a wallpaper frosts the bar on every page but home', (
+    tester,
+  ) async {
+    const glass = ValueKey('command-bar-glass');
+    await pumpApp(tester);
+    expect(find.byKey(glass), findsNothing);
+
+    final directory = Directory.systemTemp.createTempSync('archoera-glass');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await pumpAppWith(tester, <String, Object>{
+      'ui.appearanceStyle': 'image',
+      'ui.backgroundImage': image.path,
+    });
+
+    // The home footer floats directly on the photo, so it adds no blur layer.
+    expect(find.byKey(glass), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('nav-/settings')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(glass), findsOneWidget);
+
+    // The plate stays translucent on purpose: pushing it towards opaque turns
+    // the frosted chrome back into a solid slab over the wallpaper.
+    final plate = tester.widget<AnimatedContainer>(
+      find
+          .descendant(
+            of: find.byKey(glass),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first,
     );
-    expect(inkFor('/instances').hoverColor, Colors.transparent);
-    expect(inkFor('/instances').highlightColor, Colors.transparent);
+    final decoration = plate.decoration! as BoxDecoration;
+    expect(decoration.color!.a, closeTo(0.52, 0.02));
   });
 
   testWidgets('the accent plate slides between destinations', (tester) async {
