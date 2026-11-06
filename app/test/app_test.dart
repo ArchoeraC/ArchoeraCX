@@ -151,7 +151,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('covers page switches and retracts back to home', (tester) async {
+  testWidgets('pushes pages in and out around home', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);

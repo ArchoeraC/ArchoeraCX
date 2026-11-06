@@ -1,6 +1,10 @@
 part of '../shell.dart';
 
-enum _PageTransitionMode { cover, retract, lift }
+enum _PageTransitionMode { pushUp, pushDown, lift }
+
+/// Key on the outgoing page snapshot, used by tests to check that it keeps
+/// sliding with the incoming page instead of staying put.
+const pageTransitionSnapshotKey = ValueKey('page-transition-snapshot');
 
 class _PageTransition extends ConsumerStatefulWidget {
   const _PageTransition({
@@ -38,30 +42,44 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
     )..addStatusListener(_onStatusChanged);
   }
 
-  late final Animation<Offset> _offset = Tween<Offset>(
+  /// Shared timing for the sliding pages. `CurveTween` keeps this allocation
+  /// free of a disposable `CurvedAnimation`.
+  late final Animation<double> _curve = _controller.drive(
+    CurveTween(curve: Curves.easeOutCubic),
+  );
+
+  late final Animation<Offset> _enterFromBottom = Tween<Offset>(
     begin: const Offset(0, 1),
     end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+  ).animate(_curve);
 
-  late final Animation<Offset> _outOffset = Tween<Offset>(
-    begin: Offset.zero,
-    end: const Offset(0, 1),
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
+  /// Entering home when the page above is pushed back down.
+  late final Animation<Offset> _enterFromTop = Tween<Offset>(
+    begin: const Offset(0, -1),
+    end: Offset.zero,
+  ).animate(_curve);
 
-  /// Exit motion for leaving the home page: the old page slides up and out.
-  late final Animation<Offset> _upOutOffset = Tween<Offset>(
+  /// Outgoing page shares [_curve] with the entering page so the two tiles
+  /// stay exactly adjacent: no gap to the wallpaper and no double-painted
+  /// strip in the middle of the push.
+  late final Animation<Offset> _leaveUp = Tween<Offset>(
     begin: Offset.zero,
     end: const Offset(0, -1),
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
+  ).animate(_curve);
+
+  late final Animation<Offset> _leaveDown = Tween<Offset>(
+    begin: Offset.zero,
+    end: const Offset(0, 1),
+  ).animate(_curve);
 
   late final Animation<Offset> _liftOffset = Tween<Offset>(
     begin: const Offset(0, 0.02),
     end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+  ).animate(_curve);
 
   ui.Image? _previous;
   bool _finishing = false;
-  _PageTransitionMode _mode = _PageTransitionMode.cover;
+  _PageTransitionMode _mode = _PageTransitionMode.pushUp;
 
   @override
   void didUpdateWidget(covariant _PageTransition oldWidget) {
@@ -131,61 +149,15 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
     final previous = _previous;
     if (previous == null) return current;
 
-    // With a wallpaper the page canvas is transparent, so a snapshot and the
-    // live page would show through each other. Between the home page and any
-    // branch the outgoing content slides out (up when leaving home, down when
-    // returning) and the incoming page is revealed by a clip that follows the
-    // vacated edge. The wallpaper never moves, and no opaque backing sheet is
-    // needed. Switches between two non-home branches keep the normal lift
-    // transition below.
-    if (context.tokens.imageBackground && _mode != _PageTransitionMode.lift) {
-      final fromTop = _mode == _PageTransitionMode.retract;
-      final exit = fromTop ? _outOffset : _upOutOffset;
+    if (_mode == _PageTransitionMode.lift) {
+      // Page-to-page switches lift the new page under a dissolving snapshot.
+      // Painting the snapshot on top lets the dissolve reveal the finished
+      // page directly, so no opacity animation is needed and the two layers
+      // never turn into a grey wash.
       return ClipRect(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Positioned.fill(
-              child: SlideTransition(
-                position: exit,
-                child: _Snapshot(image: previous),
-              ),
-            ),
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: exit,
-                builder: (context, child) => ClipRect(
-                  clipper: _RevealClipper(
-                    progress: fromTop ? exit.value.dy : -exit.value.dy,
-                    fromTop: fromTop,
-                  ),
-                  child: child,
-                ),
-                child: current,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (_mode == _PageTransitionMode.retract) ...[
-            Positioned.fill(child: current),
-            Positioned.fill(
-              child: SlideTransition(
-                position: _outOffset,
-                child: _Snapshot(image: previous),
-              ),
-            ),
-          ] else if (_mode == _PageTransitionMode.lift) ...[
-            // Page-to-page switches lift the new page under a dissolving
-            // snapshot. Painting the snapshot on top lets the dissolve reveal
-            // the finished page directly, so no opacity animation is needed and
-            // the two layers never turn into a grey wash.
             Positioned.fill(
               child: SlideTransition(position: _liftOffset, child: current),
             ),
@@ -195,15 +167,38 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
                 program: reduceMotion
                     ? null
                     : AppShaderScope.of(context).transition,
-                child: _Snapshot(image: previous),
+                child: _Snapshot(
+                  key: pageTransitionSnapshotKey,
+                  image: previous,
+                ),
               ),
             ),
-          ] else ...[
-            Positioned.fill(child: _Snapshot(image: previous)),
-            Positioned.fill(
-              child: SlideTransition(position: _offset, child: current),
-            ),
           ],
+        ),
+      );
+    }
+
+    // Home and branch pages swap like consecutive slides: the outgoing page
+    // and the incoming page travel the same vertical distance in lockstep, so
+    // the old page is still visible while it leaves instead of being covered.
+    // With a wallpaper the page canvas is transparent, but the two tiles never
+    // overlap or separate, so the wallpaper simply stays behind both.
+    final leavingHome = _mode == _PageTransitionMode.pushUp;
+    final enter = leavingHome ? _enterFromBottom : _enterFromTop;
+    final exit = leavingHome ? _leaveUp : _leaveDown;
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: SlideTransition(
+              position: exit,
+              child: _Snapshot(key: pageTransitionSnapshotKey, image: previous),
+            ),
+          ),
+          Positioned.fill(
+            child: SlideTransition(position: enter, child: current),
+          ),
         ],
       ),
     );
@@ -213,11 +208,12 @@ class _PageTransitionState extends ConsumerState<_PageTransition>
 /// Snapshot of the page that is leaving, scaled to the page width and pinned to
 /// the top so it lines up with the live page under the finger.
 ///
-/// The snapshot keeps its transparent canvas: in image mode the incoming page
-/// is clipped to the area the snapshot has already vacated, so the two layouts
-/// never paint on top of each other and the shared wallpaper stays behind both.
+/// The snapshot is drawn as captured, including its transparent canvas in image
+/// mode: it and the incoming page tile the viewport while they slide together,
+/// so the shared wallpaper stays visible behind both and no opaque backing
+/// sheet is needed.
 class _Snapshot extends StatelessWidget {
-  const _Snapshot({required this.image});
+  const _Snapshot({super.key, required this.image});
 
   final ui.Image image;
 
@@ -229,27 +225,4 @@ class _Snapshot extends StatelessWidget {
       alignment: Alignment.topCenter,
     );
   }
-}
-
-/// Clips the incoming page to the region the outgoing snapshot has vacated.
-class _RevealClipper extends CustomClipper<Rect> {
-  const _RevealClipper({required this.progress, required this.fromTop});
-
-  /// 0 = outgoing page still covers the viewport, 1 = fully gone.
-  final double progress;
-
-  /// Returning home reveals the page from the top edge downwards.
-  final bool fromTop;
-
-  @override
-  Rect getClip(Size size) {
-    final distance = size.height * progress.clamp(0.0, 1.0);
-    return fromTop
-        ? Rect.fromLTRB(0, 0, size.width, distance)
-        : Rect.fromLTRB(0, size.height - distance, size.width, size.height);
-  }
-
-  @override
-  bool shouldReclip(_RevealClipper oldClipper) =>
-      oldClipper.progress != progress || oldClipper.fromTop != fromTop;
 }

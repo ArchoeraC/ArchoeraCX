@@ -98,7 +98,7 @@ void openAppBranch(BuildContext context, int index, {String? fallbackPath}) {
 class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey _pageKey = GlobalKey();
   ui.Image? _coverImage;
-  _PageTransitionMode _mode = _PageTransitionMode.cover;
+  _PageTransitionMode _mode = _PageTransitionMode.pushUp;
 
   @override
   void dispose() {
@@ -136,18 +136,18 @@ class _AppShellState extends ConsumerState<AppShell> {
       return;
     }
 
-    // Every branch switch gets a snapshot underlay so the new page can cover
-    // the old one. Returning to the home page reverses the motion: the old
-    // page retracts downward instead of a new page covering it.
+    // Every branch switch gets a snapshot of the outgoing page. Home and the
+    // other branches swap like consecutive slides: the snapshot keeps moving
+    // in the same direction as the incoming page instead of being covered.
     final image = _capturePage();
     if (!mounted) {
       image?.dispose();
       return;
     }
     final mode = current == AppBranch.dashboard
-        ? _PageTransitionMode.cover
+        ? _PageTransitionMode.pushUp
         : index == AppBranch.dashboard
-        ? _PageTransitionMode.retract
+        ? _PageTransitionMode.pushDown
         : _PageTransitionMode.lift;
     setState(() {
       _coverImage = image;
