@@ -23,8 +23,8 @@ public sealed class NeoForgeRepairTests
     [Fact]
     public async Task Splitter_outputs_are_attributed_to_the_splitter()
     {
-        using var temp = new TempRoot();
-        var manifest = await PlanAsync(temp);
+        using var temp = CreateFixture();
+        var manifest = await temp.PlanAsync();
 
         Assert.Equal(3, ProducerOf(manifest, "MC_SLIM"));
         Assert.Equal(3, ProducerOf(manifest, "MC_EXTRA"));
@@ -35,8 +35,8 @@ public sealed class NeoForgeRepairTests
     [Fact]
     public async Task Repair_resumes_at_the_splitter_when_the_mappings_are_cached()
     {
-        using var temp = new TempRoot();
-        var manifest = await PlanAsync(temp);
+        using var temp = CreateFixture();
+        var manifest = await temp.PlanAsync();
 
         // A previous install left the mappings behind; slim/extra/srg were
         // never produced. Starting at the AutoRenamingTool would fail its
@@ -47,7 +47,7 @@ public sealed class NeoForgeRepairTests
         temp.WriteVanillaJar();
         temp.WriteProcessorJars(manifest);
 
-        var runner = new RecordingRunner();
+        var runner = new RecordingProcessorRunner();
         var service = new ForgeRepairService(
             runner,
             new LoaderArtifactVerifier(),
@@ -63,23 +63,11 @@ public sealed class NeoForgeRepairTests
             detail => detail.Contains("input check failed", StringComparison.Ordinal));
     }
 
-    private static async Task<LoaderArtifactManifest> PlanAsync(TempRoot temp)
-    {
-        var manifest = await new ForgeArtifactPlanner().ParseAsync(
-            temp.InstallerPath,
-            temp.Root,
-            temp.Libraries,
-            LoaderKind.NeoForge);
-
-        // The planner reads Main-Class from the embedded maven jars; the repair
-        // only needs a non-empty class name for this synthetic profile.
-        return manifest with
-        {
-            Processors = manifest.Processors
-                .Select(processor => processor with { MainClass = "synthetic.Main" })
-                .ToArray(),
-        };
-    }
+    private static LoaderRepairTemp CreateFixture() => new(
+        LoaderKind.NeoForge,
+        "21.1.265",
+        "1.21.1",
+        Profile());
 
     private static int ProducerOf(LoaderArtifactManifest manifest, string key) =>
         manifest.Artifacts.Single(artifact => artifact.Key == key).ProducerIndex;
@@ -147,119 +135,157 @@ public sealed class NeoForgeRepairTests
             }
             """;
     }
+}
 
-    private sealed class TempRoot : IDisposable
+/// <summary>
+/// Temp instance root plus a synthetic installer for a client processor chain.
+/// The planner reads Main-Class from the jars; the repair only needs a
+/// non-empty class name, so tests patch it in.
+/// </summary>
+internal sealed class LoaderRepairTemp : IDisposable
+{
+    public LoaderRepairTemp(
+        LoaderKind kind,
+        string loaderVersion,
+        string gameVersion,
+        string profile)
     {
-        public TempRoot()
+        Kind = kind;
+        GameVersion = gameVersion;
+        Base = Path.Combine(
+            Path.GetTempPath(),
+            "archoera-tests",
+            $"loader-repair-{Guid.NewGuid():N}");
+        Root = Path.Combine(Base, "instance");
+        Libraries = Path.Combine(Root, "libraries");
+        InstallerPath = Path.Combine(Root, "installer.jar");
+        JavaPath = Path.Combine(Base, "fake-java");
+        Directory.CreateDirectory(Libraries);
+        File.WriteAllText(JavaPath, "synthetic JVM path; the runner ignores it");
+
+        using var file = File.Create(InstallerPath);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Create);
+        Add(
+            archive,
+            "install_profile.json",
+            profile);
+        Add(
+            archive,
+            "version.json",
+            $$"""{ "id": "{{loaderVersion}}", "inheritsFrom": "{{gameVersion}}", "libraries": [] }""");
+        Add(archive, "data/client.lzma", "synthetic binpatch");
+    }
+
+    public LoaderKind Kind { get; }
+    public string GameVersion { get; }
+    public string Base { get; }
+    public string Root { get; }
+    public string Libraries { get; }
+    public string InstallerPath { get; }
+    public string JavaPath { get; }
+
+    public async Task<LoaderArtifactManifest> PlanAsync()
+    {
+        var manifest = await new ForgeArtifactPlanner().ParseAsync(
+            InstallerPath,
+            Root,
+            Libraries,
+            Kind);
+
+        return manifest with
         {
-            Base = Path.Combine(
-                Path.GetTempPath(),
-                "archoera-tests",
-                $"neoforge-repair-{Guid.NewGuid():N}");
-            Root = Path.Combine(Base, "instance");
-            Libraries = Path.Combine(Root, "libraries");
-            InstallerPath = Path.Combine(Root, "installer.jar");
-            JavaPath = Path.Combine(Base, "fake-java");
-            Directory.CreateDirectory(Libraries);
-            File.WriteAllText(JavaPath, "synthetic JVM path; the runner ignores it");
+            Processors = manifest.Processors
+                .Select(processor => processor with { MainClass = "synthetic.Main" })
+                .ToArray(),
+        };
+    }
 
-            using var file = File.Create(InstallerPath);
-            using var archive = new ZipArchive(file, ZipArchiveMode.Create);
-            Add(archive, "install_profile.json", Profile());
-            Add(archive, "version.json", """{ "id": "neoforge-21.1.265", "inheritsFrom": "1.21.1", "libraries": [] }""");
-            Add(archive, "data/client.lzma", "synthetic binpatch");
-        }
+    public void WriteVanillaJar()
+    {
+        var path = Path.Combine(Root, "versions", GameVersion, $"{GameVersion}.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "synthetic client jar");
+    }
 
-        public string Base { get; }
-        public string Root { get; }
-        public string Libraries { get; }
-        public string InstallerPath { get; }
-        public string JavaPath { get; }
-
-        public void WriteVanillaJar()
+    /// <summary>Processor jars and classpath entries must exist but are never run.</summary>
+    public void WriteProcessorJars(LoaderArtifactManifest manifest)
+    {
+        foreach (var processor in manifest.Processors)
         {
-            var path = Path.Combine(Root, "versions", "1.21.1", "1.21.1.jar");
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, "synthetic client jar");
-        }
-
-        /// <summary>Processor jars and classpath entries must exist but are never run.</summary>
-        public void WriteProcessorJars(LoaderArtifactManifest manifest)
-        {
-            foreach (var processor in manifest.Processors)
+            Touch(processor.JarRelativePath);
+            foreach (var entry in processor.ClassPath)
             {
-                Touch(processor.JarRelativePath);
-                foreach (var entry in processor.ClassPath)
-                {
-                    Touch(entry);
-                }
-            }
-        }
-
-        public void WriteArtifact(LoaderArtifactManifest manifest, string key)
-        {
-            var artifact = manifest.Artifacts.Single(candidate => candidate.Key == key);
-            var path = Path.Combine(Libraries, artifact.RelativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, $"synthetic {key}");
-        }
-
-        private void Touch(string relative)
-        {
-            var path = Path.Combine(Libraries, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            if (!File.Exists(path)) File.WriteAllText(path, "synthetic library");
-        }
-
-        private static void Add(ZipArchive archive, string name, string text)
-        {
-            var entry = archive.CreateEntry(name, CompressionLevel.Fastest);
-            using var stream = entry.Open();
-            using var writer = new StreamWriter(stream, new UTF8Encoding(false));
-            writer.Write(text);
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(Base, recursive: true);
-            }
-            catch (IOException)
-            {
-                // best effort
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // best effort
+                Touch(entry);
             }
         }
     }
 
-    private sealed class RecordingRunner : IProcessorRunner
+    public void WriteArtifact(LoaderArtifactManifest manifest, string key)
     {
-        public List<int> Indices { get; } = [];
+        var artifact = manifest.Artifacts.Single(candidate => candidate.Key == key);
+        var path = Path.Combine(Libraries, artifact.RelativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, $"synthetic {key}");
+    }
 
-        public Task<ProcessorRunResult> RunAsync(
-            ProcessorStep step,
-            string javaPath,
-            string workingDir,
-            TimeSpan timeout,
-            CancellationToken cancellationToken = default)
+    private void Touch(string relative)
+    {
+        var path = Path.Combine(Libraries, relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        if (!File.Exists(path)) File.WriteAllText(path, "synthetic library");
+    }
+
+    private static void Add(ZipArchive archive, string name, string text)
+    {
+        var entry = archive.CreateEntry(name, CompressionLevel.Fastest);
+        using var stream = entry.Open();
+        using var writer = new StreamWriter(stream, new UTF8Encoding(false));
+        writer.Write(text);
+    }
+
+    public void Dispose()
+    {
+        try
         {
-            Indices.Add(step.Index);
-            for (var index = 0; index + 1 < step.Arguments.Count; index++)
-            {
-                var flag = step.Arguments[index];
-                if (flag is not ("--output" or "--slim" or "--extra")) continue;
+            Directory.Delete(Base, recursive: true);
+        }
+        catch (IOException)
+        {
+            // best effort
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // best effort
+        }
+    }
+}
 
-                var path = step.Arguments[index + 1];
-                var directory = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-                File.WriteAllText(path, $"synthetic output of processor {step.Index}");
+/// <summary>Writes the files a processor would produce and records the order.</summary>
+internal sealed class RecordingProcessorRunner : IProcessorRunner
+{
+    public List<int> Indices { get; } = [];
+
+    public Task<ProcessorRunResult> RunAsync(
+        ProcessorStep step,
+        string javaPath,
+        string workingDir,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        Indices.Add(step.Index);
+        for (var index = 0; index + 1 < step.Arguments.Count; index++)
+        {
+            if (step.Arguments[index] is not ("--output" or "--slim" or "--extra" or "--out-jar"))
+            {
+                continue;
             }
 
-            return Task.FromResult(new ProcessorRunResult(0, string.Empty, string.Empty, false));
+            var path = step.Arguments[index + 1];
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+            File.WriteAllText(path, $"synthetic output of processor {step.Index}");
         }
+
+        return Task.FromResult(new ProcessorRunResult(0, string.Empty, string.Empty, false));
     }
 }

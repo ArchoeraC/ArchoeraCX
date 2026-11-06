@@ -422,7 +422,8 @@ public sealed class ForgeRepairService : IForgeRepairService
         for (var index = 0; index + 1 < processor.Arguments.Count; index++)
         {
             var flag = processor.Arguments[index];
-            if (flag is not ("--output" or "--slim" or "--extra"))
+            // --out-jar is SpecialSource's output flag (Forge 1.13–1.16).
+            if (flag is not ("--output" or "--slim" or "--extra" or "--out-jar"))
             {
                 continue;
             }

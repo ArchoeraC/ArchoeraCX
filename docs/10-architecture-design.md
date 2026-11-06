@@ -1203,7 +1203,8 @@ public sealed record LaunchPlan(
 - 合并/修复：逐文件 journal（backup → replace → fsync）；失败逆序回滚。
 - 共享库可先落位（内容寻址、幂等）；失败不影响活动实例，残留由 GC 清理。
 - 加载器 processors：输出写 staging；每个 output 按 `install_profile.outputs` 校验；失败保留 store、删 staging。
-- 加载器生成物：不能只信 `processors[].outputs`。Forge 1.20.1 / NeoForge 21.1 的 `PATCHED` 既不在 `version.json.libraries`，也不在 `outputs`；必须由 `LoaderArtifactManifest` 从 `data.PATCHED` 显式记录，并用 `producerIndex` 绑定。详见 [08/09-forge-generated-artifacts.md](08-technical-research/09-forge-generated-artifacts.md)。
+- 加载器生成物：不能只信 `processors[].outputs`。Forge 1.20.1 / NeoForge 21.1 的 `PATCHED` 既不在 `version.json.libraries`，也不在 `outputs`；必须由 `LoaderArtifactManifest` 从 `data.PATCHED` 显式记录，并用 `producerIndex` 绑定。`producerIndex` 同时识别 `--output` / `--slim` / `--extra` / `--out-jar`，否则修复会跳过真正产出 `MC_SLIM`/`MC_EXTRA`/`MC_SRG` 的 processor。详见 [08/09-forge-generated-artifacts.md](08-technical-research/09-forge-generated-artifacts.md)。
+- 加载器版本列表：NeoForge 1.20.1 发布在 `net.neoforged:forge` 而不是 `:neoforge`，所以 `loader.versions` 同时读两套 maven-metadata 并剥掉 `1.20.1-` 前缀；installer 路径与版本号仍走同一份归一化逻辑。
 - 修复：按 manifest 的 artifact 集合验证；从最早缺失 artifact 的 `producerIndex` 开始重跑 processor，跳过已有效输出；重跑后逐项校验 hash/size，再提交 receipt。
 - 注册失败：实例目录已提交但 SQLite 写失败 → 启动扫描 `instances/*/instance.json` 收养孤儿。
 

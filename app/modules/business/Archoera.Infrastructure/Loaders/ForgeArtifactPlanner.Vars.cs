@@ -108,12 +108,14 @@ internal sealed partial class PlanBuilder
             var arguments = _processors[index].Arguments;
             for (var i = 0; i + 1 < arguments.Count; i++)
             {
-                // jarsplitter writes its two halves with --slim/--extra instead
-                // of --output (NeoForge 21.1 leaves them producerless otherwise).
+                // jarsplitter writes its two halves with --slim/--extra and
+                // SpecialSource (Forge 1.13–1.16) writes with --out-jar instead
+                // of --output; without these the artifacts look producerless.
                 if ((string.Equals(arguments[i], "--output", StringComparison.Ordinal) ||
                      string.Equals(arguments[i], "-o", StringComparison.Ordinal) ||
                      string.Equals(arguments[i], "--slim", StringComparison.Ordinal) ||
-                     string.Equals(arguments[i], "--extra", StringComparison.Ordinal)) &&
+                     string.Equals(arguments[i], "--extra", StringComparison.Ordinal) ||
+                     string.Equals(arguments[i], "--out-jar", StringComparison.Ordinal)) &&
                     string.Equals(arguments[i + 1], resolvedToken, StringComparison.Ordinal))
                 {
                     return index;
