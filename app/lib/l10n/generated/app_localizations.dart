@@ -4543,11 +4543,17 @@ abstract class AppLocalizations {
   /// **'Dim'**
   String get settingsBackgroundDim;
 
-  /// No description provided for @settingsBackgroundDimDesc.
+  /// Subtitle of the wallpaper dimming slider.
   ///
   /// In en, this message translates to:
   /// **'Darken the image; a stronger scrim keeps text readable.'**
   String get settingsBackgroundDimDesc;
+
+  /// Shown after the dimming subtitle when the wallpaper is bright enough to raise the minimum scrim.
+  ///
+  /// In en, this message translates to:
+  /// **'The lower bound follows this image\'s brightness.'**
+  String get settingsBackgroundDimAuto;
 
   /// No description provided for @settingsBackgroundScale.
   ///

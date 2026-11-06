@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../render/image_luminance.dart';
 import '../services/core/core_event.dart';
 import '../services/core/system/system_appearance.dart';
 import '../theme/tokens.dart';
@@ -41,6 +43,7 @@ class AppearanceSettings {
     this.backgroundBlur = 0,
     this.backgroundDim = 0.4,
     this.backgroundScale = 1.2,
+    this.backgroundLuminance,
   });
 
   final ThemeMode themeMode;
@@ -62,6 +65,22 @@ class AppearanceSettings {
 
   /// Wallpaper zoom around the centre (1–2).
   final double backgroundScale;
+
+  /// 90th-percentile relative luminance of the wallpaper's opaque pixels.
+  ///
+  /// Cached in `shared_preferences` so the scrim floor is right on the first
+  /// frame after a restart; it is re-sampled from the file in the background.
+  final double? backgroundLuminance;
+
+  /// Smallest scrim that still keeps the canvas text readable on this image.
+  double get backgroundDimFloor => wallpaperDimFloor(backgroundLuminance);
+
+  /// Scrim actually handed to the background layer.
+  ///
+  /// [backgroundDim] stays the user's intent: picking a darker image later
+  /// brings their own value back instead of permanently rewriting it.
+  double get effectiveBackgroundDim =>
+      math.max(backgroundDim, backgroundDimFloor);
 
   /// Whether the image treatment is actually active.
   ///
@@ -85,6 +104,8 @@ class AppearanceSettings {
     double? backgroundBlur,
     double? backgroundDim,
     double? backgroundScale,
+    double? backgroundLuminance,
+    bool clearBackgroundLuminance = false,
   }) {
     return AppearanceSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -100,6 +121,9 @@ class AppearanceSettings {
       backgroundBlur: backgroundBlur ?? this.backgroundBlur,
       backgroundDim: backgroundDim ?? this.backgroundDim,
       backgroundScale: backgroundScale ?? this.backgroundScale,
+      backgroundLuminance: clearBackgroundLuminance
+          ? null
+          : (backgroundLuminance ?? this.backgroundLuminance),
     );
   }
 }
@@ -107,6 +131,15 @@ class AppearanceSettings {
 final appearanceProvider =
     NotifierProvider<AppearanceController, AppearanceSettings>(
       AppearanceController.new,
+    );
+
+/// Wallpaper brightness sampler used by the appearance controller.
+///
+/// A provider so widget tests can return a fixed value instead of decoding a
+/// real file inside the fake-async zone.
+final wallpaperLuminanceProvider =
+    Provider<Future<double?> Function(String path)>(
+      (ref) => sampleWallpaperLuminance,
     );
 
 final class AppearanceController extends Notifier<AppearanceSettings> {
@@ -121,6 +154,10 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
   static const _backgroundBlurKey = 'ui.backgroundBlur';
   static const _backgroundDimKey = 'ui.backgroundDim';
   static const _backgroundScaleKey = 'ui.backgroundScale';
+  static const _backgroundLuminanceKey = 'ui.backgroundLuminance';
+
+  /// Guards against an older sample landing after a newer image was picked.
+  int _luminanceRequest = 0;
 
   @override
   AppearanceSettings build() {
@@ -147,6 +184,7 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
           ? AppTokens.brandAccent
           : Color(colorValue);
       final imagePath = prefs.getString(_backgroundImageKey);
+      final cachedLuminance = prefs.getDouble(_backgroundLuminanceKey);
       if (!ref.mounted) return;
       state = AppearanceSettings(
         themeMode: mode,
@@ -180,7 +218,10 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
           1,
           2,
         )).toDouble(),
+        backgroundLuminance: cachedLuminance?.clamp(0.0, 1.0).toDouble(),
       );
+      final image = state.backgroundImage;
+      if (image != null) unawaited(_sampleLuminance(image));
     } catch (_) {
       // A missing preference store must not block startup.
     }
@@ -244,16 +285,47 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
     state = state.copyWith(
       backgroundImage: image,
       clearBackgroundImage: image == null,
+      clearBackgroundLuminance: image == null,
     );
     try {
       final prefs = await SharedPreferences.getInstance();
       if (image == null) {
         await prefs.remove(_backgroundImageKey);
+        await prefs.remove(_backgroundLuminanceKey);
       } else {
         await prefs.setString(_backgroundImageKey, image);
       }
     } catch (_) {
       // The in-memory selection still applies for this session.
+    }
+    if (image != null) {
+      // Keep the previous floor for the frame or two the sample takes: briefly
+      // dropping it would flash the old, possibly bright, scrim away.
+      unawaited(_sampleLuminance(image));
+    } else {
+      _luminanceRequest++;
+    }
+  }
+
+  /// Re-measures the wallpaper and publishes its scrim floor.
+  Future<void> _sampleLuminance(String path) async {
+    final request = ++_luminanceRequest;
+    final sample = ref.read(wallpaperLuminanceProvider);
+    final luminance = await sample(path);
+    if (!ref.mounted || request != _luminanceRequest) return;
+    state = state.copyWith(
+      backgroundLuminance: luminance,
+      clearBackgroundLuminance: luminance == null,
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (luminance == null) {
+        await prefs.remove(_backgroundLuminanceKey);
+      } else {
+        await prefs.setDouble(_backgroundLuminanceKey, luminance);
+      }
+    } catch (_) {
+      // The floor still applies for this session.
     }
   }
 
@@ -272,7 +344,9 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
   }
 
   Future<void> setBackgroundDim(double value) async {
-    final dim = value.clamp(0.3, 0.9).toDouble();
+    final dim = value
+        .clamp(state.backgroundDimFloor, maxWallpaperDim)
+        .toDouble();
     state = state.copyWith(backgroundDim: dim);
     await _write(_backgroundDimKey, dim);
   }
@@ -284,6 +358,7 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
   }
 
   Future<void> reset() async {
+    _luminanceRequest++;
     state = const AppearanceSettings();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -298,6 +373,7 @@ final class AppearanceController extends Notifier<AppearanceSettings> {
       await prefs.remove(_backgroundBlurKey);
       await prefs.remove(_backgroundDimKey);
       await prefs.remove(_backgroundScaleKey);
+      await prefs.remove(_backgroundLuminanceKey);
     } catch (_) {
       // The in-memory defaults still apply for this session.
     }

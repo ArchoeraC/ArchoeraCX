@@ -255,7 +255,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           ? appearance.backgroundImage
           : null,
       imageBlur: appearance.backgroundBlur,
-      imageDim: appearance.backgroundDim,
+      imageDim: appearance.effectiveBackgroundDim,
       imageScale: appearance.backgroundScale,
       child: Scaffold(
         backgroundColor: Colors.transparent,

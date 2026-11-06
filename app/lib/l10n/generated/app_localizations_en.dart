@@ -2630,6 +2630,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Darken the image; a stronger scrim keeps text readable.';
 
   @override
+  String get settingsBackgroundDimAuto =>
+      'The lower bound follows this image\'s brightness.';
+
+  @override
   String get settingsBackgroundScale => 'Zoom';
 
   @override

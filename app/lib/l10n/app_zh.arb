@@ -1368,6 +1368,7 @@
   "settingsBackgroundBlurDesc": "柔化图片，让页面内容更聚焦。",
   "settingsBackgroundDim": "暗化",
   "settingsBackgroundDimDesc": "压暗图片；遮罩越强，文字越清晰。",
+  "settingsBackgroundDimAuto": "图片较亮，下限已按亮度抬高。",
   "settingsBackgroundScale": "缩放",
   "settingsBackgroundScaleDesc": "围绕图片中心进一步裁切。",
   "settingsThemeModeImageForced": "图片背景使用深色，以保证文字可读性。",

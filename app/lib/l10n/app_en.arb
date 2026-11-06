@@ -2027,6 +2027,13 @@
   "settingsBackgroundBlurDesc": "Soften the image so page content stays in focus.",
   "settingsBackgroundDim": "Dim",
   "settingsBackgroundDimDesc": "Darken the image; a stronger scrim keeps text readable.",
+  "@settingsBackgroundDimDesc": {
+    "description": "Subtitle of the wallpaper dimming slider."
+  },
+  "settingsBackgroundDimAuto": "The lower bound follows this image's brightness.",
+  "@settingsBackgroundDimAuto": {
+    "description": "Shown after the dimming subtitle when the wallpaper is bright enough to raise the minimum scrim."
+  },
   "settingsBackgroundScale": "Zoom",
   "settingsBackgroundScaleDesc": "Crop tighter around the centre of the image.",
   "settingsThemeModeImageForced": "Image backgrounds use dark colors so text stays readable.",

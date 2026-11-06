@@ -15,6 +15,7 @@ import '../l10n/l10n_labels.dart';
 import '../models/launch_options.dart';
 import '../render/app_shaders.dart';
 import '../render/dissolve_mask.dart';
+import '../render/image_luminance.dart';
 import '../services/core/settings/app_settings.dart';
 import '../services/core/core_client.dart';
 import '../services/core/downloads/maintenance.dart';

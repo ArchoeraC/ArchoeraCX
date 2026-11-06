@@ -2476,6 +2476,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsBackgroundDimDesc => '压暗图片；遮罩越强，文字越清晰。';
 
   @override
+  String get settingsBackgroundDimAuto => '图片较亮，下限已按亮度抬高。';
+
+  @override
   String get settingsBackgroundScale => '缩放';
 
   @override

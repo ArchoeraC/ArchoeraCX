@@ -20,6 +20,7 @@ Future<ProviderContainer> pumpSettings(
   WidgetTester tester, {
   Size size = const Size(1380, 900),
   Map<String, Object> preferences = const <String, Object>{},
+  Future<double?> Function(String path)? luminanceSampler,
 }) async {
   SharedPreferences.setMockInitialValues(preferences);
   tester.view.physicalSize = size;
@@ -29,7 +30,11 @@ Future<ProviderContainer> pumpSettings(
 
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [coreClientProvider.overrideWithValue(null)],
+      overrides: [
+        coreClientProvider.overrideWithValue(null),
+        if (luminanceSampler != null)
+          wallpaperLuminanceProvider.overrideWithValue(luminanceSampler),
+      ],
       child: const ArchoeraApp(),
     ),
   );
@@ -154,6 +159,63 @@ void main() {
     expect(find.text('90%'), findsOneWidget);
     expect(find.text('2.0x'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a bright wallpaper raises the scrim floor', (tester) async {
+    final directory = Directory.systemTemp.createTempSync('archoera-dim');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    final container = await pumpSettings(
+      tester,
+      preferences: <String, Object>{
+        'ui.appearanceStyle': 'image',
+        'ui.backgroundImage': image.path,
+        'ui.backgroundDim': 0.4,
+      },
+      luminanceSampler: (_) async => 1.0,
+    );
+    await tester.pumpAndSettle();
+
+    final appearance = container.read(appearanceProvider);
+    expect(appearance.backgroundDimFloor, closeTo(0.55, 0.01));
+    expect(appearance.effectiveBackgroundDim, closeTo(0.55, 0.01));
+
+    // The dim slider starts at the measured floor, so the user sees why it
+    // cannot go lower instead of watching the scrim refuse to move.
+    final slider = tester.widget<AppSlider>(find.byType(AppSlider).at(1));
+    expect(slider.min, closeTo(0.55, 0.01));
+    expect(slider.value, closeTo(0.55, 0.01));
+
+    // A value below the floor is clamped; the stored intent never goes under.
+    await container.read(appearanceProvider.notifier).setBackgroundDim(0.32);
+    expect(
+      container.read(appearanceProvider).backgroundDim,
+      closeTo(0.55, 0.01),
+    );
+  });
+
+  testWidgets('a dark wallpaper keeps the default scrim floor', (tester) async {
+    final directory = Directory.systemTemp.createTempSync('archoera-dim');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    final container = await pumpSettings(
+      tester,
+      preferences: <String, Object>{
+        'ui.appearanceStyle': 'image',
+        'ui.backgroundImage': image.path,
+        'ui.backgroundDim': 0.4,
+      },
+      luminanceSampler: (_) async => 0.1,
+    );
+    await tester.pumpAndSettle();
+
+    final appearance = container.read(appearanceProvider);
+    expect(appearance.backgroundDimFloor, closeTo(0.3, 0.001));
+    expect(appearance.effectiveBackgroundDim, closeTo(0.4, 0.001));
   });
 
   testWidgets('appearance options fit a narrow window', (tester) async {

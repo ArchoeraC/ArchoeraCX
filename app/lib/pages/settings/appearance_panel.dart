@@ -74,6 +74,17 @@ extension _AppearancePanelX on _SettingsPageState {
     );
     final imageStyleSelected =
         appearance.appearanceStyle == AppearanceStyle.image;
+    // The scrim floor follows the wallpaper's brightness. A bright photo needs
+    // a stronger base scrim before the forced dark palette reads on it, so the
+    // slider's lower end is the measured floor rather than a fixed 30 %.
+    final dimFloor = appearance.backgroundDimFloor;
+    final dimValue = appearance.effectiveBackgroundDim;
+    final dimMarks = <double, String>{
+      dimFloor: '${(dimFloor * 100).round()}%',
+      if (0.9 - dimFloor > 0.15)
+        (dimFloor + 0.9) / 2: '${(((dimFloor + 0.9) / 2) * 100).round()}%',
+      0.9: '90%',
+    };
     final backgroundGroup = _SettingsGroup(
       title: l10n.settingsSectionBackground,
       note: imageStyleSelected
@@ -149,14 +160,20 @@ extension _AppearancePanelX on _SettingsPageState {
           _AppearanceSlider(
             icon: AppIcons.background,
             title: l10n.settingsBackgroundDim,
-            subtitle: l10n.settingsBackgroundDimDesc,
-            value: appearance.backgroundDim,
-            min: 0.3,
-            max: 0.9,
-            divisions: 60,
-            label: '${(appearance.backgroundDim * 100).round()}%',
+            subtitle: dimFloor > minWallpaperDim + 0.001
+                ? '${l10n.settingsBackgroundDimDesc} '
+                      '${l10n.settingsBackgroundDimAuto}'
+                : l10n.settingsBackgroundDimDesc,
+            value: dimValue,
+            min: dimFloor,
+            max: maxWallpaperDim,
+            divisions: ((maxWallpaperDim - dimFloor) * 100)
+                .round()
+                .clamp(1, 100)
+                .toInt(),
+            label: '${(dimValue * 100).round()}%',
             valueFormatter: (value) => '${(value * 100).round()}%',
-            marks: {0.3: '30%', 0.6: '60%', 0.9: '90%'},
+            marks: dimMarks,
             onChanged: notifier.setBackgroundDim,
           ),
           _AppearanceSlider(
@@ -700,5 +717,4 @@ class _AppearanceSlider extends StatelessWidget {
       ),
     );
   }
-
 }
