@@ -72,6 +72,7 @@ constexpr MethodRoute kRoutes[] = {
     {"loader.plan", &handle_module_method, kCsModule},
     {"loader.commit", &handle_module_method, kCsModule},
     {"loader.installJava", &handle_module_method, kCsModule},
+    {"loader.installerPlan", &handle_module_method, kCsModule},
 
     {"resource.search", &handle_module_method, kCsModule},
     {"resource.versions", &handle_module_method, kCsModule},

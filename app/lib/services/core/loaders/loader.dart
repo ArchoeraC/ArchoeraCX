@@ -117,6 +117,45 @@ mixin CoreClientLoader on CoreTransport {
     );
   }
 
+  /// Plan the installer jar download for a Forge/NeoForge build.
+  ///
+  /// The vendor installer cannot be replaced by a direct Maven artifact, but
+  /// it can be fetched first: execute [LoaderInstallerPlan.plan], then call
+  /// [planLoaderInstall] with [LoaderInstallerPlan.installerPath].
+  Future<LoaderInstallerPlan> planLoaderInstaller({
+    required String root,
+    required String kind,
+    required String gameVersion,
+    required String loaderVersion,
+    bool shareLoaderFiles = true,
+    void Function(int done, int total)? onProgress,
+    String? label,
+  }) async {
+    const methodName = 'loader.installerPlan';
+    final jsonText = await runAsync(
+      methodName,
+      paramsJson: jsonEncode(<String, Object?>{
+        'root': root,
+        'kind': kind,
+        'gameVersion': gameVersion,
+        'loaderVersion': loaderVersion,
+        'shareLoaderFiles': shareLoaderFiles,
+      }),
+      onProgress: onProgress,
+      label: label,
+    );
+    final decoded = decodeEnvelope(jsonText, fallbackMethod: methodName);
+    final data = asMap(decoded['data'], methodName);
+    final installerPath = asString(data['installerPath']);
+    if (installerPath == null || installerPath.isEmpty) {
+      throw CoreTransport.invalidEnvelope(methodName, 'no installer path');
+    }
+    return LoaderInstallerPlan(
+      plan: asMap(data['plan'], methodName),
+      installerPath: installerPath,
+    );
+  }
+
   /// Write the merged launch profile into the instance folder.
   ///
   /// [profilePath] is the absolute `<instance>/<instance>.json` returned by

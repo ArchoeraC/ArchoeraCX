@@ -16,7 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// only covers what the dialog does: validate, hand off, close.
 class _RecordingDownloads extends DownloadsNotifier {
   final List<String> kinds = <String>[];
-  final List<String> installerPaths = <String>[];
+  final List<String?> installerPaths = <String?>[];
   final List<bool?> shares = <bool?>[];
   final List<bool?> pureJava = <bool?>[];
   CoreException? failure;
@@ -27,7 +27,7 @@ class _RecordingDownloads extends DownloadsNotifier {
     required String kind,
     required String gameVersion,
     required String loaderVersion,
-    required String installerPath,
+    String? installerPath,
     bool? shareLoaderFiles,
     bool? pureJava,
     required String successMessage,
@@ -110,8 +110,8 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    // The dialog prefills the loader version from the instance, so only the
-    // installer file has to be chosen before installing.
+    // The dialog prefills the loader version from the instance; picking the
+    // installer file overrides the automatic Maven download.
     await tester.tap(find.widgetWithText(OutlinedButton, 'Choose installer'));
     await tester.pumpAndSettle();
     expect(find.text('/tmp/forge-installer.jar'), findsOneWidget);
@@ -131,6 +131,38 @@ void main() {
     // The regression: the dialog used to stay open for the whole download.
     expect(find.byType(LoaderInstallDialog), findsNothing);
     expect(find.textContaining('queued'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('installing without a local installer uses the auto download', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final downloads = _RecordingDownloads();
+    FileSelectorPlatform.instance = _FakeFileSelector(null);
+
+    await tester.pumpWidget(_host(downloads));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // The field advertises the fallback instead of requiring a manual jar.
+    expect(
+      find.text('Download automatically (official Maven)'),
+      findsOneWidget,
+    );
+
+    final install = find.widgetWithText(FilledButton, 'Download and commit');
+    await tester.ensureVisible(install);
+    await tester.tap(install);
+    await tester.pumpAndSettle();
+
+    expect(downloads.installerPaths, [null]);
+    expect(find.byType(LoaderInstallDialog), findsNothing);
 
     await tester.pump(const Duration(seconds: 4));
   });

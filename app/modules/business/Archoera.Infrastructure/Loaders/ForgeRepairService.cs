@@ -18,17 +18,20 @@ public sealed class ForgeRepairService : IForgeRepairService
     private readonly IProcessorRunner _runner;
     private readonly ILoaderArtifactVerifier _verifier;
     private readonly TimeSpan _processorTimeout;
+    private readonly IMojMapsFallback? _mojMapsFallback;
 
     public ForgeRepairService(
         IProcessorRunner runner,
         ILoaderArtifactVerifier verifier,
-        TimeSpan? processorTimeout = null)
+        TimeSpan? processorTimeout = null,
+        IMojMapsFallback? mojMapsFallback = null)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _verifier = verifier ?? throw new ArgumentNullException(nameof(verifier));
         _processorTimeout = processorTimeout is { } timeout && timeout > TimeSpan.Zero
             ? timeout
             : DefaultProcessorTimeout;
+        _mojMapsFallback = mojMapsFallback;
     }
 
     public async Task<LoaderRepairResult> RepairAsync(
@@ -287,7 +290,8 @@ public sealed class ForgeRepairService : IForgeRepairService
 
             details.Add($"processor {processor.Index} started: {processor.MainClass}");
 
-            ProcessorRunResult result;
+            ProcessorRunResult? result = null;
+            var replacedByDownload = false;
             try
             {
                 result = await _runner.RunAsync(
@@ -304,35 +308,72 @@ public sealed class ForgeRepairService : IForgeRepairService
             }
             catch (Exception exception)
             {
-                details.Add($"processor {processor.Index} failed to start: {exception.Message}");
-                return Failed(manifest, rootFull, processorsRun, details);
-            }
-
-            if (result.TimedOut)
-            {
-                details.Add($"processor {processor.Index} timed out");
-                return Failed(manifest, rootFull, processorsRun, details);
-            }
-
-            if (result.ExitCode != 0)
-            {
-                details.Add($"processor {processor.Index} exited with code {result.ExitCode}");
-                var errorTail = Tail(result.StandardError, 2000);
-                if (!string.IsNullOrWhiteSpace(errorTail))
+                replacedByDownload = await TryMojmapsFallbackAsync(
+                        processor,
+                        manifest.LoaderId.GameVersion,
+                        rootFull,
+                        librariesFull,
+                        installerFull,
+                        minecraftJarFull,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (!replacedByDownload)
                 {
-                    details.Add($"processor {processor.Index} stderr: {errorTail}");
+                    details.Add($"processor {processor.Index} failed to start: {exception.Message}");
+                    return Failed(manifest, rootFull, processorsRun, details);
                 }
+            }
 
-                return Failed(manifest, rootFull, processorsRun, details);
+            if (!replacedByDownload &&
+                result is { TimedOut: true } or { ExitCode: not 0 })
+            {
+                var timedOut = result.TimedOut;
+                var exitCode = result.ExitCode;
+                var standardError = result.StandardError;
+                replacedByDownload = await TryMojmapsFallbackAsync(
+                        processor,
+                        manifest.LoaderId.GameVersion,
+                        rootFull,
+                        librariesFull,
+                        installerFull,
+                        minecraftJarFull,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (!replacedByDownload)
+                {
+                    if (timedOut)
+                    {
+                        details.Add($"processor {processor.Index} timed out");
+                    }
+                    else
+                    {
+                        details.Add($"processor {processor.Index} exited with code {exitCode}");
+                        var errorTail = Tail(standardError, 2000);
+                        if (!string.IsNullOrWhiteSpace(errorTail))
+                        {
+                            details.Add($"processor {processor.Index} stderr: {errorTail}");
+                        }
+                    }
+
+                    return Failed(manifest, rootFull, processorsRun, details);
+                }
             }
 
             processorsRun.Add(processor.Index);
             changed = true;
-            ModuleProgress.Report(
-                processor.Index + 1,
-                Math.Max(1, totalProcessors),
-                0,
-                $"Processor {processor.Index + 1}/{totalProcessors} complete");
+            if (replacedByDownload)
+            {
+                details.Add(
+                    $"processor {processor.Index} replaced by the client mappings download");
+            }
+            else
+            {
+                ModuleProgress.Report(
+                    processor.Index + 1,
+                    Math.Max(1, totalProcessors),
+                    0,
+                    $"Processor {processor.Index + 1}/{totalProcessors} complete");
+            }
 
             var outputVerification = _verifier.Verify(
                 manifest with { Artifacts = OutputsForProcessor(manifest, processor) },
@@ -358,6 +399,79 @@ public sealed class ForgeRepairService : IForgeRepairService
             final,
             processorsRun,
             final.Ok ? details : [.. details, .. final.Details]);
+    }
+
+    /// <summary>
+    /// For installers that do not sanitize the mappings, the DOWNLOAD_MOJMAPS
+    /// processor output is the vanilla <c>client_mappings</c> file. When the
+    /// Java tool fails (blocked host, tool incompatibility) the mappings can
+    /// still be downloaded and hashed directly.
+    /// </summary>
+    private async Task<bool> TryMojmapsFallbackAsync(
+        ProcessorStep processor,
+        string gameVersion,
+        string rootFull,
+        string librariesFull,
+        string installerFull,
+        string minecraftJarFull,
+        CancellationToken cancellationToken)
+    {
+        if (_mojMapsFallback is null) return false;
+        if (!processor.Arguments.Contains("DOWNLOAD_MOJMAPS", StringComparer.Ordinal) ||
+            processor.Arguments.Contains("--sanitize", StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        var output = string.Empty;
+        for (var index = 0; index + 1 < processor.Arguments.Count; index++)
+        {
+            if (string.Equals(processor.Arguments[index], "--output", StringComparison.Ordinal))
+            {
+                output = processor.Arguments[index + 1];
+                break;
+            }
+        }
+
+        if (output.Length == 0) return false;
+
+        string target;
+        try
+        {
+            target = Path.GetFullPath(
+                LoaderPaths.ExpandToken(
+                    output,
+                    rootFull,
+                    librariesFull,
+                    installerFull,
+                    minecraftJarFull));
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+
+        if (!LoaderPaths.TryRelativeWithin(rootFull, target, out _) &&
+            !LoaderPaths.TryRelativeWithin(librariesFull, target, out _))
+        {
+            return false;
+        }
+
+        try
+        {
+            return await _mojMapsFallback
+                .TryResolveAsync(gameVersion, target, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private int FindFirstIncompleteProcessor(LoaderArtifactManifest manifest, string rootFull)

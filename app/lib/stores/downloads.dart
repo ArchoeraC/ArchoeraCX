@@ -122,6 +122,39 @@ class DownloadsNotifier extends Notifier<void> {
     );
   }
 
+  /// Fetch the vendor installer jar for a Forge/NeoForge build.
+  ///
+  /// The backend only plans a single installer download here; the profile is
+  /// read after the file exists. Kept out of the background queue because the
+  /// following pre-flight needs the local path.
+  Future<String> _downloadLoaderInstaller(
+    CoreClient client,
+    GameInstance instance, {
+    required String kind,
+    required String gameVersion,
+    required String loaderVersion,
+    required bool shareLoaderFiles,
+    required String label,
+  }) async {
+    final plan = await client.planLoaderInstaller(
+      root: instance.rootPath,
+      kind: kind,
+      gameVersion: gameVersion,
+      loaderVersion: loaderVersion,
+      shareLoaderFiles: shareLoaderFiles,
+      label: label,
+    );
+    final result = await client.executeDownload(plan.plan, label: label);
+    if (!result.ok) {
+      throw StateError(
+        result.stderr?.trim().isNotEmpty == true
+            ? result.stderr!.trim()
+            : 'Installer download failed (${result.status}).',
+      );
+    }
+    return plan.installerPath;
+  }
+
   /// Fabric/Quilt: fetch the loader profile, merge it with vanilla, then run
   /// one plan for the client, libraries and assets.
   Future<void> _installFabricLikeGameFiles(
@@ -343,7 +376,7 @@ class DownloadsNotifier extends Notifier<void> {
     required String kind,
     required String gameVersion,
     required String loaderVersion,
-    required String installerPath,
+    String? installerPath,
     bool? shareLoaderFiles,
     bool? pureJava,
     required String successMessage,
@@ -364,6 +397,21 @@ class DownloadsNotifier extends Notifier<void> {
         ref.read(appSettingsProvider).value?.preferPureJavaLoaderInstall ??
         true;
 
+    // Without a local file the vendor installer is fetched from the loader's
+    // Maven first (with mirrors and hashes), then both modes get a real path.
+    final chosen = installerPath?.trim();
+    final installer = chosen == null || chosen.isEmpty
+        ? await _downloadLoaderInstaller(
+            client,
+            instance,
+            kind: kind,
+            gameVersion: gameVersion,
+            loaderVersion: loaderVersion,
+            shareLoaderFiles: share,
+            label: label,
+          )
+        : chosen;
+
     // Pure Java mode hands the whole client install to the vendor installer.
     // It supports every installer format with a client CLI (Forge 1.12.2+ and
     // NeoForge) and does not depend on our processor coverage.
@@ -373,7 +421,7 @@ class DownloadsNotifier extends Notifier<void> {
         () => _runUpdate(instance, () async {
           await client.installLoaderWithJava(
             root: instance.rootPath,
-            installerPath: installerPath,
+            installerPath: installer,
             kind: kind,
             gameVersion: gameVersion,
             loaderVersion: loaderVersion,
@@ -396,7 +444,7 @@ class DownloadsNotifier extends Notifier<void> {
     // an uncovered processor must fail here, before the large download.
     final plan = await client.planLoaderInstall(
       root: instance.rootPath,
-      installerPath: installerPath,
+      installerPath: installer,
       kind: kind,
       gameVersion: gameVersion,
       loaderVersion: loaderVersion,

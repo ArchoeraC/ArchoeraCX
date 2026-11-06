@@ -6,6 +6,7 @@ using Archoera.Application.Instances;
 using Archoera.Application.Downloads;
 using Archoera.Application.Loaders;
 using Archoera.Application.Modules;
+using Archoera.Application.Mojang;
 using Archoera.Application.Packs;
 using Archoera.Domain;
 using Archoera.Domain.Downloads;
@@ -93,7 +94,17 @@ public sealed partial class PackInstallService
         _regionPolicy = regionPolicy ?? new RegionPolicy();
         _forgeRepair = forgeRepair ?? new ForgeRepairService(
             new NativeProcessorRunner(),
-            new LoaderArtifactVerifier());
+            new LoaderArtifactVerifier(),
+            mojMapsFallback: new ClientMappingsFallback(
+                new MojangClient(
+                    SharedHttp,
+                    new MojangClientOptions
+                    {
+                        UserAgent = MojangClientOptions.CreateUserAgent(
+                            ArchoeraBuildInfo.Version,
+                            "https://github.com/BetaStudio2/ArchoeraCX"),
+                    }),
+                SharedHttp));
         _forgeBootstrap = new PackForgeInstallerBootstrap(_gameInstall, _runner, SharedHttp);
         _modrinth = modrinth ?? new ModrinthClient(
             SharedHttp,

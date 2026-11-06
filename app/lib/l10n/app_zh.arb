@@ -313,10 +313,11 @@
   "loaderVersionLabel": "加载器版本",
   "loaderInstallerLabel": "安装包 jar",
   "loaderChooseInstaller": "选择安装包",
+  "loaderInstallerAuto": "自动下载（官方 Maven）",
+  "loaderInstallerAutoHint": "留空即自动下载官方安装包；离线安装时再选择本地文件。",
   "loaderInstallAction": "下载并写入版本",
   "loaderInstalling": "下载并写入中…",
   "loaderInstallDone": "加载器文件已下载，版本 JSON 已写入，processors 已完成。",
-  "loaderInstallPickInstaller": "请先选择 Forge/NeoForge 安装包。",
   "loaderInstallFailed": "加载器安装失败。",
   "loaderJavaRequired": "{loader} 需要 Java 才能完成安装：部分 processor 尚未原生支持。请先在 Java 设置中安装或选择可用的 Java 运行时。",
   "@loaderJavaRequired": {

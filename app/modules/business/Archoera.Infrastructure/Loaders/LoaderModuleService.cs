@@ -30,6 +30,7 @@ public sealed partial class LoaderModuleService : IModuleMethodHandler
     private readonly JsonAppSettingsStore _settings;
     private readonly RegionPolicy _regionPolicy;
     private readonly IMojangMetadataClient? _mojang;
+    private readonly HttpClient _http;
 
     public LoaderModuleService(
         IForgeArtifactPlanner? planner = null,
@@ -39,23 +40,36 @@ public sealed partial class LoaderModuleService : IModuleMethodHandler
         DownloadPolicy? policy = null,
         JsonAppSettingsStore? settings = null,
         RegionPolicy? regionPolicy = null,
-        IMojangMetadataClient? mojang = null)
+        IMojangMetadataClient? mojang = null,
+        HttpClient? httpClient = null)
     {
         _policy = policy ?? new DownloadPolicy();
         _settings = settings ?? new JsonAppSettingsStore();
         _regionPolicy = regionPolicy ?? new RegionPolicy();
         _mojang = mojang;
+        // One client for the module's lifetime; the app owns it for as long as
+        // the process runs, so connections can be reused.
+        _http = httpClient ?? new HttpClient();
         _supportedMethods = enableDownloads
             ? [
                 "loader.verify", "loader.repair", "loader.check", "loader.plan",
-                "loader.commit", "loader.installJava",
+                "loader.commit", "loader.installJava", "loader.installerPlan",
             ]
             : ["loader.verify", "loader.repair", "loader.check"];
         _planner = planner ?? new ForgeArtifactPlanner();
         _verifier = verifier ?? new LoaderArtifactVerifier();
+        var metadataClient = _mojang ?? new MojangClient(
+            _http,
+            new MojangClientOptions
+            {
+                UserAgent = MojangClientOptions.CreateUserAgent(
+                    ArchoeraBuildInfo.Version,
+                    "https://github.com/BetaStudio2/ArchoeraCX"),
+            });
         _repairService = repairService ?? new ForgeRepairService(
             new NativeProcessorRunner(),
-            _verifier);
+            _verifier,
+            mojMapsFallback: new ClientMappingsFallback(metadataClient, _http));
     }
 
     public IReadOnlyCollection<string> Methods => _supportedMethods;
@@ -72,7 +86,8 @@ public sealed partial class LoaderModuleService : IModuleMethodHandler
 
         if (string.Equals(method, "loader.plan", StringComparison.Ordinal) ||
             string.Equals(method, "loader.commit", StringComparison.Ordinal) ||
-            string.Equals(method, "loader.installJava", StringComparison.Ordinal))
+            string.Equals(method, "loader.installJava", StringComparison.Ordinal) ||
+            string.Equals(method, "loader.installerPlan", StringComparison.Ordinal))
         {
             try
             {
@@ -87,6 +102,12 @@ public sealed partial class LoaderModuleService : IModuleMethodHandler
         if (string.Equals(method, "loader.plan", StringComparison.Ordinal))
         {
             return await PlanAsync(paramsJson, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.Equals(method, "loader.installerPlan", StringComparison.Ordinal))
+        {
+            return await InstallerPlanAsync(paramsJson, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         if (string.Equals(method, "loader.installJava", StringComparison.Ordinal))
@@ -235,7 +256,7 @@ public sealed partial class LoaderModuleService : IModuleMethodHandler
                     "loader.plan requires installerPath for Forge/NeoForge");
             }
 
-            using var http = new HttpClient();
+            var http = _http;
             var userAgent = MojangClientOptions.CreateUserAgent(
                 ArchoeraBuildInfo.Version,
                 "https://github.com/BetaStudio2/ArchoeraCX");
@@ -327,6 +348,119 @@ public sealed partial class LoaderModuleService : IModuleMethodHandler
     /// by the native handlers. Anything left over needs a JVM, so the UI can
     /// warn before the large download instead of failing after it.
     /// </summary>
+    /// <summary>
+    /// Plans the loader installer jar by itself, so the UI can download it and
+    /// then call <c>loader.plan</c> with the local path. Forge and NeoForge do
+    /// not publish a directly usable client jar; their installer has to run.
+    /// </summary>
+    private async Task<byte[]> InstallerPlanAsync(
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(paramsJson ?? "{}");
+            var root = document.RootElement;
+            var instanceRoot = ReadString(root, "root");
+            var kindText = ReadString(root, "kind");
+            var gameVersion = ReadString(root, "gameVersion");
+            var loaderVersion = ReadString(root, "loaderVersion");
+            var shareLoaderFiles =
+                !root.TryGetProperty("shareLoaderFiles", out var shareElement) ||
+                shareElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                shareElement.GetBoolean();
+            if (string.IsNullOrWhiteSpace(instanceRoot) ||
+                !Path.IsPathFullyQualified(instanceRoot) ||
+                string.IsNullOrWhiteSpace(kindText) ||
+                string.IsNullOrWhiteSpace(gameVersion) ||
+                string.IsNullOrWhiteSpace(loaderVersion) ||
+                !TryParseKind(kindText, out var kind))
+            {
+                return ModuleJson.Error(
+                    "E_INVALID",
+                    "loader.installerPlan requires root, kind, gameVersion and loaderVersion");
+            }
+
+            var sourceMode = await ResolveSourceModeAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var loaderRoot = LaunchPaths.ResolveLoaderRoot(
+                Path.GetFullPath(instanceRoot),
+                shareLoaderFiles);
+            var official = ForgeMavenUrls.Installer(kind, gameVersion, loaderVersion);
+            var userAgent = MojangClientOptions.CreateUserAgent(
+                ArchoeraBuildInfo.Version,
+                "https://github.com/BetaStudio2/ArchoeraCX");
+            var planService = new ForgeLoaderPlanService(_http, userAgent);
+            var installerMirrors = ForgeMavenMirror
+                .InstallerMirrors(official)
+                .Select(uri => uri.AbsoluteUri)
+                .ToArray();
+            var options = sourceMode == DownloadSourceMode.Mirror
+                ? new ForgeDownloadPlanOptions
+                {
+                    MavenMirror = ForgeMavenMirror.Bmclapi,
+                }
+                : null;
+            ForgeDownloadPlanResult result;
+            try
+            {
+                result = await planService
+                    .BuildAsync(
+                        loaderRoot,
+                        kind,
+                        gameVersion,
+                        loaderVersion,
+                        openInstaller: null,
+                        installerMirrors: installerMirrors,
+                        mavenBase: sourceMode == DownloadSourceMode.Mirror
+                            ? ForgeMavenMirror.Bmclapi
+                            : null,
+                        options: options,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (ForgeDownloadException) when (
+                sourceMode == DownloadSourceMode.Mirror)
+            {
+                // Some mirrors serve the jar but not its .sha1 sidecar. The
+                // official metadata still gives us the hash; the mirror stays
+                // first in the download plan.
+                result = await planService
+                    .BuildAsync(
+                        loaderRoot,
+                        kind,
+                        gameVersion,
+                        loaderVersion,
+                        openInstaller: null,
+                        installerMirrors: installerMirrors,
+                        mavenBase: null,
+                        options: options,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            var planJson = DownloadPlanJson.Build(result.Plan);
+            using var planDocument = JsonDocument.Parse(planJson);
+            var installerPath = Path.Combine(
+                loaderRoot,
+                ForgeMavenUrls
+                    .DefaultInstallerRelativePath(kind, gameVersion, loaderVersion)
+                    .Replace('/', Path.DirectorySeparatorChar));
+            return BuildEnvelope(writer =>
+            {
+                writer.WritePropertyName("plan");
+                planDocument.RootElement.WriteTo(writer);
+                writer.WriteString("installerPath", installerPath);
+            });
+        }
+        catch (Exception exception) when (
+            exception is IOException or JsonException or ArgumentException or
+            ForgeDownloadException or MojangException or DownloadPlanException)
+        {
+            return ModuleJson.Error("LOADER_INSTALLER_PLAN_FAILED", exception.Message);
+        }
+    }
+
     private async Task<(bool RequiresJava, IReadOnlyList<string> Steps)> ResolveJavaRequirementAsync(
         string loaderRoot,
         LoaderKind kind,

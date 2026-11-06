@@ -378,10 +378,11 @@
   "loaderVersionLabel": "Loader version",
   "loaderInstallerLabel": "Installer jar",
   "loaderChooseInstaller": "Choose installer",
+  "loaderInstallerAuto": "Download automatically (official Maven)",
+  "loaderInstallerAutoHint": "Leave empty to fetch the official installer; choose a file only for offline installs.",
   "loaderInstallAction": "Download and commit",
   "loaderInstalling": "Downloading and committing…",
   "loaderInstallDone": "Loader files downloaded, version JSON written, and processors completed.",
-  "loaderInstallPickInstaller": "Choose a Forge/NeoForge installer jar first.",
   "loaderInstallFailed": "Loader install failed.",
   "loaderJavaRequired": "{loader} requires Java to install: some processors are not implemented natively yet. Install or select a Java runtime in Java settings first.",
   "@loaderJavaRequired": {

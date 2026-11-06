@@ -616,6 +616,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loaderChooseInstaller => '选择安装包';
 
   @override
+  String get loaderInstallerAuto => '自动下载（官方 Maven）';
+
+  @override
+  String get loaderInstallerAutoHint => '留空即自动下载官方安装包；离线安装时再选择本地文件。';
+
+  @override
   String get loaderInstallAction => '下载并写入版本';
 
   @override
@@ -623,9 +629,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loaderInstallDone => '加载器文件已下载，版本 JSON 已写入，processors 已完成。';
-
-  @override
-  String get loaderInstallPickInstaller => '请先选择 Forge/NeoForge 安装包。';
 
   @override
   String get loaderInstallFailed => '加载器安装失败。';

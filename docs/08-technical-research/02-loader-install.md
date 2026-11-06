@@ -124,6 +124,8 @@ Forge 1.21.1 / 1.21.8 = 3 个（installertools/DOWNLOAD_MOJMAPS + ATR + binarypa
 
 > DOWNLOAD_MOJMAPS 可用「直接下 `version.downloads.client_mappings`」替掉，
 > 于是**纯客户端最少只剩 2 个真处理器：ATR + binarypatcher**。
+> 本仓库把它做成**处理器失败时的回退**：仅当参数不含 `--sanitize`、且能拿到可信的
+> `client_mappings` SHA-1/size 时替换；Forge 1.21.1 这类会重编码映射的版本仍跑处理器。
 
 ### 2.4 产出物与 version.json
 

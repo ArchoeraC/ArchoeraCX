@@ -42,6 +42,20 @@ class LoaderPlanResult {
   final bool shareLoaderFiles;
 }
 
+/// Download plan for the Forge/NeoForge installer jar alone.
+///
+/// The installer has to exist locally before `loader.plan` can read its
+/// profile; the UI downloads it through this plan and then calls
+/// `loader.plan` with [installerPath].
+class LoaderInstallerPlan {
+  const LoaderInstallerPlan({required this.plan, required this.installerPath});
+
+  final Map<String, Object?> plan;
+
+  /// Absolute local path the download plan writes the installer to.
+  final String installerPath;
+}
+
 class LoaderCommitResult {
   const LoaderCommitResult({
     required this.versionId,

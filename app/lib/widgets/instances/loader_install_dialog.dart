@@ -191,11 +191,6 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
 
   Future<void> _install(AppLocalizations l10n) async {
     final root = widget.instance.rootPath;
-    final installer = _installerPath;
-    if (installer == null || installer.isEmpty) {
-      setState(() => _message = l10n.loaderInstallPickInstaller);
-      return;
-    }
     final game = _gameController.text.trim();
     final loaderVersion = _loaderController.text.trim();
     if (root.isEmpty || game.isEmpty || loaderVersion.isEmpty) {
@@ -221,7 +216,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
             kind: _kind,
             gameVersion: game,
             loaderVersion: loaderVersion,
-            installerPath: installer,
+            installerPath: _installerPath,
             shareLoaderFiles: _shareLoaderFiles,
             pureJava: _pureJava,
             successMessage: l10n.loaderInstallDone,
@@ -229,8 +224,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
             cancelledMessage: l10n.downloadCancelled(widget.instance.name),
             describeError: (error) => switch (error) {
               CoreException(
-                code:
-                    'JAVA_MISSING' ||
+                code: 'JAVA_MISSING' ||
                     'JAVA_VERSION_MISMATCH' ||
                     'LOADER_JAVA_REQUIRED',
               ) =>
@@ -248,8 +242,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
         _busy = false;
         _message = switch (error) {
           CoreException(
-            code:
-                'JAVA_MISSING' ||
+            code: 'JAVA_MISSING' ||
                 'JAVA_VERSION_MISMATCH' ||
                 'LOADER_JAVA_REQUIRED',
           ) =>
@@ -389,7 +382,7 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                   labelText: l10n.loaderInstallerLabel,
                 ),
                 child: Text(
-                  _installerPath ?? '—',
+                  _installerPath ?? l10n.loaderInstallerAuto,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -398,6 +391,12 @@ class _LoaderInstallDialogState extends ConsumerState<LoaderInstallDialog> {
                         : tokens.textSecondary,
                   ),
                 ),
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                l10n.loaderInstallerAutoHint,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.textTertiary),
               ),
               const SizedBox(height: AppSpacing.xs),
               Align(

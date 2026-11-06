@@ -642,6 +642,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loaderChooseInstaller => 'Choose installer';
 
   @override
+  String get loaderInstallerAuto => 'Download automatically (official Maven)';
+
+  @override
+  String get loaderInstallerAutoHint =>
+      'Leave empty to fetch the official installer; choose a file only for offline installs.';
+
+  @override
   String get loaderInstallAction => 'Download and commit';
 
   @override
@@ -650,10 +657,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get loaderInstallDone =>
       'Loader files downloaded, version JSON written, and processors completed.';
-
-  @override
-  String get loaderInstallPickInstaller =>
-      'Choose a Forge/NeoForge installer jar first.';
 
   @override
   String get loaderInstallFailed => 'Loader install failed.';

@@ -1196,6 +1196,18 @@ abstract class AppLocalizations {
   /// **'Choose installer'**
   String get loaderChooseInstaller;
 
+  /// No description provided for @loaderInstallerAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Download automatically (official Maven)'**
+  String get loaderInstallerAuto;
+
+  /// No description provided for @loaderInstallerAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to fetch the official installer; choose a file only for offline installs.'**
+  String get loaderInstallerAutoHint;
+
   /// No description provided for @loaderInstallAction.
   ///
   /// In en, this message translates to:
@@ -1213,12 +1225,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loader files downloaded, version JSON written, and processors completed.'**
   String get loaderInstallDone;
-
-  /// No description provided for @loaderInstallPickInstaller.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a Forge/NeoForge installer jar first.'**
-  String get loaderInstallPickInstaller;
 
   /// No description provided for @loaderInstallFailed.
   ///
