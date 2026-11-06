@@ -23,6 +23,7 @@ abstract final class AppIcons {
   static const IconData download = AppIconData.download;
   static const IconData accounts = AppIconData.user;
   static const IconData wiki = AppIconData.book;
+  static const IconData stats = AppIconData.gauge;
   static const IconData settings = AppIconData.adjustments;
 
   // ---------------------------------------------------------------------
@@ -73,6 +74,9 @@ abstract final class AppIcons {
   static const IconData modpack = AppIconData.packages;
   static const IconData resourcePack = AppIconData.photo;
   static const IconData imagePlaceholder = AppIconData.photoOff;
+
+  /// Wallpaper / image-background controls.
+  static const IconData background = AppIconData.photo;
   static const IconData shader = AppIconData.sparkles;
   static const IconData news = AppIconData.article;
   static const IconData stable = AppIconData.certificate;

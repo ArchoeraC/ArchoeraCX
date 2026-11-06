@@ -12,9 +12,10 @@
 #  linux-appimage needs linux-deb     : .AppImage
 #  linux-flatpak  needs linux-deb     : .flatpak
 #  linux-nix      needs linux-deb     : NixOS store output (.tar.gz)
-#  macos          macOS runner        : .tar.gz + .dmg
-#  windows        Windows runner      : portable .zip + Inno Setup installer
-#  release        needs all 9         : tag v* only
+#  macos          macos-15       (arm64) : .tar.gz + .dmg
+#  macos-x64      macos-15-intel (x64)   : .tar.gz + .dmg
+#  windows        Windows runner          : portable .zip + Inno Setup installer
+#  release        needs all 10            : tag v* only
 #
 #  Source builds use .github/actions/build-{linux,macos,windows} and receive
 #  the Microsoft client id from the repository secret. Tag builds require the
@@ -29,7 +30,11 @@ on:
   workflow_dispatch:
     inputs:
       macos:
-        description: 'macOS arm64'
+        description: 'macOS arm64 (Apple Silicon)'
+        type: boolean
+        default: true
+      macos_x64:
+        description: 'macOS x64 (Intel)'
         type: boolean
         default: true
       windows:
@@ -75,7 +80,7 @@ concurrency:
 jobs:
   # =====================================================================
   #  preflight: menu -> individual switches. A tag ignores the menu and
-  #  selects all nine; release is allowed only when all nine ran.
+  #  selects all ten; release is allowed only when all ten ran.
   # =====================================================================
   preflight:
     name: Preflight (platform selection)
@@ -84,6 +89,7 @@ jobs:
       version: ${{ steps.select.outputs.version }}
       all_selected: ${{ steps.select.outputs.all_selected }}
       macos: ${{ steps.select.outputs.macos }}
+      macos_x64: ${{ steps.select.outputs.macos_x64 }}
       windows: ${{ steps.select.outputs.windows }}
       linux_deb: ${{ steps.select.outputs.linux_deb }}
       linux_deepin: ${{ steps.select.outputs.linux_deepin }}
@@ -101,6 +107,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           IN_MACOS: ${{ inputs.macos }}
+          IN_MACOS_X64: ${{ inputs.macos_x64 }}
           IN_WINDOWS: ${{ inputs.windows }}
           IN_LINUX_DEB: ${{ inputs.linux_deb }}
           IN_LINUX_DEEPIN: ${{ inputs.linux_deepin }}
@@ -114,12 +121,13 @@ jobs:
           truthy() { case "${1:-}" in true|TRUE|True|1|yes|YES) echo true ;; *) echo false ;; esac; }
 
           if [[ "${REF}" == refs/tags/* || "${EVENT}" == push || "${EVENT}" == pull_request ]]; then
-            # Tags and normal CI runs cover all nine; only workflow_dispatch is
+            # Tags and normal CI runs cover all ten; only workflow_dispatch is
             # a menu.
-            MACOS=true; WINDOWS=true; DEB=true; DEEPIN=true; RPM=true
+            MACOS=true; MACOS_X64=true; WINDOWS=true; DEB=true; DEEPIN=true; RPM=true
             ARCH=true; APPIMAGE=true; FLATPAK=true; NIX=true
           else
-            MACOS=$(truthy "${IN_MACOS}"); WINDOWS=$(truthy "${IN_WINDOWS}")
+            MACOS=$(truthy "${IN_MACOS}"); MACOS_X64=$(truthy "${IN_MACOS_X64}")
+            WINDOWS=$(truthy "${IN_WINDOWS}")
             DEB=$(truthy "${IN_LINUX_DEB}"); DEEPIN=$(truthy "${IN_LINUX_DEEPIN}")
             RPM=$(truthy "${IN_LINUX_RPM}"); ARCH=$(truthy "${IN_LINUX_ARCH}")
             APPIMAGE=$(truthy "${IN_LINUX_APPIMAGE}"); FLATPAK=$(truthy "${IN_LINUX_FLATPAK}")
@@ -138,9 +146,10 @@ jobs:
           fi
 
           ALL=false
-          if [[ "${MACOS}" == true && "${WINDOWS}" == true && "${DEB}" == true \
-             && "${DEEPIN}" == true && "${RPM}" == true && "${ARCH}" == true \
-             && "${APPIMAGE}" == true && "${FLATPAK}" == true && "${NIX}" == true ]]; then
+          if [[ "${MACOS}" == true && "${MACOS_X64}" == true && "${WINDOWS}" == true \
+             && "${DEB}" == true && "${DEEPIN}" == true && "${RPM}" == true \
+             && "${ARCH}" == true && "${APPIMAGE}" == true \
+             && "${FLATPAK}" == true && "${NIX}" == true ]]; then
             ALL=true
           fi
 
@@ -148,6 +157,7 @@ jobs:
             echo "version=${VERSION}"
             echo "all_selected=${ALL}"
             echo "macos=${MACOS}"
+            echo "macos_x64=${MACOS_X64}"
             echo "windows=${WINDOWS}"
             echo "linux_deb=${DEB}"
             echo "linux_deepin=${DEEPIN}"
@@ -158,7 +168,7 @@ jobs:
             echo "linux_nix=${NIX}"
           } >> "$GITHUB_OUTPUT"
 
-          echo "menu: macos=${MACOS} windows=${WINDOWS} deb=${DEB} deepin=${DEEPIN} rpm=${RPM} arch=${ARCH} appimage=${APPIMAGE} flatpak=${FLATPAK} nix=${NIX}"
+          echo "menu: macos=${MACOS} macos_x64=${MACOS_X64} windows=${WINDOWS} deb=${DEB} deepin=${DEEPIN} rpm=${RPM} arch=${ARCH} appimage=${APPIMAGE} flatpak=${FLATPAK} nix=${NIX}"
 
   # =====================================================================
   #  macOS: source build + tar.gz/dmg packaging.
@@ -173,6 +183,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/build-macos
         with:
+          arch: arm64
           client_id: ${{ secrets.ARCHOERACX_MICROSOFT_CLIENT_ID }}
           require_client_id: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '0' }}
           require_official: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '0' }}
@@ -194,7 +205,48 @@ jobs:
       - name: Upload packages
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: ArchoeraCX-${{ needs.preflight.outputs.version }}-macos
+          name: ArchoeraCX-${{ needs.preflight.outputs.version }}-macos-arm64
+          path: dist/*
+          if-no-files-found: error
+
+  # =====================================================================
+  #  macOS Intel: same source build and packaging on the x86_64 runner.
+  #  Flutter, NativeAOT and Cargo all build the host slice, so no
+  #  cross-compilation flags are involved.
+  # =====================================================================
+  macos-x64:
+    name: macOS x64 (Intel)
+    needs: preflight
+    if: needs.preflight.outputs.macos_x64 == 'true'
+    runs-on: macos-15-intel
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/build-macos
+        with:
+          arch: x64
+          client_id: ${{ secrets.ARCHOERACX_MICROSOFT_CLIENT_ID }}
+          require_client_id: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '0' }}
+          require_official: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '0' }}
+      - name: Package macOS (tar.gz + dmg)
+        shell: bash
+        run: |
+          bash packaging/macos/package.sh all \
+            app/build/macos/Build/Products/Release/archoera_cx.app \
+            "${{ needs.preflight.outputs.version }}" x64
+      - name: Verify package outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist/*.tar.gz dist/*.dmg)
+          (( ${#files[@]} > 0 )) || { echo "::error::no macOS package was produced"; exit 1; }
+          for f in "${files[@]}"; do [[ -s "$f" ]] || { echo "::error::empty package: $f"; exit 1; }; done
+          ls -lh dist
+      - name: Upload packages
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ArchoeraCX-${{ needs.preflight.outputs.version }}-macos-x64
           path: dist/*
           if-no-files-found: error
 
@@ -583,13 +635,14 @@ jobs:
           if-no-files-found: error
 
   # =====================================================================
-  #  release: tag v* only; all nine selections are required.
+  #  release: tag v* only; all ten selections are required.
   # =====================================================================
   release:
     name: Release ${{ github.ref_name }}
     needs:
       - preflight
       - macos
+      - macos-x64
       - windows
       - linux-deb
       - linux-deepin
@@ -652,11 +705,11 @@ jobs:
           {
             echo "ArchoeraCX ${VER}"
             echo
-            echo "Release build for Linux x64, macOS arm64 and Windows x64."
+            echo "Release build for Linux x64, macOS arm64/x64 and Windows x64."
             echo
             echo "- Linux: Ubuntu 24.04 tar.gz/.deb, Deepin 25 .deb, Fedora .rpm, Arch .pkg.tar.zst."
             echo "- Linux: portable .AppImage, .flatpak, NixOS store output."
-            echo "- macOS: .dmg plus a .tar.gz containing the ad-hoc signed .app bundle."
+            echo "- macOS: .dmg plus a .tar.gz for Apple Silicon (arm64) and Intel (x64); each contains the ad-hoc signed .app bundle. The x64 build is a compatibility build and is retired when Flutter ends Intel x64 support."
             echo "- Windows: Inno Setup installer plus a portable .zip."
             echo "- Checksums: SHA256SUMS."
             echo

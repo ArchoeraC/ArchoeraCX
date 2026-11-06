@@ -114,6 +114,66 @@ void fail_async_task(archoera_core* core, const uint64_t task_id) noexcept {
                        "internal worker error");
 }
 
+namespace {
+
+struct ModuleCancelPayload {
+  std::string module;
+  uint64_t task_id = 0;
+};
+
+}  // namespace
+
+void dispatch_module_cancel(archoera_core* core,
+                            std::string module,
+                            const uint64_t task_id) noexcept {
+  if (core == nullptr) {
+    return;
+  }
+
+  try {
+    auto* payload = new ModuleCancelPayload{std::move(module), task_id};
+    {
+      std::lock_guard<std::mutex> lock(core->mutex);
+      if (core->shutting_down.load(std::memory_order_acquire)) {
+        delete payload;
+        return;
+      }
+
+      reap_finished_workers_locked(*core);
+      try {
+        core->workers.push_back(std::make_unique<WorkerSlot>());
+      } catch (...) {
+        delete payload;
+        throw;
+      }
+
+      WorkerSlot& slot = *core->workers.back();
+      try {
+        slot.thread = std::thread([core, payload, &slot]() noexcept {
+          struct PayloadGuard {
+            ModuleCancelPayload* payload;
+            ~PayloadGuard() { delete payload; }
+          } guard{payload};
+          try {
+            if (core->module_registry != nullptr) {
+              core->module_registry->cancel(payload->module, payload->task_id);
+            }
+          } catch (...) {
+            // A module must not throw through the host boundary.
+          }
+          slot.done.store(true, std::memory_order_release);
+        });
+      } catch (...) {
+        core->workers.pop_back();
+        delete payload;
+        throw;
+      }
+    }
+  } catch (...) {
+    // The task stays cooperatively cancellable; shutdown re-requests it.
+  }
+}
+
 bool async_task_should_stop_locked(const archoera_core& core,
                                    const uint64_t task_id) {
   auto it = core.tasks.find(task_id);

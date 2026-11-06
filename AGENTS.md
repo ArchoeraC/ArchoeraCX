@@ -20,7 +20,7 @@
 ## 目录与拆分
 
 - 新文件放归属领域文件夹，父目录只留门文件/引擎/公共基建。
-- `services/core/` 顶层只放 `core_client`（唯一入口）/`core_transport`（FFI+任务）/`core_event`/`event_pump`；其余按域：`accounts` `downloads` `instances` `java` `launch` `loaders` `packs` `resources` `settings` `system` `versions` `wiki`。
+- `services/core/` 顶层只放 `core_client`（唯一入口）/`core_transport`（FFI+任务）/`core_event`/`event_pump`；其余按域：`accounts` `downloads` `instances` `java` `launch` `loaders` `packs` `resources` `settings` `stats` `system` `versions` `wiki`。
 - 一域 = 一个 `mixin CoreClientXxx on CoreTransport` + 该域模型；`pages/<name>_page.dart` 只留骨架，私有组件放 `pages/<name>/` 并用 `part`；`widgets/` 按区域分组；`stores/` 一域一文件（组合只放 `providers.dart`）。
 - C# 分 Domain/Application/Infrastructure/Exports；Rust 一模块一关注点，`executor.rs` 只编排。
 - 单文件目标 ≤800 行；超出须拆分，或为单一职责的引擎/编排/测试夹具并在提交正文说明；500~800 行内出现第二职责也拆。

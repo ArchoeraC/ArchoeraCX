@@ -4,9 +4,10 @@
 # Usage:
 #   packaging/macos/package.sh [tar|dmg|all] <path-to-.app> <version> [arch]
 #
-# Older callers that pass only <path-to-.app> <version> [arch] still get the
-# portable tar.gz. Every format writes its archive plus a .sha256 under dist/
-# (override with DIST_DIR).
+# [arch] is arm64 or x64 and must match the slice inside the bundle; the script
+# fails closed on a mismatch. Older callers that pass only <path-to-.app>
+# <version> [arch] still get the portable tar.gz. Every format writes its
+# archive plus a .sha256 under dist/ (override with DIST_DIR).
 #
 # Native libraries and the ad-hoc signature are produced by
 # `flutter build macos --release` (Runner.xcodeproj calls tool/bundle-macos.sh).
@@ -52,6 +53,35 @@ for file in \
   [[ -f "${native}/${file}" ]] || { echo "error: missing ${file} in ${native}" >&2; exit 1; }
 done
 codesign --verify --deep --strict "${APP}"
+
+# The label in the file name must match the slice inside the bundle; a wrong
+# runner label or a stale build directory would otherwise publish a package
+# that cannot start on the target Mac. Both CI jobs force a single target
+# slice, so the runner and every native module must match exactly.
+case "${ARCH}" in
+  arm64) expected_arch="arm64" ;;
+  x64) expected_arch="x86_64" ;;
+  *) echo "error: unsupported architecture '${ARCH}' (use arm64 or x64)" >&2; exit 1 ;;
+esac
+exe="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "${APP}/Contents/Info.plist")"
+actual_arch="$(lipo -archs "${APP}/Contents/MacOS/${exe}")"
+if [[ "${actual_arch}" != "${expected_arch}" ]]; then
+  echo "error: bundle executable is ${actual_arch}, expected exactly ${expected_arch} for macos-${ARCH}" >&2
+  exit 1
+fi
+for file in \
+  libarchoera_core.dylib \
+  libarchoera_cs.dylib \
+  libe_sqlite3.dylib \
+  libarchoera_dl.dylib \
+  archoera-dl \
+  archoera-vault; do
+  module_arch="$(lipo -archs "${native}/${file}")"
+  if [[ "${module_arch}" != "${expected_arch}" ]]; then
+    echo "error: ${file} is ${module_arch}, expected ${expected_arch} for macos-${ARCH}" >&2
+    exit 1
+  fi
+done
 
 # Keep the .app bytes untouched after signing: documentation and licenses live
 # next to it in the archive, not inside Contents/Resources.

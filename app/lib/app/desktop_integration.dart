@@ -190,6 +190,38 @@ tray.Menu? _createTrayMenu(AppLocalizations l10n) {
   return menu;
 }
 
+/// Releases every native tray handle.
+///
+/// `nativeapi` keeps tray handles in process-wide tables that are torn down by
+/// static destructors after `main` returns. Releasing the icon and its menu
+/// explicitly on the quit path keeps those tables empty, which avoids the
+/// intermittent segmentation fault in `TrayIcon::~Impl` during exit.
+void shutdownDesktopIntegration() {
+  if (!_setupStarted) return;
+  _trayReady = false;
+  _closeInterceptionAttached = false;
+
+  for (final resource in _trayResources.reversed) {
+    try {
+      switch (resource) {
+        case tray.TrayIcon icon:
+          icon.dispose();
+        case tray.Menu menu:
+          menu.dispose();
+        case tray.MenuItem item:
+          item.dispose();
+        case tray.Image image:
+          image.dispose();
+      }
+    } catch (_) {
+      // Native teardown must never make quitting fail.
+    }
+  }
+
+  _trayResources.clear();
+  _trayListenerIds.clear();
+}
+
 /// Resolves the tray menu language without a [BuildContext].
 Future<AppLocalizations> _loadLocalizations() async =>
     AppLocalizations.delegate.load(await resolveStartupLocale());
@@ -299,6 +331,12 @@ Future<void> quitApplication() async {
   _quitRequested = true;
   try {
     final window = _resolveMainWindow();
+    // Quit can be triggered from a tray menu callback; let that callback
+    // unwind before freeing the menu it is currently dispatching.
+    await Future<void>.delayed(Duration.zero);
+    // Release the tray before the process ends; the native handle tables are
+    // otherwise destroyed by static destructors that can crash during exit.
+    shutdownDesktopIntegration();
     await closeMainWindowForQuit(
       closeWindow: () => window?.close() ?? false,
       quitProcess: exit,

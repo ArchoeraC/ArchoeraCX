@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:archoera_cx/app/app.dart';
 import 'package:archoera_cx/stores/providers.dart';
 import 'package:flutter/material.dart';
@@ -7,11 +10,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _highlight = ValueKey('nav-highlight');
 
+/// 1×1 transparent PNG, enough for `FileImage` to decode in widget tests.
+final _pixelPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8A'
+  'AQUBAScY42YAAAAASUVORK5CYII=',
+);
+
 Future<void> pumpApp(
   WidgetTester tester, {
   Size size = const Size(1440, 900),
+}) => pumpAppWith(tester, const <String, Object>{}, size: size);
+
+/// Pumps the app with [preferences] preloaded, for appearance-dependent tests.
+Future<void> pumpAppWith(
+  WidgetTester tester,
+  Map<String, Object> preferences, {
+  Size size = const Size(1440, 900),
 }) async {
-  SharedPreferences.setMockInitialValues(<String, Object>{});
+  SharedPreferences.setMockInitialValues(preferences);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -63,6 +79,7 @@ void main() {
     final paths = [
       '/',
       '/instances',
+      '/stats',
       '/download',
       '/accounts',
       '/wiki',
@@ -122,6 +139,80 @@ void main() {
     expect(other.hoverColor, isNot(Colors.transparent));
     expect(other.highlightColor, isNull);
     expect(other.splashColor, isNull);
+  });
+
+  testWidgets('a wallpaper swaps the hover plate for a light wash', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    InkWell inkFor(String path) => tester.widget<InkWell>(
+      find.descendant(
+        of: find.byKey(ValueKey('nav-$path')),
+        matching: find.byType(InkWell),
+      ),
+    );
+
+    // Solid canvas: the home footer is the page colour, so other destinations
+    // keep the regular hover feedback.
+    expect(inkFor('/').hoverColor, Colors.transparent);
+    expect(inkFor('/instances').hoverColor, isNot(Colors.transparent));
+
+    // Wallpaper: the chrome is translucent, so every item (home included) gets
+    // a light wash instead of the opaque panel colour.
+    final directory = Directory.systemTemp.createTempSync('archoera-nav');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await pumpAppWith(tester, <String, Object>{
+      'ui.appearanceStyle': 'image',
+      'ui.backgroundImage': image.path,
+    });
+    for (final path in const ['/', '/instances', '/settings']) {
+      final ink = inkFor(path);
+      expect(ink.hoverColor, isNot(Colors.transparent));
+      expect(ink.hoverColor!.a, lessThan(0.2));
+      expect(ink.highlightColor, isNot(Colors.transparent));
+    }
+  });
+
+  testWidgets('a wallpaper frosts the bar on every page but home', (
+    tester,
+  ) async {
+    const glass = ValueKey('command-bar-glass');
+    await pumpApp(tester);
+    expect(find.byKey(glass), findsNothing);
+
+    final directory = Directory.systemTemp.createTempSync('archoera-glass');
+    final image = File('${directory.path}/wall.png')
+      ..writeAsBytesSync(_pixelPng);
+    addTearDown(() => directory.deleteSync(recursive: true));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await pumpAppWith(tester, <String, Object>{
+      'ui.appearanceStyle': 'image',
+      'ui.backgroundImage': image.path,
+    });
+
+    // The home footer floats directly on the photo, so it adds no blur layer.
+    expect(find.byKey(glass), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('nav-/settings')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(glass), findsOneWidget);
+
+    // The plate stays translucent on purpose: pushing it towards opaque turns
+    // the frosted chrome back into a solid slab over the wallpaper.
+    final plate = tester.widget<AnimatedContainer>(
+      find
+          .descendant(
+            of: find.byKey(glass),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first,
+    );
+    final decoration = plate.decoration! as BoxDecoration;
+    expect(decoration.color!.a, closeTo(0.52, 0.02));
   });
 
   testWidgets('the accent plate slides between destinations', (tester) async {

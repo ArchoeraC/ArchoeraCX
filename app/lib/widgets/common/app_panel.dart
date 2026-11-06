@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../render/app_shaders.dart';
@@ -45,11 +47,28 @@ class AppPanel extends StatelessWidget {
 
     Widget content = DecoratedBox(
       decoration: ShapeDecoration(
-        color: surface ? tokens.surface1 : null,
+        // Panels sit above the wallpaper, so their fill has to stay
+        // translucent enough for the photo to register while the frost below
+        // keeps text readable.
+        color: surface
+            ? tokens.imageBackground
+                  ? tokens.surface1.withValues(alpha: 0.58)
+                  : tokens.surface1
+            : null,
         shape: shape,
       ),
       child: Padding(padding: padding, child: child),
     );
+
+    // Frosted glass in image mode: blur only the backdrop inside the panel
+    // shape. Without this the wallpaper behind a card is either fully hidden
+    // (opaque fill) or visible as a hard-edged, unreadable photo.
+    if (surface && tokens.imageBackground) {
+      content = BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: content,
+      );
+    }
 
     // Only interactive panels get the sheen; static panels stay a plain
     // DecoratedBox with no pointer listeners. The glow sits inside the clip

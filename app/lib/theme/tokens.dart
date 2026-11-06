@@ -25,6 +25,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required this.border,
     required this.borderStrong,
     required this.overlay,
+    this.imageBackground = false,
     required this.radiusS,
     required this.radiusM,
     required this.radiusL,
@@ -60,6 +61,14 @@ class AppTokens extends ThemeExtension<AppTokens> {
   final Color border;
   final Color borderStrong;
   final Color overlay;
+
+  /// True when the shell renders a user wallpaper behind the content.
+  ///
+  /// Image mode keeps the dark palette (light text) and makes the page canvas
+  /// transparent so the wallpaper shows through the scrim. Panels stay
+  /// near-opaque for readability; widgets that need to branch on the mode can
+  /// read this flag instead of watching the appearance store.
+  final bool imageBackground;
 
   final double radiusS;
   final double radiusM;
@@ -98,6 +107,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     border: Color(0xFFE3E7EF),
     borderStrong: Color(0xFFCFD6E4),
     overlay: Color(0x66000000),
+    imageBackground: false,
     radiusS: 2,
     radiusM: 4,
     radiusL: 4,
@@ -130,6 +140,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     border: Color(0xFF2A3442),
     borderStrong: Color(0xFF3A4759),
     overlay: Color(0xA6000000),
+    imageBackground: false,
     radiusS: 2,
     radiusM: 4,
     radiusL: 4,
@@ -153,6 +164,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required Brightness brightness,
     bool tinted = false,
     bool reduceMotion = false,
+    bool imageBackground = false,
   }) {
     final base = brightness == Brightness.light ? light : dark;
     final onAccent = seed.computeLuminance() > 0.55
@@ -192,6 +204,23 @@ class AppTokens extends ThemeExtension<AppTokens> {
       );
     }
 
+    if (imageBackground) {
+      // The wallpaper is darkened by the background scrim; keep the dark
+      // palette's light text and make only the page canvas transparent.
+      // Panels stay nearly opaque so dialogs, inputs and cards remain readable
+      // even over a busy photo.
+      result = result.copyWith(
+        imageBackground: true,
+        bg: Colors.transparent,
+        surface1: result.surface1.withValues(alpha: 0.94),
+        surface2: result.surface2.withValues(alpha: 0.86),
+        surface3: result.surface3.withValues(alpha: 0.78),
+        border: result.border.withValues(alpha: 0.70),
+        borderStrong: result.borderStrong.withValues(alpha: 0.80),
+        overlay: result.overlay.withValues(alpha: 0.55),
+      );
+    }
+
     if (reduceMotion) {
       result = result.copyWith(
         fast: Duration.zero,
@@ -222,6 +251,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     Color? border,
     Color? borderStrong,
     Color? overlay,
+    bool? imageBackground,
     double? radiusS,
     double? radiusM,
     double? radiusL,
@@ -253,6 +283,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
       overlay: overlay ?? this.overlay,
+      imageBackground: imageBackground ?? this.imageBackground,
       radiusS: radiusS ?? this.radiusS,
       radiusM: radiusM ?? this.radiusM,
       radiusL: radiusL ?? this.radiusL,
@@ -296,6 +327,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       border: Color.lerp(border, other.border, t)!,
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
       overlay: Color.lerp(overlay, other.overlay, t)!,
+      imageBackground: t < 0.5 ? imageBackground : other.imageBackground,
       radiusS: radiusS + (other.radiusS - radiusS) * t,
       radiusM: radiusM + (other.radiusM - radiusM) * t,
       radiusL: radiusL + (other.radiusL - radiusL) * t,
@@ -318,6 +350,9 @@ extension AppTokensContext on BuildContext {
 /// Spacing scale. Keep layout rhythm consistent across pages.
 abstract final class AppSpacing {
   static const xxs = 4.0;
+
+  /// Tight spacing used where a full step would overflow a dense row.
+  static const tight = 6.0;
   static const xs = 8.0;
   static const sm = 12.0;
   static const md = 16.0;

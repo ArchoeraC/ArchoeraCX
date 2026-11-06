@@ -43,12 +43,14 @@ mixin CoreClientAccounts on CoreTransport {
   Future<Account> pollMicrosoftLogin(
     String flowId, {
     void Function(int done, int total)? onProgress,
+    void Function(int taskId)? onTaskStarted,
   }) async {
     const methodName = 'account.login.microsoft.poll';
     final jsonText = await runAsync(
       methodName,
       paramsJson: jsonEncode(<String, Object?>{'flowId': flowId}),
       onProgress: onProgress,
+      onTaskStarted: onTaskStarted,
     );
     return _parseAccountEnvelope(this, jsonText, methodName);
   }

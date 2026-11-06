@@ -88,7 +88,7 @@
 | 可靠性 | 下载中断、进程被杀、磁盘满 | 可续传/可回滚，不产生幽灵实例 |
 | 可恢复 | SQLite 损坏、实例目录被手改 | 从 `instance.json`/磁盘重建索引，不删除用户数据 |
 | 安全 | 恶意整合包、脏镜像、token 泄漏 | 路径逃逸/zip bomb/日志泄漏全部有明确拒绝点 |
-| 可移植 | Windows 10/11 x64、Linux x64、macOS arm64 | 三平台同一 ABI；平台差异集中在 C++/C# |
+| 可移植 | Windows 10/11 x64、Linux x64、macOS arm64/x64 | 三平台同一 ABI；平台差异集中在 C++/C# |
 | 合规 | 中国大陆网络 | 单一发行版 + 运行期地区默认 + 本地风险确认；不改 UI 灰按钮 |
 | 可观测 | 用户报障 | 一键导出日志、模块版本、任务快照、minidump |
 
@@ -172,7 +172,7 @@
 | A21 | **遥测默认关闭** | 已定 | 任何上传必须 opt-in；崩溃转储默认本地 |
 | A22 | **契约版本化** | 已定 | ABI、JSON schema、DB migration、模块版本各自独立演进 |
 | A23 | **门控只是默认值与风险确认** | 已定 | 不宣称合规认证/防破解；fork 可以移除；控制点在签名、商标与发布渠道 |
-| A24 | **macOS 仅支持 Apple Silicon（arm64）** | 已定 | 降低构建/签名/测试矩阵；x64 Mac 暂不支持，下载页与关于页明确标注 |
+| A24 | **macOS 支持 arm64 与 x64，各自独立产物** | 已定（x64 为兼容目标） | 两套安装包分别单切片构建；x64 只承诺到 Flutter 停止 x64 目标或 `macos-15-intel` 退役（2027-08）中较早者，之后移除而不冻结 Flutter |
 
 **被否决的方案（存档）**
 
@@ -277,7 +277,7 @@
 |---|---|---|---|
 | Windows 10/11 x64 | `ArchoeraCX.exe` + Flutter 数据 | `archoera_core.dll`、`archoera_cs.dll`、`archoera_dl.dll` | 应用目录绝对路径加载；禁止 PATH 搜索 |
 | Linux x64 | `archoeracx` + `lib/` | `libarchoera_core.so` 等 | `$ORIGIN` RPATH；AppImage/Flatpak |
-| macOS arm64 | `ArchoeraCX.app` | `libarchoera_core.dylib` 等 | 仅 Apple Silicon；arm64 构建；嵌套库逐个签名 |
+| macOS arm64 / x64 | `ArchoeraCX.app` | `libarchoera_core.dylib` 等 | 按目标架构分别构建；嵌套库逐个签名 |
 | 便携模式 | 目录内 `data/` | 同上 | `--portable` 或标记文件；需可写 |
 
 ### 3.7 进程与线程总览
@@ -553,6 +553,7 @@ C++ 行为：
 | 机制 | 规则 |
 |---|---|
 | 取消 | 协作式；每个长任务检查 token；C# `CancellationToken`、Rust `CancellationToken` |
+| 取消调用 | `archoera_cancel` 只标记任务并把模块取消投递到核心自管线程；ABI 调用绝不在 UI isolate 上等待 socket/回调清理 |
 | 超时 | 每个 task 可设 deadline；到期转 `Cancelled` 并记录 `TIMEOUT` 原因 |
 | 子任务 | 父取消级联；子完成不自动完成父（由编排逻辑决定） |
 | 幂等 | `planId` 重复提交复用；同一 `dest` 加锁；`cancel` 对终态返回 OK |
@@ -1653,6 +1654,10 @@ void _drain() {
 
 - 统一 token：颜色（surface/onSurface/accent/danger）、字号阶梯、间距、圆角、动效曲线/时长。
 - 明暗主题 + 强调色；背景：纯色/图片/Mica/Acrylic + 模糊缓存。
+- 自定义背景图：用户选择本地绝对路径，按屏幕物理尺寸解码，模糊/缩放/暗化后一次性烘焙为静态纹理；缺图或解码失败回退纯色画布，不阻塞界面。
+- 图片模式下卡片使用「背景模糊 + 半透明填充」的毛玻璃面板（`AppPanel`）；输入框、下拉框、右键菜单等浮层通过主题使用半透明填充（弹窗保持更实的底色）。主页与其它页面之间切换为幻灯片式上下推入/推出：离开主页时旧页向上滑出、新页同时自下而上滑入，返回主页时旧页向下滑出、主页同时自顶端滑入；两层共用同一条曲线、始终无缝拼接，壁纸保持不动，也不需要给快照垫不透明底色。其它页面之间的切换保持原有抬升/溶解转场。
+- 图片模式强制深色 + 全局着色（保留用户原先选择的颜色模式，移除图片后恢复），并禁用颜色模式/全局着色开关；提示条和 Tooltip 使用不透明反色前景，避免透明画布色导致文字不可见。
+- 暗化带亮度下限：选图时解码 32×32 缩略图，取不透明像素的 90 分位相对亮度，反解出 `#F2F5FA` 保持 4.5:1 所需的最小遮罩（30%–75%）；滑杆下限即该值，`ui.backgroundDim` 仍保存用户意图，换回暗图时自动回落。亮度结果缓存于 `ui.backgroundLuminance`，启动后后台重新采样；解码失败或无图片时回落到 30%。
 - 不混搭 `fluent_ui`/`macos_ui`；自研组件层。
 - 150% 缩放、中文长文本、RTL 预留；对比度 4.5:1。
 - 减少动效设置；骨架屏/空态/错误态统一组件。
@@ -2447,6 +2452,7 @@ public interface IDownloadProvider {
 | `instance.mods.list` | C# | 列出实例 `mods/` 中的 jar 与 `.disabled` 文件 |
 | `instance.mods.setEnabled` | C# | 通过 `.disabled` 后缀启停 Mod |
 | `instance.mods.remove` | C# | 删除实例中的单个 Mod 文件 |
+| `stats.get` | C# | 本机游玩统计快照：汇总（总时长、今日/本周/上周、会话数、活跃天、连续天数、实例与 Mod 数）、近 90 天每日时长、24 小时分布、最常游玩实例、最近启动与加载器构成；总时长/每日/每小时按所有会话运行区间的**并集**计算（多实例同时启动只计一次墙钟时间，不叠加），单实例时长也按该实例区间并集；跨午夜会话把时长拆到覆盖的每一天（启动次数只记启动当天）；启动 60 秒内非零退出的失败启动既不计时长也不计次数；启动时写入 `play_sessions`，进程退出时补 `ended_at`/`duration_ms`/`exit_code`，不观测到退出或启动器崩溃留下的悬挂会话直接丢弃。数据只在本机 SQLite，不上传 |
 | `instance.duplicate` | C# | 复制实例：参数 `{"id":"<源实例>","name":"<新实例名>"}`，返回 `{"instance":{...含 overrides...}}`；按源实例的 gameVersion/loader/loaderVersion 经仓储创建新实例（默认实例根），递归复制源目录但排除 `.archoera/logs` 与 `.archoera/instance.json`，保留每实例 `overrides`；失败时尽力清理新目录；拒绝复制到自身/自身内部；名称校验沿用 `instance.create` |
 | `instance.import` | C# | 导入现有目录/压缩包 |
 | `instance.export` | C# | 导出整合包/目录 |
@@ -2865,7 +2871,7 @@ C# DownloadPolicy.ReadAsync()
 
 ### 16.3 测量方法
 
-- 固定参考机（Windows 11 x64 / Ubuntu 24.04 / macOS arm64）；记录 CPU/磁盘/网络。
+- 固定参考机（Windows 11 x64 / Ubuntu 24.04 / macOS arm64；Intel x64 作为兼容性抽测）；记录 CPU/磁盘/网络。
 - 每次发布跑启动、安装、搜索、UI 滚动、内存基线；回归 >20% 阻断。
 - 性能数据写入 `build-info.json` 的基准段，便于对比。
 
@@ -2969,6 +2975,7 @@ diagnostics-<timestamp>.zip
 | Windows 11 | x64 | ABI/集成/E2E/签名冒烟 |
 | Ubuntu 24.04 | x64 | ABI/集成/E2E/ASan |
 | macOS 14/15 | arm64 | ABI/集成/E2E/签名冒烟 |
+| macOS 15 | x64 | ABI/集成/E2E/签名冒烟（Intel 构建机） |
 | Linux | arm64（可选） | 构建/单测 |
 
 - 每次 PR：lint、单测、契约。
@@ -3019,7 +3026,7 @@ dotnet publish app/modules/business/Archoera.Exports -c Release -r win-x64 \
 flutter build windows --release
 ```
 
-> macOS 使用 `-r osx-arm64` 与 `flutter build macos --release`；不做 x64/universal。
+> macOS 使用 `-r osx-arm64` 或 `-r osx-x64`（与构建机架构一致）配合 `flutter build macos --release`；两套产物独立，不合并原生模块。
 > 具体 flag 以实际 AOT/链接器验证为准；CI 必须锁版本，不使用“最新”。
 
 ### 19.3 产物布局
@@ -3043,7 +3050,7 @@ ArchoeraCX/
 |---|---|
 | Windows | 统一 CRT；`/DELAYLOAD` 可选；导出 `.def`；`LoadLibraryEx` 安全搜索；签名 |
 | Linux | `-fvisibility=hidden` + version script 只导出 `archoera_*`；`$ORIGIN` RPATH；AppImage/Flatpak |
-| macOS | 仅 arm64；`@rpath`；嵌套 dylib 逐个签名后再签 App；notarization |
+| macOS | arm64/x64 各自构建；`@rpath`；嵌套 dylib 逐个签名后再签 App；notarization |
 | 便携 | 数据目录可写；不写系统目录；卸载不删用户数据（可选） |
 
 ### 19.5 更新器
@@ -3154,7 +3161,7 @@ ArchoeraCX/
 | # | 约定 | 内容 |
 |---|---|---|
 | D1 | 发行模型 | **单一发行版 + 运行期地区门控**；中国大陆默认禁用下载，非中国大陆默认启用；不维护 `official-cn` / `official-global` 两套二进制 |
-| D2 | macOS 架构 | **仅 Apple Silicon arm64**；不做 x64/universal，下载页明确标注 |
+| D2 | macOS 架构 | **arm64 与 x64 各出一套单切片产物**；x64 是兼容目标，Flutter Stage 3/4 或 Intel runner 退役后移除；包名与 `BUILD-INFO.txt` 标注切片，发布页分别提供 |
 | D3 | 微软 OAuth 重定向 | **默认 authorization code + PKCE（loopback）**；Device Code 作为无法绑定 loopback 时的 fallback；自定义协议不作为主方案 |
 | D4 | SQLite 归属 | **只由 C# 持有**；Flutter 不引入数据库插件/不直接读 SQLite；C++ 只路由。各平台随 C# 模块分发 SQLitePCLRaw `e_sqlite3` 并按绝对路径加载，不使用宿主 `libsqlite3` |
 | D5 | 账户凭据 | authorization code/access/refresh token **不跨 ABI、不写日志**；C# `VaultCredentialStore` 经 `archoera-vault` 加密存储，旧 `accounts.credentials.json` 首次迁移后删除 |
@@ -3223,13 +3230,14 @@ contracts/
 | 11 | `README` 文档索引缺少 10、顺序不自然 | 增加 10 并调整顺序 |
 | 12 | `07` 把 C# 模块写成可加载 C#/Rust/C | 去掉已取消的 C |
 | 13 | 默认发行通道未定 | 定为单一发行版 + 运行期地区门控（见 §15） |
-| 14 | macOS 架构未定 | 仅支持 Apple Silicon arm64 |
+| 14 | macOS 架构未定 | 提供 arm64 与 x64 两套独立产物（2026-11-06 决定，取代原“仅 Apple Silicon”） |
 
 ### 22.5 变更记录
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-10-20 | Draft v1 | 初版：总体架构、ABI v1、模块协议、C#/Rust/Flutter 分层、数据模型、关键流程、安全/测试/构建；同时修正跨文档一致性问题（见 22.4） |
+| 2026-11-06 | Draft v2 | macOS 增加 x64 兼容构建与发布（A24/D2），新增 `macos-15-intel` CI job；单切片产物，不合并原生模块 |
 
 ---
 

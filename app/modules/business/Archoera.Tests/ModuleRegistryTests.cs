@@ -41,6 +41,7 @@ public sealed class ModuleRegistryTests
             Assert.Contains("instance.list", registry.Methods);
             Assert.Contains("instance.sync", registry.Methods);
             Assert.Contains("instance.mods.list", registry.Methods);
+            Assert.Contains("stats.get", registry.Methods);
             Assert.Contains("instance.mods.setEnabled", registry.Methods);
             Assert.Contains("instance.mods.remove", registry.Methods);
             Assert.Contains("account.login.microsoft.start", registry.Methods);

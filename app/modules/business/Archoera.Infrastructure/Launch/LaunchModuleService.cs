@@ -5,6 +5,7 @@ using Archoera.Application.Instances;
 using Archoera.Application.Java;
 using Archoera.Application.Modules;
 using Archoera.Application.Mojang;
+using Archoera.Application.Stats;
 using Archoera.Domain.Accounts;
 using Archoera.Domain.Instances;
 using Archoera.Domain.Java;
@@ -16,6 +17,7 @@ using Archoera.Infrastructure.Java;
 using Archoera.Infrastructure.Modules;
 using Archoera.Infrastructure.Packs;
 using Archoera.Infrastructure.Settings;
+using Archoera.Infrastructure.Stats;
 
 namespace Archoera.Infrastructure.Launch;
 
@@ -47,6 +49,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
     private readonly PackInstallService? _instanceRepair;
     private readonly DownloadPolicy _downloadPolicy;
     private readonly OnlineSessionResolver _sessionResolver;
+    private readonly IPlaySessionStore _playSessions;
 
     public LaunchModuleService(
         IInstanceRepository? instances = null,
@@ -56,7 +59,8 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         IAccountCredentialStore? credentials = null,
         MicrosoftAuthClient? auth = null,
         PackInstallService? instanceRepair = null,
-        DownloadPolicy? downloadPolicy = null)
+        DownloadPolicy? downloadPolicy = null,
+        IPlaySessionStore? playSessions = null)
     {
         _settings = settings ?? new JsonAppSettingsStore(dataRoot);
         _instances = instances ?? new SqliteInstanceRepository(dataRoot, _settings);
@@ -70,6 +74,7 @@ public sealed class LaunchModuleService : IModuleMethodHandler
         _injector = new AuthlibInjectorManager(dataRoot ?? _settings.DataRoot);
         _downloadPolicy = downloadPolicy ??
                           new DownloadPolicy(dataRoot ?? _settings.DataRoot);
+        _playSessions = playSessions ?? new SqlitePlaySessionStore(dataRoot);
     }
 
     public IReadOnlyCollection<string> Methods => SupportedMethods;
@@ -982,12 +987,88 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             LaunchProgress.Report(LaunchProgress.Plan);
             stage = LaunchProgress.StageProcess;
 
-            var (process, startedLogPath) = LaunchProcessStarter.Start(
-                instance.Id,
-                plan,
-                settings.LogRetentionFiles,
-                settings.LogRetentionMegabytes,
-                LaunchCommandRunner.CreatePostExitCallback(instance, settings, plan));
+            // The session is persisted before the JVM starts: if the launcher
+            // crashes while the game runs, the launch is still counted (with
+            // zero playtime until the exit callback completes the row).
+            var sessionStartedAt = DateTimeOffset.UtcNow;
+            string? sessionId = null;
+            try
+            {
+                sessionId = Guid.NewGuid().ToString("N");
+                await _playSessions
+                    .BeginAsync(
+                        new PlaySessionStart(
+                            sessionId,
+                            instance.Id,
+                            instance.Name,
+                            instance.Loader,
+                            instance.GameVersion,
+                            sessionStartedAt),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // Statistics are best effort; a busy database must never block
+                // a launch.
+                sessionId = null;
+            }
+
+            if (sessionId is { } activeId)
+            {
+                PlaySessionTracker.Activate(activeId);
+            }
+
+            var postExit = LaunchCommandRunner.CreatePostExitCallback(
+                instance,
+                settings,
+                plan);
+            Process process;
+            string startedLogPath;
+            try
+            {
+                (process, startedLogPath) = LaunchProcessStarter.Start(
+                    instance.Id,
+                    plan,
+                    settings.LogRetentionFiles,
+                    settings.LogRetentionMegabytes,
+                    exitCode =>
+                    {
+                        postExit?.Invoke(exitCode);
+                        if (sessionId is { } id)
+                        {
+                            ObservePlaySession(
+                                CompletePlaySessionAsync(
+                                    id,
+                                    DateTimeOffset.UtcNow,
+                                    exitCode));
+                        }
+                    });
+            }
+            catch
+            {
+                if (sessionId is { } id)
+                {
+                    // Await the cleanup so a failed launch cannot leave a
+                    // countable session behind if the caller exits next.
+                    try
+                    {
+                        await AbortPlaySessionAsync(id).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Best effort; the next statistics query drops any
+                        // stale open row anyway.
+                    }
+                }
+
+                throw;
+            }
+
             logPath = startedLogPath;
 
             // The process is running, so this session counts as played. The
@@ -1217,5 +1298,49 @@ public sealed class LaunchModuleService : IModuleMethodHandler
             throw new ArgumentException($"{name} is required");
         }
         return element.GetString()!;
+    }
+
+    /// <summary>
+    /// Fire-and-forget for the process-exit callback. The exit handler may not
+    /// block the JVM reaper, and an observation failure must not surface as an
+    /// unobserved task exception.
+    /// </summary>
+    private static void ObservePlaySession(Task task)
+        => _ = task.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted |
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
+    private async Task CompletePlaySessionAsync(
+        string sessionId,
+        DateTimeOffset endedAt,
+        int exitCode)
+    {
+        try
+        {
+            await _playSessions
+                .CompleteAsync(sessionId, endedAt, exitCode, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            PlaySessionTracker.Deactivate(sessionId);
+        }
+    }
+
+    private async Task AbortPlaySessionAsync(string sessionId)
+    {
+        try
+        {
+            await _playSessions
+                .AbortAsync(sessionId, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            PlaySessionTracker.Deactivate(sessionId);
+        }
     }
 }

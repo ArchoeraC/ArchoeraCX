@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,7 @@ import '../theme/icons/app_icons.dart';
 import '../theme/tokens.dart';
 import '../widgets/accounts/account_avatar.dart';
 import '../widgets/common/task_center_button.dart';
+import '../widgets/common/toast.dart';
 import '../widgets/instances/crash_report_dialog.dart';
 import '../widgets/layout/app_background.dart';
 
@@ -46,10 +48,11 @@ typedef OpenAppBranch = void Function(int index);
 abstract final class AppBranch {
   static const int dashboard = 0;
   static const int instances = 1;
-  static const int download = 2;
-  static const int accounts = 3;
-  static const int wiki = 4;
-  static const int settings = 5;
+  static const int stats = 2;
+  static const int download = 3;
+  static const int accounts = 4;
+  static const int wiki = 5;
+  static const int settings = 6;
 }
 
 /// Exposes the shell's animated branch switch to descendant pages.
@@ -94,12 +97,20 @@ void openAppBranch(BuildContext context, int index, {String? fallbackPath}) {
 
 class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey _pageKey = GlobalKey();
+
+  /// Cover captured for the next branch switch.
+  ///
+  /// Only valid until the transition adopts it (which happens during the build
+  /// right after [`_selectBranch`]). Once adopted the transition owns the
+  /// texture, so this stays null and only a cover that never reached the widget
+  /// is disposed here.
   ui.Image? _coverImage;
   _PageTransitionMode _mode = _PageTransitionMode.cover;
 
   @override
   void dispose() {
     _coverImage?.dispose();
+    _coverImage = null;
     super.dispose();
   }
 
@@ -133,14 +144,17 @@ class _AppShellState extends ConsumerState<AppShell> {
       return;
     }
 
-    // Every branch switch gets a snapshot underlay so the new page can cover
-    // the old one. Returning to the home page reverses the motion: the old
-    // page retracts downward instead of a new page covering it.
+    // Every branch switch gets a snapshot of the outgoing page. Home and the
+    // other branches swap like consecutive slides: the snapshot keeps moving
+    // in the same direction as the incoming page instead of being covered.
     final image = _capturePage();
     if (!mounted) {
       image?.dispose();
       return;
     }
+    // A cover that is still here was never adopted by the transition (the
+    // branch swapped before the widget could take it), so the shell owns it.
+    _coverImage?.dispose();
     final mode = current == AppBranch.dashboard
         ? _PageTransitionMode.cover
         : index == AppBranch.dashboard
@@ -154,14 +168,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     navigationShell.goBranch(index);
   }
 
-  void _finishCover(ui.Image image) {
-    if (identical(_coverImage, image)) {
-      if (mounted) setState(() => _coverImage = null);
-      // RawImage may still be in the tree for this frame.
-      WidgetsBinding.instance.addPostFrameCallback((_) => image.dispose());
-    } else {
-      image.dispose();
-    }
+  /// Drops the shell's reference once the transition adopts the texture.
+  ///
+  /// Ownership moves to [_PageTransition], which disposes it exactly once; the
+  /// field is cleared without `setState` because this runs while the
+  /// transition builds and the snapshot it needs is already in hand.
+  void _adoptCover(ui.Image image) {
+    if (identical(_coverImage, image)) _coverImage = null;
   }
 
   @override
@@ -189,6 +202,13 @@ class _AppShellState extends ConsumerState<AppShell> {
         label: l10n.navInstances,
         icon: AppIcons.instances,
         selectedIcon: AppIcons.instances,
+      ),
+      AppDestination(
+        path: '/stats',
+        branchIndex: AppBranch.stats,
+        label: l10n.navStats,
+        icon: AppIcons.stats,
+        selectedIcon: AppIcons.stats,
       ),
       if (ref.watch(downloadEnabledProvider))
         AppDestination(
@@ -225,11 +245,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     final index = navigationShell.currentIndex;
     final selectedInstance = ref.watch(selectedInstanceProvider);
     final account = ref.watch(currentAccountProvider);
+    final appearance = ref.watch(appearanceProvider);
     final contentMaxWidth = AppLayout.contentMaxWidthFor(
       MediaQuery.sizeOf(context).width,
     );
 
     return AppBackground(
+      imagePath: appearance.hasImageBackground
+          ? appearance.backgroundImage
+          : null,
+      imageBlur: appearance.backgroundBlur,
+      imageDim: appearance.effectiveBackgroundDim,
+      imageScale: appearance.backgroundScale,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Column(
@@ -253,7 +280,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                         index: index,
                         coverImage: _coverImage,
                         mode: _mode,
-                        onCoverFinished: _finishCover,
+                        onCoverAdopted: _adoptCover,
                         child: AppBranchScope(
                           index: index,
                           open: _selectBranch,

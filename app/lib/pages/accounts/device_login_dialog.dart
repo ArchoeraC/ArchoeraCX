@@ -5,9 +5,17 @@ part of '../accounts_page.dart';
 /// When the backend falls back to device code, the code UI is shown instead.
 /// Closing it cancels the flow.
 class DeviceLoginDialog extends ConsumerStatefulWidget {
-  const DeviceLoginDialog({super.key, required this.client});
+  const DeviceLoginDialog({
+    super.key,
+    required this.client,
+    this.openAuthorizationUrl,
+  });
 
   final CoreClient client;
+
+  /// Opens the authorization page. Defaults to the native `system.openUrl`
+  /// path; tests inject a no-op so they never launch a real browser.
+  final Future<bool> Function(String url)? openAuthorizationUrl;
 
   @override
   ConsumerState<DeviceLoginDialog> createState() => _DeviceLoginDialogState();
@@ -17,7 +25,7 @@ class _DeviceLoginDialogState extends ConsumerState<DeviceLoginDialog> {
   MicrosoftDeviceCodeStart? _start;
   String? _error;
   String? _flowId;
-  bool _busy = true;
+  int? _pollTaskId;
   bool _completed = false;
   bool _browserLaunchFailed = false;
 
@@ -33,19 +41,30 @@ class _DeviceLoginDialogState extends ConsumerState<DeviceLoginDialog> {
         flow: 'authorization_code',
       );
       if (!mounted) {
-        await _cancelFlow(start.flowId);
+        unawaited(_cancelFlow(start.flowId));
         return;
       }
       setState(() {
         _start = start;
         _flowId = start.flowId;
-        _busy = false;
       });
+      if (_completed) return;
+
+      // Start the poll before opening the browser and do not await the browser
+      // launch. The flow must be listening even when the browser is slow, and
+      // a cancel must never wait for the browser channel.
+      final poll = widget.client.pollMicrosoftLogin(
+        start.flowId,
+        onTaskStarted: (taskId) {
+          _pollTaskId = taskId;
+          if (_completed) _cancelPollTask(taskId);
+        },
+      );
       if (start.isAuthorizationCode) {
-        await _openAuthorizationUrl(start);
+        unawaited(_openAuthorizationUrl(start));
       }
-      final account = await widget.client.pollMicrosoftLogin(start.flowId);
-      if (!mounted) return;
+      final account = await poll;
+      if (!mounted || _completed) return;
       final l10n = AppLocalizations.of(context);
       if (ref.read(preferencesProvider).desktopNotifications) {
         unawaited(
@@ -58,42 +77,39 @@ class _DeviceLoginDialogState extends ConsumerState<DeviceLoginDialog> {
       _completed = true;
       Navigator.of(context).pop(account);
     } catch (error) {
-      if (!mounted) return;
+      // The user may have cancelled while the poll was unwinding; `_cancel`
+      // already popped this route. A second pop would remove the page below.
+      if (!mounted || _completed) return;
       if (error is CoreException && error.code == 'E_CANCELLED') {
         Navigator.of(context).pop();
         return;
       }
       setState(() {
-        _busy = false;
         _error = _message(error);
       });
     }
   }
 
-  /// Opens the authorization URL in the system browser. Failures are shown in
-  /// the dialog instead of thrown, and the URL stays visible for manual use.
+  /// Opens the authorization URL in the system browser.
+  ///
+  /// The native `system.openUrl` work runs on a core worker, so it never
+  /// blocks the UI. If the desktop portal is unavailable the URL stays visible
+  /// and the user can copy it; a Flutter-side `url_launcher` fallback is
+  /// deliberately not used here because its GTK call runs on the platform
+  /// thread and can stall input while the browser starts.
   Future<void> _openAuthorizationUrl(MicrosoftDeviceCodeStart start) async {
     final authorizationUrl = start.authorizationUrl;
     if (authorizationUrl == null || authorizationUrl.isEmpty) return;
     var opened = false;
     try {
-      opened = await widget.client.openExternalUrl(authorizationUrl);
+      final opener = widget.openAuthorizationUrl;
+      opened = opener != null
+          ? await opener(authorizationUrl)
+          : await widget.client.openExternalUrl(authorizationUrl);
     } catch (_) {
       opened = false;
     }
-    if (!opened) {
-      // Older cores or an unavailable desktop portal fall back to Flutter's
-      // system-browser bridge instead of leaving the user without a browser.
-      try {
-        opened = await launchWebUrl(
-          authorizationUrl,
-          mode: LaunchMode.externalApplication,
-        );
-      } catch (_) {
-        opened = false;
-      }
-    }
-    if (!mounted) return;
+    if (!mounted || _completed) return;
     setState(() => _browserLaunchFailed = !opened);
   }
 
@@ -105,19 +121,54 @@ class _DeviceLoginDialogState extends ConsumerState<DeviceLoginDialog> {
     }
   }
 
-  Future<void> _cancel() async {
+  void _cancelPollTask(int taskId) {
+    try {
+      widget.client.cancel(taskId);
+    } catch (_) {
+      // The task may already have settled; cancel is idempotent.
+    }
+  }
+
+  /// Runs [action] after the current frame so the dialog close is painted
+  /// before any native call. Cancellation stays local-first: the user sees the
+  /// dialog disappear even if a worker thread or socket is slow to unwind.
+  /// `Navigator.pop` always schedules that frame.
+  void _afterFrame(void Function() action) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        action();
+      } catch (_) {
+        // The app may be shutting down; cleanup is best effort.
+      }
+    });
+  }
+
+  void _cancel() {
+    if (_completed) return;
+    // Close the dialog first. The native cancel request is fire-and-forget:
+    // the UI must never wait for a loopback callback or a token request that
+    // is already in flight.
     _completed = true;
     final flowId = _flowId;
-    if (flowId != null) {
-      await _cancelFlow(flowId);
-    }
+    final pollTaskId = _pollTaskId;
     if (mounted) Navigator.of(context).pop();
+    // The flow cancel is a cheap async task submission; send it even if the
+    // app exits before the next frame. The native task cancel waits for the
+    // frame that paints the dialog away.
+    if (flowId != null) unawaited(_cancelFlow(flowId));
+    if (pollTaskId != null) {
+      _afterFrame(() => _cancelPollTask(pollTaskId));
+    }
   }
 
   @override
   void dispose() {
-    if (!_completed && _flowId != null) {
-      unawaited(_cancelFlow(_flowId!));
+    if (!_completed) {
+      _completed = true;
+      final flowId = _flowId;
+      final pollTaskId = _pollTaskId;
+      if (flowId != null) unawaited(_cancelFlow(flowId));
+      if (pollTaskId != null) _cancelPollTask(pollTaskId);
     }
     super.dispose();
   }
@@ -272,7 +323,7 @@ class _DeviceLoginDialogState extends ConsumerState<DeviceLoginDialog> {
             label: Text(l10n.commonCopy),
           ),
         TextButton(
-          onPressed: _busy && _start == null ? null : _cancel,
+          onPressed: _completed ? null : _cancel,
           child: Text(l10n.accountCancelSignIn),
         ),
       ],

@@ -23,10 +23,17 @@ class ArchoeraApp extends ConsumerWidget {
         ? systemAppearance?.accent
         : appearance.accentColor;
     final systemDark = systemAppearance?.dark;
-    final themeMode =
-        appearance.themeMode == ThemeMode.system && systemDark != null
+    final imageBackground = appearance.hasImageBackground;
+    // A photo behind translucent panels is only reliably readable with the
+    // dark palette and a dim scrim. The same rule as the reference apps:
+    // image style forces dark mode and global tint; the stored theme mode is
+    // preserved and applies again when the image is removed.
+    final themeMode = imageBackground
+        ? ThemeMode.dark
+        : appearance.themeMode == ThemeMode.system && systemDark != null
         ? (systemDark ? ThemeMode.dark : ThemeMode.light)
         : appearance.themeMode;
+    final globalTint = appearance.globalTint || imageBackground;
     final density = switch (appearance.density) {
       UiDensity.compact => VisualDensity.compact,
       UiDensity.standard => VisualDensity.standard,
@@ -37,15 +44,17 @@ class ArchoeraApp extends ConsumerWidget {
       onGenerateTitle: (context) => AppLocalizations.of(context).appName,
       theme: AppTheme.lightWith(
         accent: accent,
-        globalTint: appearance.globalTint,
+        globalTint: globalTint,
         reduceMotion: appearance.reduceMotion,
         density: density,
+        imageBackground: imageBackground,
       ),
       darkTheme: AppTheme.darkWith(
         accent: accent,
-        globalTint: appearance.globalTint,
+        globalTint: globalTint,
         reduceMotion: appearance.reduceMotion,
         density: density,
+        imageBackground: imageBackground,
       ),
       themeMode: themeMode,
       routerConfig: router,

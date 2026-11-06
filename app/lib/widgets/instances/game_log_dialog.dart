@@ -508,7 +508,9 @@ class _GameLogDialogState extends ConsumerState<GameLogDialog> {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: tokens.bg,
+        // Keep the recessed log surface distinct from the dialog in image
+        // mode, where `bg` is transparent to reveal the wallpaper.
+        color: tokens.imageBackground ? tokens.surface2 : tokens.bg,
         border: Border.all(color: tokens.border),
       ),
       child: Scrollbar(

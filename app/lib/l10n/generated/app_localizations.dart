@@ -4429,6 +4429,156 @@ abstract class AppLocalizations {
   /// **'Shift panels and backgrounds slightly toward the accent color.'**
   String get settingsGlobalTintDesc;
 
+  /// No description provided for @settingsSectionBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get settingsSectionBackground;
+
+  /// No description provided for @settingsAppearanceStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background style'**
+  String get settingsAppearanceStyle;
+
+  /// No description provided for @settingsAppearanceStyleDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the flat theme canvas or a picture behind the launcher.'**
+  String get settingsAppearanceStyleDesc;
+
+  /// No description provided for @settingsAppearanceStyleSolid.
+  ///
+  /// In en, this message translates to:
+  /// **'Solid'**
+  String get settingsAppearanceStyleSolid;
+
+  /// No description provided for @settingsAppearanceStyleImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get settingsAppearanceStyleImage;
+
+  /// No description provided for @settingsBackgroundImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Background image'**
+  String get settingsBackgroundImage;
+
+  /// No description provided for @settingsBackgroundImageDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'PNG, JPEG, WebP or BMP. The file stays on this computer.'**
+  String get settingsBackgroundImageDesc;
+
+  /// No description provided for @settingsBackgroundImageSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose image'**
+  String get settingsBackgroundImageSelect;
+
+  /// No description provided for @settingsBackgroundImageReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get settingsBackgroundImageReplace;
+
+  /// No description provided for @settingsBackgroundImageClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove background image'**
+  String get settingsBackgroundImageClear;
+
+  /// No description provided for @settingsBackgroundImageNoPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an image to activate the background. The solid theme stays active until then.'**
+  String get settingsBackgroundImageNoPath;
+
+  /// No description provided for @settingsBackgroundImageNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Image backgrounds use dark text contrast, force dark mode and enable global tint so light text stays readable over the dimmed photo.'**
+  String get settingsBackgroundImageNote;
+
+  /// No description provided for @settingsBackgroundImagePicked.
+  ///
+  /// In en, this message translates to:
+  /// **'Background image updated.'**
+  String get settingsBackgroundImagePicked;
+
+  /// No description provided for @settingsBackgroundImageCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Background image removed.'**
+  String get settingsBackgroundImageCleared;
+
+  /// No description provided for @settingsBackgroundImageUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a PNG, JPEG, WebP or BMP image.'**
+  String get settingsBackgroundImageUnsupported;
+
+  /// No description provided for @settingsBackgroundImagePickFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the image picker.'**
+  String get settingsBackgroundImagePickFailed;
+
+  /// No description provided for @settingsBackgroundBlur.
+  ///
+  /// In en, this message translates to:
+  /// **'Blur'**
+  String get settingsBackgroundBlur;
+
+  /// No description provided for @settingsBackgroundBlurDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Soften the image so page content stays in focus.'**
+  String get settingsBackgroundBlurDesc;
+
+  /// No description provided for @settingsBackgroundDim.
+  ///
+  /// In en, this message translates to:
+  /// **'Dim'**
+  String get settingsBackgroundDim;
+
+  /// Subtitle of the wallpaper dimming slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Darken the image; a stronger scrim keeps text readable.'**
+  String get settingsBackgroundDimDesc;
+
+  /// Shown after the dimming subtitle when the wallpaper is bright enough to raise the minimum scrim.
+  ///
+  /// In en, this message translates to:
+  /// **'The lower bound follows this image\'s brightness.'**
+  String get settingsBackgroundDimAuto;
+
+  /// No description provided for @settingsBackgroundScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom'**
+  String get settingsBackgroundScale;
+
+  /// No description provided for @settingsBackgroundScaleDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop tighter around the centre of the image.'**
+  String get settingsBackgroundScaleDesc;
+
+  /// No description provided for @settingsThemeModeImageForced.
+  ///
+  /// In en, this message translates to:
+  /// **'Image backgrounds use dark colors so text stays readable.'**
+  String get settingsThemeModeImageForced;
+
+  /// No description provided for @settingsGlobalTintImageForced.
+  ///
+  /// In en, this message translates to:
+  /// **'Global tint is always on over a background image.'**
+  String get settingsGlobalTintImageForced;
+
   /// No description provided for @settingsResetAppearance.
   ///
   /// In en, this message translates to:
@@ -4842,6 +4992,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wiki'**
   String get navWiki;
+
+  /// Bottom navigation entry for the statistics page.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get navStats;
 
   /// Subtitle under the Wiki page title.
   ///
@@ -6300,6 +6456,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Let\'s play'**
   String get welcomeBackContinue;
+
+  /// Statistics page title.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get statsTitle;
+
+  /// Statistics page subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Playtime, activity and the instances you return to.'**
+  String get statsSubtitle;
+
+  /// Tooltip of the refresh button on the statistics page.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh statistics'**
+  String get statsRefresh;
+
+  /// Inline error title when stats.get fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics are unavailable.'**
+  String get statsLoadFailed;
+
+  /// Inline error detail when stats.get fails.
+  ///
+  /// In en, this message translates to:
+  /// **'The native core could not return the play history.'**
+  String get statsLoadFailedHint;
+
+  /// Retry button for a failed statistics request.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get statsRetry;
+
+  /// Heading shown before the first recorded session.
+  ///
+  /// In en, this message translates to:
+  /// **'No play sessions yet'**
+  String get statsEmptyTitle;
+
+  /// Explanation shown before the first recorded session.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch an instance; its playtime and activity will show up here.'**
+  String get statsEmptyMessage;
+
+  /// Overview card label for all recorded playtime.
+  ///
+  /// In en, this message translates to:
+  /// **'Total playtime'**
+  String get statsTotalPlaytime;
+
+  /// Overview card label for this week's playtime.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get statsThisWeek;
+
+  /// Overview card label for the number of recorded launches.
+  ///
+  /// In en, this message translates to:
+  /// **'Game sessions'**
+  String get statsSessions;
+
+  /// Overview card label for consecutive active days.
+  ///
+  /// In en, this message translates to:
+  /// **'Day streak'**
+  String get statsStreak;
+
+  /// Overview card label for the current instance count.
+  ///
+  /// In en, this message translates to:
+  /// **'Instances'**
+  String get statsInstances;
+
+  /// Short hour unit used in compact duration numbers.
+  ///
+  /// In en, this message translates to:
+  /// **'h'**
+  String get statsHoursShort;
+
+  /// Short minute unit used in compact duration numbers.
+  ///
+  /// In en, this message translates to:
+  /// **'m'**
+  String get statsMinutesShort;
+
+  /// Short day unit used in compact numbers.
+  ///
+  /// In en, this message translates to:
+  /// **'d'**
+  String get statsDaysShort;
+
+  /// Secondary line on the weekly playtime card.
+  ///
+  /// In en, this message translates to:
+  /// **'Last week {duration}'**
+  String statsLastWeek(String duration);
+
+  /// Secondary line on the streak card.
+  ///
+  /// In en, this message translates to:
+  /// **'Today {duration}'**
+  String statsTodayPlayed(String duration);
+
+  /// Secondary line on the weekly playtime card.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No sessions this week} =1{1 session this week} other{{count} sessions this week}}'**
+  String statsWeekSessionCount(int count);
+
+  /// Secondary line on the sessions card.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No active days yet} =1{1 active day} other{{count} active days}}'**
+  String statsActiveDaysCount(int count);
+
+  /// Secondary line on the instances card.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No mods} =1{1 mod} other{{count} mods}}'**
+  String statsModTotal(int count);
+
+  /// Heatmap card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Play activity'**
+  String get statsActivityTitle;
+
+  /// Heatmap range label.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 90 days'**
+  String get statsLast90Days;
+
+  /// Low end of the heatmap legend.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get statsLess;
+
+  /// High end of the heatmap legend.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get statsMore;
+
+  /// Hover text of one heatmap cell.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · {duration} · {sessions}'**
+  String statsDayTooltip(String date, String duration, String sessions);
+
+  /// Hourly distribution card title.
+  ///
+  /// In en, this message translates to:
+  /// **'When you play'**
+  String get statsHoursTitle;
+
+  /// Badge over the busiest hour of the day.
+  ///
+  /// In en, this message translates to:
+  /// **'Peak {hour}:00'**
+  String statsPeakHour(String hour);
+
+  /// Shown when the hourly chart falls back to launch counts.
+  ///
+  /// In en, this message translates to:
+  /// **'By launch count'**
+  String get statsBySessions;
+
+  /// Empty state inside activity cards.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions yet'**
+  String get statsNoSessions;
+
+  /// Loader distribution card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Instance mix'**
+  String get statsLoadersTitle;
+
+  /// Secondary label of the loader distribution card.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No loaders yet} =1{1 loader} other{{count} loaders}}'**
+  String statsLoaderKinds(int count);
+
+  /// Empty state inside the loader distribution card.
+  ///
+  /// In en, this message translates to:
+  /// **'No instances yet'**
+  String get statsNoInstances;
+
+  /// Total count shown in the loader donut center.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 instance} other{{count} instances}}'**
+  String statsInstanceCount(int count);
+
+  /// Session count beside one playtime row.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 session} other{{count} sessions}}'**
+  String statsSessionCount(int count);
+
+  /// Top instances card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Most played'**
+  String get statsTopInstances;
+
+  /// Count label of the top instances card.
+  ///
+  /// In en, this message translates to:
+  /// **'TOP {count}'**
+  String statsTopCount(String count);
+
+  /// Recent sessions card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent sessions'**
+  String get statsRecentSessions;
+
+  /// Empty state of the recent sessions card.
+  ///
+  /// In en, this message translates to:
+  /// **'Your launch history will appear here.'**
+  String get statsRecentEmpty;
+
+  /// Badge for a session whose game process is still running.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get statsRunning;
+
+  /// Row caption when a session has zero recorded duration.
+  ///
+  /// In en, this message translates to:
+  /// **'No playtime recorded'**
+  String get statsNoPlaytime;
+
+  /// Privacy note under the statistics content.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded locally from launch history. Nothing is uploaded.'**
+  String get statsFootnote;
+
+  /// Accessibility hint on the bottom account button.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press or scroll to switch account'**
+  String get accountSwitchHint;
+
+  /// Shown in the quick account switcher before any account exists.
+  ///
+  /// In en, this message translates to:
+  /// **'No accounts yet'**
+  String get accountSwitchEmpty;
+
+  /// Entry in the quick account switcher that opens the accounts page.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage accounts'**
+  String get accountManage;
+
+  /// Toast after switching the active account.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched to {name}'**
+  String accountSwitched(String name);
+
+  /// Toast when selecting another account fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not switch account.'**
+  String get accountSwitchFailed;
 }
 
 class _AppLocalizationsDelegate

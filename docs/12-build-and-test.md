@@ -13,7 +13,11 @@
 | CMake | 3.16+ |
 | C++ | C++20 编译器 |
 | Linux | GTK3 开发包 |
-| macOS | 目标为 Apple Silicon arm64 |
+| macOS | Apple Silicon arm64（`macos-15`）与 Intel x64（`macos-15-intel`），各出独立产物 |
+
+macOS 两套产物都在对应架构的原生 runner 上构建，不做交叉编译，也不把两套原生模块拼成 universal 包。CI 用 `FLUTTER_MACOS_ARM64_ONLY` 与 `FLUTTER_XCODE_ARCHS` 把每个 job 固定成单切片（arm64 / x86_64），避免 universal 外壳在错误架构上启动后加载不到对应模块；打包脚本会校验 Runner 与六个原生模块的切片完全一致。
+
+macOS x64 是**兼容目标**，不是长期平台：Flutter 计划在 2027 早/中期（Stage 3）停止 Intel 主机上的开发，并在此后（Stage 4）停止构建支持 Intel 的 macOS 应用；GitHub 的 `macos-15-intel` 镜像也只提供到 2027-08。因此 x64 支持只承诺到“Flutter 停止 x64 目标”和“Intel runner 退役”两者中较早的时间点。升级 Flutter 时如果 x64 job 不再能构建，按移除 x64 处理（删除 job、菜单项、`release.needs` 与下载页标注，保留最后一个可用的 x64 安装包并写进发行说明），不要为一个 EOL 架构冻结整个项目的 Flutter 版本。
 
 ## 2. 构建模块
 
@@ -83,8 +87,13 @@ bash packaging/linux/package.sh nix \
 (cd packaging/linux/work/nix && nix build "path:$PWD#default" --option sandbox false)
 
 # macOS：便携 tar.gz、.dmg（必须在 macOS 上运行 hdiutil）
+# 两套产物分别对应的机器上运行；包名与包内模块切片必须一致。
+# Apple Silicon（arm64）：
 bash packaging/macos/package.sh all \
   app/build/macos/Build/Products/Release/archoera_cx.app 0.1.0+1 arm64
+# Intel Mac（x64）：
+bash packaging/macos/package.sh all \
+  app/build/macos/Build/Products/Release/archoera_cx.app 0.1.0+1 x64
 
 # Windows：便携 zip、Inno Setup 安装器（需要 ISCC.exe 在 PATH 或默认安装目录）
 pwsh packaging/windows/package.ps1 `
@@ -107,12 +116,13 @@ CI 的发行矩阵：
 | `.AppImage` | Ubuntu 24.04，依赖 linux-deb | 消费 Ubuntu bundle，`linuxdeploy` 收拢 GTK/X11 |
 | `.flatpak` | Ubuntu 24.04，依赖 linux-deb | 消费 Ubuntu bundle |
 | NixOS `.tar.gz` | Ubuntu + Nix，依赖 linux-deb | 消费 Ubuntu bundle，`autoPatchelfHook` 处理 NixOS 动态库 |
-| macOS `.tar.gz` / `.dmg` | macOS-15 | 独立 `macos` job；源码构建并打包 |
+| macOS arm64 `.tar.gz` / `.dmg` | `macos-15` | 独立 `macos` job；源码构建并打包 |
+| macOS x64 `.tar.gz` / `.dmg` | `macos-15-intel` | 独立 `macos-x64` job；同样的源码构建，产出 Intel 切片 |
 | Windows `.zip` / 安装器 | windows-latest | 独立 `windows` job；源码构建并打包 |
 
 AppImage 在 CI 中下载 `appimagetool`、`linuxdeploy` 和 type-2 runtime，用 `linuxdeploy` 收拢 GTK/X11 动态依赖。`.deb` / `.rpm` / Arch 包都安装到 `/opt/archoera-cx`，并注册 desktop 条目、AppStream 元数据和 hicolor 图标。Flatpak 使用 `--filesystem=home` 与只读 `host-os` / `host-etc`，以便访问实例目录和系统 Java。Gentoo overlay 的 ebuild 在 `packaging/gentoo/games-util/archoera-cx/`，直接消费发布 tar.gz。
 
-`workflow_dispatch` 可分别勾选九项：macOS / Windows / Ubuntu deb / Deepin deb / Fedora rpm / Arch pkg / AppImage / Flatpak / Nix。勾选 AppImage、Flatpak 或 Nix 会自动带上 Ubuntu deb（它们消费其原始 bundle）；只有九项全选的手动运行，`release` 才会放行。
+`workflow_dispatch` 可分别勾选十项：macOS arm64 / macOS x64 / Windows / Ubuntu deb / Deepin deb / Fedora rpm / Arch pkg / AppImage / Flatpak / Nix。勾选 AppImage、Flatpak 或 Nix 会自动带上 Ubuntu deb（它们消费其原始 bundle）；只有十项全选的手动运行，`release` 才会放行。
 
 `app/shaders/*.frag` 由 `pubspec.yaml` 的 `flutter: shaders:` 声明交给 `impellerc` 编译；`flutter test` 同样会编译，`test/app_shaders_test.dart` 按各着色器声明的 uniform 个数逐个绘制，索引与 GLSL 不一致会在此失败。新增或调整 uniform 时必须同步修改调用方的 `setFloat` 索引。窗口背景是纯色、没有持续动画，测试里的 `pumpAndSettle` 可正常收敛。
 
@@ -173,6 +183,8 @@ ARCHOERACX_INSTANCE_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-instance \
   flutter test test/instance_integration_test.dart
 ARCHOERACX_ACCOUNT_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-account \
   flutter test test/account_integration_test.dart
+ARCHOERACX_STATS_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-stats \
+  flutter test test/stats_integration_test.dart
 ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
 ARCHOERACX_MICROSOFT_START_TESTS=1 \
 ARCHOERACX_MICROSOFT_CLIENT_ID="<client id>" \
@@ -233,7 +245,7 @@ logs/account.log              脱敏的账户诊断日志
 
 - 中国大陆网络默认隐藏下载入口并禁用下载（如果您懂一些知识或者会向AI许愿，或许，这一点应该难不到您）；
 - 其他地区默认启用下载；
-- 发布包只从 GitHub CI 构建：[`.github/workflows/build-all.yml`](../.github/workflows/build-all.yml) 按发行版拆分 job，Ubuntu / Deepin / Fedora / Arch 各自在对应环境从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu 原始 bundle；macOS 与 Windows 是独立 job，各自完成构建和打包；推送 `v*` tag 后汇总全部产物、生成 `SHA256SUMS` 并发布；
+- 发布包只从 GitHub CI 构建：[`.github/workflows/build-all.yml`](../.github/workflows/build-all.yml) 按发行版拆分 job，Ubuntu / Deepin / Fedora / Arch 各自在对应环境从源码构建，AppImage / Flatpak / Nix 消费 Ubuntu 原始 bundle；macOS arm64、macOS x64 与 Windows 是独立 job，各自完成构建和打包；推送 `v*` tag 后汇总全部产物、生成 `SHA256SUMS` 并发布；
 - 构建期凭据只通过 CI secret / MSBuild 属性注入，不进入仓库；当前注入的是 Microsoft client ID。tag 构建会校验 secret 的 GUID 形状，并在打包前用 `system.identity` 断言编译期 id 已生效且为官方 id；
 
 发行模型、Provider/Policy/`DownloadPlan` 与镜像细节见 [`09-distribution-and-download-policy.md`](09-distribution-and-download-policy.md)。

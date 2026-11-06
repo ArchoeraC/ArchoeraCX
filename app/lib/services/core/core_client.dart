@@ -11,6 +11,7 @@ import 'loaders/loader.dart';
 import 'packs/modpack.dart';
 import 'resources/resource.dart';
 import 'settings/settings.dart';
+import 'stats/stats.dart';
 import 'system/system.dart';
 import 'system/ping.dart';
 import 'versions/versions.dart';
@@ -28,6 +29,7 @@ export 'packs/modpack.dart';
 export 'packs/platform_pack_models.dart';
 export 'resources/resource.dart';
 export 'settings/settings.dart';
+export 'stats/stats.dart';
 export 'system/system.dart';
 export 'system/ping.dart';
 export 'versions/versions.dart';
@@ -66,6 +68,7 @@ final class CoreClient extends CoreTransport
         CoreClientPing,
         CoreClientResource,
         CoreClientSettings,
+        CoreClientStats,
         CoreClientSystem,
         CoreClientVersions,
         CoreClientWiki {

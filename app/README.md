@@ -120,7 +120,7 @@ cargo build --release --manifest-path modules/downloader/Cargo.toml
 
 > 当前仓库路径含中文时，`flutter analyze` 的 analysis server 可能异常退出；用 `dart analyze` 代替，结果等价。
 
-macOS 只支持 Apple Silicon（arm64），不构建 x64/universal。
+macOS 分别构建 Apple Silicon（arm64）与 Intel（x64）两套单切片产物；x64 是兼容目标，随 Flutter 结束 Intel x64 支持同步退役。Intel 构建需要用对应架构的 Mac（含 CI 的 `macos-15-intel` runner）。
 
 ## 账户配置
 

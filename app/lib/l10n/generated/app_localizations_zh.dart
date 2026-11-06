@@ -2414,6 +2414,83 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsGlobalTintDesc => '让面板与背景轻微偏向主题色。';
 
   @override
+  String get settingsSectionBackground => '背景';
+
+  @override
+  String get settingsAppearanceStyle => '背景样式';
+
+  @override
+  String get settingsAppearanceStyleDesc => '使用纯色画布，或在启动器背后显示一张图片。';
+
+  @override
+  String get settingsAppearanceStyleSolid => '纯色';
+
+  @override
+  String get settingsAppearanceStyleImage => '图片';
+
+  @override
+  String get settingsBackgroundImage => '背景图片';
+
+  @override
+  String get settingsBackgroundImageDesc => 'PNG、JPEG、WebP 或 BMP，文件只保存在本机。';
+
+  @override
+  String get settingsBackgroundImageSelect => '选择图片';
+
+  @override
+  String get settingsBackgroundImageReplace => '更换';
+
+  @override
+  String get settingsBackgroundImageClear => '移除背景图片';
+
+  @override
+  String get settingsBackgroundImageNoPath => '选择一张图片后才会启用背景；在此之前仍使用纯色主题。';
+
+  @override
+  String get settingsBackgroundImageNote =>
+      '图片背景会强制使用深色文字对比、深色模式和全局着色，确保压在暗化图片上的浅色文字仍然清晰。';
+
+  @override
+  String get settingsBackgroundImagePicked => '背景图片已更新。';
+
+  @override
+  String get settingsBackgroundImageCleared => '背景图片已移除。';
+
+  @override
+  String get settingsBackgroundImageUnsupported =>
+      '请选择 PNG、JPEG、WebP 或 BMP 图片。';
+
+  @override
+  String get settingsBackgroundImagePickFailed => '无法打开图片选择器。';
+
+  @override
+  String get settingsBackgroundBlur => '模糊';
+
+  @override
+  String get settingsBackgroundBlurDesc => '柔化图片，让页面内容更聚焦。';
+
+  @override
+  String get settingsBackgroundDim => '暗化';
+
+  @override
+  String get settingsBackgroundDimDesc => '压暗图片；遮罩越强，文字越清晰。';
+
+  @override
+  String get settingsBackgroundDimAuto => '图片较亮，下限已按亮度抬高。';
+
+  @override
+  String get settingsBackgroundScale => '缩放';
+
+  @override
+  String get settingsBackgroundScaleDesc => '围绕图片中心进一步裁切。';
+
+  @override
+  String get settingsThemeModeImageForced => '图片背景使用深色，以保证文字可读性。';
+
+  @override
+  String get settingsGlobalTintImageForced => '图片背景会自动开启全局着色。';
+
+  @override
   String get settingsResetAppearance => '恢复默认外观';
 
   @override
@@ -2636,6 +2713,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get navWiki => 'Wiki';
+
+  @override
+  String get navStats => '统计';
 
   @override
   String get wikiSubtitle => 'Minecraft 社区动态与系统负载。';
@@ -3440,4 +3520,205 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get welcomeBackContinue => '开始游戏';
+
+  @override
+  String get statsTitle => '统计';
+
+  @override
+  String get statsSubtitle => '游玩时长、活跃足迹与最常打开的实例。';
+
+  @override
+  String get statsRefresh => '刷新统计';
+
+  @override
+  String get statsLoadFailed => '暂时无法读取统计。';
+
+  @override
+  String get statsLoadFailedHint => '原生核心没有返回游玩记录。';
+
+  @override
+  String get statsRetry => '重试';
+
+  @override
+  String get statsEmptyTitle => '还没有游玩记录';
+
+  @override
+  String get statsEmptyMessage => '启动一次游戏后，这里会出现游玩时长与活跃足迹。';
+
+  @override
+  String get statsTotalPlaytime => '总游玩时长';
+
+  @override
+  String get statsThisWeek => '本周游玩';
+
+  @override
+  String get statsSessions => '游戏会话';
+
+  @override
+  String get statsStreak => '连续游玩';
+
+  @override
+  String get statsInstances => '实例';
+
+  @override
+  String get statsHoursShort => '小时';
+
+  @override
+  String get statsMinutesShort => '分';
+
+  @override
+  String get statsDaysShort => '天';
+
+  @override
+  String statsLastWeek(String duration) {
+    return '上周 $duration';
+  }
+
+  @override
+  String statsTodayPlayed(String duration) {
+    return '今日 $duration';
+  }
+
+  @override
+  String statsWeekSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '本周 $count 次',
+      zero: '本周暂无启动',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsActiveDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '活跃 $count 天',
+      zero: '还没有活跃记录',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsModTotal(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个 Mod',
+      zero: '无 Mod',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsActivityTitle => '游玩足迹';
+
+  @override
+  String get statsLast90Days => '近 90 天';
+
+  @override
+  String get statsLess => '少';
+
+  @override
+  String get statsMore => '多';
+
+  @override
+  String statsDayTooltip(String date, String duration, String sessions) {
+    return '$date · $duration · $sessions';
+  }
+
+  @override
+  String get statsHoursTitle => '游玩时段';
+
+  @override
+  String statsPeakHour(String hour) {
+    return '高峰 $hour:00';
+  }
+
+  @override
+  String get statsBySessions => '按启动次数';
+
+  @override
+  String get statsNoSessions => '暂无记录';
+
+  @override
+  String get statsLoadersTitle => '实例构成';
+
+  @override
+  String statsLoaderKinds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 种加载器',
+      zero: '暂无加载器',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsNoInstances => '暂无实例';
+
+  @override
+  String statsInstanceCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个实例',
+      one: '1 个实例',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 次',
+      one: '1 次',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsTopInstances => '最常游玩';
+
+  @override
+  String statsTopCount(String count) {
+    return 'TOP $count';
+  }
+
+  @override
+  String get statsRecentSessions => '最近启动';
+
+  @override
+  String get statsRecentEmpty => '启动记录会显示在这里。';
+
+  @override
+  String get statsRunning => '进行中';
+
+  @override
+  String get statsNoPlaytime => '尚未记录时长';
+
+  @override
+  String get statsFootnote => '统计来自本机启动记录，不会上传。';
+
+  @override
+  String get accountSwitchHint => '长按或滚动切换账户';
+
+  @override
+  String get accountSwitchEmpty => '还没有账户';
+
+  @override
+  String get accountManage => '管理账户';
+
+  @override
+  String accountSwitched(String name) {
+    return '已切换到 $name';
+  }
+
+  @override
+  String get accountSwitchFailed => '切换账户失败。';
 }

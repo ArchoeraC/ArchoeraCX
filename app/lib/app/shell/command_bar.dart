@@ -37,14 +37,24 @@ class _CommandBar extends StatelessWidget {
     // full-height bar with the account + launch cluster.
     final onHome = currentIndex == 0;
 
-    return SafeArea(
+    final bar = SafeArea(
       top: false,
       child: AnimatedContainer(
         duration: context.tokens.normal,
         curve: Curves.easeOutCubic,
         height: onHome ? AppLayout.homeBarHeight : AppLayout.bottomBarHeight,
         decoration: BoxDecoration(
-          color: onHome ? tokens.bg : tokens.surface1.withValues(alpha: 0.86),
+          // The home footer is part of the page canvas: it paints the canvas
+          // colour with no hairline. In solid mode that colour is the canvas
+          // itself; with a wallpaper the canvas is transparent, so the nav
+          // floats directly over the photo. Other branches keep the chrome
+          // plate that separates the page from the controls, kept frosted so
+          // the wallpaper still reads through it.
+          color: onHome
+              ? tokens.bg
+              : tokens.imageBackground
+              ? tokens.surface1.withValues(alpha: 0.52)
+              : tokens.surface1.withValues(alpha: 0.86),
           border: Border(
             top: BorderSide(color: onHome ? Colors.transparent : tokens.border),
           ),
@@ -56,7 +66,6 @@ class _CommandBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final compactNav = constraints.maxWidth < 820;
                   final compactAccount = constraints.maxWidth < 900;
                   final compactLaunch = constraints.maxWidth < 680;
 
@@ -65,14 +74,31 @@ class _CommandBar extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: _NavTabs(
-                              destinations: destinations,
-                              currentIndex: currentIndex,
-                              compact: compactNav,
-                              onSelected: onSelected,
-                            ),
+                          child: LayoutBuilder(
+                            builder: (context, navConstraints) {
+                              // Keep the natural, left-aligned row from the
+                              // original command bar. Measure the labels only
+                              // to decide when a tighter density is actually
+                              // required; free space stays free instead of
+                              // stretching the tabs across the window.
+                              final metrics = _NavMetrics.measure(
+                                context,
+                                destinations,
+                              );
+                              final density = metrics.pick(
+                                navConstraints.maxWidth,
+                              );
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: _NavTabs(
+                                  destinations: destinations,
+                                  currentIndex: currentIndex,
+                                  compact: density == _NavDensity.compact,
+                                  dense: density == _NavDensity.dense,
+                                  onSelected: onSelected,
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(width: AppSpacing.md),
@@ -141,6 +167,104 @@ class _CommandBar extends StatelessWidget {
         ),
       ),
     );
+
+    // Frosted glass over the wallpaper: one clipped backdrop blur behind the
+    // translucent plate. The home footer stays fully transparent, and solid
+    // themes keep the plain canvas-coloured bar.
+    if (tokens.imageBackground && !onHome) {
+      return ClipRect(
+        child: BackdropFilter(
+          key: const ValueKey('command-bar-glass'),
+          filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: bar,
+        ),
+      );
+    }
+    return bar;
+  }
+}
+
+/// Presentation density of the navigation row.
+enum _NavDensity { normal, dense, compact }
+
+/// Intrinsic widths of the three navigation densities.
+///
+/// Measuring the labels (including the user's text scale) rather than using a
+/// fixed window breakpoint keeps short locales at full size: a wide Chinese
+/// window must not shrink tabs that already fit, and an English window must
+/// not clip the last one.
+class _NavMetrics {
+  const _NavMetrics({
+    required this.normal,
+    required this.dense,
+    required this.compact,
+  });
+
+  final double normal;
+  final double dense;
+  final double compact;
+
+  factory _NavMetrics.measure(
+    BuildContext context,
+    List<AppDestination> destinations,
+  ) => _NavMetrics(
+    normal: _rowWidth(context, destinations, _NavDensity.normal),
+    dense: _rowWidth(context, destinations, _NavDensity.dense),
+    compact: _rowWidth(context, destinations, _NavDensity.compact),
+  );
+
+  _NavDensity pick(double available) {
+    if (normal <= available) return _NavDensity.normal;
+    if (dense <= available) return _NavDensity.dense;
+    return _NavDensity.compact;
+  }
+
+  static double _rowWidth(
+    BuildContext context,
+    List<AppDestination> destinations,
+    _NavDensity density,
+  ) {
+    final compact = density == _NavDensity.compact;
+    final dense = density == _NavDensity.dense;
+    final padding = compact
+        ? AppSpacing.sm
+        : dense
+        ? AppSpacing.tight
+        : AppSpacing.md;
+    final gap = compact
+        ? 0.0
+        : dense
+        ? 2.0
+        : AppSpacing.xs;
+    final spacing = dense ? 2.0 : AppSpacing.xxs;
+    final style =
+        Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontSize: dense ? 13 : null,
+          letterSpacing: 0,
+          fontWeight: FontWeight.w500,
+        ) ??
+        TextStyle(fontSize: dense ? 13 : null);
+
+    var total = 0.0;
+    for (final destination in destinations) {
+      total += padding * 2 + 18 + gap;
+      if (compact) continue;
+      final painter = TextPainter(
+        text: TextSpan(text: destination.label, style: style),
+        maxLines: 1,
+        textDirection: Directionality.of(context),
+        locale: Localizations.maybeLocaleOf(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout();
+      // TextPainter matches the Text layout (same style, direction, locale
+      // and text scaler), so the measured width is the real hit-target width.
+      total += painter.width;
+      painter.dispose();
+    }
+    if (destinations.isNotEmpty) {
+      total += spacing * (destinations.length - 1);
+    }
+    return total;
   }
 }
 
@@ -156,12 +280,14 @@ class _NavTabs extends StatefulWidget {
     required this.destinations,
     required this.currentIndex,
     required this.compact,
+    required this.dense,
     required this.onSelected,
   });
 
   final List<AppDestination> destinations;
   final int currentIndex;
   final bool compact;
+  final bool dense;
   final ValueChanged<int> onSelected;
 
   @override
@@ -197,6 +323,7 @@ class _NavTabsState extends State<_NavTabs> {
     // Selection changes animate; pure relayouts (window resize, language
     // change) snap so the plate never lags behind a resize.
     if (oldWidget.compact != widget.compact) _pendingAnimate = false;
+    if (oldWidget.dense != widget.dense) _pendingAnimate = false;
     if (oldWidget.currentIndex != widget.currentIndex) _pendingAnimate = true;
     _schedule();
   }
@@ -277,7 +404,7 @@ class _NavTabsState extends State<_NavTabs> {
               index < widget.destinations.length;
               index++
             ) ...[
-              if (index > 0) const SizedBox(width: AppSpacing.xxs),
+              if (index > 0) SizedBox(width: widget.dense ? 2 : AppSpacing.xxs),
               KeyedSubtree(
                 key: _itemKeys[index],
                 child: _NavItem(
@@ -292,6 +419,7 @@ class _NavTabsState extends State<_NavTabs> {
                           widget.currentIndex &&
                       widget.destinations[index].path != '/',
                   compact: widget.compact,
+                  dense: widget.dense,
                   onTap: () =>
                       widget.onSelected(widget.destinations[index].branchIndex),
                 ),
@@ -338,6 +466,7 @@ class _NavItem extends StatelessWidget {
     required this.selected,
     required this.highlighted,
     required this.compact,
+    required this.dense,
     required this.onTap,
   });
 
@@ -351,19 +480,32 @@ class _NavItem extends StatelessWidget {
   final bool highlighted;
 
   final bool compact;
+  final bool dense;
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final foreground = highlighted ? tokens.accent : tokens.textSecondary;
-    // The home destination is the page canvas itself: it never draws the plate
-    // and must not grow any press/hover block either, otherwise the bar implies
-    // a selected/hovered tab that is intentionally absent. Other items keep the
-    // theme's normal ink response.
+    // The home destination is the page canvas itself on a solid canvas: it
+    // never draws the plate and grows no ink block, otherwise the bar implies a
+    // selected/hovered tab that is intentionally absent. Over a wallpaper the
+    // chrome is translucent, so every item uses a light wash instead of the
+    // opaque panel colour — including home, whose footer is fully transparent.
     final isHome = destination.path == '/';
-    final hoverTint = isHome ? Colors.transparent : tokens.surface2;
-    final pressTint = isHome ? Colors.transparent : null;
+    final glass = tokens.imageBackground;
+    final flat = isHome && !glass;
+    final hoverTint = flat
+        ? Colors.transparent
+        : glass
+        ? tokens.textPrimary.withValues(alpha: 0.10)
+        : tokens.surface2;
+    final pressTint = flat
+        ? Colors.transparent
+        : glass
+        ? tokens.textPrimary.withValues(alpha: 0.16)
+        : null;
     final shape = BeveledRectangleBorder(
       borderRadius: BorderRadius.only(
         topRight: Radius.circular(tokens.bevelS),
@@ -385,7 +527,11 @@ class _NavItem extends StatelessWidget {
           child: Container(
             height: 40,
             padding: EdgeInsets.symmetric(
-              horizontal: compact ? AppSpacing.sm : AppSpacing.md,
+              horizontal: compact
+                  ? AppSpacing.sm
+                  : dense
+                  ? AppSpacing.tight
+                  : AppSpacing.md,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -401,7 +547,7 @@ class _NavItem extends StatelessWidget {
                   ),
                 ),
                 if (!compact) ...[
-                  const SizedBox(width: AppSpacing.xs),
+                  SizedBox(width: dense ? 2 : AppSpacing.xs),
                   AnimatedDefaultTextStyle(
                     duration: tokens.fast,
                     curve: tokens.curve,
@@ -410,8 +556,12 @@ class _NavItem extends StatelessWidget {
                           color: foreground,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 0,
+                          fontSize: dense ? 13 : null,
                         ) ??
-                        TextStyle(color: foreground),
+                        TextStyle(
+                          color: foreground,
+                          fontSize: dense ? 13 : null,
+                        ),
                     child: Text(destination.label, maxLines: 1),
                   ),
                 ],
@@ -424,7 +574,9 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _AccountButton extends StatelessWidget {
+enum _AccountMenuAction { manage }
+
+class _AccountButton extends ConsumerStatefulWidget {
   const _AccountButton({
     required this.account,
     required this.compact,
@@ -436,73 +588,245 @@ class _AccountButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  ConsumerState<_AccountButton> createState() => _AccountButtonState();
+}
+
+class _AccountButtonState extends ConsumerState<_AccountButton> {
+  final GlobalKey _buttonKey = GlobalKey();
+  double _scrollAccumulator = 0;
+  DateTime _lastWheelSwitch = DateTime.fromMillisecondsSinceEpoch(0);
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final l10n = AppLocalizations.of(context);
-    final current = account;
+    final accounts = ref.watch(accountsProvider).value ?? const <Account>[];
+    final current = widget.account;
     final name = current?.displayName ?? l10n.addAccount;
     final detail = current?.kind.labelFor(l10n) ?? l10n.accountNoAccounts;
     final initial = current == null ? '+' : name.characters.first.toUpperCase();
 
-    return Tooltip(
-      message: name,
-      child: InkWell(
-        onTap: onTap,
-        hoverColor: tokens.surface2,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.xs,
-            vertical: AppSpacing.xxs,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (current != null)
-                AccountAvatar(account: current, size: 30)
-              else
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: tokens.accentSoft,
-                  child: Text(
-                    initial,
-                    style: TextStyle(
-                      color: tokens.accent,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              if (!compact) ...[
-                const SizedBox(width: AppSpacing.xs),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 150),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      Text(
-                        detail,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: tokens.textTertiary,
-                          letterSpacing: 0,
+    void handlePointerSignal(PointerSignalEvent event) {
+      if (event is! PointerScrollEvent) return;
+      if (accounts.length < 2) return;
+      // Horizontal touchpad gestures are not account switching.
+      if (event.scrollDelta.dy.abs() <= event.scrollDelta.dx.abs()) return;
+      _scrollAccumulator += event.scrollDelta.dy;
+      if (_scrollAccumulator.abs() < 32) return;
+      final direction = _scrollAccumulator > 0 ? 1 : -1;
+      _scrollAccumulator = 0;
+      final now = DateTime.now();
+      if (now.difference(_lastWheelSwitch) <
+          const Duration(milliseconds: 200)) {
+        return;
+      }
+      _lastWheelSwitch = now;
+      _cycleAccount(accounts, direction, l10n);
+    }
+
+    return KeyedSubtree(
+      key: const ValueKey('command-bar-account'),
+      child: Listener(
+        onPointerSignal: handlePointerSignal,
+        child: Semantics(
+          button: true,
+          label: name,
+          hint: l10n.accountSwitchHint,
+          child: InkWell(
+            key: _buttonKey,
+            onTap: widget.onTap,
+            onLongPress: () => _showAccountSwitcher(context, accounts, l10n),
+            hoverColor: tokens.imageBackground
+                ? tokens.textPrimary.withValues(alpha: 0.10)
+                : tokens.surface2,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+                vertical: AppSpacing.xxs,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (current != null)
+                    AccountAvatar(account: current, size: 30)
+                  else
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundColor: tokens.accentSoft,
+                      child: Text(
+                        initial,
+                        style: TextStyle(
+                          color: tokens.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
+                    ),
+                  if (!widget.compact) ...[
+                    const SizedBox(width: AppSpacing.xs),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 150),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                          Text(
+                            detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: tokens.textTertiary,
+                                  letterSpacing: 0,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _showAccountSwitcher(
+    BuildContext context,
+    List<Account> accounts,
+    AppLocalizations l10n,
+  ) async {
+    final overlay = Overlay.of(context).context.findRenderObject();
+    final button = _buttonKey.currentContext?.findRenderObject();
+    if (overlay is! RenderBox || button is! RenderBox) return;
+
+    final topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
+    final bottomRight = button.localToGlobal(
+      button.size.bottomRight(Offset.zero),
+      ancestor: overlay,
+    );
+    final selected = await showMenu<Object>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(topLeft, bottomRight),
+        Offset.zero & overlay.size,
+      ),
+      clipBehavior: Clip.antiAlias,
+      items: [
+        if (accounts.isEmpty)
+          PopupMenuItem<Object>(
+            enabled: false,
+            child: Text(l10n.accountSwitchEmpty),
+          )
+        else
+          for (final account in accounts)
+            PopupMenuItem<Object>(
+              value: account,
+              height: 52,
+              child: _AccountMenuRow(account: account),
+            ),
+        const PopupMenuDivider(),
+        PopupMenuItem<Object>(
+          value: _AccountMenuAction.manage,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                AppIcons.accounts,
+                size: 18,
+                color: context.tokens.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(l10n.accountManage),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (!mounted || selected == null) return;
+    if (selected == _AccountMenuAction.manage) {
+      widget.onTap();
+      return;
+    }
+    if (selected is Account) {
+      await _switchTo(selected, l10n);
+    }
+  }
+
+  void _cycleAccount(
+    List<Account> accounts,
+    int direction,
+    AppLocalizations l10n,
+  ) {
+    if (accounts.length < 2) return;
+    final currentId = widget.account?.id;
+    var index = accounts.indexWhere((account) => account.id == currentId);
+    if (index < 0) index = direction > 0 ? -1 : 0;
+    final next =
+        accounts[(index + direction + accounts.length) % accounts.length];
+    _switchTo(next, l10n);
+  }
+
+  Future<void> _switchTo(Account account, AppLocalizations l10n) async {
+    if (account.id == widget.account?.id) return;
+    try {
+      await ref.read(accountsProvider.notifier).select(account.id);
+      if (!mounted) return;
+      toast(l10n.accountSwitched(account.displayName), type: ToastType.success);
+    } catch (_) {
+      if (!mounted) return;
+      toast(l10n.accountSwitchFailed, type: ToastType.error);
+    }
+  }
+}
+
+class _AccountMenuRow extends StatelessWidget {
+  const _AccountMenuRow({required this.account});
+
+  final Account account;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AccountAvatar(account: account, size: 26),
+        const SizedBox(width: AppSpacing.xs),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 180),
+              child: Text(
+                account.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              account.kind.labelFor(l10n),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: tokens.textTertiary),
+            ),
+          ],
+        ),
+        if (account.active) ...[
+          const SizedBox(width: AppSpacing.xs),
+          Icon(AppIcons.check, size: 16, color: tokens.accent),
+        ],
+      ],
     );
   }
 }

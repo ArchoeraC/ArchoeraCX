@@ -151,6 +151,10 @@ public sealed class AccountModuleService : IModuleMethodHandler
         }
         catch (OperationCanceledException)
         {
+            // Cancellation is expected when the user closes the sign-in
+            // dialog; keep a timestamped marker so a report can distinguish it
+            // from a stalled flow.
+            Log(method, "CANCELLED", "account call cancelled");
             throw;
         }
         catch (Exception exception) when (
@@ -384,13 +388,24 @@ public sealed class AccountModuleService : IModuleMethodHandler
         {
             callback = await listener.WaitForCallbackAsync(timeout.Token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (
+            !cancellationToken.IsCancellationRequested &&
+            !pending.CancelRequested)
         {
             throw new AccountAuthException(
                 "AUTH_CODE_EXPIRED",
                 "The Microsoft sign-in request expired. Start again.");
         }
         catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+
+        // A callback can already be queued when the user cancels. Check the
+        // flow flag before validating or exchanging the code: cancellation
+        // always wins over a redirect that arrived at the same time.
+        cancellationToken.ThrowIfCancellationRequested();
+        if (pending.CancelRequested)
         {
             throw new OperationCanceledException(cancellationToken);
         }
@@ -416,6 +431,14 @@ public sealed class AccountModuleService : IModuleMethodHandler
                 "Microsoft sign-in returned no authorization code. Start again.");
         }
 
+        // Cancel may have arrived after the redirect but before the token
+        // exchange; do not start a request in that case. The flow flag is set
+        // before the token source is cancelled, so check both.
+        cancellationToken.ThrowIfCancellationRequested();
+        if (pending.CancelRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
         var microsoftToken = await _auth
             .CompleteAuthorizationCodeAsync(challenge, callback.Code, cancellationToken)
             .ConfigureAwait(false);
@@ -431,11 +454,13 @@ public sealed class AccountModuleService : IModuleMethodHandler
         MicrosoftTokenSet microsoftToken,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var session = await _auth
             .CompleteMinecraftLoginAsync(microsoftToken, cancellationToken)
             .ConfigureAwait(false);
         Log("account.login.microsoft.poll", "MINECRAFT_CHAIN_OK", "profile resolved");
 
+        cancellationToken.ThrowIfCancellationRequested();
         var refreshToken = microsoftToken.RefreshToken
                            ?? throw new AccountAuthException(
                                "TOKEN_RESPONSE_INVALID",
@@ -470,6 +495,10 @@ public sealed class AccountModuleService : IModuleMethodHandler
         // A running poll owns disposal and finishes on cancellation; an idle
         // flow is disposed here so its loopback listener cannot leak.
         pending?.CancelOrDispose();
+        Log(
+            CancelMicrosoftMethod,
+            "CANCELLED",
+            pending is null ? "unknown or completed flow" : "flow cancelled");
 
         return ModuleJson.Envelope(writer => writer.WriteBoolean("cancelled", true));
     }
@@ -984,6 +1013,7 @@ public sealed class AccountModuleService : IModuleMethodHandler
     {
         private int _polling;
         private int _disposed;
+        private int _cancelRequested;
 
         private PendingFlow(
             MicrosoftDeviceCodeChallenge? deviceCodeChallenge,
@@ -1016,6 +1046,12 @@ public sealed class AccountModuleService : IModuleMethodHandler
         private bool IsPolling => Volatile.Read(ref _polling) != 0;
 
         /// <summary>
+        /// True once the UI asked to stop. Lets a poll distinguish "listener
+        /// was closed by cancel" from an actual authorization-code expiry.
+        /// </summary>
+        public bool CancelRequested => Volatile.Read(ref _cancelRequested) != 0;
+
+        /// <summary>
         /// Called under the flow lock so cleanup cannot dispose the token source
         /// between the dictionary lookup and the poll starting.
         /// </summary>
@@ -1028,6 +1064,43 @@ public sealed class AccountModuleService : IModuleMethodHandler
         /// </summary>
         public void CancelOrDispose()
         {
+            // Mark the cancel first so a poll that was just unblocked by the
+            // listener shutdown never reports an expired code, and so a late
+            // authorization code is rejected even before the token source is
+            // cancelled.
+            Volatile.Write(ref _cancelRequested, 1);
+
+            // Close the loopback port synchronously: an immediate retry must be
+            // able to bind it, and a late authorization code must never be
+            // exchanged. The socket close is local; the potentially slow token
+            // callbacks run below on a worker.
+            try
+            {
+                Listener?.Dispose();
+            }
+            catch
+            {
+                // Best effort: the poll still observes CancelRequested.
+            }
+
+            // CancellationTokenSource.Cancel runs user callbacks and may wait
+            // for an in-flight server request. Run it off the RPC thread so the
+            // cancel method returns immediately; the dialog must never wait for
+            // a loopback callback or a server request.
+            _ = Task.Run(TearDown);
+        }
+
+        private void TearDown()
+        {
+            try
+            {
+                Listener?.Dispose();
+            }
+            catch
+            {
+                // Best effort: the poll still observes CancelRequested.
+            }
+
             if (IsPolling)
             {
                 TryCancel();
