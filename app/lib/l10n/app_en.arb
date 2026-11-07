@@ -265,6 +265,10 @@
       }
     }
   },
+  "launchProgressBackground": "Run in background",
+  "@launchProgressBackground": {
+    "description": "Dismiss button of the launch progress dialog; the launch keeps running in the background."
+  },
   "launchStageInstance": "Reading instance settings",
   "launchStageAccount": "Preparing account",
   "launchStageVersion": "Loading game version",
@@ -2827,7 +2831,7 @@
   "@crashDialogNoDetails": {
     "description": "Shown when the analyzer has no rule-specific finding."
   },
-  "crashDialogShareHint": "If you need help from others, share the error log — not a photo or screenshot of this window.",
+  "crashDialogShareHint": "If you need help, send the error report file to the other party — not a photo or screenshot of this window.",
   "@crashDialogShareHint": {
     "description": "Classic launcher reminder in the crash dialog: ask for help with the log, not a screenshot."
   },
@@ -2992,7 +2996,7 @@
   "elevationKindRoot": "root",
   "elevationKindAdministrator": "administrator",
   "welcomeBackTitle": "Hi",
-  "welcomeBackBody": "It's been a while since you last played Minecraft.\n\nBut Minecraft has been waiting for you all along.",
+  "welcomeBackBody": "It's been a while since you last played Minecraft.\n\nMinecraft has been waiting for you all along.",
   "welcomeBackGreeting": "Welcome back, {name}",
   "@welcomeBackGreeting": {
     "description": "Greeting shown when no instance has been launched for 30 days; a Microsoft account name wins.",

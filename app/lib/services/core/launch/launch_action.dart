@@ -98,21 +98,39 @@ Future<void> launchInstance(
   if (!context.mounted) return;
 
   // Show the stage checklist before the call so the first report is not lost.
-  // The dialog is modal but does not block the launch task itself.
+  // The dialog does not block the launch task: the user may dismiss it and the
+  // launch keeps running in the background.
   final progress = LaunchProgressController();
   final progressReady = Completer<void>();
+  BuildContext? progressContext;
   final progressDialog = showDialog<void>(
     context: context,
-    barrierDismissible: false,
+    barrierDismissible: true,
     builder: (context) {
+      progressContext = context;
       if (!progressReady.isCompleted) progressReady.complete();
       return LaunchProgressDialog(
         instanceName: instance.name,
         progress: progress,
       );
     },
-  );
+  ).whenComplete(() => progressContext = null);
   await progressReady.future;
+
+  Future<void> dismissProgress() async {
+    final dialogContext = progressContext;
+    final route = dialogContext == null ? null : ModalRoute.of(dialogContext);
+    // The route may already be closing (Esc, barrier tap or the button). Only
+    // pop it while it is still the topmost route, otherwise the pop would hit
+    // whatever page is below it.
+    if (dialogContext != null &&
+        dialogContext.mounted &&
+        route != null &&
+        route.isCurrent) {
+      Navigator.of(dialogContext).pop();
+    }
+    await progressDialog;
+  }
 
   try {
     final result = await client.launchInstance(
@@ -127,7 +145,7 @@ Future<void> launchInstance(
       onProgress: progress.report,
       label: instance.name,
     );
-    if (context.mounted) await _dismissProgress(context, progressDialog);
+    if (context.mounted) await dismissProgress();
     if (context.mounted) {
       toast(l10n.launchStarted(result.pid), type: ToastType.success);
     }
@@ -169,7 +187,7 @@ Future<void> launchInstance(
       ),
     );
   } catch (error) {
-    if (context.mounted) await _dismissProgress(context, progressDialog);
+    if (context.mounted) await dismissProgress();
     if (!context.mounted) return;
     final message = _launchErrorMessage(l10n, error);
     if (error is CoreException) {
@@ -206,15 +224,6 @@ String _launchErrorMessage(
   CoreException(code: 'AUTO_REPAIR_BLOCKED') => l10n.launchAutoRepairBlocked,
   _ => error.toString(),
 };
-
-/// Pops the progress dialog and waits for its route to finish so the next
-/// dialog (welcome back or failure) cannot stack behind it.
-Future<void> _dismissProgress(BuildContext context, Future<void> dialog) async {
-  if (!context.mounted) return;
-  final navigator = Navigator.of(context, rootNavigator: true);
-  if (navigator.canPop()) navigator.pop();
-  await dialog;
-}
 
 /// Shows the "welcome back" easter egg. Names a Microsoft account first, then
 /// falls back to the currently selected account.

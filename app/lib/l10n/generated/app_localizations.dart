@@ -818,6 +818,12 @@ abstract class AppLocalizations {
   /// **'Starting {name}'**
   String launchProgressTitle(String name);
 
+  /// Dismiss button of the launch progress dialog; the launch keeps running in the background.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in background'**
+  String get launchProgressBackground;
+
   /// No description provided for @launchStageInstance.
   ///
   /// In en, this message translates to:
@@ -5848,7 +5854,7 @@ abstract class AppLocalizations {
   /// Classic launcher reminder in the crash dialog: ask for help with the log, not a screenshot.
   ///
   /// In en, this message translates to:
-  /// **'If you need help from others, share the error log — not a photo or screenshot of this window.'**
+  /// **'If you need help, send the error report file to the other party — not a photo or screenshot of this window.'**
   String get crashDialogShareHint;
 
   /// Shown when the exit code is a POSIX signal (for example 137 = SIGKILL); force-stopping the game also lands in this dialog.
@@ -6442,7 +6448,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeBackBody.
   ///
   /// In en, this message translates to:
-  /// **'It\'s been a while since you last played Minecraft.\n\nBut Minecraft has been waiting for you all along.'**
+  /// **'It\'s been a while since you last played Minecraft.\n\nMinecraft has been waiting for you all along.'**
   String get welcomeBackBody;
 
   /// Greeting shown when no instance has been launched for 30 days; a Microsoft account name wins.

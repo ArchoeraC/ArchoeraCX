@@ -437,6 +437,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get launchProgressBackground => 'Run in background';
+
+  @override
   String get launchStageInstance => 'Reading instance settings';
 
   @override
@@ -3378,7 +3381,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get crashDialogShareHint =>
-      'If you need help from others, share the error log — not a photo or screenshot of this window.';
+      'If you need help, send the error report file to the other party — not a photo or screenshot of this window.';
 
   @override
   String get crashDialogForceStopHint =>
@@ -3729,7 +3732,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeBackBody =>
-      'It\'s been a while since you last played Minecraft.\n\nBut Minecraft has been waiting for you all along.';
+      'It\'s been a while since you last played Minecraft.\n\nMinecraft has been waiting for you all along.';
 
   @override
   String welcomeBackGreeting(String name) {

@@ -35,8 +35,9 @@ String launchStageTokenLabel(AppLocalizations l10n, String? token) =>
 /// Modal that explains what the launcher is currently doing. It is driven by
 /// the C# stage reports; without reports it degrades to an indeterminate bar.
 ///
-/// The dialog owns the controller: it is disposed when the route is gone, after
-/// the [AnimatedBuilder] child has removed its listener.
+/// The dialog owns the controller and disposes it when the route is gone. The
+/// user may dismiss it (barrier tap, back or the background button) while the
+/// launch keeps running; the controller then ignores late reports.
 class LaunchProgressDialog extends StatefulWidget {
   const LaunchProgressDialog({
     super.key,
@@ -63,55 +64,55 @@ class _LaunchProgressDialogState extends State<LaunchProgressDialog> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final progress = widget.progress;
-    return PopScope(
-      canPop: false,
-      child: AlertDialog(
-        title: Text(l10n.launchProgressTitle(widget.instanceName)),
-        content: SizedBox(
-          width: 360,
-          child: AnimatedBuilder(
-            animation: progress,
-            builder: (context, _) {
-              final furthest = progress.furthest;
-              // Reports mark completed stages, so the stage being worked on is
-              // the next one. Once the last stage is reached nothing spins.
-              final currentStep =
-                  progress.hasReports && furthest < progress.total
-                  ? furthest + 1
-                  : 0;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  LinearProgressIndicator(
-                    value: progress.hasReports
-                        ? furthest / progress.total
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  if (!progress.hasReports)
-                    Text(l10n.launchStarting, style: theme.textTheme.bodyMedium)
-                  else
-                    ...List<Widget>.generate(progress.total, (index) {
-                      final step = index + 1;
-                      return _StageRow(
-                        label: launchStageLabel(l10n, step),
-                        state: step == currentStep
-                            ? _StageState.current
-                            : progress.reached.contains(step)
-                            ? _StageState.done
-                            : progress.skipped.contains(step)
-                            ? _StageState.skipped
-                            : _StageState.pending,
-                        skippedLabel: l10n.launchStageSkipped,
-                      );
-                    }),
-                ],
-              );
-            },
-          ),
+    return AlertDialog(
+      title: Text(l10n.launchProgressTitle(widget.instanceName)),
+      content: SizedBox(
+        width: 360,
+        child: AnimatedBuilder(
+          animation: progress,
+          builder: (context, _) {
+            final furthest = progress.furthest;
+            // Reports mark completed stages, so the stage being worked on is
+            // the next one. Once the last stage is reached nothing spins.
+            final currentStep = progress.hasReports && furthest < progress.total
+                ? furthest + 1
+                : 0;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LinearProgressIndicator(
+                  value: progress.hasReports ? furthest / progress.total : null,
+                ),
+                const SizedBox(height: 16),
+                if (!progress.hasReports)
+                  Text(l10n.launchStarting, style: theme.textTheme.bodyMedium)
+                else
+                  ...List<Widget>.generate(progress.total, (index) {
+                    final step = index + 1;
+                    return _StageRow(
+                      label: launchStageLabel(l10n, step),
+                      state: step == currentStep
+                          ? _StageState.current
+                          : progress.reached.contains(step)
+                          ? _StageState.done
+                          : progress.skipped.contains(step)
+                          ? _StageState.skipped
+                          : _StageState.pending,
+                      skippedLabel: l10n.launchStageSkipped,
+                    );
+                  }),
+              ],
+            );
+          },
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.launchProgressBackground),
+        ),
+      ],
     );
   }
 }

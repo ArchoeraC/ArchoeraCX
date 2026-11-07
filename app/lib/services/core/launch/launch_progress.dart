@@ -13,14 +13,24 @@ class LaunchProgressController extends ChangeNotifier {
   final Set<int> _reached = <int>{};
   final Set<int> _skipped = <int>{};
   int _furthest = 0;
+  bool _disposed = false;
 
   int get furthest => _furthest;
   Set<int> get reached => Set.unmodifiable(_reached);
   Set<int> get skipped => Set.unmodifiable(_skipped);
   bool get hasReports => _furthest > 0;
 
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// The progress dialog can be dismissed while the launch keeps running, so
+  /// late stage reports must be ignored instead of touching a disposed
+  /// [ChangeNotifier].
   void report(int done, int total) {
-    if (done <= 0) return;
+    if (_disposed || done <= 0) return;
     final step = done > this.total ? this.total : done;
     if (step <= _furthest) return;
 

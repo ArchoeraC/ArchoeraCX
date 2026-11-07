@@ -417,6 +417,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get launchProgressBackground => '后台运行';
+
+  @override
   String get launchStageInstance => '读取实例配置';
 
   @override
@@ -3187,7 +3190,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get crashDialogNoDetails => '没有匹配到具体原因。请打开启动日志查看最后的错误信息。';
 
   @override
-  String get crashDialogShareHint => '如果你需要寻求他人的帮助，请向他人提供错误日志，而不是这个窗口的照片或者截图。';
+  String get crashDialogShareHint => '如果需要帮助，请把错误报告文件发送给对方，而不是发送这个窗口的照片或者截图。';
 
   @override
   String get crashDialogForceStopHint => '如果此次终止由您本人操作，请忽略此消息。';
@@ -3511,7 +3514,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get welcomeBackBody =>
-      '看起来你已经很久没有玩过 Minecraft 了呢。\n\n但是 Minecraft 一直在等你回来。';
+      '看起来你已经很久没有玩过 Minecraft 了呢。\n\nMinecraft 一直在等你回来。';
 
   @override
   String welcomeBackGreeting(String name) {

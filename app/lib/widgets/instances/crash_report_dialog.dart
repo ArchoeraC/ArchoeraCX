@@ -147,7 +147,7 @@ class _ShareHint extends StatelessWidget {
             child: Text(
               text,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.onSecondaryContainer,
+                color: colors.error,
               ),
             ),
           ),

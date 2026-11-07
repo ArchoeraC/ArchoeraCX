@@ -57,9 +57,9 @@ void main() {
     expect(find.textContaining('Java 17'), findsWidgets);
     expect(find.text('证据'), findsOneWidget);
     expect(
-      find.textContaining('请向他人提供错误日志'),
+      find.textContaining('请把错误报告文件发送给对方'),
       findsOneWidget,
-      reason: 'the dialog must ask for the log instead of a screenshot',
+      reason: 'the dialog must ask for the report file instead of a screenshot',
     );
     expect(
       find.textContaining('如果此次终止由您本人操作'),
