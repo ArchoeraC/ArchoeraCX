@@ -119,20 +119,20 @@ runs:
     - name: C# tests
       shell: bash
       working-directory: app
-      run: dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release --nologo
+      run: dotnet test core/modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release --nologo
 
     - name: C# DevHost diagnostics
       shell: bash
       working-directory: app
       run: |
-        dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
-        dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
+        dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --check
+        dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --self-test-loader
 
     - name: Rust tests
       shell: bash
       working-directory: app
       run: |
-        cargo test --locked --manifest-path modules/downloader/Cargo.toml
+        cargo test --locked --manifest-path core/modules/downloader/Cargo.toml
         cargo test --locked --manifest-path core/vault-rs/Cargo.toml
 
     - name: Flutter dependencies and localization

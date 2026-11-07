@@ -284,7 +284,7 @@ logs/account.log              脱敏诊断日志
 
 | 文件 | 作用 |
 |---|---|
-| `app/modules/business/Archoera.Infrastructure/Accounts/MicrosoftAuthClient.cs` | Authorization Code + PKCE、Device Code、refresh、XBL/XSTS/Minecraft、profile/certificates |
+| `app/core/modules/business/Archoera.Infrastructure/Accounts/MicrosoftAuthClient.cs` | Authorization Code + PKCE、Device Code、refresh、XBL/XSTS/Minecraft、profile/certificates |
 | `.../AccountModuleService.cs` | `account.*` 方法、待处理 flow、账户写入、脱敏日志 |
 | `.../JsonAccountStore.cs` | 元数据/凭据分离存储 |
 | `app/lib/pages/accounts_page.dart` | 账户页、设备码弹窗、离线账户 |

@@ -166,10 +166,10 @@ cd app
 ./build/native/async_smoke
 ./build/native/module_smoke
 
-dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
-cargo test --manifest-path modules/downloader/Cargo.toml
+dotnet test core/modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --check
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --self-test-loader
+cargo test --manifest-path core/modules/downloader/Cargo.toml
 
 flutter test
 ```

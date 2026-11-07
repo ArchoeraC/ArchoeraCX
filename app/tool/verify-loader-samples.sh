@@ -41,7 +41,7 @@ run_one() {
   mkdir -p "$root/libraries"
 
   echo "=== $kind $game $loader_version ==="
-  dotnet run --project "$app_dir/modules/business/Archoera.DevHost" -c Release -- \
+  dotnet run --project "$app_dir/core/modules/business/Archoera.DevHost" -c Release -- \
     --verify-loader "$installer" \
     --loader "$kind" \
     --game "$game" \

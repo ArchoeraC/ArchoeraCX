@@ -48,12 +48,28 @@ command -v clang++ >/dev/null 2>&1 || { echo "error: clang++ not found" >&2; exi
 command -v ld64.lld >/dev/null 2>&1 || { echo "error: ld64.lld not found" >&2; exit 1; }
 
 CORE_SRC="${APP}/core/src"
+# Paths mirror app/core/CMakeLists.txt; the Apple-specific sources are the
+# .mm ones and need -fobjc-arc.
 CORE_SOURCES=(
-  archoera_core method_registry module_host module_registry core_json
-  core_result core_tasks core_status core_actions core_appearance core_instance
-  core_module_bridge platform_system_common platform_status_common
-  platform_gpu_stub platform_appearance_macos platform_system_macos
-  platform_status_macos platform_instance_posix
+  abi/archoera_core.cpp
+  host/method_registry.cpp
+  host/module_host.cpp
+  host/module_registry.cpp
+  host/core_module_bridge.cpp
+  foundation/core_json.cpp
+  foundation/core_result.cpp
+  foundation/core_tasks.cpp
+  system/core_status.cpp
+  system/core_actions.cpp
+  appearance/core_appearance.cpp
+  instance/core_instance.cpp
+  system/platform_system_common.cpp
+  system/platform_status_common.cpp
+  system/platform_gpu_stub.cpp
+  appearance/platform_appearance_macos.mm
+  system/platform_system_macos.mm
+  system/platform_status_macos.cpp
+  instance/platform_instance_posix.cpp
 )
 INCLUDES=(-I "${APP}/contracts/abi" -I "${APP}/contracts/module" -I "${CORE_SRC}")
 
@@ -67,13 +83,11 @@ for arch in "${ARCHS[@]}"; do
   mkdir -p "${out}"
   echo "── ${arch} core objects"
   for source in "${CORE_SOURCES[@]}"; do
-    extension="cpp"
-    case "${source}" in
-      platform_appearance_macos|platform_system_macos) extension="mm" ;;
-    esac
+    # Flatten nested paths (abi/, host/, ...) into one object name.
+    object="${source//\//_}"
     clang++ -target "${target}" -isysroot "${SDK}" -std=c++20 -fobjc-arc \
-      "${INCLUDES[@]}" -c "${CORE_SRC}/${source}.${extension}" \
-      -o "${out}/${source}.o"
+      "${INCLUDES[@]}" -c "${CORE_SRC}/${source}" \
+      -o "${out}/${object}.o"
   done
 
   echo "── ${arch} core dylib"

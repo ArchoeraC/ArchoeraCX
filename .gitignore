@@ -1,7 +1,7 @@
 # ArchoeraCX ignore rules
 #
 # Keep the patterns narrow: a rule that hides a directory name also hides real
-# source. `**/bin/` used to swallow `app/modules/downloader/src/bin/`, which
+# source. `**/bin/` used to swallow `app/core/modules/downloader/src/bin/`, which
 # made a fresh clone unable to build the Rust downloader CLI.
 
 # --- Flutter / Dart -------------------------------------------------------
@@ -32,8 +32,8 @@ app/assets/icons/ui/*.woff
 app/assets/icons/ui/*.woff2
 
 # --- .NET (business modules only) ----------------------------------------
-app/modules/business/**/bin/
-app/modules/business/**/obj/
+app/core/modules/business/**/bin/
+app/core/modules/business/**/obj/
 *.user
 *.suo
 *.userosscache
@@ -41,7 +41,7 @@ app/modules/business/**/obj/
 **/MicrosoftBuildConfig.g.cs
 
 # --- Rust ----------------------------------------------------------------
-app/modules/downloader/target/
+app/core/modules/downloader/target/
 app/core/vault-rs/target/
 
 # --- Native / CMake ------------------------------------------------------

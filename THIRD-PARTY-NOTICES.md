@@ -135,7 +135,7 @@ Versions are locked by `app/pubspec.lock`. The Flutter SDK and Dart SDK are BSD-
 
 ## 4. Rust crates (runtime closure)
 
-Generated from `app/modules/downloader/Cargo.lock` and `cargo metadata`; dev-only test crates are excluded from this closure. License expressions are the SPDX expressions declared by each crate; consult each upstream package for the full text.
+Generated from `app/core/modules/downloader/Cargo.lock` and `cargo metadata`; dev-only test crates are excluded from this closure. License expressions are the SPDX expressions declared by each crate; consult each upstream package for the full text.
 
 | Crate | Version | License expression | Upstream |
 |---|---:|---|---|

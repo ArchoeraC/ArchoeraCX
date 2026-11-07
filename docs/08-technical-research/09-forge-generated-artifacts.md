@@ -369,7 +369,7 @@ instances/<id>/
 
 ### 3.6 与当前 Domain 模型的对齐（只读观察）
 
-> 本节只记录文档与现有代码的对应关系，不修改代码；用于在实现前冻结字段/编号。当前代码位于 `app/modules/business/Archoera.Domain/Loaders/`、`Archoera.Application/Loaders/`、`Archoera.Infrastructure/Loaders/`。
+> 本节只记录文档与现有代码的对应关系，不修改代码；用于在实现前冻结字段/编号。当前代码位于 `app/core/modules/business/Archoera.Domain/Loaders/`、`Archoera.Application/Loaders/`、`Archoera.Infrastructure/Loaders/`。
 
 | 本文概念 | 当前模型（只读） | 备注 |
 |---|---|---|

@@ -5,13 +5,13 @@ setlocal
 
 cd /d "%~dp0.."
 
-cargo build --release --locked --manifest-path modules\downloader\Cargo.toml
+cargo build --release --locked --manifest-path core\modules\downloader\Cargo.toml
 if errorlevel 1 exit /b 1
 
 if not exist build\native mkdir build\native
-copy /y modules\downloader\target\release\archoera_dl.dll build\native\archoera_dl.dll >nul
+copy /y core\modules\downloader\target\release\archoera_dl.dll build\native\archoera_dl.dll >nul
 if errorlevel 1 exit /b 1
-copy /y modules\downloader\target\release\archoera-dl-cli.exe build\native\archoera-dl.exe >nul
+copy /y core\modules\downloader\target\release\archoera-dl-cli.exe build\native\archoera-dl.exe >nul
 if errorlevel 1 exit /b 1
 
 echo Built: %CD%\build\native\archoera_dl.dll

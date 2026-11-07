@@ -22,7 +22,6 @@
 #include <cstring>
 #include <mutex>
 #include <string>
-#include <thread>
 
 #ifndef ARCHOERACX_FAKE_MODULE_PATH
 #  error "ARCHOERACX_FAKE_MODULE_PATH must be defined by the build"
@@ -39,8 +38,10 @@ struct WakeState {
 struct CoreGuard {
   archoera_core* core = nullptr;
 
-  ~CoreGuard() {
-    if (core != nullptr) {
+  ~CoreGuard() 
+  {
+    if (core != nullptr) 
+    {
       archoera_shutdown(core);
     }
   }
@@ -48,18 +49,21 @@ struct CoreGuard {
 
 bool wait_for_next_wake(WakeState& state,
                         unsigned& consumed,
-                        std::chrono::milliseconds timeout) {
+                        std::chrono::milliseconds timeout) 
+{
   std::unique_lock<std::mutex> lock(state.mutex);
   const bool woken = state.cv.wait_for(lock, timeout, [&] {
     return state.counter > consumed;
   });
-  if (woken) {
+  if (woken) 
+  {
     consumed = state.counter;
   }
   return woken;
 }
 
-bool set_module_env(const char* path) {
+bool set_module_env(const char* path) 
+{
 #if defined(_WIN32)
   return _putenv_s("ARCHOERACX_CS_MODULE", path) == 0;
 #else
@@ -69,9 +73,11 @@ bool set_module_env(const char* path) {
 
 }  // namespace
 
-extern "C" void module_smoke_wake(void* user) {
+extern "C" void module_smoke_wake(void* user) 
+{
   auto* state = static_cast<WakeState*>(user);
-  if (state == nullptr) {
+  if (state == nullptr) 
+  {
     return;
   }
   {
@@ -92,7 +98,8 @@ namespace {
     }                                                                     \
   } while (0)
 
-int run_tests() {
+int run_tests() 
+{
   constexpr auto kWaitTimeout = std::chrono::seconds(3);
 
   CHECK(set_module_env(ARCHOERACX_FAKE_MODULE_PATH));
@@ -116,20 +123,24 @@ int run_tests() {
 
   bool saw_completed = false;
   unsigned consumed = 0;
-  for (int iteration = 0; iteration < 16 && !saw_completed; ++iteration) {
+  for (int iteration = 0; iteration < 16 && !saw_completed; ++iteration) 
+  {
     CHECK(wait_for_next_wake(wake, consumed, kWaitTimeout));
 
     archoera_event events[64];
     const int32_t count = archoera_poll(core, events, 64);
     CHECK(count >= 0);
 
-    for (int32_t i = 0; i < count; ++i) {
+    for (int32_t i = 0; i < count; ++i) 
+    {
       const archoera_event& event = events[i];
-      if (event.task_id != task) {
+      if (event.task_id != task) 
+      {
         continue;
       }
       if (event.type == ARCHOERA_EV_TASK_STATE &&
-          event.state == ARCHOERA_TASK_COMPLETED) {
+          event.state == ARCHOERA_TASK_COMPLETED) 
+      {
         saw_completed = true;
         CHECK(event.json != nullptr);
         CHECK(std::strstr(event.json, "\"phase\":\"completed\"") != nullptr);
@@ -158,20 +169,23 @@ int run_tests() {
   CHECK(archoera_cancel(core, cancel_task) == ARCHOERA_OK);
 
   bool saw_cancelled = false;
-  for (int iteration = 0; iteration < 16 && !saw_cancelled; ++iteration) {
+  for (int iteration = 0; iteration < 16 && !saw_cancelled; ++iteration) 
+  {
     CHECK(wait_for_next_wake(wake, consumed, kWaitTimeout));
 
     archoera_event events[64];
     const int32_t count = archoera_poll(core, events, 64);
     CHECK(count >= 0);
 
-    for (int32_t i = 0; i < count; ++i) {
+    for (int32_t i = 0; i < count; ++i) 
+    {
       const archoera_event& event = events[i];
       if (event.task_id != cancel_task) {
         continue;
       }
       if (event.type == ARCHOERA_EV_TASK_STATE &&
-          event.state == ARCHOERA_TASK_CANCELLED) {
+          event.state == ARCHOERA_TASK_CANCELLED) 
+      {
         saw_cancelled = true;
         CHECK(event.json != nullptr);
         CHECK(std::strstr(event.json, "\"phase\":\"cancelled\"") != nullptr);
@@ -191,22 +205,24 @@ int run_tests() {
   CHECK(archoera_call(core, "java.scan", "{\"mode\":\"reject\"}", &reject_task,
                       &err) == ARCHOERA_OK);
   CHECK(reject_task != 0);
-
+  // --- java.scan: module rejects the call, task fails without done ---------
   bool saw_failed = false;
-  for (int iteration = 0; iteration < 16 && !saw_failed; ++iteration) {
+  for (int iteration = 0; iteration < 16 && !saw_failed; ++iteration) 
+  {
     CHECK(wait_for_next_wake(wake, consumed, kWaitTimeout));
 
     archoera_event events[64];
     const int32_t count = archoera_poll(core, events, 64);
     CHECK(count >= 0);
-
-    for (int32_t i = 0; i < count; ++i) {
+    for (int32_t i = 0; i < count; ++i) 
+    {
       const archoera_event& event = events[i];
       if (event.task_id != reject_task) {
         continue;
       }
       if (event.type == ARCHOERA_EV_TASK_STATE &&
-          event.state == ARCHOERA_TASK_FAILED) {
+          event.state == ARCHOERA_TASK_FAILED) 
+      {
         saw_failed = true;
         CHECK(event.code == ARCHOERA_E_INTERNAL);
       }

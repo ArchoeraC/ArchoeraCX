@@ -67,9 +67,8 @@ test/
 └─ core_status_card_test.dart
 tool/
 └─ build-core.sh / build-core.bat
-core/          # C++ archoera_core + ModuleRegistry/MethodRegistry
+core/          # C++ archoera_core + modules/business (C#) + modules/downloader (Rust)
 contracts/     # ABI / module ABI
-modules/       # C# archoera_cs + Rust archoera_dl（下载执行器 MVP）
 native/        # 平台桥接（下一步）
 ```
 
@@ -100,10 +99,10 @@ flutter build linux --release
 单独验证 C# 模块：
 
 ```bash
-dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --scan
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
+dotnet test core/modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --check
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --scan
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --self-test-loader
 # 需要用真实 installer 复核清单时：先把样本放到 <repo>/.local/forge-samples/
 ./tool/verify-loader-samples.sh
 ```
@@ -111,8 +110,8 @@ dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test
 Rust 下载器：
 
 ```bash
-cargo test --manifest-path modules/downloader/Cargo.toml
-cargo build --release --manifest-path modules/downloader/Cargo.toml
+cargo test --manifest-path core/modules/downloader/Cargo.toml
+cargo build --release --manifest-path core/modules/downloader/Cargo.toml
 
 # Modrinth 端到端试跑（无需 API key）
 ./tool/try-modrinth.sh sodium 1.21.1 fabric

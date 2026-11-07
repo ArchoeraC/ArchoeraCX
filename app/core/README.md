@@ -3,7 +3,7 @@
 计划中的 `archoera_core`（C++20）源码目录：
 
 - ABI 头文件复用 `app/contracts/abi/archoera_abi.h`
-- `src/{abi,dispatcher,task,effect,event,module,config,log,crash,platform}`（当前是 `archoera_core.cpp` + `method_registry.*` + `module_registry.*` + `module_host.*`）
+- `src/` 按功能拆分：`abi/` 导出面、`foundation/` 共享状态/JSON/信封/任务、`host/` 方法路由与模块宿主、`system/` 系统状态与动作、`appearance/` 深浅色、`instance/` 单实例
 - `ModuleRegistry` 按名字持有 `archoera_cs` 与可选的 `archoera_dl`；`MethodRegistry` 把公开方法映射到 core 或具名模块
 - 模块按 `ARCHOERACX_CS_MODULE` / `ARCHOERACX_DL_MODULE` 环境变量或 core 同目录加载；Debug 构建接受任意路径，Release 构建只接受指向 core 同目录的路径（环境变量不能从任意位置注入代码）；缺失时对应方法返回 `E_UNSUPPORTED`
 - `system.modules` 返回已加载模块；未知方法同步返回 `E_UNSUPPORTED`

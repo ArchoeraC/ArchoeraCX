@@ -5,7 +5,7 @@ cd /d "%~dp0.."
 
 set "OUT_DIR=%CD%\build\native\cs"
 set "FINAL_PATH=%CD%\build\native\archoera_cs.dll"
-set "PROJECT=modules\business\Archoera.Exports\Archoera.Exports.csproj"
+set "PROJECT=core\modules\business\Archoera.Exports\Archoera.Exports.csproj"
 
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 if not exist "%CD%\build\native" mkdir "%CD%\build\native"
@@ -26,8 +26,8 @@ rem Every platform ships SQLitePCLRaw's bundled e_sqlite3 next to the module;
 rem SqliteNativeLibrary loads that exact file by absolute path. The RID publish
 rem normally flattens it into OUT_DIR, otherwise use the runtimes payload.
 set "SQLITE_SOURCE=%OUT_DIR%\e_sqlite3.dll"
-if not exist "%SQLITE_SOURCE%" set "SQLITE_SOURCE=%CD%\modules\business\Archoera.Exports\bin\Release\net10.0\win-x64\publish\runtimes\win-x64\native\e_sqlite3.dll"
-if not exist "%SQLITE_SOURCE%" set "SQLITE_SOURCE=%CD%\modules\business\Archoera.Exports\bin\Release\net10.0\win-x64\runtimes\win-x64\native\e_sqlite3.dll"
+if not exist "%SQLITE_SOURCE%" set "SQLITE_SOURCE=%CD%\core\modules\business\Archoera.Exports\bin\Release\net10.0\win-x64\publish\runtimes\win-x64\native\e_sqlite3.dll"
+if not exist "%SQLITE_SOURCE%" set "SQLITE_SOURCE=%CD%\core\modules\business\Archoera.Exports\bin\Release\net10.0\win-x64\runtimes\win-x64\native\e_sqlite3.dll"
 if not exist "%SQLITE_SOURCE%" (
   echo error: bundled SQLite payload e_sqlite3.dll not found for win-x64 1>&2
   echo        looked in %OUT_DIR% and the Archoera.Exports publish directory. 1>&2

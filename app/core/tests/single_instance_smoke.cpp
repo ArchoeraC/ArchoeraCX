@@ -7,7 +7,7 @@
  * launcher that is already open on the developer machine.
  */
 
-#include "platform_instance.h"
+#include "instance/platform_instance.h"
 
 #include <chrono>
 #include <condition_variable>

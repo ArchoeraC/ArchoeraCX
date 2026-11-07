@@ -39,8 +39,8 @@ ArchoeraCX 的公开文档。实现以代码和契约为准；文档与代码冲
 
 - [Flutter / UI](../app/README.md)
 - [C++ 核心](../app/core/README.md)
-- [C# 业务模块](../app/modules/business/README.md)
-- [Rust 下载器](../app/modules/downloader/README.md)
+- [C# 业务模块](../app/core/modules/business/README.md)
+- [Rust 下载器](../app/core/modules/downloader/README.md)
 - [ABI / 契约](../app/contracts/README.md)
 
 ## 维护规则

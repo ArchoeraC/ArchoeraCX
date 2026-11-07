@@ -343,7 +343,7 @@ Rust archoera_dl
 
 > 扩展字段必须可选；Rust 对未知字段忽略，但 `origin=generated` 必须显式拒绝（或在 C# 侧根本不生成）。**[推断]**
 >
-> **当前实现对齐（只读）**：`app/modules/downloader/src/plan.rs` 的 `FileSpec` 目前只认 `url/mirrors/hash/sha1/sha256/sha512/size/dest/mode/priority/executable/headers`；上表中的 `provider/source/termsUrl/license/distribution/origin/cacheKey/expectedContentType` 是**建议扩展**，落地前必须同步 Rust 结构体、JSON schema 与 C# DTO；在扩展前不要在 C# 里写入并期待 Rust 使用。`origin=generated` 的拒绝也需要在 `validate_plan_inner` 增加，不应只靠文档约定。**[事实/推断]**
+> **当前实现对齐（只读）**：`app/core/modules/downloader/src/plan.rs` 的 `FileSpec` 目前只认 `url/mirrors/hash/sha1/sha256/sha512/size/dest/mode/priority/executable/headers`；上表中的 `provider/source/termsUrl/license/distribution/origin/cacheKey/expectedContentType` 是**建议扩展**，落地前必须同步 Rust 结构体、JSON schema 与 C# DTO；在扩展前不要在 C# 里写入并期待 Rust 使用。`origin=generated` 的拒绝也需要在 `validate_plan_inner` 增加，不应只靠文档约定。**[事实/推断]**
 
 ### 4.3 什么永远不进入 DownloadPlan
 

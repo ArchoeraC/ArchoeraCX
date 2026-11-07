@@ -12,10 +12,8 @@
 #include <condition_variable>
 #include <cstring>
 #include <mutex>
-#include <string>
 #include <thread>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 namespace {
@@ -30,7 +28,8 @@ constexpr const char* kCancelledResult =
     "{\"ok\":false,\"error\":{\"code\":6,\"message\":\"cancelled\"},"
     "\"meta\":{\"schemaVersion\":1}}";
 
-struct FakeSelf {
+struct FakeSelf 
+{
   std::mutex mutex;
   std::condition_variable cv;
   std::unordered_map<uint64_t, bool> cancel_requested;
@@ -38,17 +37,21 @@ struct FakeSelf {
   bool shutting_down = false;
 };
 
-bool wants_async(const char* params_json) {
-  if (params_json == nullptr) {
+bool wants_async(const char* params_json) 
+{
+  if (params_json == nullptr) 
+  {
     return false;
   }
   return std::strstr(params_json, "\"mode\":\"async\"") != nullptr;
 }
 
 int32_t fake_init(const char* config_json, void** out_self,
-                  archoera_error* err) {
+                  archoera_error* err) 
+{
   (void)config_json;
-  if (out_self == nullptr) {
+  if (out_self == nullptr) 
+  {
     return ARCHOERA_E_INVALID;
   }
   *out_self = nullptr;
@@ -79,21 +82,25 @@ int32_t fake_call(void* self,
                   void* user) {
   (void)progress;
   auto* state = static_cast<FakeSelf*>(self);
-  if (state == nullptr || method == nullptr || done == nullptr) {
+  if (state == nullptr || method == nullptr || done == nullptr) 
+  {
     return ARCHOERA_E_INVALID;
   }
-  if (std::strcmp(method, "java.scan") != 0) {
+  if (std::strcmp(method, "java.scan") != 0) 
+  {
     return ARCHOERA_E_UNSUPPORTED;
   }
 
   if (params_json != nullptr &&
-      std::strstr(params_json, "\"mode\":\"reject\"") != nullptr) {
+      std::strstr(params_json, "\"mode\":\"reject\"") != nullptr) 
+  {
     // Accepted as a valid rejection probe: no done callback follows.
     return ARCHOERA_E_INTERNAL;
   }
 
   try {
-    if (!wants_async(params_json)) {
+    if (!wants_async(params_json)) 
+    {
       // Synchronous callback: still valid, `call` may invoke done before it
       // returns.
       done(user, ARCHOERA_OK, kScanResult);
@@ -136,9 +143,11 @@ int32_t fake_call(void* self,
   }
 }
 
-int32_t fake_cancel(void* self, uint64_t task_id) {
+int32_t fake_cancel(void* self, uint64_t task_id) 
+{
   auto* state = static_cast<FakeSelf*>(self);
-  if (state == nullptr) {
+  if (state == nullptr) 
+  {
     return ARCHOERA_OK;
   }
   try {
@@ -154,9 +163,11 @@ int32_t fake_cancel(void* self, uint64_t task_id) {
   }
 }
 
-void fake_shutdown(void* self) {
+void fake_shutdown(void* self) 
+{
   auto* state = static_cast<FakeSelf*>(self);
-  if (state == nullptr) {
+  if (state == nullptr) 
+  {
     return;
   }
 
@@ -168,8 +179,10 @@ void fake_shutdown(void* self) {
     threads.swap(state->threads);
   }
 
-  for (std::thread& thread : threads) {
-    if (thread.joinable()) {
+  for (std::thread& thread : threads) 
+  {
+    if (thread.joinable()) 
+    {
       thread.join();
     }
   }
@@ -190,6 +203,7 @@ const archoera_module_v1 kModule = {
 }  // namespace
 
 extern "C" ARCHOERACX_MODULE_API const archoera_module_v1*
-archoera_module_entry(void) {
+archoera_module_entry(void) 
+{
   return &kModule;
 }

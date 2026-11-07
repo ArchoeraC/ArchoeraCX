@@ -12,5 +12,5 @@
 ## 使用边界
 
 - 这三个项目是 MIT：可以依赖、参考实现；复制片段时必须保留版权与许可声明。
-- 本项目的 Java 探测实现位于 `app/modules/business/Archoera.Infrastructure/Java/`，按“候选枚举 + `java -XshowSettings:properties -version` 校验”的行为重写，未复制上游代码。
+- 本项目的 Java 探测实现位于 `app/core/modules/business/Archoera.Infrastructure/Java/`，按“候选枚举 + `java -XshowSettings:properties -version` 校验”的行为重写，未复制上游代码。
 - 每次重克隆/升级参考仓库时更新本表 commit 与 LICENSE 哈希。

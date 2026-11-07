@@ -61,7 +61,7 @@ fi
 
 OUT_DIR="$(pwd)/build/native/cs"
 FINAL_PATH="$(pwd)/build/native/${OUTPUT_NAME}"
-PROJECT="modules/business/Archoera.Exports/Archoera.Exports.csproj"
+PROJECT="core/modules/business/Archoera.Exports/Archoera.Exports.csproj"
 
 mkdir -p "${OUT_DIR}" "$(dirname "${FINAL_PATH}")"
 
@@ -107,10 +107,10 @@ esac
 # the runtimes payload when the SDK keeps the package layout instead.
 SQLITE_SOURCE="${OUT_DIR}/${SQLITE_NAME}"
 if [[ ! -f "${SQLITE_SOURCE}" ]]; then
-  SQLITE_SOURCE="$(pwd)/modules/business/Archoera.Exports/bin/Release/net10.0/${RID}/publish/runtimes/${RID}/native/${SQLITE_NAME}"
+  SQLITE_SOURCE="$(pwd)/core/modules/business/Archoera.Exports/bin/Release/net10.0/${RID}/publish/runtimes/${RID}/native/${SQLITE_NAME}"
 fi
 if [[ ! -f "${SQLITE_SOURCE}" ]]; then
-  SQLITE_SOURCE="$(pwd)/modules/business/Archoera.Exports/bin/Release/net10.0/${RID}/runtimes/${RID}/native/${SQLITE_NAME}"
+  SQLITE_SOURCE="$(pwd)/core/modules/business/Archoera.Exports/bin/Release/net10.0/${RID}/runtimes/${RID}/native/${SQLITE_NAME}"
 fi
 if [[ ! -f "${SQLITE_SOURCE}" ]]; then
   echo "error: bundled SQLite payload ${SQLITE_NAME} not found for ${RID}" >&2

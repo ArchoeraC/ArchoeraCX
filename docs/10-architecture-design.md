@@ -1060,7 +1060,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 ```
 
 - 清单可编译进模块（`module.info` 返回），也可作为同目录 `.json` 供诊断；两者不一致时以模块返回为准并告警。
-- 当前实现（v1 切片）先冻结 **方法注册表**：C++ `src/method_registry.cpp` 与 C# `BusinessModuleRegistry` 各自显式登记方法；能力位/清单文件在接入 Rust 模块时补齐。
+- 当前实现（v1 切片）先冻结 **方法注册表**：C++ `src/host/method_registry.cpp` 与 C# `BusinessModuleRegistry` 各自显式登记方法；能力位/清单文件在接入 Rust 模块时补齐。
 
 ### 7.6 C# 导出层约束
 
@@ -1088,7 +1088,7 @@ ARCHOERA_EXPORT const archoera_module_v1* archoera_module_entry(void);
 ### 8.1 分层与项目
 
 ```
-app/modules/business/
+app/core/modules/business/
 ├─ Archoera.Domain/          # 纯模型/规则：无 I/O、无 HttpClient、无 SQLite
 ├─ Archoera.Application/     # 用例/服务接口/编排：可单测
 ├─ Archoera.Infrastructure/  # HTTP、SQLite、文件、注册表、进程、凭据库
@@ -3024,7 +3024,7 @@ CMake (top-level)
 cmake --preset release
 cmake --build --preset release
 cargo build --release -p archoera_dl
-dotnet publish app/modules/business/Archoera.Exports -c Release -r win-x64 \
+dotnet publish app/core/modules/business/Archoera.Exports -c Release -r win-x64 \
   -p:PublishAot=true -p:NativeLib=Shared
 flutter build windows --release
 ```

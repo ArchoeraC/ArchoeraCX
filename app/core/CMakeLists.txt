@@ -1,62 +1,62 @@
 find_package(Threads REQUIRED)
 
 # System appearance backend: native OS APIs only, no polling in Dart.
-set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_stub.cpp)
-set(ARCHOERA_SYSTEM_SOURCES src/platform_system_stub.cpp)
-set(ARCHOERA_TRASH_SOURCES src/platform_trash_posix.cpp)
+set(ARCHOERA_APPEARANCE_SOURCES src/appearance/platform_appearance_stub.cpp)
+set(ARCHOERA_SYSTEM_SOURCES src/system/platform_system_stub.cpp)
+set(ARCHOERA_TRASH_SOURCES src/system/platform_trash_posix.cpp)
 set(ARCHOERA_TRASH_DEFINE "")
-set(ARCHOERA_STATUS_SOURCES src/platform_status_stub.cpp)
-set(ARCHOERA_GPU_SOURCES src/platform_gpu_stub.cpp)
-set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_stub.cpp)
+set(ARCHOERA_STATUS_SOURCES src/system/platform_status_stub.cpp)
+set(ARCHOERA_GPU_SOURCES src/system/platform_gpu_stub.cpp)
+set(ARCHOERA_INSTANCE_SOURCES src/instance/platform_instance_stub.cpp)
 if(WIN32)
-  set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_windows.cpp)
-  set(ARCHOERA_SYSTEM_SOURCES src/platform_system_windows.cpp)
+  set(ARCHOERA_APPEARANCE_SOURCES src/appearance/platform_appearance_windows.cpp)
+  set(ARCHOERA_SYSTEM_SOURCES src/system/platform_system_windows.cpp)
   set(ARCHOERA_TRASH_SOURCES "")
-  set(ARCHOERA_STATUS_SOURCES src/platform_status_windows.cpp)
-  set(ARCHOERA_GPU_SOURCES src/platform_gpu_windows.cpp)
-  set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_windows.cpp)
+  set(ARCHOERA_STATUS_SOURCES src/system/platform_status_windows.cpp)
+  set(ARCHOERA_GPU_SOURCES src/system/platform_gpu_windows.cpp)
+  set(ARCHOERA_INSTANCE_SOURCES src/instance/platform_instance_windows.cpp)
 elseif(APPLE)
   enable_language(OBJCXX)
-  set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_macos.mm)
-  set(ARCHOERA_SYSTEM_SOURCES src/platform_system_macos.mm)
+  set(ARCHOERA_APPEARANCE_SOURCES src/appearance/platform_appearance_macos.mm)
+  set(ARCHOERA_SYSTEM_SOURCES src/system/platform_system_macos.mm)
   set(ARCHOERA_TRASH_SOURCES "")
-  set(ARCHOERA_STATUS_SOURCES src/platform_status_macos.cpp)
-  set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_posix.cpp)
-  set_source_files_properties(src/platform_appearance_macos.mm
-    src/platform_system_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+  set(ARCHOERA_STATUS_SOURCES src/system/platform_status_macos.cpp)
+  set(ARCHOERA_INSTANCE_SOURCES src/instance/platform_instance_posix.cpp)
+  set_source_files_properties(src/appearance/platform_appearance_macos.mm
+    src/system/platform_system_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 else()
-  set(ARCHOERA_TRASH_SOURCES src/platform_trash_posix.cpp)
+  set(ARCHOERA_TRASH_SOURCES src/system/platform_trash_posix.cpp)
   set(ARCHOERA_TRASH_DEFINE ARCHOERA_HAVE_POSIX_TRASH=1)
   find_package(PkgConfig QUIET)
   if(PkgConfig_FOUND)
     pkg_check_modules(DBUS QUIET dbus-1)
   endif()
   if(DBUS_FOUND)
-    set(ARCHOERA_APPEARANCE_SOURCES src/platform_appearance_linux.cpp)
-    set(ARCHOERA_SYSTEM_SOURCES src/platform_system_linux.cpp)
+    set(ARCHOERA_APPEARANCE_SOURCES src/appearance/platform_appearance_linux.cpp)
+    set(ARCHOERA_SYSTEM_SOURCES src/system/platform_system_linux.cpp)
   endif()
   # /proc + statvfs need no extra dependency.
-  set(ARCHOERA_STATUS_SOURCES src/platform_status_linux.cpp)
+  set(ARCHOERA_STATUS_SOURCES src/system/platform_status_linux.cpp)
   # /sys/class/drm needs no extra dependency either.
-  set(ARCHOERA_GPU_SOURCES src/platform_gpu_linux.cpp)
-  set(ARCHOERA_INSTANCE_SOURCES src/platform_instance_posix.cpp)
+  set(ARCHOERA_GPU_SOURCES src/system/platform_gpu_linux.cpp)
+  set(ARCHOERA_INSTANCE_SOURCES src/instance/platform_instance_posix.cpp)
 endif()
 
 add_library(archoera_core SHARED
-  src/archoera_core.cpp
-  src/method_registry.cpp
-  src/module_host.cpp
-  src/module_registry.cpp
-  src/core_json.cpp
-  src/core_result.cpp
-  src/core_tasks.cpp
-  src/core_status.cpp
-  src/core_actions.cpp
-  src/core_appearance.cpp
-  src/core_instance.cpp
-  src/core_module_bridge.cpp
-  src/platform_system_common.cpp
-  src/platform_status_common.cpp
+  src/abi/archoera_core.cpp
+  src/host/method_registry.cpp
+  src/host/module_host.cpp
+  src/host/module_registry.cpp
+  src/host/core_module_bridge.cpp
+  src/foundation/core_json.cpp
+  src/foundation/core_result.cpp
+  src/foundation/core_tasks.cpp
+  src/system/core_status.cpp
+  src/system/core_actions.cpp
+  src/appearance/core_appearance.cpp
+  src/instance/core_instance.cpp
+  src/system/platform_system_common.cpp
+  src/system/platform_status_common.cpp
   ${ARCHOERA_APPEARANCE_SOURCES}
   ${ARCHOERA_SYSTEM_SOURCES}
   ${ARCHOERA_TRASH_SOURCES}
@@ -68,7 +68,7 @@ add_library(archoera_core SHARED
 target_compile_features(archoera_core PRIVATE cxx_std_20)
 target_include_directories(archoera_core
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../contracts/abi"
-  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../contracts/module"
+  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src" "${CMAKE_CURRENT_LIST_DIR}/../contracts/module"
 )
 target_compile_definitions(archoera_core PRIVATE ARCHOERA_CORE_EXPORTS ${ARCHOERA_TRASH_DEFINE})
 target_link_libraries(archoera_core PRIVATE Threads::Threads ${CMAKE_DL_LIBS})

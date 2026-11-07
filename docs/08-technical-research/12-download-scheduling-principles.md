@@ -152,7 +152,7 @@
 
 ## 4. 抽象出的原理，与 `archoera_dl` 的对照
 
-> 现状引用为本仓库 `app/modules/downloader/src`（2026-10-24）。
+> 现状引用为本仓库 `app/core/modules/downloader/src`（2026-10-24）。
 
 | # | 原理 | 当前实现 | 差距 | 建议 |
 |---|---|---|---|---|

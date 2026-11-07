@@ -1,0 +1,8 @@
+# Keep IDE analysis aligned with the CMake build after src/ was split by domain.
+CompileFlags:
+  CompilationDatabase: app/build/native
+  Add:
+    - -std=c++20
+    - -Iapp/core/src
+    - -Iapp/contracts/abi
+    - -Iapp/contracts/module

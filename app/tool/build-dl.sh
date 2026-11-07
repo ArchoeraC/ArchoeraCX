@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-MANIFEST="modules/downloader/Cargo.toml"
+MANIFEST="core/modules/downloader/Cargo.toml"
 cargo build --release --locked --manifest-path "${MANIFEST}"
 
 case "$(uname -s)" in
@@ -12,7 +12,7 @@ case "$(uname -s)" in
   *) LIB_NAME="libarchoera_dl.so"; CLI_SOURCE="archoera-dl-cli"; CLI_NAME="archoera-dl" ;;
 esac
 
-ARTIFACT="$(pwd)/modules/downloader/target/release/${LIB_NAME}"
+ARTIFACT="$(pwd)/core/modules/downloader/target/release/${LIB_NAME}"
 
 if [[ ! -f "${ARTIFACT}" ]]; then
   echo "error: downloader artifact not found: ${ARTIFACT}" >&2
@@ -29,7 +29,7 @@ echo "Module: build/native/${LIB_NAME}"
 
 # The Flutter/dev bridge invokes the CLI next to the native core; keep a copy
 # under build/native so a bundle can find it without cargo paths.
-CLI_ARTIFACT="$(pwd)/modules/downloader/target/release/${CLI_SOURCE}"
+CLI_ARTIFACT="$(pwd)/core/modules/downloader/target/release/${CLI_SOURCE}"
 if [[ ! -f "${CLI_ARTIFACT}" ]]; then
   echo "error: downloader CLI not found: ${CLI_ARTIFACT}" >&2
   exit 1

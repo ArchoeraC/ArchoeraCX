@@ -1,7 +1,7 @@
 # 08 · Java 探测与 `java.scan`
 
 > 状态：已实现（Linux x64），Windows/macOS 逻辑已写入但需真机复核。
-> 实现：`app/modules/business/Archoera.Infrastructure/Java/`
+> 实现：`app/core/modules/business/Archoera.Infrastructure/Java/`
 > 契约：`java.scan` 结果统一走 `CoreClient.scanJava()`。
 
 ---
@@ -171,11 +171,11 @@ candidate path
 cd app
 ./tool/build-core.sh
 ./tool/build-cs.sh
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --scan
-dotnet run --project modules/business/Archoera.DevHost -c Release -- \
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --check
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --scan
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- \
   --scan --root /opt/java/Adoptium --no-defaults
-dotnet run --project modules/business/Archoera.DevHost -c Release -- \
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- \
   --scan --java /opt/java/Adoptium/jdk-21.0.9+10/bin/java --no-defaults
 flutter test test/java_status_card_test.dart
 ```

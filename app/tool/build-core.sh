@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-cmake -S .. -B build/native -DCMAKE_BUILD_TYPE=Release
+cmake -S .. -B build/native -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build/native -j
 
 case "$(uname -s)" in

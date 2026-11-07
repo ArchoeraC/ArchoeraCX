@@ -23,7 +23,7 @@ root="${4:-$repo_dir/.local/modrinth-test}"
 mkdir -p "$root"
 plan="$root/modrinth-plan.json"
 
-dotnet run --project "$app_dir/modules/business/Archoera.DevHost" -c Release -- \
+dotnet run --project "$app_dir/core/modules/business/Archoera.DevHost" -c Release -- \
   --modrinth-plan \
   --project "$project" \
   --kind mod \
@@ -33,5 +33,5 @@ dotnet run --project "$app_dir/modules/business/Archoera.DevHost" -c Release -- 
   --out "$plan"
 
 cargo run --release \
-  --manifest-path "$app_dir/modules/downloader/Cargo.toml" \
+  --manifest-path "$app_dir/core/modules/downloader/Cargo.toml" \
   --bin archoera-dl-cli -- "$plan"

@@ -1,6 +1,6 @@
 # AGENTS.md — ArchoeraCX
 
-`app/lib` Flutter（经 `services/core/CoreClient` 调 C++）· `app/core` C++20 枢纽（`vault-rs` 凭据保险库）· `app/modules/business` C# NativeAOT（业务与 SQLite）· `app/modules/downloader` Rust（只执行 `DownloadPlan`）· `app/contracts` ABI/schema · `docs/` 文档 · `Reference/` 只读参考。
+`app/lib` Flutter（经 `services/core/CoreClient` 调 C++）· `app/core` C++20 枢纽（`vault-rs` 凭据保险库）· `app/core/modules/business` C# NativeAOT（业务与 SQLite）· `app/core/modules/downloader` Rust（只执行 `DownloadPlan`）· `app/contracts` ABI/schema · `docs/` 文档 · `Reference/` 只读参考。
 
 ## 架构红线
 
@@ -52,10 +52,10 @@
 cd app
 ./tool/build-core.sh && ./tool/build-cs.sh && ./tool/build-dl.sh && ./tool/build-vault.sh
 ./build/native/abi_smoke && ./build/native/async_smoke && ./build/native/module_smoke && ./build/native/single_instance_smoke
-dotnet test modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --check
-dotnet run --project modules/business/Archoera.DevHost -c Release -- --self-test-loader
-cargo test --manifest-path modules/downloader/Cargo.toml
+dotnet test core/modules/business/Archoera.Tests/Archoera.Tests.csproj -c Release
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --check
+dotnet run --project core/modules/business/Archoera.DevHost -c Release -- --self-test-loader
+cargo test --manifest-path core/modules/downloader/Cargo.toml
 flutter pub get && flutter gen-l10n && dart analyze && flutter test   # 中文路径下不要用 flutter analyze
 ARCHOERACX_NETWORK_TESTS=1 flutter test test/resource_network_test.dart
 ARCHOERACX_SETTINGS_TESTS=1 ARCHOERACX_DATA_DIR=/tmp/archoera-settings flutter test test/settings_integration_test.dart
